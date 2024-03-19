@@ -13,6 +13,13 @@ from functools import partial
 from pathlib import Path
 from typing import IO, List
 
+##-- end imports
+
+##-- logging
+logging       = logmod.getLogger(__name__)
+clingo_logger = logmod.getLogger(__name__ + ".ffi.clingo")
+##-- end logging
+
 import clingo
 import instal
 from clingo import Control, Function, Number, Symbol, parse_term
@@ -20,12 +27,6 @@ from instal.interfaces.ast import (DomainSpecAST, InitiallyAST, InstalAST,
                                    QueryAST, TermAST)
 from instal.interfaces.solver import InstalModelResult, SolverWrapper_i
 from instal.compiler.util import CompileUtil
-##-- end imports
-
-##-- logging
-logging       = logmod.getLogger(__name__)
-clingo_logger = logmod.getLogger(__name__ + ".ffi.clingo")
-##-- end logging
 
 def clingo_intercept_logger(code, msg):
     """

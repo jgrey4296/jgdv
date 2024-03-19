@@ -1,0 +1,136 @@
+#+TITLE: Dejavu Todo
+
+* Main
+
+** apis
+
+*** clingo
+
+*** mastodon
+
+*** selenium
+
+*** sphinx
+** cli
+*** argparse
+*** flexible
+*** shell
+*** speak
+*** repl
+** debugging
+*** check protocol
+*** destruction
+*** exiter
+*** human
+*** malloc
+*** running debugger
+*** timing
+*** trace helper
+*** tracing
+*** dsl
+** decorators
+*** dsl
+*** engine
+*** logging
+*** semantic
+*** key
+** dsl
+** errors
+
+** file formats
+
+*** bookmarks
+
+*** tags
+
+*** tex
+
+*** org
+
+*** twitter
+
+*** netscape
+
+*** sha256
+
+*** tar
+
+*** zip
+
+*** timeline
+
+*** pdfs
+** geometry
+*** math
+*** voronoi
+*** dcel
+** handlers
+*** handler
+*** system
+*** signals
+** importing
+*** search path
+*** plugins
+** logging
+*** config
+*** colour
+*** context
+*** stdout capture
+** setup
+*** asyncio client
+*** gtk
+*** tkinter
+*** asyncio server
+*** main
+*** setup
+*** twisted / scrapy
+** spiders
+*** actions
+*** caching
+*** cralwer
+*** middleware
+*** pipeline
+*** mixin
+*** runner
+*** tracker
+** structs
+*** binary
+*** files
+*** graphs
+*** math
+*** proxy
+*** rbtree
+*** rete
+*** time
+*** tree
+*** trie
+*** enums
+*** heap
+*** regex
+** testing
+*** fixtures
+** utils
+
+** interfaces
+*** accessors
+*** ast
+*** cmd
+*** compiler
+*** control
+*** dbm
+*** factory
+*** loader
+*** overlord
+*** parser
+*** policy
+*** reporter
+*** singleton
+*** solver
+*** task
+*** trace
+*** validate
+* Secondary
+
+* Wiki
+
+* Links

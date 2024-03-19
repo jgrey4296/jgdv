@@ -1,5 +1,5 @@
 [project]
-name            = "Deja Vu"
+name            = "deja_vu"
 version         = "0.0.1"
 description     = ""
 readme          = "README.md"
@@ -7,7 +7,7 @@ requires-python = ">=3.10"
 license         = {file = "LICENSE"}
 keywords        = []
 authors         = [
-  {name  = "John Grey", email = "jgrey.n.plus.one at gmail.com"},
+  {name  = "John Grey", email = "jgrey.n.plus.one+dejavu@gmail.com"},
 ]
 classifiers     = [
   "Programming Language :: Python"
@@ -27,7 +27,7 @@ dependencies   = [
 
 [project.optional-dependencies]
 docs = [ "sphinx" ]
-dev  = [ "https://github.com/jgrey4296/doot", "pipreqs"]
+dev  = [ "doot", "pipreqs"]
 test = [ "pytest > 7.0.0" ]
 
 ##-- urls
@@ -65,11 +65,11 @@ include-package-data = true
 [tool.setuptools.packages.find]
 namespaces = true
 where      = ["."]
-include    = ["dejavu*"]
+include    = ["deja_vu*"]
 
 [tool.setuptools.package-data]
 "*" = ["*"]
-"dejavu.__data"    = ["*.so"]
+"deja_vu.__data"    = ["*.so"]
 
 [tool.setuptools.exclude-package-data]
 
@@ -79,7 +79,7 @@ include    = ["dejavu*"]
 
 ##-- pyright
 [tool.pyright]
-# strict = dejavu.*
+# strict = deja_vu.*
 verboseOutput               = true
 typeCheckingMode            = "strict"
 pythonVersion               = "3.10"
@@ -167,6 +167,6 @@ tag_scope          = "default"
                    '^version\s+=\s+"{version}"',
                    '^current_version\s+=\s+"{version}"'
 ]
-"dejavu/__init__.py" = ['^__version__\s+=\s+"{version}"']
+"deja_vu/__init__.py" = ['^__version__\s+=\s+"{version}"']
 
 ##-- end bumpver
