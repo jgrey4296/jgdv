@@ -1,18 +1,12 @@
 #+TITLE: Dejavu Todo
 
 * Main
-
 ** apis
-
 *** clingo
-
 *** mastodon
-
 *** selenium
-
 *** sphinx
 ** cli
-*** argparse
 *** flexible
 *** shell
 *** speak
@@ -38,27 +32,16 @@
 ** errors
 
 ** file formats
-
 *** bookmarks
-
 *** tags
-
 *** tex
-
 *** org
-
 *** twitter
-
 *** netscape
-
 *** sha256
-
 *** tar
-
 *** zip
-
 *** timeline
-
 *** pdfs
 ** geometry
 *** math

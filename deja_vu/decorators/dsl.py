@@ -6,25 +6,17 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Generic, Iterable,
 
 from functools import wraps
 
-from acab.error.parse import AcabParseException
-
-if TYPE_CHECKING:
-    # tc only imports
-    pass
-
 ##-- end imports
+
+from dejavu._interfaces.decorator import DejaVuDecorator_i
 
 T = TypeVar('T')
 
-#pylint: disable-next=invalid-name
-def EnsureDSLInitialised(method:Callable[..., T]) -> Callable[..., T]:
-    """ Utility Decorator for DSL Builder's, raising error if not initialised """
-    #pylint: disable-next=invalid-name
-    @wraps(method)
-    def dsl_must_be_initialised(self, *args, **kwargs):
+class EnsureDSLInit(DejaVuDecorator_i):
+    """ Utility Decorator for DSLs  raising error if not initialised """
+
+    def __call__(self, *args, **kwargs):
         if not self._parsers_initialised:
-            raise AcabParseException("DSL Not Initialised")
+            raise RuntimeError("DSL Not Initialised")
 
-        return method(self, *args, **kwargs)
-
-    return dsl_must_be_initialised
+        return self._func(self, *args, **kwargs)

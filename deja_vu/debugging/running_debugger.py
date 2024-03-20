@@ -6,41 +6,15 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
-logging = logmod.getLogger(__name__)
-trace_logger = logmod.getLogger('acab.repl.trace')
+logging      = logmod.getLogger(__name__)
+trace_logger = logmod.getLogger('dejavu._debug')
 
-from acab.interfaces.debugger import AcabDebugger_i
-from acab.core.metaclasses.singletons import SingletonMeta
-
-# TODO track semantic debugging in RunningDebugger
-# TODO refactor this to be a handler registration
-# TODO add acab specific do_ methods
-def SemanticBreakpointDecorator(f):
-    logging.info("Attaching Semantic Breakpoint")
-
-    def wrapped(self, *args, **kwargs):
-        # TODO handle repeats
-        if args[0].breakpoint:
-            f_code = f.__code__
-            db = RunningDebugger()
-            # Ensure trace function is set
-            sys.settrace(db.trace_dispatch)
-            if not db.get_break(f_code.co_filename, f_code.co_firstlineno+2):
-                db.set_break(f_code.co_filename,
-                             f_code.co_firstlineno+2,
-                             True)
-            else:
-                bp = Breakpoint.bplist[f_code.co_filename,
-                                       f_code.co_firstlineno+2][0]
-                bp.enable()
-
-
-        return f(self, *args, **kwargs)
-
-    wrapped.__name__ = f.__name__
-    return wrapped
-
-class RunningDebugger(AcabDebugger_i, metaclass=SingletonMeta):
+class RunningDebugger(metaclass=SingletonMeta):
+    """
+      The usual debugger stops execution when you call it.
+      This starts the tracing, without pausing execution.
+      so on a future breakpoint, you can pause and have a trace from where you started the debugger
+    """
 
     def __init__(self):
         super().__init__()

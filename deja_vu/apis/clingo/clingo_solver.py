@@ -21,12 +21,10 @@ clingo_logger = logmod.getLogger(__name__ + ".ffi.clingo")
 ##-- end logging
 
 import clingo
-import instal
 from clingo import Control, Function, Number, Symbol, parse_term
-from instal.interfaces.ast import (DomainSpecAST, InitiallyAST, InstalAST,
-                                   QueryAST, TermAST)
-from instal.interfaces.solver import InstalModelResult, SolverWrapper_i
-from instal.compiler.util import CompileUtil
+from dejavu._interfaces.solver import SolverWrapper_i
+from dejavu.apis.clingo.ast import SolverAST
+from dejavu.apis.clingo.solver import SolverModelResult, SolverWrapper_i
 
 def clingo_intercept_logger(code, msg):
     """
@@ -52,7 +50,7 @@ def model_cb(self, model:clingo.Model):
     NOTE: Clingo Models are destroyed/reallocated on exit of the callback,
     Which is why we don't just store the model itself
     """
-    self.results.append(InstalModelResult(model.symbols(atoms=True),
+    self.results.append(SolverModelResult(model.symbols(atoms=True),
                                           model.symbols(shown=True),
                                           model.cost,
                                           model.number,
@@ -105,7 +103,7 @@ class ClingoSolver(SolverWrapper_i):
         self.ctl.ground(default_grounding)
         logging.info("Clingo initialization complete")
 
-    def solve(self, assignments:list[str|InstalAST|Symbol|tuple[bool, Symbol]]=None, fresh:bool=False, reground:list[tuple]=None) -> int:
+    def solve(self, assignments:list[str|SolverAST|Symbol|tuple[bool, Symbol]]=None, fresh:bool=False, reground:list[tuple]=None) -> int:
         assignments = assignments or []
 
         if fresh or self.ctl is None:
@@ -119,7 +117,7 @@ class ClingoSolver(SolverWrapper_i):
         for sym in assignments:
             logging.debug("assigning: %s", sym)
             match sym:
-                case InstalAST():
+                case SolverAST():
                     for truthy, sym in self.ast_to_clingo(sym):
                         self.ctl.assign_external(sym, truthy)
                 case Symbol():
@@ -152,48 +150,13 @@ class ClingoSolver(SolverWrapper_i):
             "mode"           : "multi_shot",
             "current_result" : self.current_answer,
             "result_size"    : len(self.results),
-            "version"        : instal.__version__,
             "clingo_version" : clingo.__version__
         }
 
 
     def ast_to_clingo(self, *asts:TermAST) -> list[tuple[bool, Symbol]]:
         """
-        Convert instal terms to clingo terms,
+        Convert terms to clingo terms,
         not caring if they are #external or not
         """
-        logging.debug("Converting to Clingo Symbols: %s", asts)
-        results = []
-        for ast in asts:
-            match ast:
-                case InitiallyAST():
-                    assert(not bool(ast.conditions))
-                    assert(not any(x.has_var for x in ast.body))
-                    truthy = not ast.negated
-                    inst_term = parse_term(str(ast.inst))
-                    for fact in ast.body:
-                        compiled_term = parse_term(CompileUtil.compile_term(fact))
-                        symbol = Function("extHoldsat", [compiled_term, inst_term])
-                        results.append((truthy, symbol))
-                case QueryAST():
-                    time   = ast.time if ast.time else 0
-                    event  = parse_term(CompileUtil.compile_term(ast.head))
-                    truthy = not ast.negated
-                    results.append((truthy, Function("extObserved", [event, Number(time)])))
-                    results.append((truthy, Function("_eventSet", [Number(time)])))
-
-                case DomainSpecAST():
-                    raise NotImplementedException()
-                    for fact in ast.body:
-                        assert(not bool(ast.head.params))
-                        symbol = Function(str(ast.head.value.lower()), [parse_term(str(x) for x in ast.body)])
-                        results.append((True, symbol))
-
-
-                case TermAST():
-                    results.append((True, parse_term(str(ast))))
-                case _:
-                    raise Exception("Unrecognised AST sent to solver: ", ast)
-
-
-        return results
+        raise NotImplementedError()

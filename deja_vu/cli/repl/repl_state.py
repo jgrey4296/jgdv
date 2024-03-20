@@ -10,28 +10,19 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
 
-import acab
-
 logging = logmod.getLogger(__name__)
-config       = acab.config
-
-initial_prompt    = config.module.REPL.PROMPT
-multi_line_prompt = config.module.REPL.PROMPT_ML
-initial_engine    = config.attr.Module.REPL.ENGINE
 
 @dataclass
 class ReplState:
     """ Data used for control of the repl """
-    prompt        : str                            =  field(default=initial_prompt)
-    prompt_ml     : str                            =  field(default=multi_line_prompt)
+    prompt        : str                            =  field(default="Prompt: ")
+    prompt_ml     : str                            =  field(default="MLPrompt: ")
     prompt_bkup   : str                            =  field(default="")
     ctxs          : ContextSet_i                   =  field(default=None)
     collect_str   : list[str]                      =  field(default_factory=list)
     echo          : bool                           =  field(default=False)
     in_multi_line : bool                           =  field(default=False)
     indent        : int                            =  field(default=0)
-    engine        : None|AcabEngine_i              =  field(default=None)
-    engine_str    : str                            =  field(default=initial_engine)
     debug_data    : Any                            =  field(default=None)
     debugger      : Any                            =  field(default=None)
     last_err      : Any                            =  field(default=None)

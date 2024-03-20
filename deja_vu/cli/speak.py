@@ -30,7 +30,6 @@ from doot.structs import DootKey
 from doot.errors import DootTaskError, DootTaskFailed
 from doot._abstract import Action_p
 
-@doot.check_protocol
 class SpeakTimeAction(Action_p):
     """
     A Simple Action that announces the time

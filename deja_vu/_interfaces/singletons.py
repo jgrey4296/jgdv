@@ -16,30 +16,12 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 
 logging = logmod.getLogger(__name__)
 
-def singleton(orig_cls:Any) -> Any:
-    """ From:
-    https://igeorgiev.eu/python/design-patterns/python-singleton-pattern-decorator/
-    """
-    raise DeprecationWarning("use meta classes instead")
-    orig_new = orig_cls.__new__
-    instance = None
-
-    @wraps(orig_cls.__new__)
-    def __new__(cls, *args, **kwargs):
-        nonlocal instance
-        if instance is None:
-            instance = orig_new(cls, *args, **kwargs)
-        return instance
-
-    orig_cls.__new__ = __new__
-    return orig_cls
-
-
 class SingletonMeta(type(Protocol)):
     """
     Create an instance field to hold the singleton
     For Each Class Hierarchy
     """
+
     def __init__(cls, name:str, bases:tuple[type, ...], data:dict[str,Any]):
         super(SingletonMeta, cls).__init__(name, bases, data)
         if not hasattr(cls, "_instance"):
@@ -51,7 +33,6 @@ class SingletonMeta(type(Protocol)):
             cls._instance = super().__call__(*args)
 
         return cls._instance
-
 
 class SingletonMetaAlt(type(Protocol)):
     """

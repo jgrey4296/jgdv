@@ -19,18 +19,22 @@ if TYPE_CHECKING:
 
 ##-- end imports
 
-def LogHelper(prefix, level=logmod.DEBUG):
+from dejavu._interfaces.decorator import DejaVuDecorator_i
+
+class LogReturn(DejaVuDelayDecorator_i):
     """
     Utility Decorator to log a functions return value at a set level
     """
-    def wrapper(f):
-        @wraps(f)
-        def in_wrap(*args, **kwargs):
-            result = f(*args, **kwargs)
-            log_msg = f"{prefix}: {result}"
-            logmod.getLogger(__name__).log(level, log_msg)
-            return result
 
-        return in_wrap
+    def __init__(self, prefix, level=logmod.DEBUG, msg=None, logger=None):
+        super().__init__()
+        self._prefix = prefix
+        self._level  = level
+        self._msg    =  msg or "{prefix} result: {result}"
+        self._logger = logger or logmod.getLogger("dejavu._returns")
 
-    return wrapper
+    def _wrapper(self, *args, **kwargs):
+        result = self._func(*args, **kwargs)
+        log_msg = self._msg.format(prefix=self._prefix, result=result)
+        self._logger.log(level, log_msg)
+        return result

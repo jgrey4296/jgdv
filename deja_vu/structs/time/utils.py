@@ -10,6 +10,8 @@ import logging as root_logger
 
 ##-- end imports
 
+import datetime
+
 logging   = root_logger.getLogger(__name__)
 
 PATTERN_T = Enum("Pattern Type", "DISCRETE ANALOG")
@@ -55,8 +57,15 @@ def print_run_pattern(pat, num_cycles=3):
                                                             turn_off_s))
         logging.info("----")
 
-
-class TimeVar:
-
-    def __init__(self, name):
-        self.name = name
+def roundTime(dt=None, roundTo=60):
+   """Round a datetime object to any time lapse in seconds
+   dt : datetime.datetime object, default now.
+   roundTo : Closest number of seconds to round to, default 1 minute.
+   Author: Thierry Husson 2012 - Use it as you want but don't blame me.
+   from: https://stackoverflow.com/questions/3463930
+   """
+   dt       = dt or datetime.datetime.now()
+   seconds  = (dt.replace(tzinfo=None) - dt.min).seconds
+   rounding = (seconds+roundTo/2) // roundTo * roundTo
+   rounded  = dt + datetime.timedelta(0,rounding-seconds,-dt.microsecond)
+   return rounded

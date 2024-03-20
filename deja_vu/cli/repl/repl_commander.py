@@ -14,17 +14,6 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
 
-import acab
-import pyparsing as pp
-from acab.error.base import AcabBasicException
-from acab_config import AcabConfigException
-from acab.error.parse import AcabParseException
-from acab.interfaces.context import ContextSet_i
-from acab.interfaces.engine import AcabEngine_i
-from acab.modules.repl import ReplParser as RP
-
-from .repl_state import ReplState
-
 ##-- end imports
 
 ##-- logging
@@ -32,18 +21,19 @@ logging      = logmod.getLogger(__name__)
 trace_logger = logmod.getLogger('acab.repl.trace')
 ##-- end logging
 
-##-- config
-config       = acab.config
-initial_prompt = config.module.REPL.PROMPT
-try:
-    repl_intro     = config.module.REPL.intro
-except AcabConfigException:
-    repl_intro = ["Welcome to ACAB.", "Type 'help' or '?' to list commands.", "Type 'tutorial' for a tutorial.", "Type ':q' to quit."]
+import acab
+import pyparsing as pp
+from .repl_state import ReplState
+from .error import DejaVuREPLException
 
-##-- end config
+repl_intro = ["Welcome to DejaVu's Default Repl Commander.",
+              "Type 'help' or '?' to list commands.",
+              "Type 'tutorial' for a tutorial.", "Type ':q' to quit."
+              ]
 
-class AcabREPLCommander(cmd.Cmd):
-    """ Implementation of cmd.Cmd to provide an extensible ACAB REPL"""
+
+class REPLCommander(cmd.Cmd):
+    """ Implementation of cmd.Cmd to provide an extensible REPL"""
     intro                                                   = "\n".join(repl_intro)
     prompt                                                  = initial_prompt + ": "
     _latebind                                               = []
@@ -66,9 +56,9 @@ class AcabREPLCommander(cmd.Cmd):
         try:
             self.state.ctxs = self.state.engine(line,
                                                 ctxset=self.state.ctxs)
-        except AcabParseException as err:
+        except DejaVuREPLParseException as err:
             print(str(err))
-        except AcabBasicException as err:
+        except DejaVuREPLException as err:
             logging.warning("\n--------------------\nFailure:\n")
             traceback.print_tb(err.__traceback__)
             logging.warning(f"\n{err.args[-1]}\n")
@@ -101,7 +91,7 @@ class AcabREPLCommander(cmd.Cmd):
 
     def onecmd(self, line):
         try:
-            return super(AcabREPLCommander, self).onecmd(line)
+            return super(REPLCommander, self).onecmd(line)
         except Exception as err:
             traceback.print_tb(err.__traceback__)
             print(f"\n{err.args[-1]}\n")
@@ -194,9 +184,3 @@ class AcabREPLCommander(cmd.Cmd):
         cls._default_startups.append(fn)
 
 
-##-- utils
-register         = AcabREPLCommander.register
-register_class   = AcabREPLCommander.register_class
-register_default = AcabREPLCommander.register_default
-
-##-- end utils

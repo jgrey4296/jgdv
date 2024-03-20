@@ -15,6 +15,10 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Generic, Iterable,
                     Iterator, Mapping, Match, MutableMapping, NewType,
                     Protocol, Sequence, Tuple, Type, TypeAlias, TypeVar, cast)
 
+##-- end imports
+
+logging                = logmod.getLogger(__name__)
+
 import acab
 from acab import types as AT
 from acab.core.util.decorators.util import cache
@@ -29,19 +33,6 @@ from acab.interfaces.sieve import AcabSieve
 from acab.interfaces.value import Sentence_i, Value_i
 from acab_config import AcabProtocolError as APE
 
-if TYPE_CHECKING:
-    ModuleFragment     : TypeAlias = AT.ModuleFragment
-    Overrider          : TypeAlias = AT.HandlerOverride
-    Sen_A              : TypeAlias = AT.Sentence
-    Structure          : TypeAlias = "AT.DataStructure[AT.Node]"
-    Value              : TypeAlias = "AT.Value[AT.ValueCore]"
-    Handler_A          : TypeAlias = AT.Handler
-    HandlerSpec_A      : TypeAlias = AT.HandlerSpec
-    HandlerComponent_A : TypeAlias = AT.HandlerComponent
-    Handler_System_A   : TypeAlias = AT.HandlerSystem
-##-- end imports
-
-logging                = logmod.getLogger(__name__)
 config                 = acab.config
 SPACER                 = config.any_of().print.SPACER_SIZE()
 

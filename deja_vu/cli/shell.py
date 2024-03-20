@@ -14,16 +14,15 @@ import sh
 import doot
 from doot.errors import DootTaskError
 from doot._abstract import Action_p
-from doot.actions.base_action import DootBaseAction
 from doot.structs import DootKey
+import dejavu as dv
 
 BACKGROUND = DootKey.make("background")
 UPDATE     = DootKey.make("update_")
 NOTTY      = DootKey.make("notty")
 ENV        = DootKey.make("shenv_")
 
-@doot.check_protocol
-class DootShellBake:
+class DejaVuDootShellBake:
 
     @DootKey.kwrap.args
     @DootKey.kwrap.types("in_", hint={"on_fail":None, "type_":sh.Command|bool|None})
@@ -58,9 +57,7 @@ class DootShellBake:
 
         return False
 
-
-@doot.check_protocol
-class DootShellBakedRun:
+class DejaVuShellBakedRun:
 
     @DootKey.kwrap.types("in_", hint={"on_fail":None, "type_":sh.Command|None})
     @DootKey.kwrap.redirects("update_")
@@ -81,12 +78,10 @@ class DootShellBakedRun:
 
         return False
 
-@doot.check_protocol
-class DootShellAction(Action_p):
+class DejaVuShellAction(Action_p):
     """
     For actions in subshells.
     all other arguments are passed directly to the program, using `sh`
-
 
     can use a pre-baked sh passed into what "shenv_" points to
     """
@@ -125,8 +120,7 @@ class DootShellAction(Action_p):
 
         return False
 
-@doot.check_protocol
-class DootInteractiveAction(Action_p):
+class DejaVuInteractiveAction(Action_p):
     """
       An interactive command, which uses the self.interact method as a callback for sh.
     """
@@ -137,8 +131,8 @@ class DootInteractiveAction(Action_p):
 
     def __call__(self, spec, state:dict) -> dict|bool|None:
         try:
-            self.prompt = spec.kwargs.on_fail(DootInteractiveAction.prompt, str).prompt()
-            self.cont   = spec.kwargs.on_fail(DootInteractiveAction.cont, str).cont()
+            self.prompt = spec.kwargs.on_fail(DejaVuInteractiveAction.prompt, str).prompt()
+            self.cont   = spec.kwargs.on_fail(DejaVuInteractiveAction.cont, str).cont()
 
             cmd      = getattr(sh, spec.args[0])
             args     = spec.args[1:]
@@ -153,7 +147,6 @@ class DootInteractiveAction(Action_p):
             printer.error("Shell Commmand '%s' Not Action: %s", err.args[0], spec.args)
         except sh.ErrorReturnCode:
             printer.error("Shell Command '%s' exited with code: %s for args: %s", spec[0], result.exit_code, spec.args)
-
 
         return False
 

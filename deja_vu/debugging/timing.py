@@ -44,7 +44,10 @@ import time
 from random import random
 
 class GroupTime:
-    """ see https://docs.python.org/3/library/timeit.html """
+    """ Utility Class to time code execution.
+
+      see https://docs.python.org/3/library/timeit.html
+    """
 
     def __init__(self, count=10, repeat=5, keep_gc=False, group:None|str=None):
         self.level            = level

@@ -39,9 +39,9 @@ import doot
 import tempfile
 ##-- end imports
 
-with tempfile.TemporaryDirectory() as temp_dir:
-     assert(isisntance(temp_dir, str))
-     # Do Stuff
+# with tempfile.TemporaryDirectory() as temp_dir:
+#      assert(isisntance(temp_dir, str))
+#      # Do Stuff
 
 # On Exit of context manager, dir is deleted
 
@@ -53,8 +53,8 @@ def filter_str_warns():
     warnings.warn(DeprecationWarning("invalid escape sequence"))
     return 1
 
-@pytest.mark.filterwarnings("ignore:filter_str_warns")
-def test_...
+# @pytest.mark.filterwarnings("ignore:filter_str_warns")
+# def test_...
 
 
 @pytest.fixture

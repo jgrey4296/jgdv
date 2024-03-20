@@ -41,10 +41,8 @@ printer = logmod.getLogger("doot._printer")
 
 import mastodon
 import tomlguard
+from dejavu.apis.mastodon import errors as djerror
 import doot
-import doot.errors
-from doot._abstract import Task_i
-from doot.structs import DootActionSpec
 from doot.structs import DootKey
 
 TOOT_SIZE            : Final[int]                   = doot.config.on_fail(250, int).mastodon.toot_size()
@@ -166,7 +164,7 @@ class MastodonPost:
             res = RESOLUTION_RE.match(result.stdout.decode())
             return res[1]
 
-        raise doot.errors.DootActionError("Couldn't get image resolution", filepath, result.stdout.decode(), result.stderr.decode())
+        raise djerror.DootActionError("Couldn't get image resolution", filepath, result.stdout.decode(), result.stderr.decode())
 
     def _maybe_compress_file(self, task):
         image = task.values['image']

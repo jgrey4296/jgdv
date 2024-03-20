@@ -16,12 +16,10 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 
 import pytest
 from clingo import Control, parse_term, Function, Number
-from instal.solve.clingo_solver import ClingoSolver
-import instal.interfaces.solver as iSolve
 
 logging = logmod.root
 
-class TestInstalClingoSolver:
+class TestSolver:
 
     def test_initial(self):
         solver = ClingoSolver()
@@ -88,7 +86,6 @@ class TestInstalClingoSolver:
         assert(term not in solver.results[0].atoms)
         assert(term_2 in solver.results[0].atoms)
 
-
     def test_maintenance_no_change(self):
         term   = parse_term("testVal")
         term_2 = parse_term("a")
@@ -104,7 +101,6 @@ class TestInstalClingoSolver:
         assert(count == 1)
         assert(term in solver.results[-1].atoms)
         assert(term_2 in solver.results[-1].atoms)
-
 
     def test_maintenance_with_change(self):
         term         = parse_term("testVal(1)")
@@ -123,7 +119,6 @@ class TestInstalClingoSolver:
         assert(str(term) not in solver.results[-1].atoms)
         assert(term_2 in solver.results[-1].atoms)
         assert(a_term in solver.results[-1].atoms)
-
 
     def test_maintenance_incremental(self):
         solver = ClingoSolver("""

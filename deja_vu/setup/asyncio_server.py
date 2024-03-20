@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -37,27 +36,10 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
-#!/usr/bin/env python3
-from __future__ import annotations
-
-import abc
-import asyncio
-import logging as logmod
-from copy import deepcopy
-from dataclasses import InitVar, dataclass, field
-from re import Pattern
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
-from uuid import UUID, uuid1
-from weakref import ref
 from random import random
 import struct
 
 logging = logmod.getLogger(__name__)
-
 
 # BigEnd, continue?, msglen
 head = struct.Struct(">?L")
@@ -71,7 +53,6 @@ async def still_alive():
     while True:
         print("Still Alive")
         await asyncio.sleep(1)
-
 
 async def handle_connection(reader, writer):
     message = None
@@ -101,7 +82,6 @@ async def handle_connection(reader, writer):
                 break
             case _:
                 raise Exception("Bad message received")
-
 
     print("Close the connection")
     writer.close()

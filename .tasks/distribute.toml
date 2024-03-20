@@ -1,5 +1,5 @@
 [[locations]]
-build     = "dist"
+build     = "{temp}/dist"
 dist_key  = "~/.config/secrets/pypi/token.asc"
 
 # TODO run pytest
@@ -29,7 +29,9 @@ inject                 = ["env_name", "match_re"]                   # <list[str]
 actions                = [
                      {do="mamba.env", env_="env_name", update_="env"},
                      # Build
-                     {do="shell", args=["python", "-m", "build", "."], env_="env"},
+                     {do="shell", args=["python", "-m", "build", "--outdir", "{build}", "."], env_="env"},
+                     # Cleanup
+                     {do="delete!", args=["./dejavu.egg-info"], lax=true, recursive=true]}
 ]
 
 [[tasks.dist]]

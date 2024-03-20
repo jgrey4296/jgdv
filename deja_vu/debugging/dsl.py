@@ -20,9 +20,6 @@ from weakref import ref
 import pyparsing as pp
 import pyparsing.core as ppc
 
-if TYPE_CHECKING:
-    # tc only imports
-    pass
 ##-- end imports
 
 ##-- logging
@@ -140,7 +137,7 @@ def debug_pyparsing_active_p() -> bool:
 ##-- end util
 
 
-except pp.ParseException as err:
-    import traceback
-    traceback.print_tb(err.__traceback__)
-    logging.warning(f"Parse Failure: {err.markInputline()}")
+# except pp.ParseException as err:
+#     import traceback
+#     traceback.print_tb(err.__traceback__)
+#     logging.warning(f"Parse Failure: {err.markInputline()}")

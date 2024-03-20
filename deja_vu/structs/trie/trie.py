@@ -1,174 +1,101 @@
-#!/usr/bin/env python3
+"""
+Trie Class for bookmarks
+"""
 ##-- imports
 from __future__ import annotations
+
 import logging as logmod
+from dataclasses import InitVar, dataclass, field
+from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
+                    List, Mapping, Match, MutableMapping, Optional, Sequence,
+                    Set, Tuple, TypeVar, Union, cast)
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
-import acab.core.defaults.value_keys as DS
-import acab.error.semantic as ASErr
-import acab.interfaces.data as DI
-import acab.interfaces.semantic as SI
-from acab import types as AT
-import acab
-from acab.core.data.acab_struct import BasicNodeStruct
-from acab.core.semantics import basic
-from acab.core.value.instruction import Instruction
-from acab.core.value.sentence import Sentence
-from acab.interfaces.bind import Bind_i
-from acab.interfaces.value import Sentence_i
-from acab_config import AcabProtocolError as APE
-
-from .flatten_query_manager import FlattenQueryManager
-
+from doot.utils.formats.bookmarks import Bookmark
 ##-- end imports
 
 logging = logmod.getLogger(__name__)
 
-config = acab.config
+@dataclass
+class Trie:
+    """ Main Trie Access class """
+    data : InitVar[List[Any]] = field(default=None)
 
-Node          = DI.StructView
-Value         = AT.Value
-Structure     = AT.DataStructure
-Engine        = AT.Engine
-Contexts      = AT.CtxSet
+    root             : Dict[Any, Any] = field(init=False, default_factory=dict)
+    leaves           : List[Any]      = field(init=False, default_factory=list)
+    query_keys       : Dict[Any, Any] = field(init=False, default_factory=dict)
+    query_key_counts : Dict[Any, int] = field(init=False, default_factory=dict)
 
-@APE.assert_implements(SI.StructureSemantics_i)
-class FlattenBreadthTrieSemantics(basic.StructureSemantics, SI.StructureSemantics_i):
-    """
-    Trie Semantics which map values -> Nodes
-    Searches *Breadth First*
+    __repr__ = __str__
 
-    Has sentence-flattening logic for querying.
-    """
+    def __post_init__(self, data=None):
+        if data is not None:
+            for x in data:
+                self.insert(x)
 
-    def verify(self, instruction) -> bool:
-        return isinstance(instruction, Sentence)
+    def __len__(self):
+        return len(self.leaves)
 
-    def compatible(self, struct):
-        is_bns = isinstance(struct, BasicNodeStruct)
-        has_all_node_comp = "all_nodes" in struct.components
-        return is_bns or has_all_node_comp
+    def __str__(self):
+        return "Trie: {}, {}".format(len(self), len(self.query_keys))
 
-    def insert(self, sen, struct, *, data=None, ctxs=None):
-        # TODO can insert handle @vars?
-        data = data or {}
+    def get_tuple_list(self):
+        results = []
+        for x in self.leaves:
+            results += x.get_tuple_list()
 
-        data.update({'source_semantics': self})
-        logging.info("Inserting: {!r} into {!r}", sen, struct)
-        # Get the root
-        current = self.lookup()[0].up(struct.root)
-        for word in sen:
-            spec = self.lookup(current)
-            accessible = spec[0].access(current, word, data=data)
-            if bool(accessible):
-                current = accessible[0]
-            else:
-                next_spec = self.lookup(word)
-                new_node = next_spec[0].make(word, data=data)
-                struct.components['all_nodes'][new_node.uuid] = new_node
-                current = spec[0].insert(current, new_node, data=data)
+        return results
 
-        return current
+    def insert(self, data):
+        """ Insert a bookmark into the trie,
+        based on url components """
+        assert(isinstance(data, Bookmark))
 
-    def delete(self, sen, struct, *, data=None, ctxs=None):
-        logging.debug("Removing: {!r} from {!r}", sen, struct)
+        #Get components of the url
+        p_url = urlparse(data.url)
+        trie_path = [p_url.scheme, p_url.netloc] + p_url.path.split('/')
+        f_trie_path = [x for x in trie_path if x]
 
-        pos_sen = sen.copy(data={DS.NEGATION:False})
-        results = self.query(pos_sen, struct, data=data, ctxs=ctxs)
+        query = parse_qs(p_url.query)
 
-        for ctx in results:
-            assert(ctx.current_node is not None)
-            assert(ctx.current_node.node.parent is not None)
-            # At leaf:
-            # remove current from parent
-            current  = ctx.current_node.node
-            parent   = current.parent()
-            spec     = self.lookup(parent)
-            spec[0].remove(parent, current.value, data=data)
+        #find the leaf
+        current_child = self.root
+        for x in f_trie_path:
+            if x not in current_child:
+                current_child[x] = {}
+            current_child = current_child[x]
 
-    def query(self, sen, struct, *, data=None, ctxs=None):
-        """ Breadth First Search Query """
-        assert(ctxs is not None)
-        logging.info("Querying: {!r} : {!r}", sen ,struct)
-        clause_flatten = DS.FLATTEN not in sen.data or sen.data[DS.FLATTEN]
-        root           = DI.StructView(struct.root, self) if isinstance(struct, DI.Structure_i) else struct
-        assert(isinstance(root, Node))
+        #insert into the leaf, merging tag sets
+        if '__leaf' not in current_child:
+            new_leaf = Leaf()
+            current_child['__leaf'] = new_leaf
+            self.leaves.append(new_leaf)
 
-        cqm = FlattenQueryManager(sen, root, ctxs)
-        with cqm:
-            for source_word in cqm.current:
-                for bound_word, ctxInst, view in cqm.active:
-                    # This happens here to catch when $x -> a.sub.sentence
-                    # in a.larger.query.$x.blah?
-                    should_flatten = clause_flatten and bound_word and (DS.FLATTEN not in bound_word.data or bound_word.data[DS.FLATTEN])
-                    if isinstance(bound_word, Sentence_i) and should_flatten:
-                        # sub query when dealing with a sentence that needs to be flattened
-                        subctx = self.query(bound_word, view, data=data, ctxs=ctxs.subctx([ctxInst.uuid]))
-                        for sub_inst in subctx.active_list(clear=True):
-                            subctx.push(sub_inst.progress(source_word, [sub_inst.current_node]))
-                        cqm.queue_ctxs(subctx.active_list())
-                    elif source_word.is_at_var and not bool(cqm._current_constraint):
-                        continue
-                    elif source_word.is_at_var:
-                        assert(source_word == sen[0])
-                        cqm.maybe_test([view])
-                    else:
-                        if not isinstance(view, DI.StructView):
-                            breakpoint()
-                        spec = self.lookup(view.node)
-                        results = spec[0].access(view.node,
-                                                 bound_word,
-                                                 data=data)
+        leaf = current_child['__leaf']
+        leaf_node = leaf.insert(data.name, p_url, data.tags, query, data.url)
 
-                        cqm.maybe_test([DI.StructView(x, self) for x in results])
+        for k in query.keys():
+            if k not in self.query_keys:
+                self.query_keys[k] = (data.url, leaf_node.reconstruct(k))
+                self.query_key_counts[k] = 0
+            self.query_key_counts[k] += 1
 
-        return cqm.finished
+    def filter_queries(self, query_set):
+        for x in self.leaves:
+            x.filter_queries(query_set)
 
-    def to_sentences(self, struct, *, data=None, ctxs=None):
-        """ Convert a trie to a list of sentences
-        essentially a dfs of the structure,
-        ensuring only leaves are complex structures.
-
-        structures are converted to words for use within sentences
+    def org_format_queries(self):
         """
-        # TODO if passed a node, use that in place of root
-        result_list = []
-        # Queue: list[Tuple[list[Value], Node]]
+        Output a list of org links, with original URLs,
+        and URL's minus a query parameter.
+        Used to find out which parameters can be filtered from links
+        """
+        result = []
+        for key, url_pair in self.query_keys.items():
+            count = self.query_key_counts[key]
+            result.append("** ({}) {}\n  [[{}][original]]\n  [[{}][filtered]]".format(count,
+                                                                                      key,
+                                                                                      url_pair[0],
+                                                                                      url_pair[1]))
+        return "\n".join(result)
 
-        match struct:
-            case DI.Structure_i():
-                root = struct.root
-            case DI.Node_i():
-                root = struct.Root()
-                root.add(struct)
-            case DI.StructView():
-                root = struct.node.Root()
-                root.add(struct.node)
-            case _:
-                raise TypeError("Unknown struct passed in")
-
-        # TODO add depth limit
-        queue = [([], root)]
-        while bool(queue):
-            path, current = queue.pop(0)
-            updated_path  = path + [current.value]
-            spec          = self.lookup(current)
-            accessible    = spec[0].access(current, None, data=data)
-            if bool(accessible):
-                # branch
-                queue += [(updated_path, x) for x in accessible]
-
-            if not bool(accessible) or isinstance(current.value, Instruction):
-                # Leaves and Statements
-                # Always ignore the root node, so starting index is 1
-                words = [x.to_word() if not isinstance(x, Sentence_i) else x for x in updated_path[1:-1]]
-                words.append(updated_path[-1])
-                result_list.append(Sentence(words))
-
-        return result_list
-
-    @staticmethod
-    def from_sentences(self, sens):
-        raise NotImplementedError()
-
-    def to_word(self):
-        raise NotImplementedError()
