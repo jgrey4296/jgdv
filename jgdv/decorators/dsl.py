@@ -8,7 +8,7 @@ from functools import wraps
 
 ##-- end imports
 
-from dejavu._interfaces.decorator import DejaVuDecorator_i
+from jgdv._interfaces.decorator import DejaVuDecorator_i
 
 T = TypeVar('T')
 

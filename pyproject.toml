@@ -1,5 +1,5 @@
 [project]
-name            = "deja_vu"
+name            = "jgdv"
 version         = "0.0.1"
 description     = ""
 readme          = "README.md"
@@ -32,10 +32,10 @@ test = [ "pytest > 7.0.0" ]
 
 ##-- urls
 [project.urls]
-homepage      = "https://github.com/jgrey4296/dejavu"
-documentation = "https://github.com/jgrey4296/dejavu/wiki"
-repository    = "https://github.com/jgrey4296/dejavu"
-changelog     = "https://github.com/jgrey4296/dejavu/blob/master/CHANGELOG.md"
+homepage      = "https://github.com/jgrey4296/jgdv"
+documentation = "https://github.com/jgrey4296/jgdv/wiki"
+repository    = "https://github.com/jgrey4296/jgdv"
+changelog     = "https://github.com/jgrey4296/jgdv/blob/master/CHANGELOG.md"
 
 ##-- end urls
 
@@ -65,11 +65,11 @@ include-package-data = true
 [tool.setuptools.packages.find]
 namespaces = true
 where      = ["."]
-include    = ["deja_vu*"]
+include    = ["jgdv*"]
 
 [tool.setuptools.package-data]
 "*" = ["*"]
-"deja_vu.__data"    = ["*.so"]
+"jgdv.__data"    = ["*.so"]
 
 [tool.setuptools.exclude-package-data]
 
@@ -79,7 +79,7 @@ include    = ["deja_vu*"]
 
 ##-- pyright
 [tool.pyright]
-# strict = deja_vu.*
+# strict = jgdv.*
 verboseOutput               = true
 typeCheckingMode            = "strict"
 pythonVersion               = "3.10"
@@ -156,8 +156,8 @@ version_pattern    = "MAJOR.MINOR.PATCH"
 commit_message     = "[bump]: version {old_version} -> {new_version}"
 tag_message        = "{new_version}"
 tag_scope          = "default"
-# commit             = true
-# tag                = true
+commit             = true
+tag                = true
 # pre_commit_hook  = ""
 # post_commit_hook = ""
 # push             = true
@@ -167,6 +167,6 @@ tag_scope          = "default"
                    '^version\s+=\s+"{version}"',
                    '^current_version\s+=\s+"{version}"'
 ]
-"deja_vu/__init__.py" = ['^__version__\s+=\s+"{version}"']
+"jgdv/__init__.py" = ['^__version__\s+=\s+"{version}"']
 
 ##-- end bumpver

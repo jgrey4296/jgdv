@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 ##-- end imports
 
-from dejavu._interfaces.decorator import DejaVuDecorator_i
+from jgdv._interfaces.decorator import DejaVuDecorator_i
 
 class LogReturn(DejaVuDelayDecorator_i):
     """
