@@ -35,8 +35,7 @@ from importlib.resources import files
 ##-- end imports
 
 import tomlguard
-import doot
-from doot.spiders.crawler import CrawlerProcessFix
+from jgdv.spiders.crawler import CrawlerProcessFix
 from urllib.parse import urlparse
 
 default_toml           = tomlguard.load(files("doot.__templates") / "spider_toml").flatten_on().spiders().get_table()

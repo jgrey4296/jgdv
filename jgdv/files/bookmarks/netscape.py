@@ -10,7 +10,6 @@ import logging
 ##-- end imports
 
 from bs4 import BeautifulSoup
-from doot.utils.formats.bookmarks import Bookmark, BookmarkCollection
 
 class NetscapeLoader:
 

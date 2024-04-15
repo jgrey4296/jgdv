@@ -15,8 +15,6 @@ import sys
 
 ##-- imports
 import tomlguard as TG
-import doot.errors
-from doot.utils.check_protocol import check_protocol
 ##-- end imports
 
 ##-- data
@@ -110,8 +108,8 @@ def _load_aliases():
 def _load_locations():
     """ Load and update the DootLocations db """
     global locs
-    from doot.control.locations import DootLocations
-    locs   = DootLocations(pl.Path.cwd())
+    from jgdv.locations.locations import JGDVLocations
+    locs   = JGDVLocations(pl.Path.cwd())
     # Load Initial locations
     for loc in config.on_fail([]).locations():
         locs.update(loc)

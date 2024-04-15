@@ -36,7 +36,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class DootLogContext:
+class JGDVLogContext:
     """
       a really simple wrapper to set a logger's level, then roll it back
     """

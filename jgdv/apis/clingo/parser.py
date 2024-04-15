@@ -20,7 +20,7 @@ from unittest.util import safe_repr
 
 logging = logmod.getLogger(__name__)
 
-from dejavu.apis.clingo.ast import SolverAST
+from jgdv.apis.clingo.ast import SolverAST
 import pyparsing as pp
 import pyparsing.testing as ppt
 

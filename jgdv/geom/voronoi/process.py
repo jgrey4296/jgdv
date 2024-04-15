@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-<<<<<<<< HEAD:cuty/voronoi/process.py
 """
 ##-- imports
 from __future__ import annotations
@@ -24,15 +23,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     cast, final, overload, runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
-========
-import cuty as utils
-from cuty import Parabola
-from cuty import rbtree
-from cuty.rbtree.comparison_functions import arc_comparison, Directions, arc_equality
-
-from cuty.dcel import DCEL, HalfEdge
-from cuty.umath import get_distance_raw, bound_line_in_bbox, isClockwise, bbox_centre
->>>>>>>> b18be58 ([refactor]: cairo_utils -> cuty):cuty/dcel/voronoi/voronoi.py
 
 ##-- end imports
 

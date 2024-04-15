@@ -42,12 +42,7 @@ from time import sleep
 import sh
 import shutil
 import tomlguard as TG
-import doot
-from doot.errors import DootTaskError, DootTaskFailed
-from doot.enums import ActionResponseEnum
-from doot._abstract import Action_p
-from doot.structs import DootKey
-from doot.actions.postbox import _DootPostBox
+import jgdv
 
 ##-- expansion keys
 TO_KEY             : Final[DootKey] = DootKey.make("to")
@@ -67,7 +62,7 @@ COMP_TAR_CMD  = sh.tar.bake("-cf", "-")
 COMP_GZIP_CMD = sh.gzip.bake("--best")
 DECOMP_CMD    = sh.tar.bake("-xf")
 
-@doot.check_protocol
+@jgdv.check_protocol
 class TarCompressAction(Action_p):
     """ Compresses a target into a .tar.gz file """
 
@@ -84,7 +79,7 @@ class TarCompressAction(Action_p):
         else:
             COMP_GZIP_CMD(_in=COMP_TAR_CMD("-C", target.parent, target.name, _piped=True), _out=output)
 
-@doot.check_protocol
+@jgdv.check_protocol
 class TarDecompressAction(Action_p):
     """ Decompresses a .tar.gz file """
 
@@ -99,7 +94,7 @@ class TarDecompressAction(Action_p):
         DECOMP_CMD(target, "-C", output)
 
 
-@doot.check_protocol
+@jgdv.check_protocol
 class TarListAction(Action_p):
     """ List the contents of a tar archive """
 

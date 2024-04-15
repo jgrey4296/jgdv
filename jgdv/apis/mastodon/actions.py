@@ -41,9 +41,8 @@ printer = logmod.getLogger("doot._printer")
 
 import mastodon
 import tomlguard
-from dejavu.apis.mastodon import errors as djerror
-import doot
-from doot.structs import DootKey
+from jgdv.apis.mastodon import errors as djerror
+from jgdv.key import JGDVKey
 
 TOOT_SIZE            : Final[int]                   = doot.config.on_fail(250, int).mastodon.toot_size()
 TOOT_IMAGE_SIZE      : Final[str]                   = doot.config.on_fail(8_000_000, int).mastodon.image_size()

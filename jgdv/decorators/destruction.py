@@ -37,11 +37,14 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from jgdv._interfaces.decorator import DejaVuDecorator_i
+from jgdv._interfaces.decorator import JGDVDecorator_i
 
 DEBUG_DESTRUCT_ON = False
 
-class LogDestruction(DejaVuDecorator_i):
+class LogDestruction(JGDVDecorator_i):
+    """
+    A Decorator to log when instances of a class are deleted
+    """
 
     def _debug_del(self):
         """ standalone del logging """

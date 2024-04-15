@@ -21,16 +21,14 @@ logging      = logmod.getLogger(__name__)
 trace_logger = logmod.getLogger('acab.repl.trace')
 ##-- end logging
 
-import acab
 import pyparsing as pp
 from .repl_state import ReplState
-from .error import DejaVuREPLException
+from .error import JGDVREPLException
 
 repl_intro = ["Welcome to DejaVu's Default Repl Commander.",
               "Type 'help' or '?' to list commands.",
               "Type 'tutorial' for a tutorial.", "Type ':q' to quit."
               ]
-
 
 class REPLCommander(cmd.Cmd):
     """ Implementation of cmd.Cmd to provide an extensible REPL"""
@@ -56,9 +54,9 @@ class REPLCommander(cmd.Cmd):
         try:
             self.state.ctxs = self.state.engine(line,
                                                 ctxset=self.state.ctxs)
-        except DejaVuREPLParseException as err:
+        except JGDVREPLParseException as err:
             print(str(err))
-        except DejaVuREPLException as err:
+        except JGDVREPLException as err:
             logging.warning("\n--------------------\nFailure:\n")
             traceback.print_tb(err.__traceback__)
             logging.warning(f"\n{err.args[-1]}\n")
@@ -80,8 +78,6 @@ class REPLCommander(cmd.Cmd):
 
             if bool(self.state.echo):
                 print(f"{line}")
-
-
 
             return " ".join(line)
 
@@ -139,7 +135,6 @@ class REPLCommander(cmd.Cmd):
         """
         return self.onecmd("print wm")
 
-
     @classmethod
     def register(cls, fn):
         """ Decorator for registering a function into the repl """
@@ -154,6 +149,7 @@ class REPLCommander(cmd.Cmd):
         """ Register an entire class as the command bound to do_{name},
         (specifically the class' __call__ method)
         """
+
         def __register(target_cls):
             assert(hasattr(target_cls, "__call__"))
             assert(hasattr(cls, "_latebind"))
@@ -170,7 +166,6 @@ class REPLCommander(cmd.Cmd):
 
         return __register
 
-
     @classmethod
     def register_default(cls, fn):
         """
@@ -182,5 +177,3 @@ class REPLCommander(cmd.Cmd):
         assert(hasattr(cls, "_default_startups"))
         cls.register(fn)
         cls._default_startups.append(fn)
-
-

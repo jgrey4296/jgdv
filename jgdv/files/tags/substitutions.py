@@ -37,7 +37,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from dejavu.files_formats.tags.base import TagFile
+from jgdv.files_formats.tags.base import TagFile
 
 @dataclass
 class SubstitutionFile(TagFile):

@@ -36,14 +36,13 @@ import more_itertools as mitz
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-##-- end logging
 printer = logmod.getLogger("doot._printer")
+##-- end logging
 
 import bdb
-import doot
-import doot.errors
 
 def action_debugger(spec, state):
+
     def pstate():
         printer.info("Printing State:")
         printer.info(state)
@@ -71,5 +70,3 @@ def typecheck(spec, state):
 
         except (AttributeError, KeyError):
             raise doot.errors.DootActionStateError("State key missing: %s", key)
-
-

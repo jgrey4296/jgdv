@@ -27,9 +27,6 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot.structs import DootParamSpec, DootTaskSpec
 from collections import ChainMap
 import jgdv
 
@@ -57,8 +54,8 @@ class ArgParser_i:
     def parse(self, args:list[str], doot_arg_specs:list[DootParamSpec], cmds:TomlGuard, tasks:TomlGuard) -> TomlGuard:
         raise NotImplementedError()
 
-@jgdv.dbg.check_protocol
-class DejaVuCLIParser(ArgParser_i):
+@jgdv.check_protocol
+class JGDVCLIParser(ArgParser_i):
     """
     convert argv to tomlguard by:
     parsing each arg as toml,
@@ -74,7 +71,7 @@ class DejaVuCLIParser(ArgParser_i):
         EXTRA = enum.auto()
 
     def __init__(self):
-        self.PS               = DejaVuCLIParser._ParseState
+        self.PS               = JGDVCLIParser._ParseState
         self.head_arg_specs   = None
         self.registered_cmds  = None
         self.registered_tasks = None

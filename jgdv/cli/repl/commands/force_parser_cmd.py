@@ -11,20 +11,9 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
 
-logging = logmod.getLogger(__name__)
-
-if TYPE_CHECKING:
-    # tc only imports
-    pass
-
-import pyparsing as pp
-from acab.modules.repl import ReplParser as RP
-from acab.modules.repl.repl_commander import register_class
-from acab.interfaces.handler_system import HandlerSpec_i
-from acab.core.parsing.debug_funcs import dfs_activate
-
 ##-- end imports
 
+logging = logmod.getLogger(__name__)
 rst = RP.rst
 
 @register_class("forcep")

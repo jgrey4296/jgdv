@@ -7,12 +7,9 @@ from __future__ import annotations
 
 import logging as logmod
 
-import pyparsing as pp
-from acab.core.parsing import consts as PU
-from acab.core.parsing import parsers as AP
-from acab.modules.repl.util import build_slice
-
 ##-- end imports
+
+import pyparsing as pp
 
 logging = logmod.getLogger(__name__)
 config  = acab.config
@@ -31,12 +28,13 @@ multi_line_end.set_parse_action(lambda s,l,t: "multi")
 
 ##-- end multi line
 
-
 shortcut_config   = config.module.REPL.shortcuts
 short_cmd_parsers = []
 
 ##-- shortcuts
+
 def gen_action(cmd):
+
     def __action(s, l, t):
         return cmd
 
@@ -50,14 +48,12 @@ for cmd in shortcut_config._keys:
 
 ##-- end shortcuts
 
-
 sugared = pp.Suppress(pp.Literal(":")) + pp.MatchFirst(short_cmd_parsers) + rst
 
 precmd_parser = pp.MatchFirst([multi_line_start,
                                multi_line_end + rst,
                                sugared,
                                rst]).leave_whitespace()
-
 
 ##-- step kws
 back_kw     = pp.Keyword("back")
@@ -139,7 +135,6 @@ ctx_index  = number("subset")
 ctx_subset = slice_p("subset")
 clear_kw   = pp.Keyword("clear")("clear")
 minus_kw   = pp.Keyword("-")("clear")
-
 
 ctx_select_parser = pp.MatchFirst([ctx_subset,
                                    ctx_index,

@@ -41,11 +41,11 @@ import tracemalloc
 import linecache
 import fnmatch
 
-class DejaVuMalloc:
+class JGDVMalloc:
     """ see https://docs.python.org/3/library/tracemalloc.html
 
     example:
-    with DejaVuMalloc(2) as dm:
+    with JGDVMalloc(2) as dm:
         dm.whitelist(__file__)
         dm.blacklist("*tracemalloc.py", all_frames=False)
         val = 2

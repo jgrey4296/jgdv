@@ -1,10 +1,5 @@
 import unittest
 import logging
-from test_context import cuty as utils
-import cuty.time as time
-from cuty.time.arc import Arc
-from cuty.time.event import Event
-import IPython
 t = time.Time
 
 class TestTime(unittest.TestCase):

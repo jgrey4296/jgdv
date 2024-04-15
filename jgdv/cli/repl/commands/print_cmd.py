@@ -10,20 +10,10 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
 
-import pyparsing as pp
-
-logging = logmod.getLogger(__name__)
-
-if TYPE_CHECKING:
-    # tc only imports
-    pass
-
-from acab.modules.repl.repl_commander import register_class
-from acab.modules.repl.ReplParser import rst, ctx_parser
-from acab import types as AT
-
 ##-- end imports
 
+import pyparsing as pp
+logging = logmod.getLogger(__name__)
 ModuleFragment = AT.ModuleFragment
 
 @register_class("print")

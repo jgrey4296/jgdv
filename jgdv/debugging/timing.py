@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -37,13 +36,17 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
 from time import sleep
 import timeit
 import time
 from random import random
 
-class GroupTime:
+autorange_fmt : Final[str] = "%-*10s : %-*5d calls took: %-*8.2f seconds"
+result_fmt    : Final[str] = "Attempt %-*5d : %-*8.2f seconds"
+block_fmt     : Final[str] = "%-*10s : %-*8.2f seconds"
+once_fmt      : Final[str] = "%-*10s : %-*8.2f seconds"
+
+class JGDVTimer:
     """ Utility Class to time code execution.
 
       see https://docs.python.org/3/library/timeit.html
@@ -55,7 +58,7 @@ class GroupTime:
         self.repeat           = repeat
         self.keep_gc          = keep_gc
         self.group : str      = f"{group}::" if group else ""
-        self.total            = 0.0
+        self.total            = 1.0
         self.once_log         = []
 
     def msg(self, str, *args):
@@ -69,7 +72,7 @@ class GroupTime:
                 self.current_name = self.group + stmt.__qualname__
 
     def autorange_cb(self, number, took):
-        self.msg("%-*10s : %-*5d calls took: %-*8.2f seconds", self.current_name, number, took)
+        self.msg(autorange_fmt, self.current_name, number, took)
         self.total += took
 
     def auto(self, stmt, name=None):
@@ -84,14 +87,14 @@ class GroupTime:
         timer  = timeit.Timer(stmt, globals=globals())
         results = timer.repeat(repeat=self.repeat, number=self.count)
         for i, result in enumerate(results):
-            self.msg("Attempt %-*5d : %-*8.2f seconds", i, result)
+            self.msg(result_fmt, i, result)
 
     def block(self, stmt, name=None):
         self._set_name(name, stmt)
         self.msg("-- Running Block %s : Timing block of %-*5f trials", self.current_name, self.count)
         timer  = timeit.Timer(stmt, globals=globals())
         result = timer.timeit(self.count)
-        self.msg("%-*10s : %-*8.2f seconds", self.current_name, result)
+        self.msg(block_fmt, self.current_name, result)
 
     def once(self, stmt, name=None):
         self._set_name(name, stmt)
@@ -99,7 +102,7 @@ class GroupTime:
         timer  = timeit.Timer(stmt, globals=globals())
         result = timer.timeit(1)
         self.once_log.append((self.current_name, result))
-        self.msg("%-*10s : %-*8.2f seconds", self.current_name, result)
+        self.msg(once_fmt, self.current_name, result)
 
     def __enter__(self):
         return self

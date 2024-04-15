@@ -7,9 +7,6 @@ from collections import defaultdict
 from importlib.resources import files
 from string import Template, ascii_uppercase
 
-from instal.defaults import STATE_HOLDSAT_GROUPS, TEX_loc
-from instal.interfaces.reporter import InstalReporter_i
-
 ##-- end imports
 
 ##-- logging
@@ -28,7 +25,7 @@ TERM            = Template((tex_path / "term.tex").read_text())
 TERM_BODY       = Template((tex_path / "term_body.tex").read_text())
 ##-- end data
 
-from dejavu.files.tex.base import TexBuilder_i
+from jgdv.files.tex.base import TexBuilder_i
 
 class GanttTexBuilder(TexBuilder_i):
     """
@@ -38,6 +35,7 @@ class GanttTexBuilder(TexBuilder_i):
     Milestones are events
     Bars are fluents
     """
+
     def header(self):
         pass
 
@@ -63,8 +61,6 @@ class GanttTexBuilder(TexBuilder_i):
                     str(f.arguments[1])).replace('_', '\_')
             print("\\ganttbar{{{label}}}{{{start}}}{{{finish}}}"
                     .format(label=l, start=i, finish=i), file=tfile)
-
-
 
     def render_term(self, term, inst=None) -> str:
         """
@@ -96,14 +92,11 @@ class GanttTexBuilder(TexBuilder_i):
         holds  = {self.render_term(x.params[0]) for x in prior_state.fluents if x in state} if prior_state is not None else {}
         termin = {self.render_term(x.params[0]) for x in prior_state.fluents if x not in state} if prior_state is not None else {}
 
-
         init_render   = {self.expand(FLUENT, mod=BOLD,  term=term).strip() for term in init}
         holds_render  = {self.expand(FLUENT, mod="",    term=term).strip() for term in holds}
         termin_render = {self.expand(FLUENT, mod=SOUT, term=term).strip() for term in termin}
 
-
         return sorted(init_render), sorted(holds_render), sorted(termin_render)
-
 
     def render_milestones(self, trace, title="Observed Events", caption="Tracking the events in the trace") -> str:
         """
@@ -173,6 +166,7 @@ class GanttTexBuilder(TexBuilder_i):
             charts.append(inst_chart)
 
         return charts
+
     def trace_to_file(self, trace, path):
         self.clear()
         all_gantts = []

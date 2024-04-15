@@ -16,10 +16,10 @@ from pathlib import Path
 
 logging = logmod.getLogger(__name__)
 
-from dejavu.apis.clingo.ast import SolverAST
+from jgdv.apis.clingo.ast import SolverAST
 
 @dataclass
-class InstalCompiler_i(metaclass=abc.ABCMeta):
+class Compiler_i(metaclass=abc.ABCMeta):
     """
     Interface for compiling InstaASTR down to a
     specific solver format

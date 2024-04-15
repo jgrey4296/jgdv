@@ -46,7 +46,7 @@ from scrapy.spiders import Spider
 from scrapy.utils.httpobj import urlparse_cached
 from w3lib.http import headers_dict_to_raw, headers_raw_to_dict
 
-class DootBasicSpider(scrapy.Spider):
+class JGDVBasicSpider(scrapy.Spider):
     """
     Basic Doot Spider that stores locs and its parent task
     """

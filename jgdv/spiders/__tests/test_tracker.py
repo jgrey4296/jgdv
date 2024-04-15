@@ -16,11 +16,6 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 logging = logmod.root
 
 import pytest
-import doot.errors
-import doot.structs
-from doot.control.tracker import DootTracker
-from doot._abstract import Task_i
-from doot.utils import mock_gen
 
 @pytest.mark.parametrize("ctor", [DootTracker])
 class TestTracker:

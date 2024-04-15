@@ -12,18 +12,6 @@ from datetime import datetime
 from enum import Enum
 from os.path import abspath, exists, expanduser, split, splitext
 
-import acab
-from acab.core.value.instruction import ProductionContainer
-from acab_config import AcabConfigException
-from acab.error.importer import AcabImportException
-from acab.error.semantic import AcabSemanticException
-from acab.interfaces.engine import AcabEngine_i
-from acab.interfaces.value import Instruction_i
-from acab.modules.repl import ReplParser as RP
-from acab.modules.repl.repl_commander import register
-from acab.modules.repl.util import init_inspect
-from acab.modules.repl.commands.util import print_module_colour
-
 ##-- end imports
 
 logging = logmod.getLogger(__name__)

@@ -38,7 +38,7 @@ logging = logmod.getLogger(__name__)
 
 import mmap
 
-class DejaVuMemMap:
+class JGDVMemMap:
     """
       A utility wrapper to easily make memory mapped files from a path,
       and use them as in a context manager

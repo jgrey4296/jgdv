@@ -7,7 +7,6 @@ import logging as root_logger
 from math import nan
 from os.path import isdir, join
 import numpy as np
-import cuty as utils
 
 ##-- end imports
 

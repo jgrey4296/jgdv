@@ -37,7 +37,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from dejavu.files.tex.base import TexStatement_i
+from jgdv.files.tex.base import TexStatement_i
 
 class TexBib(TexStatement_i):
     pass

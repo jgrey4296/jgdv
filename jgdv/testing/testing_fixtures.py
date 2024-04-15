@@ -33,7 +33,6 @@ logging = logmod.getLogger(__name__)
 
 import pytest
 import os
-import doot
 
 ##-- imports
 import tempfile

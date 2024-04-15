@@ -19,17 +19,9 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
 
-import acab
-import pyparsing as pp
-from acab import types as AT
-from acab.core.parsing import debug_funcs as DBF
-from acab.core.util.debugging import (human, print_diff, print_stat,
-                                      print_stat_file, sh_filter)
-from acab.core.value.instruction import ProductionOperator, ProductionStructure
-from acab.modules.repl import ReplParser as RP
-from acab.modules.repl.repl_commander import register, register_default
-
 ##-- end imports
+
+import pyparsing as pp
 
 logging = logmod.getLogger(__name__)
 config  = acab.config

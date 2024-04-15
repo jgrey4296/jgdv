@@ -3,5 +3,5 @@
 
 """
 
-doot  : Final[str] = "doot._printer"
-debug : Final[str] = "dejavu._debug"
+printer : Final[str] = "jgdv._printer"
+debug   : Final[str] = "jgdv._debug"

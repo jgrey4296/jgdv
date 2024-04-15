@@ -35,11 +35,6 @@ from abc import abstractmethod
 from tomlguard import TomlGuard
 from importlib.metadata import EntryPoint
 
-from doot.structs import DootTaskSpec
-from doot._abstract.cmd import Command_i
-from doot._abstract.task import Job_i
-
-
 @runtime_checkable
 class PluginLoader_p(Protocol):
     """ Base for the first things loaded: plugins."""
@@ -64,33 +59,4 @@ class PluginLoader_p(Protocol):
     @abstractmethod
     def load(self) -> TomlGuard[EntryPoint]:
         raise NotImplementedError()
-
-@runtime_checkable
-class CommandLoader_p(Protocol):
-    """ Base for the second thing loaded: commands """
-
-    @abstractmethod
-    def setup(self, plugins:TomlGuard) -> Self:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def load(self) -> TomlGuard[Command_i]:
-        raise NotImplementedError()
-
-@runtime_checkable
-class TaskLoader_p(Protocol):
-    """ Base for the final thing loaded: user tasks """
-    _task_collection : list
-    _build_failures  : list
-    _task_class      : type
-
-    @abstractmethod
-    def setup(self, plugins:TomlGuard) -> Self:
-        raise NotImplementedError()
-
-    @abstractmethod
-    def load(self) -> TomlGuard[DootTaskSpec]:
-        raise NotImplementedError()
-
-
 

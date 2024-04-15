@@ -29,65 +29,17 @@ from uuid import UUID, uuid1
 ##-- end builtin imports
 
 ##-- lib imports
-import more_itertools as mitz
+# import more_itertools as mitz
+# from boltons import
 ##-- end lib imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-import abc
-from collections import UserString
-import string
-from tomlguard import TomlGuard
-import doot
-import doot.errors
-from doot._structs.action_spec import DootActionSpec
-from doot._structs.task_spec import DootTaskSpec
-from doot._structs.artifact import DootTaskArtifact
-from doot._structs.code_ref import DootCodeReference
+from jgdv.decorators.base import JGDVBaseDecorator
 
-KEY_PATTERN                                = doot.constants.patterns.KEY_PATTERN
-MAX_KEY_EXPANSIONS                         = doot.constants.patterns.MAX_KEY_EXPANSIONS
-STATE_TASK_NAME_K                          = doot.constants.patterns.STATE_TASK_NAME_K
-
-PATTERN        : Final[re.Pattern]         = re.compile(KEY_PATTERN)
-FAIL_PATTERN   : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
-KEYS_HANDLED   : Final[str]                = "_doot_keys_handler"
-ORIG_ARGS      : Final[str]                = "_doot_orig_args"
-KEY_ANNOTS     : Final[str]                = "_doot_keys"
-EXPANSION_HINT : Final[str]                = "_doot_expansion_hint"
-HELP_HINT      : Final[str]                = "_doot_help_hint"
-FUNC_WRAPPED   : Final[str]                = "__wrapped__"
-
-class _DootKeyGetter:
-    """
-      The core logic to turn a key into a value.
-      Doesn't perform repeated expansions.
-
-      Order it tries:
-      cli -> spec -> state -> locs
-    """
-
-    @staticmethod
-    def get(key:str, spec:None|dict, state:None|dict, locs:None|DootLocations=None) -> Any:
-        cli   : dict          = doot.args.on_fail({}).tasks[str(state.get(STATE_TASK_NAME_K, None))]()
-        replacement           = cli.get(key, None)
-        # *Not* elif's, want it to chain.
-        if replacement is None:
-            replacement = spec.get(key, None)
-        if replacement is None:
-            replacement = state.get(key, None)
-        if replacement is None and locs is not None:
-            match locs.get(key, None):
-                case None:
-                    pass
-                case pl.Path() as x:
-                    replacement = locs.normalize(x)
-
-        return replacement
-
-class KWrapper:
+class KWrapper(JGDVBaseDecorator):
     """ Decorators for actions
     Kwrapper is accessible as DootKey.kwrap
 
@@ -167,26 +119,36 @@ class KWrapper:
     @staticmethod
     def _add_key_handler(f):
         """ idempotent key handler so decorated functions dont add unnecessary stack frames """
-        if getattr(f, KEYS_HANDLED, False):
+        if DootDecorator.has_annotations(f):
             return f
 
+        DootDecorator.truncate_signature(f)
+
         match getattr(f, ORIG_ARGS)[0]:
-            case "self":
+            case "self": # The method form handler
 
                 @ftz.wraps(f)
                 def action_expands(self, spec, state, *call_args, **kwargs):
-                    expansions = [x(spec, state) for x in getattr(f, KEY_ANNOTS)]
+                    try:
+                        expansions = [x(spec, state) for x in getattr(f, KEY_ANNOTS)]
+                    except KeyError as err:
+                        printer.warning("Action State Expansion Failure: %s", err)
+                        return False
                     all_args = (*call_args, *expansions)
                     return f(self, spec, state, *all_args, **kwargs)
-            case _:
+            case _: # The function form handler
 
                 @ftz.wraps(f)
                 def action_expands(spec, state, *call_args, **kwargs):
-                    expansions = [x(spec, state) for x in getattr(f, KEY_ANNOTS)]
+                    try:
+                        expansions = [x(spec, state) for x in getattr(f, KEY_ANNOTS)]
+                    except KeyError as err:
+                        printer.warning("Action State Expansion Failure: %s", err)
+                        return False
                     all_args = (*call_args, *expansions)
                     return f(spec, state, *all_args, **kwargs)
 
-        setattr(action_expands, KEYS_HANDLED, True)
+        DootDecorator.annotate(action_expands, {KEYS_HANDLED})
         return action_expands
 
     @staticmethod
@@ -298,4 +260,3 @@ class KWrapper:
             return KWrapper._add_key_handler(f)
 
         return expand_wrapper
-

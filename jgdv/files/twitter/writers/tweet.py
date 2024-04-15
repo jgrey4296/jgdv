@@ -38,7 +38,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from collections import defaultdict
-from dejavu.files.twitter.writers.util import parse_date
+from jgdv.files.twitter.writers.util import parse_date
 
 media_dict : Final[Callable] = lambda: defaultdict(list)
 

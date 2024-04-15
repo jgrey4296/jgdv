@@ -15,7 +15,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 ##-- end imports
 
-from dejavu.apis.clingo.trace import Trace_i
+from jgdv.apis.clingo.trace import Trace_i
 
 @dataclass
 class SolverReporter_i(metaclass=abc.ABCMeta):

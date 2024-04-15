@@ -73,7 +73,7 @@ class SimpleLogColour:
     def red(s):
         return LEVEL_MAP['red'] + str(s) + COLOUR_RESET
 
-class DootColourFormatter(logging.Formatter):
+class JGDVColourFormatter(logging.Formatter):
     """
     Stream Formatter for doot, enables use of colour sent to console
 
@@ -109,7 +109,7 @@ class DootColourFormatter(logging.Formatter):
 
         return log_colour + super().format(record) + COLOUR_RESET
 
-class DootColourStripFormatter(logging.Formatter):
+class JGDVColourStripFormatter(logging.Formatter):
     """
     Force Colour Command codes to be stripped out of a string.
     Useful for when you redirect printed strings with colour

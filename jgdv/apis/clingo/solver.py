@@ -20,7 +20,7 @@ from typing import (IO, TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 
 from clingo import parse_term
-from dejavu.appis.clingo.ast import SolverAST
+from jgdv.apis.clingo.ast import SolverAST
 
 @dataclass
 class SolverModelResult:

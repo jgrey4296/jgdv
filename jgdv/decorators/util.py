@@ -13,16 +13,9 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Dict, Generic,
                     Optional, ParamSpec, Sequence, Set, Tuple, TypeAlias,
                     TypeVar, Union, cast)
 
-logging = logmod.getLogger(__name__)
-
-from acab_config.utils.decorators import registerOn
-
-if TYPE_CHECKING:
-    # tc only imports
-    from acab import types as AT
-
 ##-- end imports
 
+logging = logmod.getLogger(__name__)
 T = TypeVar('T')
 P = ParamSpec('P')
 

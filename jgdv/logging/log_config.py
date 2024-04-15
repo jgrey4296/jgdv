@@ -33,12 +33,11 @@ logging = logmod.getLogger(__name__)
 
 import os
 from sys import stdout, stderr
-import doot
-from doot.utils.log_colour import DootColourFormatter, DootColourStripFormatter
+from jgdv.logging.log_colour import JGDVColourFormatter, JGDVColourStripFormatter
 
 env : dict = os.environ
 
-class _DootAnyFilter:
+class _JGDVAnyFilter:
     """
 
     """
@@ -53,7 +52,7 @@ class _DootAnyFilter:
                                                          or not bool(self.names)
                                                     or self.name_re.match(record.name))
 
-class DootLogConfig:
+class JGDVLogConfig:
     """ Utility class to setup [stdout, stderr, file] logging. """
 
     def __init__(self):
@@ -62,28 +61,27 @@ class DootLogConfig:
         # EXCEPT this, which replaces 'print(x)'
         self.printer               = logmod.getLogger(doot.constants.printer.PRINTER_NAME)
 
-        self.file_handler          = logmod.FileHandler(pl.Path() / "log.doot", mode='w')
+        self.file_handler          = None
         self.stream_handler        = logmod.StreamHandler(stdout)
         self.print_stream_handler  = logmod.StreamHandler(stdout)
 
-        self._setup()
+        self._pre_setup()
 
-    def _setup(self):
+    def _pre_setup(self):
         """ a basic, config-less setup """
         self.root.setLevel(logmod.NOTSET)
-        self.file_handler.setFormatter(DootColourStripFormatter(fmt="{levelname} : INIT : {message}"))
+        # self.file_handler.setFormatter(JGDVColourStripFormatter(fmt="{levelname} : INIT : {message}"))
 
         self.stream_handler.setLevel(logmod.WARNING)
         self.stream_handler.setFormatter(logmod.Formatter("{levelname}  : INIT : {message}", style="{"))
 
-        self.root.addHandler(self.file_handler)
         self.root.addHandler(self.stream_handler)
 
         self.printer.propagate = False
         self.print_stream_handler.setFormatter(logmod.Formatter("{message}", style="{"))
         self.printer.setLevel(logmod.NOTSET)
         self.printer.addHandler(self.print_stream_handler)
-        self.printer.addHandler(self.file_handler)
+        # self.printer.addHandler(self.file_handler)
 
     def setup(self):
         """ a setup that uses config values """
@@ -93,14 +91,27 @@ class DootLogConfig:
         self._setup_print_logging()
 
     def _setup_file_logging(self):
+        log_name_format = doot.config.on_fail("doot-%Y-%m-%d::%H:%M.log").logging.file.name()
+        log_file_name   = datetime.datetime.now().strftime(log_name_format)
+
+        log_dir = doot.locs["{logs}"]
+        # TODO delete old logs if number of logs larger than N
+        if not log_dir.exists():
+            log_dir = pl.Path()
+
+        log_file_path = log_dir / log_file_name
+
+        self.file_handler  = logmod.FileHandler(log_file_path, mode='w')
         file_log_level    = doot.config.on_fail("DEBUG", str|int).logging.file.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
         file_log_format   = doot.config.on_fail("{levelname} : {pathname} : {lineno} : {funcName} : {message}", str).logging.file.format()
         file_filter_names = doot.config.on_fail([], list).logging.file.allow()
 
         self.file_handler.setLevel(file_log_level)
-        self.file_handler.setFormatter(DootColourStripFormatter(fmt=file_log_format))
+        self.file_handler.setFormatter(JGDVColourStripFormatter(fmt=file_log_format))
         if bool(file_filter_names):
-            self.file_handler.addFilter(_DootAnyFilter(file_filter_names))
+            self.file_handler.addFilter(_JGDVAnyFilter(file_filter_names))
+
+        self.root.addHandler(self.file_handler)
 
     def _setup_stream_logging(self):
         stream_log_level    = doot.config.on_fail("WARNING", str|int).logging.stream.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
@@ -111,12 +122,12 @@ class DootLogConfig:
         use_colour = doot.config.on_fail(False, bool).logging.stream.colour()
         use_colour &= "PRE_COMMIT" not in env
         if use_colour:
-            self.stream_handler.setFormatter(DootColourFormatter(fmt=stream_log_format))
+            self.stream_handler.setFormatter(JGDVColourFormatter(fmt=stream_log_format))
         else:
-            self.stream_handler.setFormatter(DootColourStripFormatter(fmt=stream_log_format))
+            self.stream_handler.setFormatter(JGDVColourStripFormatter(fmt=stream_log_format))
 
         if bool(stream_filter_names):
-            self.stream_handler.addFilter(_DootAnyFilter(stream_filter_names))
+            self.stream_handler.addFilter(_JGDVAnyFilter(stream_filter_names))
 
     def _setup_print_logging(self):
         printer_log_level    = doot.config.on_fail("NOTSET", str|int).logging.printer.level(wrapper=lambda x: logmod._nameToLevel.get(x, 0))
@@ -127,9 +138,9 @@ class DootLogConfig:
         use_colour = doot.config.on_fail(False, bool).logging.printer.colour()
         use_colour &= "PRE_COMMIT" not in env
         if use_colour:
-            self.print_stream_handler.setFormatter(DootColourFormatter(fmt=printer_log_format))
+            self.print_stream_handler.setFormatter(JGDVColourFormatter(fmt=printer_log_format))
         else:
-            self.print_stream_handler.setFormatter(DootColourStripFormatter(fmt=printer_log_format))
+            self.print_stream_handler.setFormatter(JGDVColourStripFormatter(fmt=printer_log_format))
 
     def set_level(self, level):
         self.stream_handler.setLevel(level)

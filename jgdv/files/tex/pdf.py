@@ -7,8 +7,6 @@ from collections import defaultdict
 from importlib.resources import files
 from string import Template, ascii_uppercase
 
-from instal.defaults import STATE_HOLDSAT_GROUPS, TEX_loc
-from instal.interfaces.reporter import InstalReporter_i
 ##-- end imports
 
 ##-- logging
@@ -43,8 +41,7 @@ TERM            = Template((tex_path / "term.tex").read_text())
 TERM_BODY       = Template((tex_path / "term_body.tex").read_text())
 ##-- end data
 
-
-class InstalPDFReporter(InstalReporter_i):
+class PDFReporter:
     """
         InstalPDFTracer
         Implementation of ABC InstalTracer for pdf output.

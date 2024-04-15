@@ -25,10 +25,6 @@ printer = logmod.getLogger("doot._printer")
 from time import sleep
 import sys
 import sh
-import doot
-from doot.structs import DootKey
-from doot.errors import DootTaskError, DootTaskFailed
-from doot._abstract import Action_p
 
 class SpeakTimeAction(Action_p):
     """

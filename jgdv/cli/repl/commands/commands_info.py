@@ -18,19 +18,11 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
 
-import acab
-import pyparsing as pp
-from acab import types as AT
-from acab.core.parsing import debug_funcs as DBF
-from acab_config.utils.log_formatter import AcabLogFormatter, AcabMinimalLogRecord
-from acab.core.value.instruction import ProductionOperator, ProductionStructure
-from acab.modules.repl import ReplParser as RP
-from acab.modules.repl.repl_commander import register
-
 ##-- end imports
 
-config = acab.config
+import pyparsing as pp
 
+config = acab.config
 
 logging = logmod.getLogger(__name__)
 
@@ -49,7 +41,6 @@ def do_shortcuts(self, line):
     print("Repl Shortcut commands: ")
     for kw, cmd in shortcut_pairs:
         print(f"    :{kw:<5} -> {cmd}")
-
 
 @register
 def do_acab(self, line):

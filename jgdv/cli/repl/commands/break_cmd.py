@@ -12,18 +12,9 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
                     cast, final, overload, runtime_checkable)
 
-import pyparsing as pp
-import acab
-from acab.modules.repl.repl_commander import register_class
-from acab.modules.repl.ReplParser import rst
-from acab.interfaces.debugger import AcabDebugger_i
-
-if TYPE_CHECKING:
-    # tc only imports
-    pass
-
 ##-- end imports
 
+import pyparsing as pp
 
 logging     = logmod.getLogger(__name__)
 config      = acab.config
@@ -33,13 +24,13 @@ debug_intro = config.module.REPL.debug.intro
 
 the_debugger = Debugger()
 
-
 # TODO breakpoint a semantic handler by name,
 # TODO breakpoint (in)dependent semantic function
 # TODO breakpoint a node by sentence path
 # TODO breakpoint an operator/action
 # TODO breakpoint a variable
 #
+
 @register_class("break")
 class BreakCmd:
     """
@@ -76,7 +67,6 @@ class BreakCmd:
         break_parser = parser_bp | semantic_bp("semantic") | basic_bp("basic") | rst
 
         return break_parser
-
 
     def __call__(self, line):
         if not bool(the_debugger):
@@ -144,7 +134,6 @@ class BreakCmd:
         else:
             print(f"Turning Breakpoint on for: {ctxs['parser']}")
             parser.set_break(True)
-
 
     def handle_semantic(self, ctxs):
         # run query

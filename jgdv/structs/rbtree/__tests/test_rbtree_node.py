@@ -1,11 +1,6 @@
 import unittest
 import logging
 import IPython
-from test_context import cuty as utils
-from cuty import rbtree
-from cuty.rbtree import comparison_functions as CompFuncs
-from cuty.rbtree import Node
-
 
 class RBTree_Tests(unittest.TestCase):
 
@@ -147,6 +142,7 @@ class RBTree_Tests(unittest.TestCase):
         self.assertEqual(n3.get_successor(), n1)
 
     #test getPred/Succ_while
+
     def test_min(self):
         n1 = Node(2)
         n2 = Node(3)

@@ -7,7 +7,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     Set, Tuple, TypeVar, Union, cast)
 
 logging      = logmod.getLogger(__name__)
-trace_logger = logmod.getLogger('dejavu._debug')
+trace_logger = logmod.getLogger('jgdv._debug')
 
 class RunningDebugger(metaclass=SingletonMeta):
     """

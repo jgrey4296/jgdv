@@ -3,22 +3,6 @@
 from __future__ import annotations
 import logging as logmod
 
-import acab.core.defaults.value_keys as DS
-import acab.error.semantic as ASErr
-import acab.interfaces.data as DI
-import acab.interfaces.semantic as SI
-from acab import types as AT
-import acab
-from acab.core.data.acab_struct import BasicNodeStruct
-from acab.core.semantics import basic
-from acab.core.value.instruction import Instruction
-from acab.core.value.sentence import Sentence
-from acab.interfaces.bind import Bind_i
-from acab.interfaces.value import Sentence_i
-from acab_config import AcabProtocolError as APE
-
-from .flatten_query_manager import FlattenQueryManager
-
 ##-- end imports
 
 logging = logmod.getLogger(__name__)
@@ -31,7 +15,6 @@ Structure     = AT.DataStructure
 Engine        = AT.Engine
 Contexts      = AT.CtxSet
 
-@APE.assert_implements(SI.StructureSemantics_i)
 class FlattenBreadthTrieSemantics(basic.StructureSemantics, SI.StructureSemantics_i):
     """
     Trie Semantics which map values -> Nodes

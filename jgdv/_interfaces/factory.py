@@ -39,7 +39,7 @@ logging = logmod.getLogger(__name__)
 
 class Factory_p(abc.ABC):
 
-    @abc.abstractmethod
     @classmethod
+    @abc.abstractmethod
     def build(cls, *args, **kwargs):
         pass

@@ -19,9 +19,9 @@ if TYPE_CHECKING:
 
 ##-- end imports
 
-from jgdv._interfaces.decorator import DejaVuDecorator_i
+from jgdv._interfaces.decorator import JGDVDecorator_i
 
-class LogReturn(DejaVuDelayDecorator_i):
+class LogReturn(JGDVDelayDecorator_i):
     """
     Utility Decorator to log a functions return value at a set level
     """
@@ -31,7 +31,7 @@ class LogReturn(DejaVuDelayDecorator_i):
         self._prefix = prefix
         self._level  = level
         self._msg    =  msg or "{prefix} result: {result}"
-        self._logger = logger or logmod.getLogger("dejavu._returns")
+        self._logger = logger or logmod.getLogger("jgdv._returns")
 
     def _wrapper(self, *args, **kwargs):
         result = self._func(*args, **kwargs)

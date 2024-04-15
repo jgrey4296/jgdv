@@ -11,10 +11,6 @@ printer = logmod.getLogger("doot._printer")
 
 import sys
 import sh
-import doot
-from doot.errors import DootTaskError
-from doot._abstract import Action_p
-from doot.structs import DootKey
 import jgdv
 
 BACKGROUND = DootKey.make("background")
@@ -22,7 +18,7 @@ UPDATE     = DootKey.make("update_")
 NOTTY      = DootKey.make("notty")
 ENV        = DootKey.make("shenv_")
 
-class DejaVuDootShellBake:
+class JGDVShellBake:
 
     @DootKey.kwrap.args
     @DootKey.kwrap.types("in_", hint={"on_fail":None, "type_":sh.Command|bool|None})
@@ -57,7 +53,7 @@ class DejaVuDootShellBake:
 
         return False
 
-class DejaVuShellBakedRun:
+class JGDVShellBakedRun:
 
     @DootKey.kwrap.types("in_", hint={"on_fail":None, "type_":sh.Command|None})
     @DootKey.kwrap.redirects("update_")
@@ -78,7 +74,7 @@ class DejaVuShellBakedRun:
 
         return False
 
-class DejaVuShellAction(Action_p):
+class JGDVShellAction(Action_p):
     """
     For actions in subshells.
     all other arguments are passed directly to the program, using `sh`
@@ -120,7 +116,7 @@ class DejaVuShellAction(Action_p):
 
         return False
 
-class DejaVuInteractiveAction(Action_p):
+class JGDVInteractiveAction(Action_p):
     """
       An interactive command, which uses the self.interact method as a callback for sh.
     """
@@ -131,8 +127,8 @@ class DejaVuInteractiveAction(Action_p):
 
     def __call__(self, spec, state:dict) -> dict|bool|None:
         try:
-            self.prompt = spec.kwargs.on_fail(DejaVuInteractiveAction.prompt, str).prompt()
-            self.cont   = spec.kwargs.on_fail(DejaVuInteractiveAction.cont, str).cont()
+            self.prompt = spec.kwargs.on_fail(JGDVInteractiveAction.prompt, str).prompt()
+            self.cont   = spec.kwargs.on_fail(JGDVInteractiveAction.cont, str).cont()
 
             cmd      = getattr(sh, spec.args[0])
             args     = spec.args[1:]

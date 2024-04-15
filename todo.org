@@ -1,4 +1,4 @@
-#+TITLE: Dejavu Todo
+#+TITLE: Deja Vu Todo
 
 * Main
 ** apis

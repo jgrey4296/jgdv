@@ -17,7 +17,6 @@ from os.path import abspath, exists, expanduser, split, splitext
 
 logging = logmod.getLogger(__name__)
 
-import acab
 import pyparsing as pp
 
 try:
@@ -54,6 +53,7 @@ def do_multi(self, line):
         if bool(readline):
             # indent modification based on:
             # https://stackoverflow.com/questions/8505163
+
             def input_hook():
                 indent_str = self.state.indent * "    "
                 readline.insert_text(indent_str)
@@ -75,9 +75,6 @@ def do_multi(self, line):
         else:
             self.onecmd(collected)
 
-
-
-
 @register
 def do_pop(self, line):
     """
@@ -95,7 +92,6 @@ def do_collect(self, line):
     if line.strip() == "end":
         self.state.indent = max(self.state.indent - 1, 0)
 
-
     curr_indent = self.state.indent
     curr_indent_str = curr_indent * "    "
 
@@ -111,7 +107,6 @@ def do_echo(self, line):
     Toggle echoing of working memory state
     """
     self.state.echo = not self.state.echo
-
 
 @register
 def do_suppress(self, line):

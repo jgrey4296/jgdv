@@ -3,3 +3,4 @@
 __version__ = "0.1.0"
 
 import jgdv.debugging as dbg
+from jgdv.decorators.check_protocol import check_protocol

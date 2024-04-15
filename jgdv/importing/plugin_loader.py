@@ -35,8 +35,8 @@ logging = logmod.getLogger(__name__)
 from collections import defaultdict
 from importlib.metadata import entry_points, EntryPoint
 import tomlguard
-import doot
-from doot._abstract import PluginLoader_p
+import jgdv
+from jgdv._interfaces.loader import PluginLoader_p
 
 skip_default_plugins        = doot.config.on_fail(False).skip_default_plugins()
 skip_plugin_search          = doot.config.on_fail(False).skip_plugin_search()
@@ -51,8 +51,8 @@ def make_ep (x, y, z):
     return EntryPoint(name=x, value=y, group="{}.{}".format(doot.constants.entrypoints.PLUGIN_TOML_PREFIX, z))
 
 
-@doot.check_protocol
-class DootPluginLoader(PluginLoader_p):
+@jgdv.check_protocol
+class JGDVPluginLoader(PluginLoader_p):
     """
     Load doot plugins from the system, to choose from with doot.toml or cli args
     """

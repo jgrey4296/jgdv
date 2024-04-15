@@ -23,7 +23,7 @@ from weakref import ref
 
 logging = logmod.getLogger(__name__)
 
-from dejavu.apis.clingo.ast import SolverAST
+from jgdv.apis.clingo.ast import SolverAST
 
 class SolverASTVisitor_i(metaclass=abc.ABCMeta):
     """

@@ -15,12 +15,6 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 logging = logmod.root
 
 import pytest
-import doot.errors
-from doot._abstract import ArgParser_i, TaskBase_i
-from doot.parsers.flexible import DootFlexibleParser
-from doot.structs import DootParamSpec, DootTaskSpec, DootCodeReference
-from doot.utils.mock_gen import mock_parse_cmd, mock_parse_task
-
 
 @pytest.mark.parametrize("ctor", [DootFlexibleParser])
 class TestArgParser:
@@ -215,7 +209,6 @@ class TestArgParser:
 
         assert(result.head.args.key is True)
 
-
     def test_simple_short_arg(self, ctor, mocker):
         param = DootParamSpec("key", bool)
         parser   = ctor()
@@ -263,7 +256,6 @@ class TestArgParser:
 
         assert(result.head.args.key == "blah")
 
-
     def test_assign_fail_with_wrong_prefix(self, ctor, mocker):
         param    = DootParamSpec("key", str, prefix="-")
         parser   = ctor()
@@ -272,8 +264,6 @@ class TestArgParser:
             parser.parse(["doot", "--key=blah"],
                 doot_specs=[param], cmds={}, tasks={}
                 )
-
-
 
     def test_simple_follow_assign(self, ctor, mocker):
         param    = DootParamSpec("key", str)
@@ -284,7 +274,6 @@ class TestArgParser:
 
         assert(result.head.args.key == "blah")
 
-
     def test_simple_prefix_change(self, ctor, mocker):
         param    = DootParamSpec("key", str, prefix="--")
         parser   = ctor()
@@ -293,7 +282,6 @@ class TestArgParser:
             )
 
         assert(result.head.args.key == "blah")
-
 
     def test_simple_separator_change(self, ctor, mocker):
         param    = DootParamSpec("key", str, separator="%%", prefix="--")
@@ -339,7 +327,6 @@ class TestArgParser:
 
         assert(result.cmd.name == "run")
 
-
     def test_simple_task(self, ctor, mocker):
         cmd_mock             = mock_parse_cmd()
         task_mock            = mock_parse_task(params=[{"name":"key"}])
@@ -352,7 +339,6 @@ class TestArgParser:
         assert(result.cmd.name == "run")
         assert("list" in result.tasks)
         assert(result.tasks.list.key is True)
-
 
     def test_simple_task_sequence(self, ctor, mocker):
         cmd_mock   = mock_parse_cmd()

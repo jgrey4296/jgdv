@@ -40,8 +40,8 @@ logging = logmod.getLogger(__name__)
 import contextlib
 import io
 
-with contextlib.redirect_stdout(io.StringIO()) as stdout:
-     $0
+# with contextlib.redirect_stdout(io.StringIO()) as stdout:
+#      $0
 
 
 class ColourStripPrintCapture(logmod.Formatter):

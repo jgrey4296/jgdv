@@ -60,14 +60,8 @@ logging = logmod.getLogger(__name__)
 printer = logmod.getLogger("doot._printer")
 
 from collections import defaultdict
-import doot
-import doot.errors
-from doot.enums import ReportEnum, ActionResponseEnum as ActRE
-from doot._abstract import Job_i, Task_i, FailPolicy_p
-from doot._abstract import TaskTracker_i, TaskRunner_i, TaskBase_i, ReportLine_i, Action_p
-from doot.utils.signal_handler import SignalHandler
-from doot.structs import DootTaskSpec, DootActionSpec
-from doot.control.base_runner import BaseRunner, logctx
+import jgdv
+from jgdv.enums.task_respones import TaskResponseEnum as ActRE
 
 from zope.interface import implementer
 from twisted.internet import reactor, protocol, defer, threads
@@ -85,8 +79,8 @@ execute_level : Final[str] = doot.constants.printer.DEFAULT_EXECUTE_LEVEL
 
 reactor_timeout = doot.config.on_fail(2, int).settings.tasks.reactor_timeout()
 
-@doot.check_protocol
-class DootleReactorRunner(BaseRunner, TaskRunner_i):
+@jgdv.check_protocol
+class JGDVReactorRunner(BaseRunner, TaskRunner_i):
     """ The simplest reactor task runner
       https://stackoverflow.com/questions/8532131
 

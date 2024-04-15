@@ -28,9 +28,7 @@ printer         = logmod.getLogger("doot._printer")
 import sh
 import stackprinter
 import tomlguard as TG
-import doot
 from bdb import BdbQuit
-from doot.utils.log_config import DootLogConfig
 
 def main():
     result  = 1
@@ -45,9 +43,9 @@ def main():
         log_config.setup()
 
         logging.info("Called with: %s", sys.argv)
-        from doot.loaders.plugin_loader import DootPluginLoader
+        from jgdv.importing.plugin_loader import JGDVPluginLoader
         from doot.control.overlord import DootOverlord
-        overlord  = DootOverlord(loaders={"plugin": DootPluginLoader().setup(sys.argv[:]) },
+        overlord  = DootOverlord(loaders={"plugin": JGDVPluginLoader().setup(sys.argv[:]) },
                                  config_filenames=[doot.constants.paths.DEFAULT_LOAD_TARGETS],
                                  log_config=log_config,
                                  args=sys.argv[:])

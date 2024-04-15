@@ -63,7 +63,10 @@ def exception_hook_loop(exc_type, exc_value, tb):
     tb = tb.tb_next
     print(f"Local variables in top frame: {local_vars}")
 
-class DejaVuHookConfig:
+class JGDVHookConfig:
+    """
+    Utiility class for setting up various python hooks
+    """
 
     def __init__(self):
         self._disabled = "PRE_COMMIT" in env

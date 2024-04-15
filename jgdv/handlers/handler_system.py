@@ -19,20 +19,6 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Generic, Iterable,
 
 logging                = logmod.getLogger(__name__)
 
-import acab
-from acab import types as AT
-from acab.core.util.decorators.util import cache
-from acab.error.handler import (AcabHandlerException,
-                                HandlerDuplicationException)
-from acab.interfaces import handler_system as HS
-from acab.interfaces.config import ConfigSpec_d
-from acab.interfaces.data import Structure_i
-from acab.interfaces.fragments import HandlerFragment_i
-from acab.interfaces.protocols import handler_system as HSubP
-from acab.interfaces.sieve import AcabSieve
-from acab.interfaces.value import Sentence_i, Value_i
-from acab_config import AcabProtocolError as APE
-
 config                 = acab.config
 SPACER                 = config.any_of().print.SPACER_SIZE()
 

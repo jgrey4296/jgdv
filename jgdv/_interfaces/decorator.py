@@ -37,7 +37,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class DejaVuDecorator_i:
+class JGDVDecorator_i:
     """ Base Class for decorators that annotate callables """
 
     def __init__(self, funcOrCls:Callable):
@@ -47,7 +47,7 @@ class DejaVuDecorator_i:
     def __call__(self, *args, **kwargs):
         return self._func(*args, **kwargs)
 
-class DejaVuDelayDecorator_i:
+class JGDVDelayDecorator_i:
     """ Base Class for decorators that take arguments, then later annotate callables
 
     https://stackoverflow.com/questions/9416947

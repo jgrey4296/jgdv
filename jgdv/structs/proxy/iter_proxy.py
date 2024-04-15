@@ -116,7 +116,6 @@ class TomlGuardIterFirstProxy(TomlGuardIterProxy):
                                        index=self._index(attr),
                                        fallback=self._fallback)
 
-
     def _nested_inject(self, attr=None, clear=None) -> TomlGuardIterProxy|None:
         sub_proxies = []
         assert(isinstance(self._data, list))
@@ -148,7 +147,6 @@ class TomlGuardIterFirstProxy(TomlGuardIterProxy):
                                        fallback=self._fallback,
                                        index=index,
                                        subindex=subindex)
-
 
     def _match_type(self, val:TomlTypes) -> TomlTypes:
         return val

@@ -23,8 +23,8 @@ from weakref import ref
 logging = logmod.getLogger(__name__)
 
 from clingo import Symbol
-from dejavu.apis.clingo.ast import SolverAST
-from dejavu.apis.clingo.solver import SolverModelResult
+from jgdv.apis.clingo.ast import SolverAST
+from jgdv.apis.clingo.solver import SolverModelResult
 
 STATE_HOLDSAT_GROUPS = []
 

@@ -1,9 +1,6 @@
 import unittest
 import logging
 import IPython
-from test_context import cuty as utils
-from cuty import rbtree
-from cuty.rbtree import comparison_functions as CompFuncs
 
 
 class RBTree_Tests(unittest.TestCase):

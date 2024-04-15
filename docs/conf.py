@@ -12,7 +12,7 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../dejavu'))
+sys.path.insert(0, os.path.abspath('../jgdv'))
 
 import warnings
 import tomler
@@ -21,7 +21,7 @@ data = tomler.load("../pyproject.toml")
 
 with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    import dejavu
+    import jgdv
 
 # -- Project information -----------------------------------------------------
 

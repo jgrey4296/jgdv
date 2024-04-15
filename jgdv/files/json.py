@@ -45,11 +45,6 @@ import sh
 import shutil
 import jsonlines
 import tomlguard as TG
-import doot
-from doot.errors import DootTaskError, DootTaskFailed
-from doot.enums import ActionResponseEnum
-from doot._abstract import Action_p
-from doot.structs import DootKey
 
 ##-- expansion keys
 FROM_KEY           : Final[DootKey] = DootKey.make("from")

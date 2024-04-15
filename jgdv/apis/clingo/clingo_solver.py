@@ -22,9 +22,9 @@ clingo_logger = logmod.getLogger(__name__ + ".ffi.clingo")
 
 import clingo
 from clingo import Control, Function, Number, Symbol, parse_term
-from dejavu._interfaces.solver import SolverWrapper_i
-from dejavu.apis.clingo.ast import SolverAST
-from dejavu.apis.clingo.solver import SolverModelResult, SolverWrapper_i
+from jgdv._interfaces.solver import SolverWrapper_i
+from jgdv.apis.clingo.ast import SolverAST
+from jgdv.apis.clingo.solver import SolverModelResult, SolverWrapper_i
 
 def clingo_intercept_logger(code, msg):
     """

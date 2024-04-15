@@ -9,10 +9,9 @@ from dataclasses import InitVar, dataclass, field
 from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast)
-from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
-
-from doot.utils.formats.bookmarks import Bookmark
 ##-- end imports
+
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 logging = logmod.getLogger(__name__)
 
@@ -98,4 +97,3 @@ class Trie:
                                                                                       url_pair[0],
                                                                                       url_pair[1]))
         return "\n".join(result)
-

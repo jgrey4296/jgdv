@@ -37,7 +37,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from dejavu.files.org.base import OrgBuilderBase
+from jgdv.files.org.base import OrgBuilderBase
 
 @dataclass
 class OrgDrawerBuilder(OrgBuilderBase):

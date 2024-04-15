@@ -39,7 +39,7 @@ logging = logmod.getLogger(__name__)
 
 import heapq
 
-class DejaVuHeap:
+class JGDVHeap:
 
     def __init__(self):
         self._heap = None

@@ -13,14 +13,9 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     cast, final, overload, runtime_checkable)
 from os.path import splitext
 
-import pyparsing as pp
-import acab
-from acab.modules.repl.repl_commander import register_class
-from acab_config.utils.log_formatter import SimpleLogColour
-import acab.modules.repl.commands.util as ColPr
-from acab.interfaces.fragments import ModuleFragment
-
 ##-- end imports
+
+import pyparsing as pp
 
 logging = logmod.getLogger(__name__)
 SC      = SimpleLogColour
@@ -33,7 +28,6 @@ class ReportCmd:
     """
     Control the Repl log level, format,
     and specify filters for the logger
-
 
     """
 

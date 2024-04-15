@@ -8,11 +8,11 @@ from functools import wraps
 
 ##-- end imports
 
-from jgdv._interfaces.decorator import DejaVuDecorator_i
+from jgdv._interfaces.decorator import JGDVDecorator_i
 
 T = TypeVar('T')
 
-class EnsureDSLInit(DejaVuDecorator_i):
+class EnsureDSLInit(JGDVDecorator_i):
     """ Utility Decorator for DSLs  raising error if not initialised """
 
     def __call__(self, *args, **kwargs):

@@ -37,8 +37,8 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 import networkx as nx
-from dejavu.files.org.file import OrgStrBuilder
-from dejavu.files.twitter.writers.util import parse_date
+from jgdv.files.org.file import OrgStrBuilder
+from jgdv.files.twitter.writers.util import parse_date
 
 media_dict : Final[Callable] = lambda: defaultdict(list)
 

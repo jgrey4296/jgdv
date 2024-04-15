@@ -13,10 +13,9 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
                     List, Mapping, Match, MutableMapping, Optional, Sequence,
                     Set, Tuple, TypeVar, Union, cast, Final, TypeAlias)
 import re
-import networkx as nx
-from doot.utils.formats.bookmarks import BookmarkCollection
-from doot.utils.formats.tagfile import TagFile
 ##-- end imports
+
+import networkx as nx
 
 logging = logmod.getLogger(__name__)
 
