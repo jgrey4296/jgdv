@@ -16,7 +16,7 @@ from typing import (Any, Callable, ClassVar, Dict, Generic, Iterable, Iterator,
 
 logging = logmod.getLogger(__name__)
 
-from dejavu._interfaces.decorator import DejaVuDecorator_i
+from jgdv._interfaces.decorator import DejaVuDecorator_i
 
 def singleton(orig_cls:Any) -> Any:
     """ From:

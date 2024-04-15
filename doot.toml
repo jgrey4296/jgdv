@@ -19,6 +19,8 @@ file    = { level = "DEBUG", format = "{levelname:<8} : {message:<20} :|: ({modu
 printer = { colour = true }
 
 [[locations]]
-tasks        = ".tasks"
-temp         = ".temp"
-src          = {protect="doot"}
+tasks        = {loc=".tasks", protected=true}
+temp         = {loc=".temp", cleanable=true}
+src          = {loc="jgdv", protected=true}
+logs         = "{temp}/logs"
+build        = "{temp}/build"

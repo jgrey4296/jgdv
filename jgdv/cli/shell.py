@@ -15,7 +15,7 @@ import doot
 from doot.errors import DootTaskError
 from doot._abstract import Action_p
 from doot.structs import DootKey
-import dejavu as dv
+import jgdv
 
 BACKGROUND = DootKey.make("background")
 UPDATE     = DootKey.make("update_")

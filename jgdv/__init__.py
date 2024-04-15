@@ -2,4 +2,4 @@
 
 __version__ = "0.0.1"
 
-import dejavu.debugging as dbg
+import jgdv.debugging as dbg

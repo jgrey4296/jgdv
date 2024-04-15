@@ -31,7 +31,7 @@ actions                = [
                      # Build
                      {do="shell", args=["python", "-m", "build", "--outdir", "{build}", "."], env_="env"},
                      # Cleanup
-                     {do="delete!", args=["./dejavu.egg-info"], lax=true, recursive=true]}
+                     {do="delete!", args=["./dejavu.egg-info"], lax=true, recursive=true},
 ]
 
 [[tasks.dist]]

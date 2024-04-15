@@ -37,7 +37,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from dejavu._interfaces.decorator import DejaVuDecorator_i
+from jgdv._interfaces.decorator import DejaVuDecorator_i
 
 DEBUG_DESTRUCT_ON = False
 

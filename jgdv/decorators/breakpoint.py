@@ -37,8 +37,8 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from dejavu._interfaces.decorator import DejaVuDecorator_i
-from dejavu.debugginer.running_debugger import RunningDebugger
+from jgdv._interfaces.decorator import DejaVuDecorator_i
+from jgdv.debugginer.running_debugger import RunningDebugger
 
 class DejaVuBreakpoint(DejaVuDecorator_i):
     """

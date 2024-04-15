@@ -31,7 +31,7 @@ import doot
 import doot.errors
 from doot.structs import DootParamSpec, DootTaskSpec
 from collections import ChainMap
-import dejavu as dv
+import jgdv
 
 SEP : Final[str]          = "--"
 PARAM_ASSIGN_PREFIX       = doot.constants.patterns.PARAM_ASSIGN_PREFIX
@@ -57,7 +57,7 @@ class ArgParser_i:
     def parse(self, args:list[str], doot_arg_specs:list[DootParamSpec], cmds:TomlGuard, tasks:TomlGuard) -> TomlGuard:
         raise NotImplementedError()
 
-@dv.dbg.check_protocol
+@jgdv.dbg.check_protocol
 class DejaVuCLIParser(ArgParser_i):
     """
     convert argv to tomlguard by:
