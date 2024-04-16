@@ -15,7 +15,7 @@ classifiers     = [
 
 dependencies   = [
                "tomlguard",
-               "mastodonpy",
+               "mastodon.py>=1.8",
                "selenium",
                "numpy",
                "scrapy",
