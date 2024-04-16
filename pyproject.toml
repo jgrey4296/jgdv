@@ -22,7 +22,7 @@ dependencies   = [
                "pyparsing",
                "construct",
                "networkx",
-               "gi"
+               "pygobject",
 ]
 
 [project.optional-dependencies]
