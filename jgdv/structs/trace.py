@@ -52,8 +52,6 @@ class JGDVTraceRecord:
         match self.message:
             case str():
                 return self.message.format(*self.args)
-            case DootTaskSpec():
-                return str(self.message.name)
             case _:
                 return str(self.message)
 

@@ -46,7 +46,7 @@ class JGDVPathSimpleKey(JGDVSimpleKey):
         return str(self.to_path(spec, state, chain=chain, on_fail=on_fail, locs=locs))
 
     def __repr__(self):
-        return "<DootPathSimpleKey: {}>".format(str(self))
+        return "<JGDVPathSimpleKey: {}>".format(str(self))
 
     def __call__(self, spec, state):
         """ Expand the key using the registered expansion hint """
@@ -72,7 +72,7 @@ class JGDVPathMultiKey(JGDVMultiKey):
         return str(self.to_path(spec, state, chain=chain, on_fail=on_fail, locs=locs))
 
     def __repr__(self):
-        return "<DootPathMultiKey: {}>".format(str(self))
+        return "<JGDVPathMultiKey: {}>".format(str(self))
 
     def __call__(self, spec, state):
         """ Expand the key using the registered expansion hint """

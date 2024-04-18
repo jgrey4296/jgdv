@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python4
 """
 
 See EOF for license/metadata/notes as applicable
@@ -155,7 +155,7 @@ class JGDVCodeReference(StructuredName):
                             mixins.append(mix.try_import())
                         case type():
                             mixins.append(mix)
-                curr = type(f"DootGenerated:{curr.__name__}", tuple(mixins + [curr]), {})
+                curr = type(f"JGDVGenerated:{curr.__name__}", tuple(mixins + [curr]), {})
 
             if ensure is not Any and not (isinstance(curr, ensure) or issubclass(curr, ensure)):
                 raise ImportError("Imported Code Reference is not of correct type", self, ensure)

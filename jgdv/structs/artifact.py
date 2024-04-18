@@ -39,6 +39,7 @@ logging = logmod.getLogger(__name__)
 import importlib
 from tomlguard import TomlGuard
 from jgdv.location.toml_loc import TomlLocation
+from jgdv.keys import JGDVKey
 
 PAD           : Final[int]   = 15
 ARTIFACT      : Final[str]   = "!!Artifact!!"
@@ -52,7 +53,7 @@ class JGDVArtifact:
     Artifacts can be Definite (concrete path) or indefinite (glob path)
     """
     base     : TomlLocation = field()
-    key      : DootKey      = field()
+    key      : JGDVKey      = field()
 
     @staticmethod
     def build(data:str|dict|pl.Path) -> JGDVArtifact:
@@ -60,23 +61,23 @@ class JGDVArtifact:
             case str() if data.startswith(doot.constants.patterns.FILE_DEP_PREFIX):
                 base = TomlLocation.build(ARTIFACT, data.removeprefix(doot.constants.patterns.FILE_DEP_PREFIX))
                 base.meta |= LocationMeta.file
-                key = DootKey.build(base.base)
+                key = JGDVKey.build(base.base)
                 return JGDVArtifact(base, key)
             case str():
                 base = TomlLocation.build(ARTIFACT, data)
-                key  = DootKey.build(base.base)
+                key  = JGDVKey.build(base.base)
                 return JGDVArtifact(base, key)
             case dict():
                 base = TomlLocation.build(ARTIFACT, data)
                 if "*" in str(base.base):
                     base.meta |= LocationMeta.indefinite
-                key = DootKey.build(base.base)
+                key = JGDVKey.build(base.base)
                 return JGDVArtifact(base, key)
             case pl.Path():
                 base = TomlLocation.build(ARTIFACT, data)
                 if "*" in str(base.base):
                     base.meta |= LocationMeta.indefinite
-                key = DootKey.build(base.base)
+                key = JGDVKey.build(base.base)
                 return JGDVArtifact(base, key)
             case _:
                 raise TypeError("Unknown Type to build Artifact from: %s", data)

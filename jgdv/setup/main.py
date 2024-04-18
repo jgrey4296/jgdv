@@ -29,13 +29,14 @@ import sh
 import stackprinter
 import tomlguard as TG
 from bdb import BdbQuit
+from jgdv.logging.log_config import JGDVLogConfig
 
 def main():
     result  = 1
     errored = False
     overlord = None
     try:
-        log_config = DootLogConfig()
+        log_config = JGDVLogConfig()
         # --- Setup
         if not bool(doot.config):
             doot.setup()
@@ -102,9 +103,9 @@ def main():
                     case False, str() as say_text:
                         cmd = sh.say("-v", announce_voice, "-r", "50", say_text)
                     case False, True:
-                        cmd = sh.say("-v", announce_voice, "-r", "50", "Doot Has Finished")
+                        cmd = sh.say("-v", announce_voice, "-r", "50", "JGDV Has Finished")
                     case True, True|str():
-                        cmd = sh.say("-v", announce_voice, "-r", "50", "Doot Encountered a problem")
+                        cmd = sh.say("-v", announce_voice, "-r", "50", "JGDV Encountered a problem")
                     case _:
                         cmd = None
                 if cmd is not None:

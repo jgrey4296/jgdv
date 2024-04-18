@@ -29,29 +29,32 @@ from uuid import UUID, uuid1
 ##-- end builtin imports
 
 ##-- lib imports
-import more_itertools as mitz
+# import more_itertools as mitz
+# from boltons import
 ##-- end lib imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-printer = logmod.getLogger("doot._printer")
 
-SPIDER  = DootKey.make("spider")
-CRAWLER = DootKey.make("crawler")
-
-class RunSpider(Action_p, Importer_M):
+class ChainedKeyGetter:
     """
-      add a spider to the scrapy crawler that is in state
+      The core logic to turn a key into a value.
+      Doesn't perform repeated expansions.
+
+      tries sources in order.
     """
 
-    @DootKey.kwrap.expands("spider")
-    @DootKey.kwrap.types("crawler")
-    def __call__(self, spec, state, spider, crawler):
-        spider_ref   = DootCodeReference.from_str(spider)
-        spider_class = spider_ref.try_import()
-        deferred     = crawler.crawl(spider_class)
+    @staticmethod
+    def chained_get(key:str, *sources:dict|JGDVLocations) -> Any:
+        # cli   : dict          = doot.args.on_fail({}).tasks[str(state.get(STATE_TASK_NAME_K, None))]()
+        # replacement           = cli.get(key, None)
+        # *Not* elif's, want it to chain.
+        for source in sources:
+            if source is None:
+                continue
+            replacement = source.get(key, None)
+            if replacement is not None:
+                return replacement
 
-        deferred.addCallback(lambda _: printer.warning("Crawl Complete"))
-        printer.info("Crawler Started: %s", deferred)
-        return deferred
+        return None

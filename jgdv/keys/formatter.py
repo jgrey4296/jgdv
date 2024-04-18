@@ -38,6 +38,9 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from jgdv.keys import JGDVKey
+from jgdv.utils.chain_get import ChainedKeyGetter
+
 class JGDVFormatter(string.Formatter):
     """
       A Formatter for expanding arguments based on action spec kwargs, and task state, and cli args
@@ -51,13 +54,13 @@ class JGDVFormatter(string.Formatter):
     REC    : Final[str] = "_rec"
 
     @staticmethod
-    def fmt(fmt:str|DootKey|pl.Path, /, *args, **kwargs) -> str:
-        if not DootFormatter._fmt:
-            DootFormatter._fmt = DootFormatter()
+    def fmt(fmt:str|JGDVKey|pl.Path, /, *args, **kwargs) -> str:
+        if not JGDVFormatter._fmt:
+            JGDVFormatter._fmt = JGDVFormatter()
 
-        return DootFormatter._fmt.format(fmt, *args, **kwargs)
+        return JGDVFormatter._fmt.format(fmt, *args, **kwargs)
 
-    def format(self, fmt:str|DootKey|pl.Path, /, *args, **kwargs) -> str:
+    def format(self, fmt:str|JGDVKey|pl.Path, /, *args, **kwargs) -> str:
         """ expand and coerce keys """
         self._depth = 0
         match kwargs.get(self.SPEC, None):
@@ -69,7 +72,7 @@ class JGDVFormatter(string.Formatter):
                 raise TypeError("Bad Spec Type in Format Call", x)
 
         match fmt:
-            case DootKey():
+            case JGDVKey():
                 fmt = fmt.form
                 result = self.vformat(fmt, args, kwargs)
             case str():
@@ -90,16 +93,16 @@ class JGDVFormatter(string.Formatter):
         insist                = kwargs.get(self.INSIST, False)
         spec  : dict          = kwargs.get(self.SPEC, None) or {}
         state : dict          = kwargs.get(self.STATE, None) or {}
-        locs  : DootLocations = kwargs.get(self.LOCS,  None)
+        locs  : JGDVLocations = kwargs.get(self.LOCS,  None)
         depth_check           = self._depth < MAX_KEY_EXPANSIONS
         rec_allowed           = kwargs.get(self.REC, False) and depth_check
 
-        match (replacement:=DootKeyGetter.chained_get(key, spec, state, locs)):
+        match (replacement:=ChainedKeyGetter.chained_get(key, spec, state, locs)):
             case None if insist:
                 raise KeyError("Key Expansion Not Found")
             case None:
-                return DootKey.build(key).form
-            case DootKey() if depth_check:
+                return JGDVKey.build(key).form
+            case JGDVKey() if depth_check:
                 self._depth += 1
                 return self.vformat(replacement.form, args, kwargs)
             case str() if rec_allowed:

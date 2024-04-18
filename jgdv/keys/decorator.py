@@ -41,7 +41,7 @@ from jgdv.decorators.base import JGDVBaseDecorator
 
 class KWrapper(JGDVBaseDecorator):
     """ Decorators for actions
-    Kwrapper is accessible as DootKey.kwrap
+    Kwrapper is accessible as JGDVKey.kwrap
 
     It registers arguments on an action and extracts them from the spec and state automatically.
 
@@ -52,8 +52,8 @@ class KWrapper(JGDVBaseDecorator):
     arguments are added to the tail of the action args, in order of the decorators.
     the name of the expansion is expected to be the name of the action parameter,
     with a "_" prepended if the name would conflict with a keyword., or with "_ex" as a suffix
-    eg: @DootKey.kwrap.paths("from") -> def __call__(self, spec, state, _from):...
-    or: @DootKey.kwrap.paths("from") -> def __call__(self, spec, state, from_ex):...
+    eg: @JGDVKey.kwrap.paths("from") -> def __call__(self, spec, state, _from):...
+    or: @JGDVKey.kwrap.paths("from") -> def __call__(self, spec, state, from_ex):...
     """
 
     @staticmethod
@@ -107,11 +107,11 @@ class KWrapper(JGDVBaseDecorator):
         # The rest should match keys
         for actual, expected in zip(code_args[:1+offset:-1], keys[::-1]):
             match expected:
-                case DootMultiKey():
+                case JGDVMultiKey():
                     pass
-                case DootSimpleKey() | str() if actual.startswith("_"):
+                case JGDVSimpleKey() | str() if actual.startswith("_"):
                     pass
-                case DootSimpleKey() | str():
+                case JGDVSimpleKey() | str():
                     result &= ((actual == expected) or (actual == f"{expected}_ex"))
 
         return result
@@ -119,10 +119,10 @@ class KWrapper(JGDVBaseDecorator):
     @staticmethod
     def _add_key_handler(f):
         """ idempotent key handler so decorated functions dont add unnecessary stack frames """
-        if DootDecorator.has_annotations(f):
+        if JGDVDecorator.has_annotations(f):
             return f
 
-        DootDecorator.truncate_signature(f)
+        JGDVDecorator.truncate_signature(f)
 
         match getattr(f, ORIG_ARGS)[0]:
             case "self": # The method form handler
@@ -148,19 +148,19 @@ class KWrapper(JGDVBaseDecorator):
                     all_args = (*call_args, *expansions)
                     return f(spec, state, *all_args, **kwargs)
 
-        DootDecorator.annotate(action_expands, {KEYS_HANDLED})
+        JGDVDecorator.annotate(action_expands, {KEYS_HANDLED})
         return action_expands
 
     @staticmethod
     def taskname(f):
-        KWrapper._annotate_keys(f, [DootKey.build(STATE_TASK_NAME_K, exp_hint="type")])
+        KWrapper._annotate_keys(f, [JGDVKey.build(STATE_TASK_NAME_K, exp_hint="type")])
         return KWrapper._add_key_handler(f)
 
     @staticmethod
     def expands(*args, hint:dict|None=None, **kwargs):
         """ mark an action as using expanded string keys """
         exp_hint = {"expansion": "str", "kwargs" : hint or {} }
-        keys = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
+        keys = [JGDVKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
 
         def expand_wrapper(f):
             KWrapper._annotate_keys(f, keys)
@@ -172,7 +172,7 @@ class KWrapper(JGDVBaseDecorator):
     def paths(*args, hint:dict|None=None, **kwargs):
         """ mark an action as using expanded path keys """
         exp_hint = {"expansion": "path", "kwargs" : hint or {} }
-        keys = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
+        keys = [JGDVKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
 
         def expand_wrapper(f):
             KWrapper._annotate_keys(f, keys)
@@ -184,7 +184,7 @@ class KWrapper(JGDVBaseDecorator):
     def types(*args, hint:dict|None=None, **kwargs):
         """ mark an action as using raw type keys """
         exp_hint = {"expansion": "type", "kwargs" : hint or {} }
-        keys = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
+        keys = [JGDVKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
 
         def expand_wrapper(f):
             KWrapper._annotate_keys(f, keys)
@@ -196,19 +196,19 @@ class KWrapper(JGDVBaseDecorator):
     def args(f):
         """ mark an action as using spec.args """
         # TODO handle expansion hint for the args
-        KWrapper._annotate_keys(f, [DootArgsKey("args")])
+        KWrapper._annotate_keys(f, [JGDVArgsKey("args")])
         return KWrapper._add_key_handler(f)
 
     @staticmethod
     def kwargs(f):
         """ mark an action as using spec.args """
-        KWrapper._annotate_keys(f, [DootKwargsKey("kwargs")])
+        KWrapper._annotate_keys(f, [JGDVKwargsKey("kwargs")])
         return KWrapper._add_key_handler(f)
 
     @staticmethod
     def redirects(*args):
         """ mark an action as using redirection keys """
-        keys = [DootKey.build(x, exp_hint="redirect") for x in args]
+        keys = [JGDVKey.build(x, exp_hint="redirect") for x in args]
 
         def expand_wrapper(f):
             KWrapper._annotate_keys(f, keys)
@@ -219,7 +219,7 @@ class KWrapper(JGDVBaseDecorator):
     @staticmethod
     def redirects_many(*args, **kwargs):
         """ mark an action as using redirection key lists """
-        keys = [DootKey.build(x, exp_hint="redirect_multi") for x in args]
+        keys = [JGDVKey.build(x, exp_hint="redirect_multi") for x in args]
 
         def expand_wrapper(f):
             KWrapper._annotate_keys(f, keys)
@@ -230,7 +230,7 @@ class KWrapper(JGDVBaseDecorator):
     @staticmethod
     def requires(*args, **kwargs):
         """ mark an action as requiring certain keys to be passed in """
-        keys = [DootKey.build(x, **kwargs) for x in args]
+        keys = [JGDVKey.build(x, **kwargs) for x in args]
 
         def expand_wrapper(f):
             KWrapper._annotate_non_expansions(f, keys)
@@ -241,7 +241,7 @@ class KWrapper(JGDVBaseDecorator):
     @staticmethod
     def returns(*args, **kwargs):
         """ mark an action as needing to return certain keys """
-        keys = [DootKey.build(x, **kwargs) for x in args]
+        keys = [JGDVKey.build(x, **kwargs) for x in args]
 
         def expand_wrapper(f):
             KWrapper._annotate_non_expansions(f, keys)
@@ -253,7 +253,7 @@ class KWrapper(JGDVBaseDecorator):
     def references(*args, **kwargs):
         """ mark keys to use as to_coderef imports """
         exp_hint = {"expansion": "coderef", "kwargs" : {} }
-        keys = [DootKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
+        keys = [JGDVKey.build(x, exp_hint=exp_hint, **kwargs) for x in args]
 
         def expand_wrapper(f):
             KWrapper._annotate_keys(f, keys)

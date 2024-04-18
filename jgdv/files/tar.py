@@ -43,19 +43,20 @@ import sh
 import shutil
 import tomlguard as TG
 import jgdv
+from jgdv.keys import JGDVKey
 
 ##-- expansion keys
-TO_KEY             : Final[DootKey] = DootKey.make("to")
-FROM_KEY           : Final[DootKey] = DootKey.make("from")
-UPDATE             : Final[DootKey] = DootKey.make("update_")
-PROMPT             : Final[DootKey] = DootKey.make("prompt")
-PATTERN            : Final[DootKey] = DootKey.make("pattern")
-SEP                : Final[DootKey] = DootKey.make("sep")
-TYPE_KEY           : Final[DootKey] = DootKey.make("type")
-AS_BYTES           : Final[DootKey] = DootKey.make("as_bytes")
-FILE_TARGET        : Final[DootKey] = DootKey.make("file")
-RECURSIVE          : Final[DootKey] = DootKey.make("recursive")
-LAX                : Final[DootKey] = DootKey.make("lax")
+TO_KEY             : Final[JGDVKey] = JGDVKey.make("to")
+FROM_KEY           : Final[JGDVKey] = JGDVKey.make("from")
+UPDATE             : Final[JGDVKey] = JGDVKey.make("update_")
+PROMPT             : Final[JGDVKey] = JGDVKey.make("prompt")
+PATTERN            : Final[JGDVKey] = JGDVKey.make("pattern")
+SEP                : Final[JGDVKey] = JGDVKey.make("sep")
+TYPE_KEY           : Final[JGDVKey] = JGDVKey.make("type")
+AS_BYTES           : Final[JGDVKey] = JGDVKey.make("as_bytes")
+FILE_TARGET        : Final[JGDVKey] = JGDVKey.make("file")
+RECURSIVE          : Final[JGDVKey] = JGDVKey.make("recursive")
+LAX                : Final[JGDVKey] = JGDVKey.make("lax")
 ##-- end expansion keys
 
 COMP_TAR_CMD  = sh.tar.bake("-cf", "-")
@@ -66,8 +67,8 @@ DECOMP_CMD    = sh.tar.bake("-xf")
 class TarCompressAction(Action_p):
     """ Compresses a target into a .tar.gz file """
 
-    @DootKey.kwrap.paths("file")
-    @DootKey.kwrap.paths("to", hint={"on_fail":None})
+    @JGDVKey.kwrap.paths("file")
+    @JGDVKey.kwrap.paths("to", hint={"on_fail":None})
     def __call__(self, spec, state, file, to):
         target = file
         output = to or target.with_suffix(target.suffix + ".tar.gz")
@@ -83,7 +84,7 @@ class TarCompressAction(Action_p):
 class TarDecompressAction(Action_p):
     """ Decompresses a .tar.gz file """
 
-    @DootKey.kwrap.paths("file", "to")
+    @JGDVKey.kwrap.paths("file", "to")
     def __call__(self, spec, state, file, to):
         target = file
         output = to
@@ -98,8 +99,8 @@ class TarDecompressAction(Action_p):
 class TarListAction(Action_p):
     """ List the contents of a tar archive """
 
-    @DootKey.kwrap.paths("from")
-    @DootKey.kwrap.redirects("update_")
+    @JGDVKey.kwrap.paths("from")
+    @JGDVKey.kwrap.redirects("update_")
     def __call__(self, spec, state, _from, _update):
         target = _from
         if "".join(target.suffixes) != ".tar.gz":

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Doot : An Opinionated refactor of the Doit Task Runner.
+JGDV : An Opinionated refactor of the Doit Task Runner.
 
 """
 ##-- std imports
@@ -18,7 +18,7 @@ import tomlguard as TG
 ##-- end imports
 
 ##-- data
-data_path      = files("doot.__data")
+data_path      = files("jgdv.__data")
 constants_file = data_path.joinpath("constants.toml")
 aliases_file   = data_path.joinpath("aliases.toml")
 ##-- end data
@@ -31,38 +31,38 @@ printer         = logmod.getLogger("doot._printer")
 # Global, single points of truth:
 __version__          : Final[str]         = "0.6.0"
 
-CONSTANT_PREFIX      : Final[str]         = "doot.constants"
-ALIAS_PREFIX         : Final[str]         = "doot.aliases"
-TOOL_PREFIX          : Final[str]         = "tool.doot"
+CONSTANT_PREFIX      : Final[str]         = "jgdv.constants"
+ALIAS_PREFIX         : Final[str]         = "jgdv.aliases"
+TOOL_PREFIX          : Final[str]         = "tool.jgdv"
 
-config               : TG.TomlGuard       = TG.TomlGuard() # doot config
+config               : TG.TomlGuard       = TG.TomlGuard() # jgdv config
 constants            : TG.TomlGuard       = TG.TomlGuard.load(constants_file).remove_prefix(CONSTANT_PREFIX)
 aliases              : TG.TomlGuard       = TG.TomlGuard()
-locs                 : DootLocData        = None # DootLocations(pl.Path()) # registered locations
+locs                 : JGDVLocations      = None # JGDVLocations(pl.Path()) # registered locations
 args                 : TG.TomlGuard       = TG.TomlGuard() # parsed arg access
 report               : Reporter_i         = None
 
 _configs_loaded_from : list[pl.Path]      = []
 
-def setup(targets:list[pl.Path]|None=None, prefix:str|None=TOOL_PREFIX) -> tuple[TG.TomlGuard, DootLocData]:
+def setup(targets:list[pl.Path]|None=None, prefix:str|None=TOOL_PREFIX) -> tuple[TG.TomlGuard, JGDVLocations]:
     """
-      The core requirement to call before any other doot code is run.
+      The core requirement to call before any other jgdv code is run.
       loads the config files, so everything else can retrieve values when imported.
 
       `prefix` removes a prefix from the loaded data.
-      eg: 'tool.doot' for if putting doot settings in a pyproject.toml
+      eg: 'tool.jgdv' for if putting jgdv settings in a pyproject.toml
     """
     global config, _configs_loaded_from
     targets : list[pl.Path] = [pl.Path(x) for x in targets or constants.paths.DEFAULT_LOAD_TARGETS]
-    logging.debug("Loading Doot Config, version: %s targets: %s", __version__, targets)
+    logging.debug("Loading JGDV Config, version: %s targets: %s", __version__, targets)
     if bool(config):
-        printer.warning("doot.setup called even though doot is already set up")
+        printer.warning("jgdv.setup called even though jgdv is already set up")
 
     if bool(targets) and not all([isinstance(x, pl.Path) for x in targets]):
-        raise TypeError("Doot Config Targets should be pathlib.Path's", targets)
+        raise TypeError("JGDV Config Targets should be pathlib.Path's", targets)
 
     if not any([x.exists() for x in targets]):
-        raise doot.errors.DootMissingConfigError("No Doot data found")
+        raise jgdv.errors.DootMissingConfigError("No JGDV data found")
 
     existing_targets       = [x for x in targets if x.exists()]
 
@@ -70,7 +70,7 @@ def setup(targets:list[pl.Path]|None=None, prefix:str|None=TOOL_PREFIX) -> tuple
         config = TG.load(*existing_targets)
     except OSError:
         logging.error("Failed to Load Config Files: %s", existing_targets)
-        raise doot.errors.DootError()
+        raise jgdv.errors.DootError()
 
     config = config.remove_prefix(prefix)
     _load_locations()
@@ -106,7 +106,7 @@ def _load_aliases():
     aliases = TG.TomlGuard(flat)
 
 def _load_locations():
-    """ Load and update the DootLocations db """
+    """ Load and update the JGDVLocations db """
     global locs
     from jgdv.locations.locations import JGDVLocations
     locs   = JGDVLocations(pl.Path.cwd())

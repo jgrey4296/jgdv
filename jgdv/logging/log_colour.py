@@ -85,7 +85,7 @@ class JGDVColourFormatter(logging.Formatter):
     Usage reminder:
     # Create stdout handler for logging to the console (logs all five levels)
     stdout_handler = logging.StreamHandler()
-    stdout_handler.setFormatter(DootLogFormatter(fmt))
+    stdout_handler.setFormatter(JGDVLogFormatter(fmt))
     logger.addHandler(stdout_handler)
     """
 
@@ -95,7 +95,7 @@ class JGDVColourFormatter(logging.Formatter):
 
     def __init__(self, *, fmt=None):
         """
-        Create the DootLogFormatter with a given *Brace* style log format
+        Create the JGDVLogFormatter with a given *Brace* style log format
         """
         super().__init__(fmt or self._default_fmt,
                          datefmt=self._default_date_fmt,
@@ -123,8 +123,8 @@ class JGDVColourStripFormatter(logging.Formatter):
 
     def __init__(self, *, fmt=None):
         """
-        Create the DootLogFormatter with a given *Brace* style log format
-        `record` will install the DootLogRecord as the record factory if true
+        Create the JGDVLogFormatter with a given *Brace* style log format
+        `record` will install the JGDVLogRecord as the record factory if true
         """
         super().__init__(fmt or self._default_fmt,
                          datefmt=self._default_date_fmt,

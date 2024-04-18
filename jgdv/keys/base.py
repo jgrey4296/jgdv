@@ -42,6 +42,8 @@ import abc
 import string
 from tomlguard import TomlGuard
 
+from jgdv.utils.chain_get import ChainedKeyGetter
+
 KEY_PATTERN                                = doot.constants.patterns.KEY_PATTERN
 MAX_KEY_EXPANSIONS                         = doot.constants.patterns.MAX_KEY_EXPANSIONS
 STATE_TASK_NAME_K                          = doot.constants.patterns.STATE_TASK_NAME_K
@@ -60,11 +62,11 @@ class JGDVBaseKey(abc.ABC):
       Use JGDVBaseKey.build for constructing keys
       build takes an 'exp_hint' kwarg dict, which can specialize the expansion
 
-      DootSimpleKeys are strings, wrapped in {} when used in toml.
-      so JGDVBaseKey.build("blah") -> DootSimpleKey("blah") -> DootSimpleKey('blah').form =="{blah}" -> [toml] aValue = "{blah}"
+      JGDVSimpleKeys are strings, wrapped in {} when used in toml.
+      so JGDVBaseKey.build("blah") -> JGDVSimpleKey("blah") -> JGDVSimpleKey('blah').form =="{blah}" -> [toml] aValue = "{blah}"
 
-      DootMultiKeys are containers of a string `value`, and a list of SimpleKeys the value contains.
-      So JGDVBaseKey.build("{blah}/{bloo}") -> DootMultiKey("{blah}/{bloo}", [DootSimpleKey("blah", DootSimpleKey("bloo")]) -> .form == "{blah}/{bloo}"
+      JGDVMultiKeys are containers of a string `value`, and a list of SimpleKeys the value contains.
+      So JGDVBaseKey.build("{blah}/{bloo}") -> JGDVMultiKey("{blah}/{bloo}", [JGDVSimpleKey("blah", JGDVSimpleKey("bloo")]) -> .form == "{blah}/{bloo}"
     """
     dec   = KWrapper
     kwrap = KWrapper
@@ -88,29 +90,29 @@ class JGDVBaseKey(abc.ABC):
         result = s
         match s:
             case { "path": x }:
-                result = DootPathMultiKey(x)
+                result = JGDVPathMultiKey(x)
                 exp_hint = "path"
             case pl.Path():
-                result = DootPathMultiKey(s)
+                result = JGDVPathMultiKey(s)
                 exp_hint = "path"
-            case DootSimpleKey() if strict:
+            case JGDVSimpleKey() if strict:
                 result = s
             case JGDVBaseKey():
                 result = s
             case str() if not (s_keys := PATTERN.findall(s)) and not explicit and not is_path:
-                result = DootSimpleKey(s)
+                result = JGDVSimpleKey(s)
             case str() if is_path and not bool(s_keys):
-                result = DootPathSimpleKey(s)
+                result = JGDVPathSimpleKey(s)
             case str() if is_path and len(s_keys) == 1 and s_keys[0] == s[1:-1]:
-                result = DootPathSimpleKey(s[1:-1])
+                result = JGDVPathSimpleKey(s[1:-1])
             case str() if is_path and len(s_keys) > 1:
-                result = DootPathMultiKey(s)
+                result = JGDVPathMultiKey(s)
             case str() if not s_keys and explicit:
-                result = DootNonKey(s)
+                result = JGDVNonKey(s)
             case str() if len(s_keys) == 1 and s_keys[0] == s[1:-1]:
-                result = DootSimpleKey(s[1:-1])
+                result = JGDVSimpleKey(s[1:-1])
             case str() if not strict:
-                result = DootMultiKey(s)
+                result = JGDVMultiKey(s)
             case _:
                 raise TypeError("Bad Type to build a Doot Key Out of", s)
 
@@ -166,13 +168,13 @@ class JGDVBaseKey(abc.ABC):
     def redirect(self, spec=None) -> JGDVBaseKey:
         return self
 
-    def to_path(self, spec=None, state=None, chain:list[JGDVBaseKey]=None, locs:DootLocations=None, on_fail:None|str|pl.Path|JGDVBaseKey=Any, symlinks=False) -> pl.Path:
+    def to_path(self, spec=None, state=None, chain:list[JGDVBaseKey]=None, locs:JGDVLocations=None, on_fail:None|str|pl.Path|JGDVBaseKey=Any, symlinks=False) -> pl.Path:
         """
           Convert a key to an absolute path, using registered locations
 
           The Process is:
           1) redirect the given key if necessary
-          2) Expand each part of the keypath, using DootFormatter
+          2) Expand each part of the keypath, using JGDVFormatter
           3) normalize it
 
           If necessary, a fallback chain, and on_fail value can be provided
@@ -181,7 +183,7 @@ class JGDVBaseKey(abc.ABC):
         key : pl.Path        = pl.Path(self.redirect(spec).form)
 
         try:
-            expanded         : list       = [DootFormatter.fmt(x, _spec=spec, _state=state, _rec=True, _locs=locs) for x in key.parts]
+            expanded         : list       = [JGDVFormatter.fmt(x, _spec=spec, _state=state, _rec=True, _locs=locs) for x in key.parts]
             expanded_as_path : pl.Path    = pl.Path().joinpath(*expanded) # allows ("a", "b/c") -> "a/b/c"
 
             if bool(matches:=PATTERN.findall(str(expanded_as_path))):
@@ -208,17 +210,17 @@ class JGDVBaseKey(abc.ABC):
     def basic(self, spec:SpecStruct_p, state, locs=None):
         """ the most basic expansion of a key """
         kwargs = spec.params
-        return DootKeyGetter.chained_get(str(self), kwargs, state, locs or doot.locs)
+        return ChainedKeyGetter.chained_get(str(self), kwargs, state, locs or doot.locs)
 
     @abc.abstractmethod
     def to_type(self, spec, state, type_=Any, chain:list[JGDVBaseKey]=None, on_fail=Any, **kwargs) -> Any:
         raise NotImplementedError()
 
     @abc.abstractmethod
-    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[JGDVBaseKey]=None, on_fail=Any, locs:DootLocations=None, **kwargs) -> str:
+    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[JGDVBaseKey]=None, on_fail=Any, locs:JGDVLocations=None, **kwargs) -> str:
         pass
 
-    def to_coderef(self, spec:None|SpecStruct_p, state) -> None|DootCodeReference:
+    def to_coderef(self, spec:None|SpecStruct_p, state) -> None|JGDVCodeReference:
         match spec:
             case SpecStruct_p():
                 kwargs = spec.params
@@ -231,7 +233,7 @@ class JGDVBaseKey(abc.ABC):
             return None
         try:
             expanded = self.expand(spec, state)
-            ref = DootCodeReference.build(expanded)
+            ref = JGDVCodeReference.build(expanded)
             return ref
         except doot.errors.DootError:
             return None

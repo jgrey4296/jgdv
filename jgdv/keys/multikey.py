@@ -43,13 +43,13 @@ class JGDVMultiKey(JGDVBaseKey):
 
     def __init__(self, val:str|pl.Path):
         self.value : str|pl.Path        = val
-        self._keys : set[DootSimpleKey] = set(DootSimpleKey(x) for x in PATTERN.findall(str(val)))
+        self._keys : set[JGDVSimpleKey] = set(JGDVSimpleKey(x) for x in PATTERN.findall(str(val)))
 
     def __str__(self):
         return str(self.value)
 
     def __repr__(self):
-        return "<DootMultiKey: {}>".format(str(self))
+        return "<JGDVMultiKey: {}>".format(str(self))
 
     def __hash__(self):
         return hash(str(self))
@@ -61,7 +61,7 @@ class JGDVMultiKey(JGDVBaseKey):
             case _:
                 return False
 
-    def keys(self) -> set(DootSimpleKey):
+    def keys(self) -> set(JGDVSimpleKey):
         return self._keys
 
     @property

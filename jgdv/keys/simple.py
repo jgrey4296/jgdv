@@ -37,13 +37,15 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from jgdv.utils.chain_get import ChainedKeyGetter
+
 class JGDVNonKey(str, JGDVBaseKey):
     """
       Just a string, not a key. But this lets you call no-ops for key specific methods
     """
 
     def __repr__(self):
-        return "<DootNonKey: {}>".format(str(self))
+        return "<JGDVNonKey: {}>".format(str(self))
 
     def __hash__(self):
         return super().__hash__()
@@ -67,7 +69,7 @@ class JGDVNonKey(str, JGDVBaseKey):
     @property
     def indirect(self) -> JGDVBaseKey:
         if not self.is_indirect:
-            return DootSimpleKey("{}_".format(super().__str__()))
+            return JGDVSimpleKey("{}_".format(super().__str__()))
         return self
 
     @property
@@ -97,7 +99,7 @@ class JGDVSimpleKey(str, JGDVBaseKey):
     """
 
     def __repr__(self):
-        return "<DootSimpleKey: {}>".format(str(self))
+        return "<JGDVSimpleKey: {}>".format(str(self))
 
     def __hash__(self):
         return super().__hash__()
@@ -112,7 +114,7 @@ class JGDVSimpleKey(str, JGDVBaseKey):
     @property
     def indirect(self):
         if not self.is_indirect:
-            return DootSimpleKey("{}_".format(super().__str__()))
+            return JGDVSimpleKey("{}_".format(super().__str__()))
         return self
 
     @property
@@ -136,7 +138,7 @@ class JGDVSimpleKey(str, JGDVBaseKey):
     def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[JGDVBaseKey]=None, on_fail=Any, locs:DootLocations=None, **kwargs) -> str:
         key = self.redirect(spec)
         try:
-            return DootFormatter.fmt(key, _spec=spec, _state=state, _rec=rec, _locs=locs, _insist=insist)
+            return JGDVFormatter.fmt(key, _spec=spec, _state=state, _rec=rec, _locs=locs, _insist=insist)
         except (KeyError, TypeError) as err:
             if bool(chain):
                 return chain[0].expand(spec, state, rec=rec, chain=chain[1:], on_fail=on_fail)
@@ -199,7 +201,7 @@ class JGDVSimpleKey(str, JGDVBaseKey):
                 kwargs = {}
 
         task_name = state.get(STATE_TASK_NAME_K, None) if state else None
-        match (replacement:=DootKeyGetter.chained_get(target, kwargs, state)):
+        match (replacement:=ChainedKeyGetter.chained_get(target, kwargs, state)):
             case None if bool(chain):
                 return chain[0].to_type(spec, state, type_=type_, chain=chain[1:], on_fail=on_fail)
             case None if on_fail != Any and isinstance(on_fail, JGDVBaseKey):
@@ -224,7 +226,7 @@ class JGDVArgsKey(str, JGDVBaseKey):
         return self.to_type(spec, state)
 
     def __repr__(self):
-        return "<DootArgsKey>"
+        return "<JGDVArgsKey>"
 
     def expand(self, *args, **kwargs):
         raise doot.errors.DootKeyError("Args Key doesn't expand")
@@ -239,7 +241,7 @@ class JGDVKwargsKey(JGDVArgsKey):
     """ A Key representing all of an action spec's kwargs """
 
     def __repr__(self):
-        return "<DootArgsKey>"
+        return "<JGDVArgsKey>"
 
     def to_type(self, spec:None|SpecStruct_p=None, state=None, *args, **kwargs) -> dict:
         match spec:
@@ -250,6 +252,6 @@ class JGDVKwargsKey(JGDVArgsKey):
 
 class JGDVImportKey(JGDVSimpleKey):
     """ a key to specify a key is used for importing
-    ie: str expands -> DootCodeReference.build -> .try_import
+    ie: str expands -> JGDVCodeReference.build -> .try_import
     """
     pass

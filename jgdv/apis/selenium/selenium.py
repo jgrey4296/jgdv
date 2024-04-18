@@ -41,6 +41,7 @@ import base64
 
 from selenium.webdriver import FirefoxOptions, FirefoxService, Firefox
 from selenium.webdriver.common.print_page_options import PrintOptions
+from jgdv.keys import JGDVKey
 
 FF_DRIVER     = "__$ff_driver"
 READER_PREFIX = "about:reader?url="
@@ -62,9 +63,9 @@ def setup_firefox(spec, state):
     driver = Firefox(options=options, service=service)
     return { FF_DRIVER : driver }
 
-@DootKey.kwrap.expands("url")
-@DootKey.kwrap.paths("to")
-@DootKey.kwrap.types(FF_DRIVER)
+@JGDVKey.kwrap.expands("url")
+@JGDVKey.kwrap.paths("to")
+@JGDVKey.kwrap.types(FF_DRIVER)
 def save_pdf(spec, state, url, _to, _driver):
     """ prints a url to a pdf file using selenium """
     printer.info("Saving: %s", url)
@@ -79,7 +80,7 @@ def save_pdf(spec, state, url, _to, _driver):
     with open(_to, "wb") as f:
         f.write(pdf_bytes)
 
-@DootKey.kwrap.types(FF_DRIVER)
+@JGDVKey.kwrap.types(FF_DRIVER)
 def close_firefox(spec, state, _driver):
     printer.info("Closing Firefox")
     _driver.quit()

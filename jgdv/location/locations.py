@@ -33,9 +33,10 @@ import tomlguard
 from jgdv.errors import DirAbsent, LocationExpansionError, LocationError
 from jgdv.mixins.path_manip import PathManip_m
 from jgdv.enums.location_meta import LocationMeta
+from jgdv.keys import JGDVKey
 
-KEY_PAT        = doot.constants.patterns.KEY_PATTERN
-MAX_EXPANSIONS = doot.constants.patterns.MAX_KEY_EXPANSIONS
+KEY_PAT        = jgdv.constants.patterns.KEY_PATTERN
+MAX_EXPANSIONS = jgdv.constants.patterns.MAX_KEY_EXPANSIONS
 
 class JGDVLocations(PathManip_m):
     """
@@ -58,11 +59,11 @@ class JGDVLocations(PathManip_m):
     def __init__(self, root:Pl.Path):
         self._root    : pl.Path()               = root.expanduser().absolute()
         self._data    : dict[str, TomlLocation] = dict()
-        self._loc_ctx : None|DootLocations      = None
+        self._loc_ctx : None|JGDVLocations      = None
 
     def __repr__(self):
         keys = ", ".join(iter(self))
-        return f"<DootLocations : {str(self.root)} : ({keys})>"
+        return f"<JGDVLocations : {str(self.root)} : ({keys})>"
 
     def __getattr__(self, key) -> pl.Path:
         """
@@ -72,28 +73,28 @@ class JGDVLocations(PathManip_m):
           """
         if key == "__self__":
             return None
-        return self[DootKey.build(key, strict=True)]
+        return self[JGDVKey.build(key, strict=True)]
 
-    def __getitem__(self, val:str|DootKey|pl.Path|DootTaskArtifact) -> pl.Path:
+    def __getitem__(self, val:str|JGDVKey|pl.Path|JGDVArtifact) -> pl.Path:
         """
-          eg: doot.locs['{data}/somewhere']
+          eg: jgdv.locs['{data}/somewhere']
           A public utility method to easily convert paths.
-          delegates to DootKey's path expansion
+          delegates to JGDVKey's path expansion
 
           Get a location using item access for extending a stored path.
           eg: locs['{temp}/imgs/blah.jpg']
         """
-        match DootKey.build(val, explicit=True):
-            case DootNonKey() as key:
+        match JGDVKey.build(val, explicit=True):
+            case JGDVNonKey() as key:
                 return key.to_path(locs=self)
-            case DootSimpleKey() as key:
+            case JGDVSimpleKey() as key:
                 return key.to_path(locs=self)
-            case DootMultiKey() as key:
+            case JGDVMultiKey() as key:
                 return key.to_path(locs=self)
             case _:
                 raise LocationExpansionError("Unrecognized location expansion argument", val)
 
-    def __contains__(self, key:str|DootKey|pl.Path|DootTaskArtifact):
+    def __contains__(self, key:str|JGDVKey|pl.Path|JGDVArtifact):
         """ Test whether a key is a registered location """
         return key in self._data
 
@@ -103,69 +104,69 @@ class JGDVLocations(PathManip_m):
 
     def __call__(self, new_root=None) -> Self:
         """ Create a copied locations object, with a different root """
-        new_obj = DootLocations(new_root or self._root)
+        new_obj = JGDVLocations(new_root or self._root)
         return new_obj.update(self)
 
     def __enter__(self) -> Any:
-        """ replaces the global doot.locs with this locations obj,
+        """ replaces the global jgdv.locs with this locations obj,
         and changes the system root to wherever this locations obj uses as root
         """
-        self._loc_ctx = doot.locs
-        doot.locs = self
-        os.chdir(doot.locs._root)
+        self._loc_ctx = jgdv.locs
+        jgdv.locs = self
+        os.chdir(jgdv.locs._root)
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
         """ returns the global state to its original, """
         assert(self._loc_ctx is not None)
-        doot.locs     = self._loc_ctx
-        os.chdir(doot.locs._root)
+        jgdv.locs     = self._loc_ctx
+        os.chdir(jgdv.locs._root)
         self._loc_ctx = None
         return False
 
-    def get(self, key:DootSimpleKey|str, on_fail:None|str|pl.Path=Any) -> None|pl.Path:
+    def get(self, key:JGDVSimpleKey|str, on_fail:None|str|pl.Path=Any) -> None|pl.Path:
         """
           convert a *simple* key of one value to a path.
           does *not* recursively expand returned paths
-          More complex expansion is handled in DootKey and subclasses
+          More complex expansion is handled in JGDVKey and subclasses
         """
-        assert(isinstance(key,(DootSimpleKey,str))), (str(key), type(key))
+        assert(isinstance(key,(JGDVSimpleKey,str))), (str(key), type(key))
         match key:
-            case DootNonKey():
+            case JGDVNonKey():
                 return pl.Path(key.form)
-            case str() | DootSimpleKey() if key in self._data:
+            case str() | JGDVSimpleKey() if key in self._data:
                 return self._data[key].base
             case _ if on_fail is None:
                 return None
             case _ if on_fail != Any:
                 return self.get(on_fail)
-            case DootSimpleKey():
+            case JGDVSimpleKey():
                 return pl.Path(key.form)
             case _:
                 return pl.Path(key)
 
     def normalize(self, path:pl.Path, symlinks:bool=False) -> pl.Path:
         """
-          Expand a path to be absolute, taking into account the set doot root.
+          Expand a path to be absolute, taking into account the set jgdv root.
           resolves symlinks unless symlinks=True
         """
         return self._normalize(path, root=self.root)
 
-    def metacheck(self, key:str|DootKey, meta:LocationMeta) -> bool:
+    def metacheck(self, key:str|JGDVKey, meta:LocationMeta) -> bool:
         """ check if any key provided has the applicable meta flags """
         match key:
-            case DootNonKey():
+            case JGDVNonKey():
                 return False
-            case DootSimpleKey() if key in self._data:
+            case JGDVSimpleKey() if key in self._data:
                 return self._data[key].check(meta)
-            case DootMultiKey():
-                 for k in DootKey.build(key):
+            case JGDVMultiKey():
+                 for k in JGDVKey.build(key):
                      if k not in self._data:
                          continue
                      if self._data[k].check(meta):
                          return True
             case str():
-                return self.metacheck(DootKey.build(key), meta)
+                return self.metacheck(JGDVKey.build(key), meta)
         return False
 
     @property
@@ -175,19 +176,19 @@ class JGDVLocations(PathManip_m):
         """
         return self._root
 
-    def update(self, extra:dict|TomlGuard|DootLocations, strict=True) -> Self:
+    def update(self, extra:dict|TomlGuard|JGDVLocations, strict=True) -> Self:
         """
-          Update the registered locations with a dict, tomlguard, or other dootlocations obj.
+          Update the registered locations with a dict, tomlguard, or other jgdvlocations obj.
         """
         match extra: # unwrap to just a dict
             case dict():
                 pass
             case tomlguard.TomlGuard():
                 return self.update(extra._table())
-            case DootLocations():
+            case JGDVLocations():
                 return self.update(extra._data)
             case _:
-                raise doot.errors.LocationError("Tried to update locations with unknown type: %s", extra)
+                raise jgdv.errors.LocationError("Tried to update locations with unknown type: %s", extra)
 
         raw          = dict(self._data.items())
         base_keys    = set(raw.keys())
@@ -212,7 +213,7 @@ class JGDVLocations(PathManip_m):
         self._data = raw
         return self
 
-    def ensure(self, *values, task="doot"):
+    def ensure(self, *values, task="jgdv"):
         """ Ensure the values passed in are registered locations,
           error with DirAbsent if they aren't
         """
