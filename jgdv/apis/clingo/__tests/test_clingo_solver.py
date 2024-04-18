@@ -23,7 +23,7 @@ class TestSolver:
 
     def test_initial(self):
         solver = ClingoSolver()
-        self.assert(isinstance(solver, ClingoSolver)
+        assert(isinstance(solver, ClingoSolver))
 
     def test_solver_initialisation(self):
         solver = ClingoSolver()
@@ -43,7 +43,7 @@ class TestSolver:
         count = solver.solve()
         assert(count == 1)
         model = solver.results[0]
-        assert(isinstance(model,iSolve.InstalModelResult)
+        assert(isinstance(model,iSolve.InstalModelResult))
         assert(all([str(x) in {"a","b","c","d","e"} for x in model.atoms]))
 
     def test_basic_fail(self):

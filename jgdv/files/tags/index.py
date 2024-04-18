@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -37,7 +36,7 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from jgdv.files_formats.tags.base import TagFile
+from jgdv.files.tags.base import TagFile
 
 @dataclass
 class IndexFile(TagFile):

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -20,7 +19,7 @@ import time
 import types
 import weakref
 # from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
+from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
@@ -37,7 +36,8 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from jgdv.files_formats.tags.base import TagFile
+from collections import defaultdict
+from jgdv.files.tags.base import TagFile
 
 @dataclass
 class SubstitutionFile(TagFile):
@@ -61,33 +61,49 @@ class SubstitutionFile(TagFile):
 
         return "\n".join(all_lines)
 
+    def __getitem__(self, key) -> set[str]:
+        return self.sub(key)
+
+    def canonical(self) -> TagFile:
+        """ create a tagfile of just canonical tags"""
+        # All substitutes are canonical
+        canon = {x:1 for x in iter(self) if not self.has_sub(x)}
+        return TagFile(canon)
+
     def sub(self, value:str) -> set[str]:
         """ apply a substitution if it exists """
         normed = self.norm_tag(value)
-        if normed in self.substitutions:
+        if bool(self.substitutions.get(normed, None)):
             return self.substitutions[normed]
 
         return set([normed])
 
     def has_sub(self, value):
-        return value in self.substitutions
+        normed = self.norm_tag(value)
+        if normed != value:
+            return True
+        return bool(self.substitutions.get(normed, None))
 
-    def update(self, *values):
+    def update(self, *values:str|Tuple|dict|SubstitutionFile|TagFile|set):
         for val in values:
             match val:
-                case None | "":
+                case None | "": # empty line
                     continue
-                case str():
+                case str(): # just a tag
                     self._inc(val)
-                case (str() as key, str() as counts):
-                    self._inc(key, amnt=int(counts))
-                case (str() as key, str() as counts, *subs):
-                    norm_key  = self._inc(key, amnt=int(counts))
-                    norm_subs = [ self.norm_tag(x) for x in subs]
-                    self.substitutions[norm_key].update([x for x in norm_subs if bool(x)])
-                case dict():
+                case list() | set():
+                    for key in val:
+                        self._inc(key)
+                case dict(): # tag and count
                     for key, val in val.items():
                         self._inc(key, amnt=val)
+                case (str() as key, int() | str() as counts): # tag and count
+                    self._inc(key, amnt=int(counts))
+                case (str() as key, int() | str() as counts, *subs):
+                    norm_key  = self._inc(key, amnt=int(counts))
+                    norm_subs = [normed for x in subs if (normed:=self.norm_tag(x)) is not None]
+                    self.update({x:1 for x in norm_subs}) # Add to normal counts too
+                    self.substitutions[norm_key].update(norm_subs)
                 case SubstitutionFile():
                     self.update(val.counts)
                     for tag, subs in val.substitutions.items():
