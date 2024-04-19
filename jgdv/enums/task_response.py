@@ -38,11 +38,13 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from jgdv.mixins.enums import EnumBuilder_m, FlagsBuilder_m
+from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
 
 class TaskResponseEnum(EnumBuilder_m, enum.Enum):
-
+    """
+      Enums for how a task can describe its response
+    """
     SUCCEED  = enum.auto()
     FAIL     = enum.auto()
     SKIP     = enum.auto()
-    SUCCESS  = SUCCEED
+    HALT     = enum.auto()

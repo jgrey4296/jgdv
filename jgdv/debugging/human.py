@@ -49,11 +49,11 @@ class HumanNum:
     """
 
     @staticmethod
-    def human_sizes(val, format=False):
+    def size(val:int, format=False) -> str:
         return tracemalloc._format_size(val, format)
 
     @staticmethod
-    def round_time(dt:DateTime=None, roundTo:Seconds=60) -> DateTime:
+    def time(dt:DateTime=None, roundTo:Seconds=60) -> DateTime:
         """Round a datetime object to any time lapse in seconds
         dt : datetime.datetime object, default now.
         roundTo : Closest number of seconds to round to, default 1 minute.

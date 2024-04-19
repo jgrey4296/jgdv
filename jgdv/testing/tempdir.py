@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 
+
 See EOF for license/metadata/notes as applicable
 """
 
@@ -37,19 +38,20 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
+import pytest
+import os
+import tempfile
 
-class LoopControl(EnumBuilder_m, enum.Enum):
-    """
-      A Simple enum to descrbe results for testing in a maybe recursive loop
-      (like walking a a tree)
-
-    accept  : is a result, and descend if recursive
-    keep    : is a result, don't descend
-    discard : not a result, descend
-    reject  : not a result, don't descend
-    """
-    yesAnd  = enum.auto()
-    yes     = enum.auto()
-    noBut   = enum.auto()
-    no      = enum.auto()
+@pytest.fixture
+def wrap_tmp(tmp_path):
+    """ create a new temp directory, and change cwd to it,
+      returning to original cwd after the test
+      """
+    logging.debug("Moving to temp dir")
+    orig     = pl.Path().cwd()
+    new_base = tmp_path / "test_root"
+    new_base.mkdir()
+    os.chdir(new_base)
+    yield new_base
+    logging.debug("Returning to original dir")
+    os.chdir(orig)

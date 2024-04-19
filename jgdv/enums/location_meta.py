@@ -38,7 +38,7 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from jgdv.mixins.enums import EnumBuilder_m, FlagsBuilder_m
+from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
 
 class LocationMeta(FlagsBuilder_m, enum.Flag):
     """ Available metadata attachable to a location """

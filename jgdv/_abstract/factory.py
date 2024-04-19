@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """
 
+
 See EOF for license/metadata/notes as applicable
 """
 
 ##-- builtin imports
 from __future__ import annotations
 
-# import abc
+import abc
 import datetime
 import enum
 import functools as ftz
@@ -29,27 +30,21 @@ from uuid import UUID, uuid1
 ##-- end builtin imports
 
 ##-- lib imports
-# import more_itertools as mitz
-# from boltons import
+import more_itertools as mitz
 ##-- end lib imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
+T = TypeVar("T")
 
-class LoopControl(EnumBuilder_m, enum.Enum):
+class Factory_p(abc.ABC):
     """
-      A Simple enum to descrbe results for testing in a maybe recursive loop
-      (like walking a a tree)
+      Factory protocol: {type}.build
+    """
 
-    accept  : is a result, and descend if recursive
-    keep    : is a result, don't descend
-    discard : not a result, descend
-    reject  : not a result, don't descend
-    """
-    yesAnd  = enum.auto()
-    yes     = enum.auto()
-    noBut   = enum.auto()
-    no      = enum.auto()
+    @classmethod
+    @abc.abstractmethod
+    def build(cls:type[T], *args, **kwargs) -> T:
+        pass

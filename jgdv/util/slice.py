@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 
+
 See EOF for license/metadata/notes as applicable
 """
 
@@ -29,27 +30,15 @@ from uuid import UUID, uuid1
 ##-- end builtin imports
 
 ##-- lib imports
-# import more_itertools as mitz
-# from boltons import
+import more_itertools as mitz
 ##-- end lib imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
-
-class LoopControl(EnumBuilder_m, enum.Enum):
+def build_slice(toks:dict) -> slice:
     """
-      A Simple enum to descrbe results for testing in a maybe recursive loop
-      (like walking a a tree)
-
-    accept  : is a result, and descend if recursive
-    keep    : is a result, don't descend
-    discard : not a result, descend
-    reject  : not a result, don't descend
+      Utility to create a slice from a dict(first=None|int(), second=None|int())
     """
-    yesAnd  = enum.auto()
-    yes     = enum.auto()
-    noBut   = enum.auto()
-    no      = enum.auto()
+    return slice(toks.get("first", None), toks.get("second", None))
