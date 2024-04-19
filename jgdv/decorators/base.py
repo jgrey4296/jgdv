@@ -36,11 +36,8 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-printer = logmod.getLogger("doot._printer")
-
 import inspect
 import abc
-import builtins
 from typing import Type
 import decorator
 
@@ -73,26 +70,19 @@ class JGDVBaseDecorator(abc.ABC):
         decorated = decorator.decorate(fn, self._wrapper)
         return decorated
 
-    @staticmethod
-    def _strip_wrappers(fn:callable) -> callable:
-        # if not hasattr(fn, FUNC_WRAPPED):
-        #     return fn
-
-        # return getattr(fn, FUNC_WRAPPED)
+    def _strip_wrappers(self, fn:callable) -> callable:
         return inspect.unwrap(fn)
 
-    @staticmethod
-    def has_annotations(fn, *keys) -> bool:
-        base = JGDVDecorator._strip_wrappers(fn)
+    def has_annotations(self, fn, *keys) -> bool:
+        base = self._strip_wrappers(fn)
         if not hasattr(base, jgdv_ANNOTATIONS):
             return False
 
         annots = getattr(base, jgdv_ANNOTATIONS)
         return all(key in annots for key in keys)
 
-    @staticmethod
-    def annotate(fn:callable, annots:set) -> callable:
-        base = JGDVDecorator._strip_wrappers(fn)
+    def annotate(self, fn:callable, annots:set) -> callable:
+        base = self._strip_wrappers(fn)
         if not hasattr(base, jgdv_ANNOTATIONS):
             setattr(base, jgdv_ANNOTATIONS, set())
 
@@ -103,14 +93,12 @@ class JGDVBaseDecorator(abc.ABC):
         annotations.update(annots)
         return fn
 
-    @staticmethod
-    def wrap_method(obj:Type, method:callable, wrapper:callable) -> Type:
+    def wrap_method(self, obj:Type, method:callable, wrapper:callable) -> Type:
         wrapped = decorator.decorate(method, wrapper)
         setattr(obj, method.__name__, wrapped)
         return obj
 
-    @staticmethod
-    def truncate_signature(fn):
+    def truncate_signature(self, fn):
         """
            actions are (self?, spec, state)
           with and extracted keys from the spec and state.
@@ -118,9 +106,9 @@ class JGDVBaseDecorator(abc.ABC):
 
           TODO: could take a callable as the prototype to build the signature from
         """
-        sig = inspect.signature(fn)
-        min_index = len(sig.parameters) - len(getattr(fn, "_doot_keys"))
-        newsig = sig.replace(parameters=list(sig.parameters.values())[:min_index])
+        sig              = inspect.signature(fn)
+        min_index        = len(sig.parameters) - len(getattr(fn, "_doot_keys"))
+        newsig           = sig.replace(parameters=list(sig.parameters.values())[:min_index])
         fn.__signature__ = newsig
         return fn
 

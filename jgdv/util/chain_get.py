@@ -37,19 +37,24 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
-
-class LoopControl(EnumBuilder_m, enum.Enum):
+class ChainedKeyGetter:
     """
-      A Simple enum to descrbe results for testing in a maybe recursive loop
-      (like walking a a tree)
+      The core logic to turn a key into a value.
+      Doesn't perform repeated expansions.
 
-    accept  : is a result, and descend if recursive
-    keep    : is a result, don't descend
-    discard : not a result, descend
-    reject  : not a result, don't descend
+      tries sources in order.
     """
-    yesAnd  = enum.auto()
-    yes     = enum.auto()
-    noBut   = enum.auto()
-    no      = enum.auto()
+
+    @staticmethod
+    def chained_get(key:str, *sources:dict|JGDVLocations) -> Any:
+        # cli   : dict          = doot.args.on_fail({}).tasks[str(state.get(STATE_TASK_NAME_K, None))]()
+        # replacement           = cli.get(key, None)
+        # *Not* elif's, want it to chain.
+        for source in sources:
+            if source is None:
+                continue
+            replacement = source.get(key, None)
+            if replacement is not None:
+                return replacement
+
+        return None

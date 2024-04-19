@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
 
+
 See EOF for license/metadata/notes as applicable
 """
 
@@ -37,19 +38,17 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
-
-class LoopControl(EnumBuilder_m, enum.Enum):
+class JGDVAnyFilter:
     """
-      A Simple enum to descrbe results for testing in a maybe recursive loop
-      (like walking a a tree)
-
-    accept  : is a result, and descend if recursive
-    keep    : is a result, don't descend
-    discard : not a result, descend
-    reject  : not a result, don't descend
+      A Logging filter to white and blacklist regexs of logger names
     """
-    yesAnd  = enum.auto()
-    yes     = enum.auto()
-    noBut   = enum.auto()
-    no      = enum.auto()
+
+    def __init__(self, names=None, reject=None):
+        self.names      = names or []
+        self.rejections = reject or []
+        self.name_re    = re.compile("^({})".format("|".join(self.names)))
+
+    def __call__(self, record):
+        return (record.name not in self.rejections) and (record.name == "root"
+                                                         or not bool(self.names)
+                                                        or self.name_re.match(record.name))

@@ -38,12 +38,11 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from jgdv.mixins.enums import EnumBuilder_m, FlagsBuilder_m
+from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
 
-class TaskStateEnum(enum.Enum):
+class TaskStateEnum(EnumBuilder_m, enum.Enum):
     """
       Enumeration of the different states a task can be in.
-      The state is stored in a TaskTracker_i, not the task itself
     """
     TEARDOWN        = enum.auto()
     SUCCESS         = enum.auto()

@@ -19,7 +19,7 @@ import time
 import types
 import weakref
 # from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
+from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
@@ -35,6 +35,8 @@ import more_itertools as mitz
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+
+from collections import defaultdict
 
 TAG_NORM : Final[re.Pattern] = re.compile(" +")
 
@@ -55,9 +57,14 @@ class TagFile:
             try:
                 obj.update(tuple(x.strip() for x in line.split(obj.sep)))
             except Exception as err:
-                logging.warning("Failure Tag Reading %s (l:%s) : %s : %s", fpath, i, err, line)
+                logging.warning("Failure Tag Read: (l:%s) : %s : %s : (file: %s)", i, err, line, fpath)
 
         return obj
+
+    def __post_init__(self):
+        orig = self.counts
+        self.counts = defaultdict(lambda: 0)
+        self.counts.update({self.norm_tag(x):y for x,y in orig.items()})
 
     def __iter__(self):
         return iter(self.counts)
@@ -77,7 +84,8 @@ class TagFile:
     def __repr__(self):
         return f"<{self.__class__.__name__}: {len(self)}>"
 
-    def __iadd__(self, values):
+    def __iadd__(self, values:TagFile|str|dict|set):
+        """  merge tags, updating their counts as well. """
         return self.update(values)
 
     def __len__(self):
@@ -86,26 +94,28 @@ class TagFile:
     def __contains__(self, value):
         return self.norm_tag(value) in self.counts
 
-    def _inc(self, key, *, amnt=1):
+    def _inc(self, key, *, amnt=1) -> None|str:
         norm_key = self.norm_tag(key)
+        if not bool(norm_key):
+            return None
         self.counts[norm_key] += amnt
         return norm_key
 
-    def update(self, *values):
+    def update(self, *values:str|TagFile|set|dict):
         for val in values:
             match val:
                 case None | "":
                     continue
                 case str():
                     self._inc(val)
-                case [str() as key]:
-                    self._inc(key)
-                case (str() as key, str() as counts):
+                case list() | set():
+                    self.update(*val)
+                case dict():
+                    self.update(*val.items())
+                case (str() as key, int()|str() as counts):
                     self._inc(key, amnt=int(counts))
                 case TagFile():
-                    self.update(*values.counts.items())
-                case set():
-                    self.update(*val)
+                    self.update(*val.counts.items())
         return self
 
     def to_set(self) -> Set[str]:
