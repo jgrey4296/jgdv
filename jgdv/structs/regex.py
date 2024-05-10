@@ -2,7 +2,6 @@
 
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -34,13 +33,12 @@ from uuid import UUID, uuid1
 import more_itertools as mitz
 ##-- end lib imports
 
+from dataclasses import dataclass
+import re
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-
-from dataclasses import dataclass
-import re
 
 @dataclass
 class RegexEqual(str):
