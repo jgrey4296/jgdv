@@ -36,15 +36,3 @@ import more_itertools as mitz
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-T = TypeVar("T")
-
-class Factory_p(abc.ABC):
-    """
-      Factory protocol: {type}.build
-    """
-
-    @classmethod
-    @abc.abstractmethod
-    def build(cls:type[T], *args, **kwargs) -> T:
-        pass
