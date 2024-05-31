@@ -39,12 +39,11 @@ logging = logmod.getLogger(__name__)
 from collections import defaultdict
 from jgdv.files.tags.base import TagFile
 
-@dataclass
 class SubstitutionFile(TagFile):
     """ SubstitutionFiles add a replacement tag for some tags """
 
-    ext           : str                  = field(default=".sub")
-    substitutions : Dict[str, set[str]] = field(default_factory=lambda: defaultdict(set))
+    ext           : str                  = ".sub"
+    substitutions : dict[str, set[str]]  = defaultdict(set)
 
     def __str__(self):
         """
@@ -68,7 +67,7 @@ class SubstitutionFile(TagFile):
         """ create a tagfile of just canonical tags"""
         # All substitutes are canonical
         canon = {x:1 for x in iter(self) if not self.has_sub(x)}
-        return TagFile(canon)
+        return TagFile(counts=canon)
 
     def sub(self, value:str) -> set[str]:
         """ apply a substitution if it exists """

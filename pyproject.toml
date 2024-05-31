@@ -23,6 +23,7 @@ dependencies   = [
                "construct",
                "networkx",
                "pygobject",
+               "pydantic",
 ]
 
 [project.optional-dependencies]

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -37,13 +36,13 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 from jgdv.files.bookmarks.bookmark import Bookmark
 
-@dataclass
-class BookmarkCollection:
+class BookmarkCollection(BaseModel):
 
-    entries : List[Bookmark] = field(default_factory=list)
-    ext     : str            = field(default=".bookmarks")
+    entries : list[Bookmark] = []
+    ext     : str            = ".bookmarks"
 
     @staticmethod
     def read(fpath:pl.Path) -> BookmarkCollection:
@@ -76,6 +75,7 @@ class BookmarkCollection:
 
     def __hash__(self):
         return id(self)
+
     def update(self, *values):
         for val in values:
             match val:

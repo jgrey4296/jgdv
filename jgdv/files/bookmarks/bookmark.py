@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -24,7 +23,7 @@ from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+                    cast, final, overload, runtime_checkable, Generator, Self)
 from uuid import UUID, uuid1
 
 ##-- end builtin imports
@@ -37,21 +36,21 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-TAG_NORM : Final[re.Pattern] = re.compile(" +")
+from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
-@dataclass
-class Bookmark:
-    url     : str      = field()
-    tags    : Set[str] = field(default_factory=set)
-    name    : str      = field(default="No Name")
-    sep     : str      = field(default=" : ")
+class Bookmark(BaseModel):
+    url              : str
+    tags             : set[str]              = set()
+    name             : str                   = "No Name"
+    _tag_sep         : ClassVar[str]         = " : "
+    _tag_norm_re     : ClassVar[re.Pattern]  = re.compile(" +")
 
     @staticmethod
     def build(line:str, sep=None):
         """
         Build a bookmark from a line of a bookmark file
         """
-        sep  = sep or Bookmark.sep
+        sep  = sep or Bookmark._tag_sep
         tags = []
         match [x.strip() for x in line.split(sep)]:
             case []:
@@ -61,12 +60,19 @@ class Bookmark:
             case [url, *tags]:
                 pass
 
-        return Bookmark(url,
-                        set(tags),
+        return Bookmark(url=url,
+                        tags=set(tags),
                         sep=sep)
 
-    def __post_init__(self):
-        self.tags = {TAG_NORM.sub("_", x.strip()) for x in self.tags}
+    @field_validator("tags", mode="before")
+    def _validate_tags(cls, val):
+        match val:
+            case list()|set():
+                return { Bookmark._tag_norm_re.sub("_", x.strip()) for x in val }
+            case str():
+                return { Bookmark._tag_norm_re.sub("_", x.strip()) for x in val.split(Boomark._tag_sep) }
+            case _:
+                raise ValueError("Unrecognized tags base", val)
 
     def __eq__(self, other):
         return self.url == other.url
@@ -75,22 +81,22 @@ class Bookmark:
         return self.url < other.url
 
     def __str__(self):
-        tags = self.sep.join(sorted(self.tags))
-        return f"{self.url}{self.sep}{tags}"
+        sep = Bookmark._tag_sep
+        tags = sep.join(sorted(self.tags))
+        return f"{self.url}{sep}{tags}"
 
     @property
     def url_comps(self) -> url_parse.ParseResult:
         return url_parse.urlparse(self.url)
 
-    def merge(self, other) -> 'Bookmark':
+    def merge(self, other) -> Self:
         """ Merge two bookmarks' tags together,
         creating a new bookmark
         """
         assert(self == other)
-        merged = Bookmark(self.url,
-                          self.tags.union(other.tags),
-                          self.name,
-                          sep=self.sep)
+        merged = Bookmark(url=self.url,
+                          tags=self.tags.union(other.tags),
+                          name=self.name)
         return merged
 
     def clean(self, subs):

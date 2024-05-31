@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+ #!/usr/bin/env python3
 """
 
 See EOF for license/metadata/notes as applicable
@@ -32,23 +32,23 @@ from uuid import UUID, uuid1
 import more_itertools as mitz
 ##-- end lib imports
 
+from collections import defaultdict
+from pydantic import BaseModel, field_validator, model_validator
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from collections import defaultdict
-
 TAG_NORM : Final[re.Pattern] = re.compile(" +")
 
-@dataclass
-class TagFile:
+class TagFile(BaseModel):
     """ A Basic TagFile holds the counts for each tag use """
 
-    counts : dict[str, int] = field(default_factory=lambda: defaultdict(lambda: 0))
-    sep    : str            = field(default=" : ")
-    ext    : str            = field(default=".tags")
+    counts : dict[str, int] = defaultdict(lambda: 0)
+    sep    : str            = " : "
+    ext    : str            = ".tags"
 
-    norm_regex : re.Pattern  = TAG_NORM
+    norm_regex : ClassVar[re.Pattern]  = TAG_NORM
 
     @classmethod
     def read(cls, fpath:pl.Path, sep=None) -> TagFile:
@@ -61,7 +61,16 @@ class TagFile:
 
         return obj
 
-    def __post_init__(self):
+    @field_validator("counts", mode="before")
+    def _validate_counts(cls, val):
+        counts = defaultdict(lambda: 0)
+        match val:
+            case dict():
+                counts.update(val)
+        return counts
+
+    @model_validator(mode="after")
+    def _normalize_counts(self):
         orig = self.counts
         self.counts = defaultdict(lambda: 0)
         self.counts.update({self.norm_tag(x):y for x,y in orig.items()})
@@ -118,11 +127,11 @@ class TagFile:
                     self.update(*val.counts.items())
         return self
 
-    def to_set(self) -> Set[str]:
+    def to_set(self) -> set[str]:
         return set(self.counts.keys())
 
     def get_count(self, tag):
         return self.counts[self.norm_tag(tag)]
 
     def norm_tag(self, tag):
-        return self.norm_regex.sub("_", tag.strip())
+        return TagFile.norm_regex.sub("_", tag.strip())
