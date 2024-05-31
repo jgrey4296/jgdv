@@ -1,0 +1,166 @@
+#+TITLE: Jgdv Todos
+
+* jgdv / dejavu
+utilities and things i keep writing
+** apis
+*** mastodon
+*** clingo
+*** selenium
+*** sphinx
+** cli
+*** REPL
+*** arg parser
+** debugging
+*** dsl
+*** frame helper
+*** human
+*** malloc
+*** running debugger
+*** trace helper
+*** destruction
+** decorators
+*** base
+*** breakpoint
+*** check protocol
+*** dsl
+*** logging
+*** util
+** dsl
+*** consts
+*** ctors
+*** funcs
+*** util
+** enums
+*** location
+*** loop
+*** task response
+*** task state
+** error
+** file_formats
+tex, twitter, netscape, org, timeline, tags
+file hashing, tar/zip manipulation,
+bookmarks, pickling
+*** binary
+*** bookmarks
+**** bookmark
+**** collection
+**** netscape
+*** epub
+*** gif
+*** graph
+*** jinja
+*** org
+*** pdf
+*** tags
+**** base
+**** graph
+**** index
+**** name
+**** substitutions
+*** tex
+**** base
+**** bib
+**** envs
+**** gantt
+**** pdf
+**** statements
+**** util
+*** timeline
+*** twitter
+*** json
+*** mem map
+*** metadata
+*** sha256
+*** tar
+*** zip
+** geom
+*** dcel
+*** intersection
+*** math
+*** voronoi
+** importing
+*** inspect
+*** plugin loader
+** _interfaces
+*** accessors
+*** decorator
+*** factory
+*** loader
+*** policy
+*** singleton
+** keys
+*** base
+*** decorator
+*** formatter
+*** multikeys
+*** path keys
+*** simple keys
+** location
+*** locations
+*** toml loc
+** logging
+*** colour
+*** config
+*** context
+*** stdout capture
+** math
+*** colour
+*** comparison
+*** easings
+*** matrices
+*** parabola
+*** quadratic
+*** quantize
+*** random
+*** sorting
+*** umath
+*** utils
+** mixins
+*** enums
+*** param spec
+*** path manip
+*** zipper
+** setup
+*** asyncio
+**** client
+**** server
+*** gtk
+*** hooks
+*** importing
+*** main
+*** pyparsing
+*** setup
+*** tkinter
+** spiders
+*** caching
+*** crawler
+*** middleware
+*** mixin
+*** pipeline
+*** spiders
+** structs
+*** artifact
+*** coderef
+*** graphs
+*** heap
+*** name
+*** param spec
+*** proxy
+*** rational time
+*** rbtree
+*** regex
+*** rete
+*** time
+*** trace
+*** tree
+*** trie
+** testing
+*** temp dir fixture
+** utils
+*** chain get
+*** slice
+** _types
+** docs
+
+
+* Links
