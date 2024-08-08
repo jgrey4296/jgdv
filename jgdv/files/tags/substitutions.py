@@ -72,6 +72,11 @@ class SubstitutionFile(TagFile):
         canon = {x:1 for x in iter(self) if not self.has_sub(x)}
         return TagFile(counts=canon)
 
+    def known(self) -> TagFile:
+        canon = self.canonical()
+        canon += self
+        return canon
+
     def sub(self, value:str) -> set[str]:
         """ apply a substitution if it exists """
         normed = self.norm_tag(value)
