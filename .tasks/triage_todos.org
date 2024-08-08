@@ -1,0 +1,7 @@
+* Triage
+** TRIAGE piggyback off other lib types
+   [[/media/john/data/github/python/jgdv/jgdv/_types.py::54][Location]]
+   :context:
+        <2024-07-20 Sat>
+   :END:
+eg: coverage, twisted...
