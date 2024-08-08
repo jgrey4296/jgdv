@@ -37,12 +37,15 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from collections import defaultdict
-from jgdv.files.tags.base import TagFile
+from jgdv.files.tags.base import TagFile, SEP
+
+EXT = ".sub"
 
 class SubstitutionFile(TagFile):
     """ SubstitutionFiles add a replacement tag for some tags """
 
-    ext           : str                  = ".sub"
+    sep           : str                  = SEP
+    ext           : str                  = EXT
     substitutions : dict[str, set[str]]  = defaultdict(set)
 
     def __str__(self):

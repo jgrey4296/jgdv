@@ -40,19 +40,21 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 TAG_NORM : Final[re.Pattern] = re.compile(" +")
+SEP : Final[str] = " : "
+EXT : Final[str] = ".tags"
 
 class TagFile(BaseModel):
     """ A Basic TagFile holds the counts for each tag use """
 
-    counts : dict[str, int] = defaultdict(lambda: 0)
-    sep    : str            = " : "
-    ext    : str            = ".tags"
+    counts     : dict[str, int]        = defaultdict(lambda: 0)
+    sep        : str                   = SEP
+    ext        : str                   = EXT
 
     norm_regex : ClassVar[re.Pattern]  = TAG_NORM
 
     @classmethod
     def read(cls, fpath:pl.Path, sep=None) -> TagFile:
-        obj = cls(sep=sep or cls.sep)
+        obj = cls(sep=sep or SEP)
         for i, line in enumerate(fpath.read_text().split("\n")):
             try:
                 obj.update(tuple(x.strip() for x in line.split(obj.sep)))

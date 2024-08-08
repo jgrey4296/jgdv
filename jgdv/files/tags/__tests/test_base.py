@@ -34,27 +34,27 @@ class TestTagFile:
         assert(not bool(obj))
 
     def test_non_empty(self):
-        obj = TagFile({"blah": 1})
+        obj = TagFile(counts={"blah": 1})
         assert(bool(obj))
 
     def test_len(self):
-        obj = TagFile({"blah": 1})
+        obj = TagFile(counts={"blah": 1})
         assert(len(obj) == 1)
 
     def test_len_2(self):
-        obj = TagFile({"blah": 1, "bloo": 3})
+        obj = TagFile(counts={"blah": 1, "bloo": 3})
         assert(len(obj) == 2)
 
     def test_contains(self):
-        obj = TagFile({"blah": 1})
+        obj = TagFile(counts={"blah": 1})
         assert("blah" in obj)
 
     def test_contains_fail(self):
-        obj = TagFile({"blah": 1})
+        obj = TagFile(counts={"blah": 1})
         assert("bloo" not in obj)
 
     def test_contains_norms(self):
-        obj = TagFile({"a blah": 1, "a_bloo":5})
+        obj = TagFile(counts={"a blah": 1, "a_bloo":5})
         assert("a blah" in obj)
         assert("a_blah" in obj)
         assert("a_bloo" in obj)
@@ -105,7 +105,7 @@ class TestTagFile:
 
     def test_update_tagfile(self):
         obj = TagFile()
-        obj2 = TagFile({"blah":1, "bloo":1, "blee":1})
+        obj2 = TagFile(counts={"blah":1, "bloo":1, "blee":1})
         assert(not bool(obj))
         obj.update(obj2)
         assert(bool(obj))
@@ -114,30 +114,30 @@ class TestTagFile:
         assert("blee" in obj)
 
     def test_to_set(self):
-        obj = TagFile({"blah":1, "bloo":1, "blee":1})
+        obj = TagFile(counts={"blah":1, "bloo":1, "blee":1})
         as_set = obj.to_set()
         assert(isinstance(as_set, set))
         assert(len(as_set) == 3)
 
     def test_get_count(self):
-        obj = TagFile({"blah":1, "bloo":5, "blee":1})
+        obj = TagFile(counts={"blah":1, "bloo":5, "blee":1})
         assert(obj.get_count("blah") == 1)
 
     def test_get_count_2(self):
-        obj = TagFile({"blah":1, "bloo":5, "blee":1})
+        obj = TagFile(counts={"blah":1, "bloo":5, "blee":1})
         assert(obj.get_count("bloo") == 5)
 
     def test_get_count_missing(self):
-        obj = TagFile({"blah":1, "bloo":5, "blee":1})
+        obj = TagFile(counts={"blah":1, "bloo":5, "blee":1})
         assert(obj.get_count("aweg") == 0)
 
     def test_count_inc(self):
-        obj = TagFile({"blah":1, "bloo":5, "blee":1})
+        obj = TagFile(counts={"blah":1, "bloo":5, "blee":1})
         assert(obj.get_count("bloo") == 5)
         obj.update("bloo")
         assert(obj.get_count("bloo") == 6)
 
     def test_str(self):
-        obj = TagFile({"blah":1, "bloo":5, "blee":1, "aweg": 0})
+        obj = TagFile(counts={"blah":1, "bloo":5, "blee":1, "aweg": 0})
         assert(str(obj) == "\n".join(["blah : 1", "blee : 1", "bloo : 5"]))
 
