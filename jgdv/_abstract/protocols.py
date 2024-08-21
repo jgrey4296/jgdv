@@ -22,7 +22,7 @@ import weakref
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
                     MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
+                    TypeGuard, TypeVar, cast, final, overload, Self,
                     runtime_checkable)
 from uuid import UUID, uuid1
 
@@ -40,11 +40,215 @@ logging = logmod.getLogger(__name__)
 
 T = TypeVar("T")
 
-from jgdv._abstract.protocols import (ProtocolModelMeta, ArtifactStruct_p,
-                                      UpToDate_p, StubStruct_p, ParamStruct_p, SpecStruct_p, TomlStubber_p,
-                                      CLIParamProvider_p, ActionGrouper_p, Loader_p, Buildable_p, Factory_p,
-                                      Nameable_p, Key_p, ExecutableTask_p, Decorator_p
-                                      )
+class ProtocolModelMeta(type(Protocol), type(BaseModel)):
+    """ Use as the metaclass for pydantic models which are explicit Protocol implementers
+
+      eg:
+
+      class Example(BaseModel, ExampleProtocol, metaclass=ProtocolModelMeta):...
+
+    """
+    pass
+
+@runtime_checkable
+class ArtifactStruct_p(Protocol):
+    """ Base class for artifacts, for type matching """
+
+    def exists(self, *, data=None) -> bool:
+        pass
+
+@runtime_checkable
+class UpToDate_p(Protocol):
+    """ For things (often artifacts) which might need to have actions done if they were created too long ago """
+
+    def is_stale(self, *, other:Any=None) -> bool:
+        """ Query whether the task's artifacts have become stale and need to be rebuilt"""
+        pass
+
+@runtime_checkable
+class StubStruct_p(Protocol):
+    """ Base class for stubs, for type matching """
+
+    def to_toml(self) -> str:
+        pass
+
+@runtime_checkable
+class ParamStruct_p(Protocol):
+    """ Base class for CLI param specs, for type matching
+    when 'maybe_consume' is given a list of strs,
+    and a dictionary,
+    it can match on the args,
+    and return an updated diction and a list of values it didn't consume
+
+    """
+
+    def maybe_consume(self, args:list[str], data:dict) -> tuple[list, dict]:
+        pass
+
+@runtime_checkable
+class SpecStruct_p(Protocol):
+    """ Base class for specs, for type matching """
+
+    @property
+    def params(self) -> dict|TomlGuard:
+        pass
+
+@runtime_checkable
+class TomlStubber_p(Protocol):
+    """
+      Something that can be turned into toml
+    """
+
+    @classmethod
+    def class_help(cls) -> str:
+        pass
+
+    @classmethod
+    def stub_class(cls, stub:StubStruct_p):
+        """
+        Specialize a StubStruct_p to describe this class
+        """
+        pass
+
+    def stub_instance(self, stub:StubStruct_p):
+        """
+          Specialize a StubStruct_p with the settings of this specific instance
+        """
+        pass
+
+    @property
+    def short_doc(self) -> str:
+        """ Generate Job Class 1 line help string """
+        pass
+
+    @property
+    def doc(self) -> list[str]:
+        pass
+
+@runtime_checkable
+class CLIParamProvider_p(Protocol):
+    """
+      Things that can provide parameter specs for CLI parsing
+    """
+
+    @classmethod
+    def param_specs(cls) -> list[ParamStruct_p]:
+        """  make class parameter specs  """
+        pass
+
+@runtime_checkable
+class ActionGrouper_p(Protocol):
+    """ For things have multiple named groups of actions """
+
+    def get_group(self, name:str) -> None|list:
+        pass
+
+@runtime_checkable
+class Loader_p(Protocol):
+    """ The protocol for something that will load something from the system, a file, etc
+    TODO add a type parameter
+    """
+
+    def setup(self, extra_config:TomlGuard) -> Self:
+        pass
+
+    def load(self) -> TomlGuard:
+        pass
+
+@runtime_checkable
+class Buildable_p(Protocol):
+    """ For things that need building, but don't have a separate factory
+    TODO add type parameter
+    """
+
+    @staticmethod
+    def build(*args) -> Self:
+        pass
+
+@runtime_checkable
+class Factory_p(Protocol):
+    """
+      Factory protocol: {type}.build
+    """
+
+    @classmethod
+    def build(cls:type[T], *args, **kwargs) -> T:
+        pass
+
+@runtime_checkable
+class Nameable_p(Protocol):
+    """ The core protocol of something use as a name """
+
+    def __hash__(self):
+        pass
+
+    def __eq__(self, other) -> bool:
+        pass
+
+    def __lt__(self, other) -> bool:
+        pass
+
+    def __contains__(self, other) -> bool:
+        pass
+
+@runtime_checkable
+class Key_p(Protocol):
+    """ The protocol for a Key, something that used in a template system"""
+
+    @property
+    def form(self) -> str:
+        pass
+
+    @property
+    def direct(self) -> str:
+        pass
+
+    def redirect(self, spec=None) -> Key_p:
+        pass
+
+    def to_path(self, spec=None, state=None, *, chain:list[Key_p]=None, locs:"Locations"=None, on_fail:None|str|pl.Path|Key_p=Any, symlinks:bool=False) -> pl.Path:
+        pass
+
+    def within(self, other:str|dict|TomlGuard) -> bool:
+        pass
+
+    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[Key_p]=None, on_fail=Any, locs:"Locations"=None, **kwargs) -> str:
+        pass
+
+    def to_type(self, spec, state, type_=Any, **kwargs) -> str:
+        pass
+
+@runtime_checkable
+class Location_p(Protocol):
+    """ Something which describes a file system location,
+    with a possible identifier, and metadata
+    """
+    key                 : None|str|Key_p
+    path                : pl.Path
+    meta                : enum.EnumMeta
+
+    @property
+    def abstracts(self) -> tuple[bool, bool, bool]:
+        pass
+
+    def check(self, data) -> bool:
+        pass
+
+    def exists(self) -> bool:
+        pass
+
+    def keys(self) -> set[str]:
+        pass
+
+@runtime_checkable
+class InstantiableSpecification_p(Protocol):
+    """ A Specification that can be instantiated further """
+
+    def instantiate_onto(self, data:None|Self) -> Self:
+        pass
+
+    def make(self):
+        pass
 
 @runtime_checkable
 class ExecutableTask(Protocol):
@@ -92,3 +296,39 @@ class ExecutableTask(Protocol):
     def decrement_priority(self):
         pass
 
+@runtime_checkable
+class Decorator_p(Protocol):
+
+    def __call__(self, fn):
+        pass
+
+    def _target_method(self, fn) -> Callable:
+        pass
+
+    def _target_fn(self, fn) -> Callable:
+        pass
+
+    def _target_class(self, fn:type) -> type:
+        pass
+
+    def _is_marked(self, fn) -> bool:
+        pass
+
+    def _apply_mark(self, fn) -> Callable:
+        pass
+
+    def _update_annotations(self, fn) -> None:
+        pass
+
+
+@runtime_checkable
+class Persistent_p(Protocol):
+    """ A Protocol for persisting data """
+
+    def write(self, target:pl.Path) -> None:
+        """ Write this object to the target path """
+        pass
+
+    def read(self, target:pl.Path) -> None:
+        """ Read the target file, creating a new object """
+        pass
