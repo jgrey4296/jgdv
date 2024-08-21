@@ -5,3 +5,8 @@
         <2024-07-20 Sat>
    :END:
 eg: coverage, twisted...
+** TRIAGE add redirect-print
+   [[/media/john/data/github/python/jgdv/jgdv/::13][Location]]
+   :context:
+        <2024-08-21 Wed>   drwxrwxr-x  2 john john 4.0K Aug  8 18:54 _abstract
+   :END:
