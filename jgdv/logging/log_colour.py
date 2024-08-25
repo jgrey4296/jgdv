@@ -75,7 +75,7 @@ class SimpleLogColour:
 
 class JGDVColourFormatter(logging.Formatter):
     """
-    Stream Formatter for doot, enables use of colour sent to console
+    Stream Formatter for logging, enables use of colour sent to console
 
     Guarded Formatter for adding colour.
     Uses the sty module.
