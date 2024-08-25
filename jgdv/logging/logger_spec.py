@@ -39,6 +39,7 @@ from tomlguard import TomlGuard
 
 # ##-- 1st party imports
 from jgdv.logging.log_colour import JGDVColourFormatter, JGDVColourStripFormatter
+from jgdv._abstract.protocols import Buildable_p, ProtocolModelMeta
 
 # ##-- end 1st party imports
 
