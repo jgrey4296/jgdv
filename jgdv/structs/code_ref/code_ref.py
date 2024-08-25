@@ -50,7 +50,7 @@ class CodeReference(StructuredName):
     _mixins   : list[CodeReference]          = []
     _type     : None|type                        = None
 
-    _separator : ClassVar[str]                    = doot.constants.patterns.IMPORT_SEP
+    _separator : ClassVar[str]                    = ":"
 
     @classmethod
     def build(cls, name:str|type|EntryPoint):
@@ -142,7 +142,7 @@ class CodeReference(StructuredName):
                             mixins.append(mix.try_import())
                         case type():
                             mixins.append(mix)
-                curr = type(f"DootGenerated:{curr.__name__}", tuple(mixins + [curr]), {})
+                curr = type(f"Generated:{curr.__name__}", tuple(mixins + [curr]), {})
 
             if ensure is not Any and not (isinstance(curr, ensure) or issubclass(curr, ensure)):
                 raise ImportError("Imported Code Reference is not of correct type", self, ensure)
