@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [0.2.0] - 2024-08-25
+
+### Features
+
+- Known tag method
+- TimeCtx
+- Protocols
+- Basic code_ref tests
+- Branch 'features.coderef' into linux-main
+- Structured_name tests
+- Initial colour, config and capture code
+- Add and use logger spec
+- Subprinter setup
+- Branch 'features.logging' into linux-main
+
+### Bug Fixes
+
+- Tests
+
+### Dependencies
+
+- Version 0.1.3 -> 0.2.0
+
 ## [0.1.3] - 2024-05-31
 
 ### Features
@@ -22,6 +45,11 @@ All notable changes to this project will be documented in this file.
 - More protocols
 - Todo agenda
 - Branch 'linux-main'
+
+### Dependencies
+
+- Changelog
+- Version 0.1.2 -> 0.1.3
 
 ### Refactoring
 
