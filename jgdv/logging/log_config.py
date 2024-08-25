@@ -1,26 +1,5 @@
 #!/usr/bin/env python3
 """
-printing areas:
-
-[header]
-[setup]
-[cmd entry]
-[help]
-[plan]
-[task loop] - start
-
-[[Task Header]]:
-- [Action Group Running]
--- [actions]
--- [State]
-- [Task Queuing]
-- [Skips,Failure]
-- [Artifacts]
-[task loop] -exit
-
-[report]
-
-[shutdown]
 
 """
 
@@ -59,11 +38,11 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 PRINTER_NAME : Final[str] = "_printer_"
-env : dict = os.environ
-SUBPRINTERS : Final[list[str]]= [
-    "action_exec", "action_group", "artifact", "cmd", "fail", "header", "help", "queue",
-    "report", "skip", "sleep", "success", "task", "task_header", "task_loop", "task_state",
-    "track", "setup", "shutdown", "check_loc"
+env          : dict       = os.environ
+SUBPRINTERS  : Final[list[str]]= [
+    "fail", "header", "help"
+    "report", "sleep", "success",
+    "setup", "shutdown"
     ]
 
 stream_initial_spec  : Final[LoggerSpec] = LoggerSpec.build({
@@ -74,9 +53,9 @@ stream_initial_spec  : Final[LoggerSpec] = LoggerSpec.build({
     })
 printer_initial_spec : Final[LoggerSpec] = LoggerSpec.build({
     "name"           : PRINTER_NAME,
-    "level"          : "WARNING",
+    "level"          : "NOTSET",
     "target"         : "stdout",
-    "format"         : "{message}",
+    "format"         : "{name}({levelname}) : {message}",
     "propagate"      : False,
     })
 
@@ -111,7 +90,7 @@ class JGDVLogConfig:
     def _setup_print_children(self, config):
         basename            = PRINTER_NAME
         subprint_data       = config.on_fail({}).logging.subprinters()
-        acceptable_names    = PRINTER_NAME
+        acceptable_names    = self._printer_children
         for data in subprint_data.items():
             match data :
                 case ("default", TomlGuard()|dict() as spec_data):
