@@ -139,7 +139,7 @@ class DecorationUtils:
         setattr(fn, KEY_ANNOTS, new_annotations)
 
         if not DecorationUtils.verify_action_signature(sig, new_annotations):
-            raise doot.errors.DootKeyError("Annotations do not match signature", sig)
+            raise ValueError("Annotations do not match signature", sig)
 
         return True
 
