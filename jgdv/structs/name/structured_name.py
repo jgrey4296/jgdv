@@ -39,10 +39,7 @@ from tomlguard import TomlGuard
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-import doot
-import doot.errors
-from doot._abstract.protocols import Buildable_p, Nameable_p, ProtocolModelMeta
-from doot.enums import Report_f, TaskMeta_f
+from jgdv._abstract.protocols import Buildable_p, Nameable_p, ProtocolModelMeta
 
 # ##-- end 1st party imports
 
@@ -51,7 +48,6 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 PAD           : Final[int] = 15
-TaskFlagNames : Final[str] = [x.name for x in TaskMeta_f]
 TailEntry     : TypeAlias  = str|int|UUID
 
 def aware_splitter(x, sep=".") -> list[str]:
@@ -71,7 +67,7 @@ class StructuredName(BaseModel, Nameable_p, Buildable_p, metaclass=ProtocolModel
     head             : list[str]              = []
     tail             : list[TailEntry]        = []
 
-    _separator       : ClassVar[str]          = doot.constants.patterns.TASK_SEP
+    _separator       : ClassVar[str]          = ":"
     _subseparator    : ClassVar[str]          = "."
 
     @staticmethod
