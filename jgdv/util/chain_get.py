@@ -47,9 +47,6 @@ class ChainedKeyGetter:
 
     @staticmethod
     def chained_get(key:str, *sources:dict|JGDVLocations) -> Any:
-        # cli   : dict          = doot.args.on_fail({}).tasks[str(state.get(STATE_TASK_NAME_K, None))]()
-        # replacement           = cli.get(key, None)
-        # *Not* elif's, want it to chain.
         for source in sources:
             if source is None:
                 continue
