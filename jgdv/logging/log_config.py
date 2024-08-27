@@ -40,7 +40,7 @@ logging = logmod.getLogger(__name__)
 PRINTER_NAME : Final[str] = "_printer_"
 env          : dict       = os.environ
 SUBPRINTERS  : Final[list[str]]= [
-    "fail", "header", "help"
+    "fail", "header", "help",
     "report", "sleep", "success",
     "setup", "shutdown"
     ]
@@ -204,5 +204,5 @@ class JGDVLogConfig:
         if not name:
             return printer_initial_spec.get()
         if name not in self._printer_children:
-            raise ValueError("Unknown Subprinter", name)
+            raise ValueError("Unknown Subprinter", name, self._printer_children)
         return self.printer_initial_spec.get().getChild(name)
