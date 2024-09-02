@@ -208,10 +208,11 @@ class JGDVLogConfig:
           Additional names are unconstrained
         """
         base = self.printer_initial_spec.get()
-        if not bool(names):
+        if not bool(names) or names == (None,):
             return base
+
         if names[0] not in self._printer_children:
-            raise ValueError("Unknown Subprinter", name, self._printer_children)
+            raise ValueError("Unknown Subprinter", names[0], self._printer_children)
 
         current = base
         for name in names:
