@@ -116,12 +116,12 @@ class HandlerBuilder_m:
             case _:
                 raise ValueError("Unknown logger spec target", target)
 
-        match self.colour or IS_PRE_COMMIT:
+        match self.colour or not IS_PRE_COMMIT:
             case _ if isinstance(handler, (logmod.FileHandler, l_handlers.RotatingFileHandler)):
                 formatter = JGDVColourStripFormatter(fmt=self.format)
-            case True:
-                formatter = JGDVColourStripFormatter(fmt=self.format)
             case False:
+                formatter = JGDVColourStripFormatter(fmt=self.format)
+            case True:
                 formatter = JGDVColourFormatter(fmt=self.format)
 
         assert(handler is not None)
