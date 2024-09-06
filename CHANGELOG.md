@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [0.3.1] - 2024-09-06
+
+### Bug Fixes
+
+- Colour condition logic
+- Typo
+
+### Dependencies
+
+- Version 0.3.0 -> 0.3.1
+
 ## [0.3.0] - 2024-09-06
 
 ### Features
