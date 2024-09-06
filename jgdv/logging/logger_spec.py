@@ -90,7 +90,7 @@ class HandlerBuilder_m:
         return logmod.StreamHandler(stderr)
 
     def _build_filehandler(self, path:pl.Path) -> logmod.Handler:
-        return logmod.FileHandler(log_file_path, mode='w')
+        return logmod.FileHandler(path, mode='w')
 
     def _build_rotatinghandler(self, path:pl.Path) -> logmod.Handler:
         handler = l_handlers.RotatingFileHandler(path, backupCount=MAX_FILES)
