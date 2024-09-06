@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [0.3.0] - 2024-09-06
+
+### Features
+
+- Extendable subprinters
+- Branch 'linux-main'
+
+### Bug Fixes
+
+- Print children registration
+- Log config typo
+- Variable error
+- Wrong condition ordering
+
+### Dependencies
+
+- Version 0.2.0 -> 0.3.0
+
+### Refactoring
+
+- Use of doot error
+
+### [Merge]
+
+- Branch 'linux-main'
+
 ## [0.2.0] - 2024-08-25
 
 ### Features
