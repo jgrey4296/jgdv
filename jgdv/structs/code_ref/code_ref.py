@@ -89,7 +89,11 @@ class CodeReference(StructuredName):
     def __repr__(self) -> str:
         code_path = str(self)
         mixins    = ", ".join(str(x) for x in self._mixins)
-        return f"<CodeRef: {code_path} Mixins: {mixins}>"
+        if bool(mixins):
+            return f"<CodeRef: {code_path} Mixins: {mixins}>"
+        else:
+            return f"<CodeRef: {code_path}>"
+
 
     def __hash__(self):
         return hash(str(self))
