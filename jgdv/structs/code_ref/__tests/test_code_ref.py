@@ -25,16 +25,21 @@ class TestCodeReference:
         ref = CodeReference.build("jgdv.util.slice:build_slice")
         assert(isinstance(ref, CodeReference))
 
+    def test_str(self):
+        ref = CodeReference.build("jgdv.util.slice:build_slice")
+        assert(str(ref) == "jgdv.util.slice:build_slice")
+
+    def test_repr(self):
+        ref = CodeReference.build("jgdv.util.slice:build_slice")
+        assert(repr(ref) == "<CodeRef: jgdv.util.slice:build_slice>")
 
     def test_head(self):
         ref = CodeReference.build("jgdv.util.slice:build_slice")
         assert(ref.head == ["jgdv", "util", "slice"])
 
-
     def test_tail(self):
         ref = CodeReference.build("jgdv.util.slice:build_slice")
         assert(ref.tail == ["build_slice"])
-
 
     def test_import(self):
         ref = CodeReference.build("jgdv.util.slice:build_slice")
@@ -51,4 +56,3 @@ class TestCodeReference:
         ref = CodeReference.build("doot.task.base_task:DootTaskSSSSSS")
         with pytest.raises(ImportError):
             imported = ref.try_import()
-

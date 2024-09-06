@@ -40,7 +40,7 @@ logging = logmod.getLogger(__name__)
 PRINTER_NAME : Final[str] = "_printer_"
 env          : dict       = os.environ
 SUBPRINTERS  : Final[list[str]]= [
-    "fail", "header", "help"
+    "fail", "header", "help",
     "report", "sleep", "success",
     "setup", "shutdown"
     ]
@@ -88,9 +88,11 @@ class JGDVLogConfig:
         logging.debug("Post Log Setup")
 
     def _setup_print_children(self, config):
+        logging.info("Setting up print children")
         basename            = PRINTER_NAME
         subprint_data       = config.on_fail({}).logging.subprinters()
         acceptable_names    = self._printer_children
+        logging.info("Known Print Children: %s", acceptable_names)
         for data in subprint_data.items():
             match data :
                 case ("default", TomlGuard()|dict() as spec_data):
@@ -200,9 +202,20 @@ class JGDVLogConfig:
 
         builtins.print = intercepted
 
-    def subprinter(self, name=None) -> logmod.Logger:
-        if not name:
-            return printer_initial_spec.get()
-        if name not in self._printer_children:
-            raise ValueError("Unknown Subprinter", name)
-        return self.printer_initial_spec.get().getChild(name)
+    def subprinter(self, *names) -> logmod.Logger:
+        """ Get a subprinter of the printer logger.
+          The First name needs to be a registered subprinter.
+          Additional names are unconstrained
+        """
+        base = self.printer_initial_spec.get()
+        if not bool(names) or names == (None,):
+            return base
+
+        if names[0] not in self._printer_children:
+            raise ValueError("Unknown Subprinter", names[0], self._printer_children)
+
+        current = base
+        for name in names:
+            current = current.getChild(name)
+
+        return current
