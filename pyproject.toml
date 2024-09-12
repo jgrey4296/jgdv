@@ -15,21 +15,22 @@ classifiers     = [
 
 dependencies   = [
                "tomlguard",
-               "mastodon.py>=1.8",
-               "selenium",
-               "numpy",
-               "scrapy",
+               # "mastodon.py>=1.8",
+               # "selenium",
+               # "numpy",
+               # "scrapy",
                "pyparsing",
-               "construct",
+               # "construct",
                "networkx",
-               "pygobject",
+               # "pygobject",
                "pydantic",
 ]
 
 [project.optional-dependencies]
 docs = [ "sphinx" ]
 dev  = [ "doot", "pipreqs"]
-test = [ "pytest > 7.0.0" ]
+test = [ "pytest >= 8.3.0" ]
+
 
 ##-- urls
 [project.urls]
