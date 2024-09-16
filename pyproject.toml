@@ -27,7 +27,11 @@ dependencies   = [
 ]
 
 [project.optional-dependencies]
-docs = [ "sphinx" ]
+docs = [
+    "Sphinx >=7.4.0",
+    "sphinx-rtd-theme",
+    "myst_parser >= 4.0.0",
+]
 dev  = [ "doot", "pipreqs"]
 test = [ "pytest >= 8.3.0" ]
 
@@ -35,7 +39,7 @@ test = [ "pytest >= 8.3.0" ]
 ##-- urls
 [project.urls]
 homepage      = "https://github.com/jgrey4296/jgdv"
-documentation = "https://github.com/jgrey4296/jgdv/wiki"
+documentation = "https://jgdv.readthedocs.io/en/latest"
 repository    = "https://github.com/jgrey4296/jgdv"
 changelog     = "https://github.com/jgrey4296/jgdv/blob/master/CHANGELOG.md"
 
