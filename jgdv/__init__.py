@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
 
-__version__ = "0.2.0"
+__version__ = "0.3.2"
 
 from jgdv.decorators.check_protocol import check_protocol

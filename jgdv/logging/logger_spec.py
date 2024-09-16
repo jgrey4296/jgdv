@@ -90,7 +90,7 @@ class HandlerBuilder_m:
         return logmod.StreamHandler(stderr)
 
     def _build_filehandler(self, path:pl.Path) -> logmod.Handler:
-        return logmod.FileHandler(log_file_path, mode='w')
+        return logmod.FileHandler(path, mode='w')
 
     def _build_rotatinghandler(self, path:pl.Path) -> logmod.Handler:
         handler = l_handlers.RotatingFileHandler(path, backupCount=MAX_FILES)
@@ -116,12 +116,12 @@ class HandlerBuilder_m:
             case _:
                 raise ValueError("Unknown logger spec target", target)
 
-        match self.colour or IS_PRE_COMMIT:
+        match self.colour or not IS_PRE_COMMIT:
             case _ if isinstance(handler, (logmod.FileHandler, l_handlers.RotatingFileHandler)):
                 formatter = JGDVColourStripFormatter(fmt=self.format)
-            case True:
-                formatter = JGDVColourStripFormatter(fmt=self.format)
             case False:
+                formatter = JGDVColourStripFormatter(fmt=self.format)
+            case True:
                 formatter = JGDVColourFormatter(fmt=self.format)
 
         assert(handler is not None)
