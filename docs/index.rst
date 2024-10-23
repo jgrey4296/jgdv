@@ -26,14 +26,6 @@ If you find a bug, bug me, unsurprisingly, on the `issue tracker <https://github
 
 
 
-.. _indices:
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
 
 .. .. Main Sidebar TocTree
 .. toctree::
@@ -52,6 +44,9 @@ Indices and tables
    testing
    util
    todos
+
+   genindex
+   modindex
 
 
 .. .. Links

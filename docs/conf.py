@@ -38,42 +38,29 @@ author    = 'john'
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.doctest',
-              'sphinx.ext.autodoc',
-              'sphinx.ext.autosummary',
-              'sphinx.ext.napoleon',
-              'sphinx.ext.extlinks',
-              'sphinx_rtd_theme',
-              'myst_parser',
-              ]
-
-
-##-- autosummary
-autosummary_generate = True
-##-- end autosummary
-
-##-- autodoc
-autodoc_default_options = {
-    'members'       : True,
-    'undoc-members' : True,
-    # 'private-members': True,
-    # 'special-members': True,
-    'inherited-members': True,
-    'show-inheritance' : True,
-    }
-add_module_names = False
-autodoc_inherit_docstrings = True
-
-##-- end autodoc
+extensions = [
+    'sphinx.ext.doctest',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.extlinks',
+    'sphinx_rtd_theme',
+    'myst_parser',
+    "autoapi.extension",
+    "sphinx.ext.coverage",
+    "sphinx.ext.imgconverter",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.viewcode",
+    ]
 
 # -- Options for HTML output -------------------------------------------------
-
-html_theme         = 'sphinx_rtd_theme'
-
-##-- rtd options
 # https://sphinx-rtd-theme.readthedocs.io/en/stable/configuring.html
+html_theme         = "sphinx_rtd_theme"
+html_theme_options = {}
+html_sidebars      = {}
 
-html_theme_options = {
+
+html_theme_options.update({
     'logo_only'                   : False,
     'display_version'             : True,
     'prev_next_buttons_location'  : 'bottom',
@@ -87,12 +74,29 @@ html_theme_options = {
     'includehidden'               : True,
     'titles_only'                 : False
 
-}
+})
 
 ##-- end rtd options
 
 # -- Extension Options -------------------------------------------------
-
+# https://sphinx-autoapi.readthedocs.io/en/latest/reference/config.html
+autoapi_generate_api_docs = True
+autoapi_add_toctree_entry = True
+autoapi_type              = "python"
+autoapi_template_dir      = "_templates"
+autoapi_root              = "autoapi"
+autoapi_dirs              = ['../doot']
+autoapi_file_patterns     = ["*.py", "*.pyi"]
+autoapi_ignore            = ['*/__tests', '*/test_*.py', '/obsolete/*']
+autoapi_options           = [
+    'imported-members',
+    'members',
+    # 'undoc-members',
+    'private-members',
+    'special_members',
+    'show-inheritance',
+    # 'show-inheritance-diagram',
+    # 'show-module-summary',
+]
 
 # -- Imports --------------------------------------------------
-import jgdv
