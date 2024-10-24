@@ -32,6 +32,7 @@ exclude_patterns = ['**/flycheck_*.py', "**/__tests/*"]
 project   = 'jgdv'
 copyright = '2022, john'
 author    = 'john'
+release   = "0.3.2"
 
 # -- General configuration ---------------------------------------------------
 
