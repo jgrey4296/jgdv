@@ -42,7 +42,12 @@ from jgdv.files.tags.base import TagFile, SEP
 EXT = ".sub"
 
 class SubstitutionFile(TagFile):
-    """ SubstitutionFiles add a replacement tag for some tags """
+    """ SubstitutionFiles add a replacement tag for some tags
+
+    Substitution file format is single lines of:
+    ^{tag} {sep} {count} [{sep} {replacement}]*$
+
+    """
 
     sep           : str                  = SEP
     ext           : str                  = EXT
@@ -73,6 +78,7 @@ class SubstitutionFile(TagFile):
         return TagFile(counts=canon)
 
     def known(self) -> TagFile:
+        """ Get a TagFile of all known tags. both canonical and not """
         canon = self.canonical()
         canon += self
         return canon
@@ -92,6 +98,9 @@ class SubstitutionFile(TagFile):
         return bool(self.substitutions.get(normed, None))
 
     def update(self, *values:str|Tuple|dict|SubstitutionFile|TagFile|set):
+        """
+        Overrides TagFile.update to handle tuples of (tag, count, replacements*)
+        """
         for val in values:
             match val:
                 case None | "": # empty line
@@ -106,7 +115,7 @@ class SubstitutionFile(TagFile):
                         self._inc(key, amnt=val)
                 case (str() as key, int() | str() as counts): # tag and count
                     self._inc(key, amnt=int(counts))
-                case (str() as key, int() | str() as counts, *subs):
+                case (str() as key, int() | str() as counts, *subs): # Tag, count, subs
                     norm_key  = self._inc(key, amnt=int(counts))
                     norm_subs = [normed for x in subs if (normed:=self.norm_tag(x)) is not None]
                     self.update({x:1 for x in norm_subs}) # Add to normal counts too

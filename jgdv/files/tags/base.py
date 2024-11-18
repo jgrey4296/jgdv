@@ -39,22 +39,29 @@ from pydantic import BaseModel, field_validator, model_validator
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-TAG_NORM : Final[re.Pattern] = re.compile(" +")
-SEP : Final[str] = " : "
-EXT : Final[str] = ".tags"
+TAG_NORM     : Final[re.Pattern] = re.compile(" +")
+SEP          : Final[str]        = " : "
+EXT          : Final[str]        = ".tags"
+NORM_REPLACE : Final[str]        = "_"
 
 class TagFile(BaseModel):
-    """ A Basic TagFile holds the counts for each tag use """
+    """ A Basic TagFile holds the counts for each tag use
 
-    counts     : dict[str, int]        = defaultdict(lambda: 0)
-    sep        : str                   = SEP
-    ext        : str                   = EXT
+    Tag file format is single lines of:
+    ^{tag} {sep} {count}$
 
-    norm_regex : ClassVar[re.Pattern]  = TAG_NORM
+    cls.read can be used to change the {sep}
+    """
+
+    counts       : dict[str, int]        = defaultdict(lambda: 0)
+    sep          : str                   = SEP
+    ext          : str                   = EXT
+    norm_replace : str                   = NORM_REPLACE
+    norm_regex   : re.Pattern            = TAG_NORM
 
     @classmethod
-    def read(cls, fpath:pl.Path, sep=None) -> TagFile:
-        obj = cls(sep=sep or SEP)
+    def read(cls, fpath:pl.Path, **kwargs) -> TagFile:
+        obj = cls(**kwargs)
         for i, line in enumerate(fpath.read_text().split("\n")):
             try:
                 obj.update(tuple(x.strip() for x in line.split(obj.sep)))
@@ -62,6 +69,16 @@ class TagFile(BaseModel):
                 logging.warning("Failure Tag Read: (l:%s) : %s : %s : (file: %s)", i, err, line, fpath)
 
         return obj
+
+    @field_validator("norm_regex", mode="before")
+    def _validate_regex(cls, val):
+        match val:
+            case str():
+                return re.compile(val)
+            case re.Pattern():
+                return val
+            case _:
+                raise TypeError("Bad norm_regex provided")
 
     @field_validator("counts", mode="before")
     def _validate_counts(cls, val):
@@ -76,6 +93,7 @@ class TagFile(BaseModel):
         orig = self.counts
         self.counts = defaultdict(lambda: 0)
         self.counts.update({self.norm_tag(x):y for x,y in orig.items()})
+        return self
 
     def __iter__(self):
         return iter(self.counts)
