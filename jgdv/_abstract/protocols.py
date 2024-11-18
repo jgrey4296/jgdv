@@ -337,4 +337,3 @@ class Persistent_p(Protocol):
 class FailHandler_p(Protocol):
 
     def handle_failure(self, err:Exception, *args, **kwargs) -> None|Any:
-        pass

@@ -8,63 +8,22 @@ See EOF for license/metadata/notes as applicable
 # Imports:
 from __future__ import annotations
 
-# ##-- stdlib imports
-# import abc
-import datetime
-import enum
-import functools as ftz
-import itertools as itz
-import logging as logmod
-import pathlib as pl
-import re
-import time
-import types
-import weakref
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    NewType,
-    Optional,
-    Protocol,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match, NewType,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload, Optional,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-# ##-- end stdlib imports
+type Stack[T]                = NewType("Stack", list[T])
+type Queue[T]                = NewType("Queue", list[T])
+type Vector[T]               = NewType("Vector", list[float])
 
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
+type Ident                   = NewType("Identifier", str)
 
-# TODO when in py3.12 use 'type' kw
+type Depth                   = NewType("Depth", int)
+type Seconds                 = NewType("Seconds", int)
 
-T                       = TypeVar("T")
-
-Stack                   = NewType("Stack", list[T])
-Queue                   = NewType("Queue", list[T])
-Vector                  = NewType("Vector", list[float])
-
-Identifier              = NewType("Identifier", str)
-
-Depth                   = NewType("Depth", int)
-Seconds                 = NewType("Seconds", int)
-
-Maybe         TypeAlias = Optional
+type Maybe[T]                = T | None
+type Result[T, E:Exception]  = T | E
+type Either[L, R]            = L | R
