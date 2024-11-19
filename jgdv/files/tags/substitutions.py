@@ -69,6 +69,7 @@ class SubstitutionFile(TagFile):
         return "\n".join(all_lines)
 
     def __getitem__(self, key) -> set[str]:
+        """ Gets the substitutions for a key """
         return self.sub(key)
 
     def canonical(self) -> TagFile:
@@ -90,6 +91,13 @@ class SubstitutionFile(TagFile):
             return self.substitutions[normed]
 
         return set([normed])
+
+    def sub_many(self, *values:str) -> set[str]:
+        result = set()
+        for val in values:
+            result.update(self.sub(val))
+
+        return result
 
     def has_sub(self, value):
         normed = self.norm_tag(value)
