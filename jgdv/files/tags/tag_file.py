@@ -61,7 +61,7 @@ class TagFile(BaseModel):
 
     @classmethod
     def read(cls, fpath:pl.Path, **kwargs) -> TagFile:
-        obj = cls(**kwargs)
+        obj = cls(**{x:y for x,y in kwargs.items() if y is not None})
         for i, line in enumerate(fpath.read_text().split("\n")):
             try:
                 obj.update(line)
