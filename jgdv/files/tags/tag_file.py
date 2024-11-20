@@ -154,4 +154,4 @@ class TagFile(BaseModel):
         return self.counts[self.norm_tag(tag)]
 
     def norm_tag(self, tag):
-        return self.norm_regex.sub("_", tag.strip())
+        return self.norm_regex.sub(self.norm_replace, tag.strip())
