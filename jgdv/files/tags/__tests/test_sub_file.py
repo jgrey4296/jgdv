@@ -15,8 +15,8 @@ import pytest
 
 logging = logmod.root
 
-from jgdv.files.tags.base import TagFile
-from jgdv.files.tags.substitutions import SubstitutionFile
+from jgdv.files.tags.tag_file import TagFile
+from jgdv.files.tags.sub_file import SubstitutionFile
 
 class TestSubFile:
 

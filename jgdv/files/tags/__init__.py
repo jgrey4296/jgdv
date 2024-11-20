@@ -2,5 +2,5 @@
 
 """
 
-from .base import TagFile
-from .substitutions import SubstitutionFile
+from .tag_file import TagFile
+from .sub_file import SubstitutionFile

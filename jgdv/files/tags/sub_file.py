@@ -37,7 +37,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 from collections import defaultdict
-from jgdv.files.tags.base import TagFile, SEP
+from .tag_file import TagFile, SEP
 
 EXT = ".sub"
 
