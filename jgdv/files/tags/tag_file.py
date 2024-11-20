@@ -64,7 +64,7 @@ class TagFile(BaseModel):
         obj = cls(**kwargs)
         for i, line in enumerate(fpath.read_text().split("\n")):
             try:
-                obj.update(tuple(x.strip() for x in line.split(obj.sep)))
+                obj.update(line)
             except Exception as err:
                 logging.warning("Failure Tag Read: (l:%s) : %s : %s : (file: %s)", i, err, line, fpath)
 
@@ -135,6 +135,8 @@ class TagFile(BaseModel):
             match val:
                 case None | "":
                     continue
+                case str() if self.sep in val:
+                    self.update(tuple(x.strip() for x in val.split(self.sep)))
                 case str():
                     self._inc(val)
                 case list() | set():
@@ -154,4 +156,4 @@ class TagFile(BaseModel):
         return self.counts[self.norm_tag(tag)]
 
     def norm_tag(self, tag):
-        return self.norm_regex.sub(self.norm_replace, tag.strip())
+        return self.norm_regex.sub(self.norm_replace, tag).strip()
