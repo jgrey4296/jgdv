@@ -157,6 +157,13 @@ class CodeReference(StructuredName):
         except AttributeError as err:
             raise ImportError("Attempted to import %s but failed", str(self)) from err
 
+    def safe_import(self, ensure:type=Any) -> None|type:
+        try:
+            return self.try_import(ensure)
+        except ImportError:
+            return None
+
+
     def to_aliases(self, group:str, plugins:TomlGuard) -> tuple[str, list[str]]:
         base_alias = str(self)
         match [x for x in plugins[group] if x.value == base_alias]:
