@@ -43,6 +43,7 @@ TAG_NORM     : Final[re.Pattern] = re.compile(" +")
 SEP          : Final[str]        = " : "
 EXT          : Final[str]        = ".tags"
 NORM_REPLACE : Final[str]        = "_"
+COMMENT      : Final[str]        = "%%"
 
 class TagFile(BaseModel):
     """ A Basic TagFile holds the counts for each tag use
@@ -58,6 +59,7 @@ class TagFile(BaseModel):
     ext          : str                   = EXT
     norm_replace : str                   = NORM_REPLACE
     norm_regex   : re.Pattern            = TAG_NORM
+    comment      : str                   = COMMENT
 
     @classmethod
     def read(cls, fpath:pl.Path, **kwargs) -> TagFile:
@@ -134,6 +136,8 @@ class TagFile(BaseModel):
         for val in values:
             match val:
                 case None | "":
+                    continue
+                case str() if val.startswith(self.comment):
                     continue
                 case str() if self.sep in val:
                     self.update(tuple(x.strip() for x in val.split(self.sep)))

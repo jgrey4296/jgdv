@@ -113,6 +113,8 @@ class SubstitutionFile(TagFile):
             match val:
                 case None | "": # empty line
                     continue
+                case str() if val.startswith(self.comment):
+                    continue
                 case str() if self.sep in val:
                     self.update(tuple(x.strip() for x in val.split(self.sep)))
                 case str(): # just a tag
