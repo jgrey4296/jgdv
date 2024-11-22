@@ -155,7 +155,7 @@ class CodeReference(StructuredName):
         except ModuleNotFoundError as err:
             raise ImportError("Module can't be found", str(self))
         except AttributeError as err:
-            raise ImportError("Attempted to import %s but failed", str(self)) from err
+            raise ImportError("Attempted import failed", str(self)) from err
 
     def safe_import(self, ensure:type=Any) -> None|type:
         try:
