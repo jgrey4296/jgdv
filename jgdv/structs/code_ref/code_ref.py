@@ -47,7 +47,7 @@ class CodeReference(StructuredName):
       A reference to a class or function. can be created from a string (so can be used from toml),
       or from the actual object (from in python)
     """
-    _mixins   : list[CodeReference]          = []
+    _mixins   : list[CodeReference]              = []
     _type     : None|type                        = None
 
     _separator : ClassVar[str]                    = ":"
@@ -94,7 +94,6 @@ class CodeReference(StructuredName):
         else:
             return f"<CodeRef: {code_path}>"
 
-
     def __hash__(self):
         return hash(str(self))
 
@@ -129,42 +128,53 @@ class CodeReference(StructuredName):
         return new_ref
 
     def try_import(self, ensure:type=Any) -> Any:
-        try:
-            if self._type is not None:
+        """ Tries to import and retrieve the reference,
+        and casts errors to ImportErrors
+        """
+        match self._type:
+            case None:
+                try:
+                    mod = importlib.import_module(self.module)
+                    curr = mod
+                    for name in self.tail:
+                        curr = getattr(curr, name)
+                    self._type = curr
+                except AttributeError as err:
+                    raise ImportError("Attempted import failed", str(self)) from err
+            case _:
                 curr = self._type
-            else:
-                mod = importlib.import_module(self.module)
-                curr = mod
-                for name in self.tail:
-                    curr = getattr(curr, name)
 
-            if bool(self._mixins):
+        match self._mixins:
+            case []:
+                pass
+            case [*xs]:
                 mixins = []
-                for mix in self._mixins:
+                for mix in xs:
                     match mix:
                         case CodeReference():
                             mixins.append(mix.try_import())
                         case type():
                             mixins.append(mix)
-                curr = type(f"Generated:{curr.__name__}", tuple(mixins + [curr]), {})
+                else:
+                    curr = type(f"Generated:{curr.__name__}", tuple(mixins + [curr]), {})
 
-            if ensure is not Any and not (isinstance(curr, ensure) or issubclass(curr, ensure)):
+        match ensure:
+            case x if x is Any:
+                pass
+            case x if not (isinstance(curr, x) or issubclass(curr, ensure)):
                 raise ImportError("Imported Code Reference is not of correct type", self, ensure)
 
-            return curr
-        except ModuleNotFoundError as err:
-            raise ImportError("Module can't be found", str(self))
-        except AttributeError as err:
-            raise ImportError("Attempted import failed", str(self)) from err
+        return curr
 
     def safe_import(self, ensure:type=Any) -> None|type:
+        """ Import, but trapping errors to make it return a maybe """
         try:
             return self.try_import(ensure)
         except ImportError:
             return None
 
-
-    def to_aliases(self, group:str, plugins:TomlGuard) -> tuple[str, list[str]]:
+    def to_aliases(self, group:str, plugins:dict|TomlGuard) -> tuple[str, list[str]]:
+        """ Given a nested dict-like, see if this reference can be reduced to an alias """
         base_alias = str(self)
         match [x for x in plugins[group] if x.value == base_alias]:
             case [x, *xs]:
