@@ -49,8 +49,8 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 from jgdv._abstract.protocols import Buildable_p
-from jgdv.structs.dkey.key import DKey, REDIRECT_SUFFIX, CONV_SEP, DKeyMark_e
-from jgdv.structs.dkey.dkey_formatter import DKeyFormatter
+from jgdv.structs.dkey.dkey import DKey, REDIRECT_SUFFIX, CONV_SEP, DKeyMark_e
+from jgdv.structs.dkey.formatter import DKeyFormatter
 
 ##-- logging
 logging = logmod.getLogger(__name__)

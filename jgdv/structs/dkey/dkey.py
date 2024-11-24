@@ -1,5 +1,6 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 """
+
 
 See EOF for license/metadata/notes as applicable
 """
@@ -8,7 +9,6 @@ See EOF for license/metadata/notes as applicable
 from __future__ import annotations
 
 # ##-- stdlib imports
-import abc
 import datetime
 import enum
 import functools as ftz
@@ -16,147 +16,226 @@ import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
-import string
 import time
 import types
 import weakref
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
                     MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload, Self,
+                    TypeGuard, TypeVar, cast, final, overload,
                     runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-# ##-- 3rd party imports
-from pydantic import BaseModel, Field, field_validator, model_validator
-from tomlguard import TomlGuard
-
-# ##-- end 3rd party imports
-
 # ##-- 1st party imports
-from jgdv._abstract.protocols import Key_p, SpecStruct_p, Buildable_p
-from jgdv.structs.code_ref import CodeReference
-from jgdv.structs.dkey.key import DKey, REDIRECT_SUFFIX, CONV_SEP, DKeyMark_e
-from jgdv.structs.dkey.dkey_formatter import DKeyFormatter
-from jgdv.structs.dkey.mixins import DKeyFormatting_m, DKeyExpansion_m, identity
-from jgdv.structs.dkey.dkey_base import DKeyBase
-from jgdv.structs.dkey.dkey_core import SingleDKey, MultiDKey, NonDKey
-
+from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
+from jgdv._abstract.protocols import Key_p
 # ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-KEY_PATTERN                                 = "{(.+?)}"
-MAX_KEY_EXPANSIONS                          = 10
+CONV_SEP        : Final[str]                = "!"
+REDIRECT_SUFFIX : Final[str]                = "_"
 
-PATTERN         : Final[re.Pattern]         = re.compile(KEY_PATTERN)
-FAIL_PATTERN    : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
-FMT_PATTERN     : Final[re.Pattern]         = re.compile("[wdi]+")
-EXPANSION_HINT  : Final[str]                = "_doot_expansion_hint"
-HELP_HINT       : Final[str]                = "_doot_help_hint"
-FORMAT_SEP      : Final[str]                = ":"
-CHECKTYPE       : TypeAlias                 = None|type|types.GenericAlias|types.UnionType
-CWD_MARKER      : Final[str]                = "__cwd"
-
-##-- core
-
-##-- end core
-
-##-- specialisations
-
-class StrDKey(SingleDKey, mark=DKeyMark_e.STR, tparam="s"):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._expansion_type  = str
-        self._typecheck = str
-
-class RedirectionDKey(SingleDKey, mark=DKeyMark_e.REDIRECT, tparam="R"):
+class DKeyMark_e(EnumBuilder_m, enum.Enum):
     """
-      A Key for getting a redirected key.
-      eg: RedirectionDKey(key_) -> SingleDKey(value)
+      Enums for how to use/build a dkey
 
-      re_mark :
+    """
+    FREE     = enum.auto() # -> Any
+    PATH     = enum.auto() # -> pl.Path
+    REDIRECT = enum.auto() # -> DKey
+    STR      = enum.auto() # -> str
+    CODE     = enum.auto() # -> coderef
+    TASK     = enum.auto() # -> taskname
+    ARGS     = enum.auto() # -> list
+    KWARGS   = enum.auto() # -> dict
+    POSTBOX  = enum.auto() # -> list
+    NULL     = enum.auto() # -> None
+    MULTI    = enum.auto()
+
+    default  = FREE
+class DKeyMeta(type(str)):
+    """
+      The Metaclass for keys, which ensures that subclasses of DKeyBase
+      are DKey's, despite there not being an actual subclass relation between them
     """
 
-    def __init__(self, data, multi=False, re_mark=None, **kwargs):
-        kwargs['fallback'] = kwargs.get('fallback', Self)
-        super().__init__(data, **kwargs)
-        self.multi_redir      = multi
-        self.re_mark          = re_mark
-        self._expansion_type  = DKey
-        self._typecheck       = DKey | list[DKey]
+    def __call__(cls, *args, **kwargs):
+        """ Runs on class instance creation
+        skips running cls.__init__, allowing cls.__new__ control
+        """
+        # TODO maybe move dkey discrimination to here
+        return cls.__new__(cls, *args, **kwargs)
 
-    def expand(self, *sources, max=None, full:bool=False, **kwargs) -> None|DKey:
-        match super().redirect(*sources, multi=self.multi_redir, re_mark=self.re_mark, **kwargs):
-            case list() as xs if self.multi_redir and full:
-                return [x.expand(*sources) for x in xs]
-            case list() as xs if self.multi_redir:
-                return xs
-            case [x, *xs] if full:
-                return x.expand(*sources)
-            case [x, *xs] if self._fallback == self and x < self:
-                return x
-            case [x, *xs] if self._fallback is None:
-                return None
-            case [x, *xs]:
-                return x
-            case []:
-                return self._fallback
+    def __instancecheck__(cls, instance):
+        return any(x.__instancecheck__(instance) for x in {Key_p})
 
-class ConflictDKey(SingleDKey):
-    """ Like a redirection key,
-      but for handling conflicts between subkeys in multikeys.
+    def __subclasscheck__(cls, sub):
+        candidates = {Key_p}
+        return any(x in candidates for x in sub.mro())
 
-      eg: MK(--aval={blah!p}/{blah})
-    """
+class DKey(metaclass=DKeyMeta):
+    """ A facade for DKeys and variants.
+      Implements __new__ to create the correct key type, from a string, dynamically.
 
-class ArgsDKey(SingleDKey, mark=DKeyMark_e.ARGS):
-    """ A Key representing the action spec's args """
+      kwargs:
+      explicit = insists that keys in the string are wrapped in braces '{akey} {anotherkey}'.
+      mark     = pre-register expansion parameters / type etc
+      check    = dictate a type that expanding this key must match
+      fparams  = str formatting instructions for the key
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._expansion_type  = list
-        self._typecheck = list
+      Eg:
+      DKey('blah')
+      -> SingleDKey('blah')
+      -> SingleDKey('blah').format('w')
+      -> '{blah}'
+      -> [toml] aValue = '{blah}'
 
-    def expand(self, *sources, **kwargs) -> list:
-        for source in sources:
-            if not isinstance(source, SpecStruct_p):
-                continue
+      Because cls.__new__ calls __init__ automatically for return values of type cls,
+      DKey is the factory, but all DKeys are subclasses of DKeyBase,
+      to allow control over __init__.
+      """
+    mark                                   = DKeyMark_e
+    _single_registry : dict[DKeyMark_e,type] = {}
+    _multi_registry  : dict[DKeyMark_e,type] = {}
+    _conv_registry   : dict[str, DKeyMark_e] = {}
+    _parser          : None|type           = None
 
-            return source.args
+    def __new__(cls, data:str|DKey|pl.Path|dict, *, fmt=None, conv=None, implicit=False, mark:None|DKeyMark_e=None, **kwargs) -> DKey:
+        """
+          fmt : Format parameters. used from multi key subkey construction
+          conv : Conversion parameters. used from multi key subkey construction.
+          implicit: For marking a key as an implicit key, with no extra text around it
+          mark     : Enum for explicitly setting the key type
+        """
+        assert(cls is DKey)
+        assert(isinstance(mark, None|DKeyMark_e)), mark
+        # Early escape check
+        match data:
+            case DKey() if mark is None or mark == data._mark:
+                return data
+            case DKey() | pl.Path():
+                data = str(data)
+            case _:
+                pass
 
-        return []
+        fparams = fmt or ""
+        # Extract subkeys
+        has_text, s_keys = DKey._parser.Parse(data)
+        use_multi_ctor   = len(s_keys) > 0
+        match len(s_keys):
+            case 0 if not implicit and mark is not DKey.mark.PATH:
+                # Just Text,
+                mark = DKeyMark_e.NULL
+            case _ if mark is DKey.mark.MULTI:
+                # Explicit override
+                pass
+            case 0:
+                # Handle Single, implicit Key variants
+                data, mark     = cls._parse_single_key_params_to_mark(data, conv, fallback=mark)
+            case 1 if not has_text:
+                # One Key, no other text, so make a solo key
+                solo           = s_keys[0]
+                fparams        = solo.format
+                data, mark     = cls._parse_single_key_params_to_mark(solo.key, solo.conv, fallback=mark)
+                use_multi_ctor = False
+            case x if not has_text and s_keys[0].conv == "p":
+                mark = DKeyMark_e.PATH
+            case _ if implicit:
+                raise ValueError("Implicit instruction for multikey", data)
+            case _ if has_text and mark is None:
+                mark = DKey._conv_registry.get(DKeyMark_e.MULTI)
+            case x if x >= 1 and mark is None:
+                mark = DKeyMark_e.MULTI
 
-class KwargsDKey(SingleDKey, mark=DKeyMark_e.KWARGS):
-    """ A Key representing all of an action spec's kwargs """
+        # Get the initiator using the mark
+        key_init = DKey.get_initiator(mark, multi=use_multi_ctor)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._expansion_type  = dict
-        self._typecheck = dict
+        # Build a str with the key_init and data
+        result           = str.__new__(key_init, data)
+        result.__init__(data, fmt=fparams, mark=mark, **kwargs)
 
-    def expand(self, *sources, fallback=None, **kwargs) -> dict:
-        for source in sources:
-            if not isinstance(source, SpecStruct_p):
-                continue
+        return result
 
-            return source.kwargs
+    @classmethod
+    def _parse_single_key_params_to_mark(cls, data, conv, fallback=None) -> tuple(str, None|DKeyMark_e):
+        """ Handle single, implicit key's and their parameters.
+          Explicitly passed in conv take precedence
 
-        return fallback or dict()
+          eg:
+          blah -> FREE
+          blah_ -> REDIRECT
+          blah!p -> PATH
+          ...
+        """
+        key = data
+        if not conv and CONV_SEP in data:
+            key, conv = data.split(CONV_SEP)
 
-class ImportDKey(SingleDKey, mark=DKeyMark_e.CODE, tparam="c"):
-    """
-      Subclass for dkey's which expand to CodeReferences
-    """
+        assert(conv is None or len(conv ) < 2), conv
+        result = DKey._conv_registry.get(conv, DKeyMark_e.FREE)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._expansion_type  = CodeReference.build
-        self._typecheck = CodeReference
+        match fallback, result:
+            case _, _ if key.endswith(REDIRECT_SUFFIX):
+                return key, DKeyMark_e.REDIRECT
+            case None, x:
+                return (key, x)
+            case x, DKeyMark_e.FREE:
+                return (key, x)
+            case x, y if x == y:
+                return (key, x)
+            case x, y:
+                raise ValueError("Conflicting conversion parameters", x, y, data)
 
-##-- end specialisations
+
+    @staticmethod
+    def register_key(ctor:type, mark:DKeyMark_e, tparam:None|str=None, multi=False):
+        match mark:
+            case None:
+                pass
+            case DKey.mark.NULL:
+                DKey._multi_registry[mark] = ctor
+                DKey._single_registry[mark] = ctor
+            case _ if multi:
+                DKey._multi_registry[mark] = ctor
+            case _:
+                DKey._single_registry[mark] = ctor
+
+        match tparam:
+            case None:
+                return
+            case str() if len(tparam) > 1:
+                raise ValueError("conversion parameters for DKey's can't be more than a single char")
+            case str():
+                DKey._conv_registry[tparam] = mark
+
+    @staticmethod
+    def get_initiator(mark, *, multi:bool=False) -> type:
+        match multi:
+            case True:
+                ctor = DKey._multi_registry.get(mark, None)
+                return ctor or DKey._multi_registry[DKeyMark_e.MULTI]
+            case False:
+                ctor = DKey._single_registry.get(mark, None)
+                return ctor or DKey._single_registry[DKeyMark_e.FREE]
+
+
+    @staticmethod
+    def register_parser(fn:type, *, force=False):
+        """ Dependency inject a formatter capable of parsing type conversion and formatting parameters from strings,
+          for DKey to use when constructing keys.
+          Most likely will be DKeyFormatter.
+
+          Expects the fn to return tuple[bool, list]
+        """
+        match DKey._parser:
+            case None:
+                DKey._parser = fn
+            case _ if force:
+                DKey._parser = fn
+            case _:
+                pass

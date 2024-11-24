@@ -17,8 +17,7 @@ logging = logmod.root
 
 from tomlguard import TomlGuard
 
-from jgdv.structs.dkey.dkey_formatter import DKeyFormatter
-from jgdv.structs.dkey.dkey import DKey, MultiDKey
+from jgdv.structs.dkey import DKey, MultiDKey, DKeyFormatter
 
 class TestDKeyFormatterParsing:
 
