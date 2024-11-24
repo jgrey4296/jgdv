@@ -225,10 +225,9 @@ class TestDKeyWithParameters:
         obj = dkey.DKey("aval!c", implicit=True)
         assert(isinstance(obj, dkey.ImportDKey))
 
-    @pytest.mark.xfail
     def test_conflicting_marks_error(self):
         with pytest.raises(ValueError):
-            dkey.DKey("{aval!p}", implicit=False, mark=dkey.DKey.mark.CODE)
+            dkey.DKey("{aval!s}", implicit=False, mark=dkey.DKey.mark.CODE)
 
 class TestDKeyFormatting:
 
@@ -495,6 +494,7 @@ class TestDKeyMultikeyExpansion:
 class TestDKeyExpansionFallback:
 
     def test_sanity(self):
+        assert(True is not False)
         state = {}
         key = dkey.DKey("a_null_key")
         result = key.expand(state)
@@ -669,7 +669,7 @@ class TestDKeyRedirection:
 class TestDKeyExpansionTyping:
 
     def test_sanity(self):
-        pass
+        assert(True is not False)
 
     @pytest.mark.parametrize("name", ["x"])
     def test_basic_type_check(self, name):
