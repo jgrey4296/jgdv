@@ -14,8 +14,8 @@ import warnings
 import pytest
 
 import tomlguard
-from jgdv.structs.location.errors import DirAbsent, LocationExpansionError, LocationError
-from jgdv.structs.location.locations import JGDVLocations
+from jgdv.structs.location import DirAbsent, LocationExpansionError, LocationError
+from jgdv.structs.location import JGDVLocations
 from jgdv.structs.dkey import DKey, NonDKey
 
 logging = logmod.root
