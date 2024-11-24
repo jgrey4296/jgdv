@@ -14,59 +14,56 @@ import warnings
 import pytest
 
 import tomlguard
-import doot
-doot._test_setup()
-from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
-from doot.control.locations import DootLocations
-from doot.structs import DKey
-from doot._structs.dkey import NonDKey
+from jgdv.structs.location.errors import DirAbsent, LocationExpansionError, LocationError
+from jgdv.structs.location.locations import JGDVLocations
+from jgdv.structs.dkey import DKey, NonDKey
 
 logging = logmod.root
 
 class TestLocations:
 
     def test_initial(self):
-        simple = DootLocations(pl.Path.cwd())
-        assert(isinstance(simple, DootLocations))
+        simple = JGDVLocations(pl.Path.cwd())
+        assert(isinstance(simple, JGDVLocations))
         assert(not bool(simple._data))
 
     def test_update(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"blah": "bloo"})
         assert(bool(simple._data))
         assert("blah" in simple)
 
     def test_registered(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"a": "blah"})
         assert(bool(simple._data))
         simple.registered("a")
 
     def test_registered_fail(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"a": "blah"})
         assert(bool(simple._data))
 
-        with pytest.raises(DootDirAbsent):
+        with pytest.raises(DirAbsent):
             simple.registered("b")
 
     def test_update_conflict(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"blah": "bloo"})
-        with pytest.raises(DootLocationError):
+        with pytest.raises(LocationError):
             simple.update({"blah": "blah"})
 
     def test_update_non_strict(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"blah": "bloo"})
         simple.update({"blah": "bloo"}, strict=False)
 
     def test_update_overwrite(self):
         target = pl.Path("aweg")
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"blah": "bloo"})
         simple.update({"blah": "aweg"}, strict=False)
         assert("blah" in simple)
@@ -76,18 +73,18 @@ class TestLocations:
         assert(result == target.resolve())
 
     def test_empty_repr(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         repr_str = repr(simple)
-        assert(repr_str == f"<DootLocations : {str(pl.Path.cwd())} : ()>")
+        assert(repr_str == f"<JGDVLocations : {str(pl.Path.cwd())} : ()>")
 
     def test_non_empty_repr(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "blah", "b": "aweg", "awegewag": "wejgio"})
         repr_str = repr(simple)
-        assert(repr_str == f"<DootLocations : {str(pl.Path.cwd())} : (a, b, awegewag)>")
+        assert(repr_str == f"<JGDVLocations : {str(pl.Path.cwd())} : (a, b, awegewag)>")
 
     def test_context_manager(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"a": "blah"})
         assert(bool(simple._data))
@@ -97,7 +94,7 @@ class TestLocations:
             assert(ctx.a == pl.Path("~/Desktop/blah").expanduser().resolve())
 
     def test_clear(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"a": "blah"})
         assert("a" in simple)
@@ -110,7 +107,7 @@ class TestLocationsBasicGet:
         """
           loc.get(None) -> None
         """
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
         result = simple.get(None)
         assert(result is None)
@@ -119,7 +116,7 @@ class TestLocationsBasicGet:
         """
           loc.get(NonDKey(simple)) -> pl.Path(.../simple)
         """
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
         key = DKey("simple", implicit=False)
         assert(isinstance(key, NonDKey))
@@ -130,7 +127,7 @@ class TestLocationsBasicGet:
         """
           loc.get('simple') -> pl.Path(.../simple)
         """
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
         key = "simple"
         result = simple.get(key)
@@ -140,7 +137,7 @@ class TestLocationsBasicGet:
         """
           loc.get('{simple}') -> pl.Path(.../{simple})
         """
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "blah", "simple":"bloo"})
         key = "{simple}"
         result = simple.get(key)
@@ -150,7 +147,7 @@ class TestLocationsBasicGet:
         """
           loc.get(DKey('simple')) => pl.Path(...bloo)
         """
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "blah", "simple":"bloo"})
         key = DKey("simple")
         result = simple.get(key)
@@ -160,22 +157,22 @@ class TestLocationsBasicGet:
         """
           loc.get(DKey('simple')) => pl.Path(...{simple})
         """
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
         key = DKey("simple", implicit=True)
         result = simple.get(key)
         assert(result == pl.Path("{simple}"))
 
     def test_get_fallback(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
         result = simple.get("{b}", pl.Path("bloo"))
         assert(result == pl.Path("bloo"))
 
     def test_get_raise_error_with_false_fallback(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
-        with pytest.raises(DootLocationError):
+        with pytest.raises(LocationError):
             simple.get("badkey", False)
 
 class TestLocationsGetItem:
@@ -184,94 +181,94 @@ class TestLocationsGetItem:
         """
           loc[a] => pl.Path(.../a)
         """
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
         result        = simple.__getitem__("a")
         result_alt    = simple['a']
         assert(result == result_alt)
         assert(isinstance(result, pl.Path))
-        assert(result == doot.locs.normalize(pl.Path("a")))
+        assert(result == simple.normalize(pl.Path("a")))
 
     def test_getitem_str_key_expansion(self):
         """
           loc[{a}] -> pl.Path(.../blah)
         """
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
         result = simple.__getitem__("{a}")
-        assert(result == doot.locs.normalize(pl.Path("blah")))
+        assert(result == simple.normalize(pl.Path("blah")))
 
     def test_getitem_str_key_no_match_errors(self):
         """
           loc[{b}] -> pl.Path(.../{b})
         """
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
-        with pytest.raises(DootLocationError):
+        with pytest.raises(LocationError):
             simple.__getitem__("{b}")
 
     def test_getitem_path_passthrough(self):
         """
           loc[pl.Path(a/b/c)] -> pl.Path(.../a/b/c)
         """
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
         result = simple.__getitem__(pl.Path("a/b/c"))
-        assert(result == doot.locs.normalize(pl.Path("a/b/c")))
+        assert(result == simple.normalize(pl.Path("a/b/c")))
 
     def test_getitem_path_with_keys(self):
         """
           loc[pl.Path({a}/b/c)] -> pl.Path(.../blah/b/c)
         """
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
         result = simple.__getitem__(pl.Path("{a}/b/c"))
-        assert(result == doot.locs.normalize(pl.Path("blah/b/c")))
+        assert(result == simple.normalize(pl.Path("blah/b/c")))
 
     def test_getitem_fail_with_multikey(self):
-        simple = DootLocations(pl.Path.cwd()).update({"a": "{other}/blah", "other": "bloo"})
+        simple = JGDVLocations(pl.Path.cwd()).update({"a": "{other}/blah", "other": "bloo"})
         key = DKey("{a}", ctor=pl.Path)
         with pytest.raises(TypeError):
             simple[key]
 
     def test_getitem_expansion_item(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"a": "{other}", "other": "bloo"})
         assert(bool(simple._data))
 
         assert(isinstance(simple['{a}'], pl.Path))
-        assert(simple['{a}'] == doot.locs.normalize(pl.Path("bloo")))
+        assert(simple['{a}'] == simple.normalize(pl.Path("bloo")))
 
     def test_getitem_expansion_multi_recursive(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"a": "{other}", "other": "{aweg}/bloo", "aweg":"aweg/{blah}", "blah":"blah/jojo"})
         assert(bool(simple._data))
 
         assert(isinstance(simple['{a}'], pl.Path))
-        assert(simple['{a}'] == doot.locs.normalize(pl.Path("aweg/blah/jojo/bloo")))
+        assert(simple['{a}'] == simple.normalize(pl.Path("aweg/blah/jojo/bloo")))
 
     def test_getitem_expansion_in_item(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"other": "bloo"})
         assert(bool(simple._data))
 
         assert(isinstance(simple['{other}'], pl.Path))
-        assert(simple['{other}'] == doot.locs.normalize(pl.Path("bloo")))
+        assert(simple['{other}'] == simple.normalize(pl.Path("bloo")))
 
 class TestLlocationsGetAttr:
 
     def test_attr_access_success(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
         result = simple.a
         assert(simple.a == pl.Path("blah").absolute())
         assert(isinstance(simple.a, pl.Path))
 
     def test_attr_access_simple_expansion(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "{other}/blah", "other": "bloo"})
         assert(simple.a == simple.normalize(pl.Path("{other}/blah")))
         assert(isinstance(simple.a, pl.Path))
@@ -280,31 +277,31 @@ class TestLlocationsGetAttr:
         """
           locs.a => pl.Path(.../{other})
         """
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "{other}", "other": "bloo"})
 
         assert(isinstance(simple.a, pl.Path))
         assert(simple.a == pl.Path("{other}").absolute())
 
     def test_attr_access_non_existing_path(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "blah"})
-        with pytest.raises(DootLocationError):
+        with pytest.raises(LocationError):
             simple.b
 
 class TestLocationsFails:
 
     def test_getitem_expansion_missing_key(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"other": "bloo"})
         assert(bool(simple._data))
 
-        with pytest.raises(DootLocationError):
+        with pytest.raises(LocationError):
             simple['{aweg}']
 
     def test_attr_access_doesnt_expand_subkeys(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"a": "{other}/blah", "other": "{aweg}/bloo/{awog}", "aweg": "first", "awog": "second"})
         assert(bool(simple._data))
@@ -314,14 +311,14 @@ class TestLocationsFails:
         assert(isinstance(simple.a, pl.Path))
 
     def test_item_access_expansion_recursion_fail(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"a": "{other}/blah", "other": "/bloo/{a}"})
-        with pytest.raises(DootLocationExpansionError):
+        with pytest.raises(LocationExpansionError):
             simple['{a}']
 
     def test_get_returns_path(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
         simple.update({"a": "blah"})
         assert(bool(simple._data))
@@ -331,32 +328,32 @@ class TestLocationsFails:
 class TestLocationsUtils:
 
     def test_normalize(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         a_path = pl.Path("a/b/c")
         expected = a_path.absolute()
         result = simple.normalize(a_path)
         assert(result == expected)
 
     def test_normalize_tilde(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         result = simple.normalize(pl.Path("~/blah"))
         assert(result.is_absolute())
         assert(result == pl.Path("~/blah").expanduser())
 
     def test_normalize_absolute(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         result = simple.normalize(pl.Path("/blah"))
         assert(result.is_absolute())
         assert(result == pl.Path("/blah"))
 
     def test_normalize_relative(self):
-        simple = DootLocations(pl.Path.cwd())
+        simple = JGDVLocations(pl.Path.cwd())
         result = simple.normalize(pl.Path("blah"))
         assert(result.is_absolute())
         assert(result == (pl.Path.cwd() / "blah").absolute())
 
     def test_normalize_relative_with_different_cwd(self):
-        simple = DootLocations(pl.Path("~/desktop/"))
+        simple = JGDVLocations(pl.Path("~/desktop/"))
         result = simple.normalize(pl.Path("blah"))
         assert(result.is_absolute())
         assert(result == (pl.Path("~/desktop/") / "blah").expanduser().absolute())

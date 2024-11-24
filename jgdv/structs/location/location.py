@@ -8,7 +8,6 @@ See EOF for license/metadata/notes as applicable
 from __future__ import annotations
 
 # ##-- stdlib imports
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -19,12 +18,11 @@ import re
 import time
 import types
 import weakref
-# from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
                     MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload, NamedTuple,
+                    TypeGuard, TypeVar, cast, final, overload, NamedTuple, Self,
                     runtime_checkable)
 from uuid import UUID, uuid1
 
@@ -36,12 +34,10 @@ from pydantic import BaseModel, field_validator, model_validator
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-import doot
-from doot._abstract.protocols import Buildable_p, Location_p, ProtocolModelMeta
-from doot._structs.dkey import DKey
-from doot.utils.dkey_formatter import DKeyFormatter
-from doot.mixins.path_manip import PathManip_m
-from doot.enums import LocationMeta_f
+from jgdv._abstract.protocols import Buildable_p, Location_p, ProtocolModelMeta
+from jgdv.structs.dkey import DKey, DKeyFormatter
+from jgdv.mixins.path_manip import PathManip_m
+from jgdv.enums.util import FlagsBuilder_m
 
 # ##-- end 1st party imports
 
@@ -55,6 +51,26 @@ GLOB          : Final[str]       = "*"
 REC_GLOB      : Final[str]       = "**"
 SOLO          : Final[str]       = "?"
 
+
+class LocationMeta_f(FlagsBuilder_m, enum.Flag):
+    """ Available metadata attachable to a location """
+
+    abstract     = enum.auto()
+    artifact     = enum.auto()
+    directory    = enum.auto()
+    cleanable    = enum.auto()
+    normOnLoad   = enum.auto()
+    protected    = enum.auto()
+    glob         = enum.auto()
+    expandable   = enum.auto()
+    remote       = enum.auto()
+
+    # Aliases
+    file         = artifact
+    location     = directory
+    indefinite   = abstract
+
+    default      = directory
 
 class Location(BaseModel, Location_p, Buildable_p, PathManip_m, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """ A Location to be used by tasks in Doot.
@@ -74,7 +90,7 @@ class Location(BaseModel, Location_p, Buildable_p, PathManip_m, metaclass=Protoc
     meta                : LocationMeta_f  = LocationMeta_f.default
     _expansion_keys     : set[str]      = set()
 
-    _toml_str_prefix    : ClassVar[str] = doot.constants.patterns.FILE_DEP_PREFIX
+    _toml_str_prefix    : ClassVar[str] = "file:>"
     _artifact_key       : ClassVar[str] = ARTIFACT_K
 
     class Abstractions(NamedTuple):
@@ -85,13 +101,13 @@ class Location(BaseModel, Location_p, Buildable_p, PathManip_m, metaclass=Protoc
         def __bool__(self):
             return any((self.path, self.stem, self.suffix))
 
-        def __eq__(self, other:bool|Tuple|Abstractions):
+        def __eq__(self, other:bool|Tuple|Self):
             match other:
                 case bool():
                     return other == bool(self)
                 case [x,y,z]:
                     return all([self.path==x, self.stem==y, self.suffix==z])
-                case Abstractions():
+                case Self():
                     return all([self.path==other.path, self.stem==other.stem, self.suffix==other.suffix])
 
     @classmethod
@@ -237,4 +253,5 @@ class Location(BaseModel, Location_p, Buildable_p, PathManip_m, metaclass=Protoc
         return self._expansion_keys
 
     def expand(self):
-        return doot.locs[self.path]
+        # return doot.locs[self.path]
+        return self.path

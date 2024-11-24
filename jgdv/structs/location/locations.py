@@ -13,8 +13,8 @@ from dataclasses import InitVar, dataclass, field, replace
 from re import Pattern
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar, Self,
+                    Generator, cast, final, overload, runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
 import functools as ftz
@@ -31,18 +31,40 @@ logging = logmod.getLogger(__name__)
 import os
 import re
 import tomlguard
-import doot
-from doot.errors import DootDirAbsent, DootLocationExpansionError, DootLocationError
-from doot.structs import TaskArtifact, Location
-from doot._structs.dkey import MultiDKey, NonDKey, SingleDKey, DKey
-from doot.mixins.path_manip import PathManip_m
-from doot.utils.dkey_formatter import DKeyFormatter
-from doot.enums import LocationMeta_f
+from jgdv.structs.location.errors import DirAbsent, LocationExpansionError, LocationError
+from jgdv.structs.location.location import Location, LocationMeta_f
+from jgdv.structs.dkey import MultiDKey, NonDKey, SingleDKey, DKey, DKeyFormatter
+from jgdv.mixins.path_manip import PathManip_m
 
-KEY_PAT        = doot.constants.patterns.KEY_PATTERN
-MAX_EXPANSIONS = doot.constants.patterns.MAX_KEY_EXPANSIONS
+KEY_PAT        = "{(.+?)}"
+MAX_EXPANSIONS = 10
 
-class DootLocations(PathManip_m):
+class _LocationsGlobal:
+
+    _global_locs : ClassVar[list["JGDVLocations"]] = []
+
+    @staticmethod
+    def peek() -> None|"JGDVLocations":
+        match _LocationsGlobal._global_locs:
+            case []:
+                return None
+            case [*_, x]:
+                return x
+
+    @staticmethod
+    def push(locs):
+        _LocationsGlobal._global_locs.append(locs)
+
+    @staticmethod
+    def pop() -> None|"JGDVLocations":
+        match _LocationsGlobal._global_locs:
+            case []:
+                return None
+            case [*xs, x]:
+                _LocationsGlobal._global_locs = xs
+                return x
+
+class JGDVLocations(PathManip_m):
     """
       A Single point of truth for task access to locations.
       key=value pairs in [[locations]] toml blocks are integrated into it.
@@ -60,14 +82,21 @@ class DootLocations(PathManip_m):
       """
     locmeta = LocationMeta_f
 
-    def __init__(self, root:Pl.Path):
+    @staticmethod
+    def _global_(self):
+        return _LocationsGlobal.peek()
+
+    def __init__(self, root:pl.Path):
         self._root    : pl.Path()               = root.expanduser().resolve()
         self._data    : dict[str, Location]     = dict()
-        self._loc_ctx : None|DootLocations      = None
+        self._loc_ctx : None|JGDVLocations      = None
+        match _LocationsGlobal.peek():
+            case None:
+                _LocationsGlobal.push(self)
 
     def __repr__(self):
         keys = ", ".join(iter(self))
-        return f"<DootLocations : {str(self.root)} : ({keys})>"
+        return f"<JGDVLocations : {str(self.root)} : ({keys})>"
 
     def __getattr__(self, key:str) -> pl.Path:
         """
@@ -109,7 +138,7 @@ class DootLocations(PathManip_m):
                 case _, []:
                     current = str(current)
                 case _, [*xs] if bool(conflict:=expanded_keys & {x.key for x in xs}):
-                    raise DootLocationExpansionError("Location Expansion recursion detected",val, conflict)
+                    raise LocationExpansionError("Location Expansion recursion detected",val, conflict)
                 case _, [*xs]:
                     expanded_keys.update(x.key for x in xs)
                     expanded = {x.key : self.get(x.key, fallback=False) for x in xs}
@@ -118,12 +147,14 @@ class DootLocations(PathManip_m):
         assert(current is not None)
         return self.normalize(pl.Path(current))
 
-    def __contains__(self, key:str|DKey|pl.Path|TaskArtifact):
+    def __contains__(self, key:str|DKey|pl.Path|Location|Self):
         """ Test whether a key is a registered location """
         match key:
-            case DootLocations():
+            case JGDVLocations():
                 return False
-            case str() | pl.Path() | TaskArtifact():
+            case Location():
+                return False
+            case str() | pl.Path():
                 return key in self._data
 
     def __iter__(self) -> Generator[str]:
@@ -132,24 +163,21 @@ class DootLocations(PathManip_m):
 
     def __call__(self, new_root=None) -> Self:
         """ Create a copied locations object, with a different root """
-        new_obj = DootLocations(new_root or self._root)
+        new_obj = JGDVLocations(new_root or self._root)
         return new_obj.update(self)
 
     def __enter__(self) -> Any:
         """ replaces the global doot.locs with this locations obj,
         and changes the system root to wherever this locations obj uses as root
         """
-        self._loc_ctx = doot.locs
-        doot.locs = self
-        os.chdir(doot.locs._root)
+        _LocationsGlobal.push(self)
+        os.chdir(self._root)
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
         """ returns the global state to its original, """
-        assert(self._loc_ctx is not None)
-        doot.locs     = self._loc_ctx
-        os.chdir(doot.locs._root)
-        self._loc_ctx = None
+        _LocationsGlobal.pop()
+        os.chdir(_LocationsGlobal.peek()._root)
         return False
 
     def get(self, key:None|DKey|str, fallback:None|False|str|pl.Path=Any) -> None|pl.Path:
@@ -164,7 +192,7 @@ class DootLocations(PathManip_m):
             case str() if key in self._data:
                 return self._data[key].path
             case _ if fallback is False:
-                raise DootLocationError("Key Not found", key)
+                raise LocationError("Key Not found", key)
             case _ if isinstance(fallback, (str, pl.Path)):
                 return self.get(fallback)
             case _ if fallback is None:
@@ -173,7 +201,6 @@ class DootLocations(PathManip_m):
                 return pl.Path(f"{key:w}")
             case _:
                 return pl.Path(key)
-
 
     def normalize(self, path:pl.Path, symlinks:bool=False) -> pl.Path:
         """
@@ -206,33 +233,35 @@ class DootLocations(PathManip_m):
         """
         return self._root
 
-    def update(self, extra:dict|TomlGuard|DootLocations, strict=True) -> Self:
+    def update(self, extra:dict|tomlguard.TomlGuard|Location|JGDVLocations, strict=True) -> Self:
         """
           Update the registered locations with a dict, tomlguard, or other dootlocations obj.
         """
         match extra: # unwrap to just a dict
             case dict():
                 pass
+            case Location():
+                pass
             case tomlguard.TomlGuard():
                 return self.update(extra._table(), strict=strict)
-            case DootLocations():
+            case JGDVLocations():
                 return self.update(extra._data, strict=strict)
             case _:
-                raise doot.errors.DootLocationError("Tried to update locations with unknown type", extra)
+                raise LocationError("Tried to update locations with unknown type", extra)
 
         raw          = dict(self._data.items())
         base_keys    = set(raw.keys())
         new_keys     = set(extra.keys())
         conflicts    = (base_keys & new_keys)
         if strict and bool(conflicts):
-            raise doot.errors.DootLocationError("Strict Location Update conflicts", conflicts)
+            raise LocationError("Strict Location Update conflicts", conflicts)
 
         for k,v in extra.items():
             match Location.build(v, key=k):
                 case Location() as l:
                     raw[l.key] = l
                 case _:
-                    raise DootLocationError("Couldn't build a Location", k, v)
+                    raise LocationError("Couldn't build a Location", k, v)
 
         logging.debug("Registered New Locations: %s", ", ".join(new_keys))
         self._data = raw
@@ -240,12 +269,12 @@ class DootLocations(PathManip_m):
 
     def registered(self, *values, task="doot", strict=True) -> set:
         """ Ensure the values passed in are registered locations,
-          error with DootDirAbsent if they aren't
+          error with DirAbsent if they aren't
         """
         missing = set(x for x in values if x not in self)
 
         if strict and bool(missing):
-            raise DootDirAbsent("Ensured Locations are missing for %s : %s", task, missing)
+            raise DirAbsent("Ensured Locations are missing for %s : %s", task, missing)
 
         return missing
 
