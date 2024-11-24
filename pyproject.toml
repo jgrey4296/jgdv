@@ -15,14 +15,8 @@ classifiers     = [
 
 dependencies   = [
                "tomlguard",
-               # "mastodon.py>=1.8",
-               # "selenium",
-               # "numpy",
-               # "scrapy",
                "pyparsing",
-               # "construct",
                "networkx",
-               # "pygobject",
                "pydantic",
 ]
 
@@ -32,7 +26,6 @@ docs = [
     "sphinx-rtd-theme",
     "myst_parser >= 4.0.0",
 ]
-dev  = [ "doot", "pipreqs"]
 test = [ "pytest >= 8.3.0" ]
 
 
