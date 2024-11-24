@@ -332,3 +332,9 @@ class Persistent_p(Protocol):
     def read(self, target:pl.Path) -> None:
         """ Read the target file, creating a new object """
         pass
+
+@runtime_checkable
+class FailHandler_p(Protocol):
+
+    def handle_failure(self, err:Exception, *args, **kwargs) -> None|Any:
+        pass
