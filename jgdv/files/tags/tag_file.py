@@ -28,9 +28,6 @@ from uuid import UUID, uuid1
 
 ##-- end builtin imports
 
-##-- lib imports
-import more_itertools as mitz
-##-- end lib imports
 
 from collections import defaultdict
 from pydantic import BaseModel, field_validator, model_validator

@@ -32,7 +32,6 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-import more_itertools as mitz
 from pydantic import BaseModel, Field, field_validator
 from tomlguard import TomlGuard
 
