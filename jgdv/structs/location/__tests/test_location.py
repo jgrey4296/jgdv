@@ -14,7 +14,7 @@ import warnings
 import pytest
 
 from jgdv.structs.dkey import DKey
-from jgdv.structs.location.location import Location, LocationMeta_f
+from jgdv.structs.location import Location, LocationMeta_f
 
 logging = logmod.root
 
