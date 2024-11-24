@@ -13,8 +13,8 @@ import warnings
 
 import pytest
 
-from jgdv.structs.dkey.dkey import DKey
-from jgdv.structs.dkey.dkey_decorator import DKeyExpansionDecorator as DKexd
+from jgdv.structs.dkey import DKey
+from jgdv.structs.dkey import DKeyExpansionDecorator as DKexd
 
 logging = logmod.root
 
