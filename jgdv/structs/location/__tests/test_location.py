@@ -12,12 +12,9 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 import warnings
 
 import pytest
-import doot
-doot._test_setup()
 
-from doot.structs import DKey
-from doot._structs.location import Location
-from doot.enums import LocationMeta_f
+from jgdv.structs.dkey import DKey
+from jgdv.structs.location.location import Location, LocationMeta_f
 
 logging = logmod.root
 
