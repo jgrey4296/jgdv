@@ -53,6 +53,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import decorator
+from jgdv._abstract.protocols import Decorator_p
 
 # ##-- end 3rd party imports
 
@@ -85,13 +86,13 @@ class JGDVDecorator(Decorator_p):
         orig = fn
         fn   = self._unwrap(fn)
         # update annotations
-        total_annotations = self._update_annotations(self, fn)
+        total_annotations = self._update_annotations(fn)
 
         if not self._verify_action(fn, total_annotations):
-            raise TypeError("Annotations do not match signature", orig)
+            raise TypeError("Annotations do not match signature", orig, fn, total_annotations)
 
         if self._is_marked(fn):
-            self._update_annotations(self, orig)
+            self._update_annotations(orig)
             return orig
 
         # add wrapper
@@ -147,7 +148,9 @@ class JGDVDecorator(Decorator_p):
         return fn_action_expansions
 
     def _target_class(self, cls) -> type:
-        raise NotImplementedError()
+        original = cls.__call__
+        cls.__call__ = self._target_method(cls.__call__)
+        return cls
 
     def _update_annotations(self, fn) -> list:
         # prepend annotations, so written decorator order is the same as written arg order:
@@ -157,57 +160,19 @@ class JGDVDecorator(Decorator_p):
         return new_annotations
 
     def _is_marked(self, fn) -> bool:
-        return hasattr(fn, self._mark_key)
+        match fn:
+            case type():
+                return hasattr(fn, self._mark_key) or (fn.__call__, self._mark_key)
+            case _:
+                return hasattr(fn, self._mark_key)
 
     def _apply_mark(self, fn:Callable) -> Callable:
-        setattr(fn, self._mark_key, True)
+        unwrapped = self._unwrap(fn)
+        setattr(unwrapped, self._mark_key, True)
+        if unwrapped is not fn:
+            setattr(fn, self._mark_key, True)
+
         return fn
 
     def _verify_action(self, fn, args) -> bool:
-        match fn:
-            case inspect.Signature():
-                sig = fn
-            case _:
-                sig = inspect.signature(fn, follow_wrapped=False)
-
-        match sig.parameters.get("self", None):
-            case None:
-                head_sig = ["spec", "state"]
-            case _:
-                head_sig = ["self", "spec", "state"]
-
-        return self._verify_signature(sig, head_sig, args)
-
-    def _verify_signature(self, sig:Callable|inspect.Signature, head:list, tail=None) -> bool:
-        match sig:
-            case inspect.Signature():
-                pass
-            case _:
-                sig = inspect.signature(sig)
-
-        params      = list(sig.parameters)
-        tail        = tail or []
-
-        for x,y in zip(params, head):
-            if x != y:
-                logging.debug("Mismatch in signature head: %s != %s", x, y)
-                return False
-
-        prefix_ig, suffix_ig = self._param_ignores
-        for x,y in zip(params[::-1], tail[::-1]):
-            key_str = str(y)
-            if x.startswith(prefix_ig) or x.endswith(suffix_ig):
-                continue
-            if keyword.iskeyword(key_str):
-                logging.debug("Key is a keyword, the function sig needs to use _{} or {}_ex: %s : %s", x, y)
-                return False
-
-            if not key_str.isidentifier():
-                logging.debug("Key is not an identifier, the function sig needs to use _{} or {}_ex: %s : %s", x,y)
-                return False
-
-            if x != y:
-                logging.debug("Mismatch in signature tail: %s != %s", x, y)
-                return False
-        else:
-            return True
+        return True
