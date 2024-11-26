@@ -3,8 +3,10 @@
 
 """
 
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 import datetime
 import enum
 import functools as ftz
@@ -15,19 +17,44 @@ import re
 import time
 import types
 import weakref
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload, Self,
-                    runtime_checkable)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Self,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 
-from jgdv._abstract.protocols import Key_p, SpecStruct_p, Buildable_p
+# ##-- end stdlib imports
+
+# ##-- 1st party imports
+from jgdv._abstract.protocols import Buildable_p, Key_p, SpecStruct_p
 from jgdv.structs.code_ref import CodeReference
-from jgdv.structs.dkey.dkey import DKey, REDIRECT_SUFFIX, CONV_SEP, DKeyMark_e
-from jgdv.structs.dkey.formatter import DKeyFormatter
-from jgdv.structs.dkey.mixins import DKeyFormatting_m, DKeyExpansion_m, identity
 from jgdv.structs.dkey.base import DKeyBase
+from jgdv.structs.dkey.dkey import CONV_SEP, REDIRECT_SUFFIX, DKey, DKeyMark_e
+from jgdv.structs.dkey.formatter import DKeyFormatter
+from jgdv.structs.dkey.mixins import DKeyExpansion_m, DKeyFormatting_m, identity
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
