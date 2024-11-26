@@ -2,7 +2,7 @@
 """
 Types that help add clarity
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:
