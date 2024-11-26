@@ -14,74 +14,78 @@ import pytest
 
 logging = logmod.root
 
-from jgdv.structs.name.structured_name import StructuredName
+from jgdv.structs.name.pydantic_struct_name import StructuredName as PydStrName
+from jgdv.structs.name.str_struct_name import StructuredName as StrName
 
+@pytest.mark.parametrize(["ctor"], [(PydStrName,), (StrName,)])
 class TestStructuredName:
+    """ Ensure basic functionality of structured names,
+    but ensuring StrName is a str.
+    """
 
-    @pytest.fixture(scope="function")
-    def setup(self):
-        pass
+    def test_sanity(self, ctor):
+        assert(True is not False)
+        assert(ctor is not None)
 
-    @pytest.fixture(scope="function")
-    def cleanup(self):
-        pass
+    def test_initial(self, ctor):
+        obj = ctor.build("head:tail")
+        assert(isinstance(obj, ctor))
+        match ctor:
+            case type() if ctor is PydStrName:
+                assert(not isinstance(obj, str))
+            case type() if ctor is StrName:
+                assert(isinstance(obj, str))
 
-    def test_initial(self):
-        obj = StructuredName.build("head:tail")
-        assert(isinstance(obj, StructuredName))
-
-    def test_build_fail(self):
+    def test_build_fail(self, ctor):
         with pytest.raises(ValueError):
-            StructuredName.build("head::tail")
+            ctor.build("head.tail")
 
-    def test_head_str(self):
-        obj = StructuredName.build("head.a.b.c:tail")
+    def test_head_str(self, ctor):
+        obj = ctor.build("head.a.b.c:tail")
         assert(obj.head == ["head", "a", "b", "c"])
         assert(obj.head_str() == "head.a.b.c")
 
-    def test_tail_str(self):
-        obj = StructuredName.build("head:tail.a.b.c")
+    def test_tail_str(self, ctor):
+        obj = ctor.build("head:tail.a.b.c")
         assert(obj.tail == ["tail", "a", "b", "c"])
         assert(obj.tail_str() == "tail.a.b.c")
 
-
-    def test_hash(self):
-        obj = StructuredName.build("head:tail.a.b.c")
-        obj2 = StructuredName.build("head:tail.a.b.c")
+    def test_hash(self, ctor):
+        obj = ctor.build("head:tail.a.b.c")
+        obj2 = ctor.build("head:tail.a.b.c")
         assert(hash(obj) == hash(obj2))
 
-
-    def test_lt(self):
-        obj = StructuredName.build("head:tail.a.b.c")
-        obj2 = StructuredName.build("head:tail.a.b.c.d")
+    def test_lt(self, ctor):
+        obj = ctor.build("head:tail.a.b.c")
+        obj2 = ctor.build("head:tail.a.b.c.d")
         assert( obj < obj2 )
 
-
-    def test_not_lt(self):
-        obj = StructuredName.build("head:tail.a.b.d")
-        obj2 = StructuredName.build("head:tail.a.b.c.d")
+    def test_not_lt(self, ctor):
+        obj = ctor.build("head:tail.a.b.d")
+        obj2 = ctor.build("head:tail.a.b.c.d")
         assert(not obj < obj2 )
 
-
-    def test_le_fail_on_self(self):
-        obj = StructuredName.build("head:tail.a.b.c")
-        obj2 = StructuredName.build("head:tail.a.b.c")
+    def test_le_fail_on_self(self, ctor):
+        obj = ctor.build("head:tail.a.b.c")
+        obj2 = ctor.build("head:tail.a.b.c")
         assert(obj == obj2)
         assert(obj <= obj2 )
 
-    def test_not_le(self):
-        obj = StructuredName.build("head:tail.a.b.d")
-        obj2 = StructuredName.build("head:tail.a.b.c")
+    def test_not_le(self, ctor):
+        obj = ctor.build("head:tail.a.b.d")
+        obj2 = ctor.build("head:tail.a.b.c")
         assert(not obj < obj2 )
 
-
-    def test_contains(self):
-        obj = StructuredName.build("head:tail.a.b.c")
-        obj2 = StructuredName.build("head:tail.a.b.c.e")
+    def test_contains(self, ctor):
+        obj = ctor.build("head:tail.a.b.c")
+        obj2 = ctor.build("head:tail.a.b.c.e")
         assert(obj2 in obj)
 
-
-    def test_not_contains(self):
-        obj = StructuredName.build("head:tail.a.b.c")
-        obj2 = StructuredName.build("head:tail.a.b.c.e")
+    def test_not_contains(self, ctor):
+        obj = ctor.build("head:tail.a.b.c")
+        obj2 = ctor.build("head:tail.a.b.c.e")
         assert(obj not in obj2)
+
+    def test_bracket_access(self, ctor):
+        simple = ctor.build("basic:tail..box[1]")
+        assert(str(simple) == "basic:tail..box[1]")

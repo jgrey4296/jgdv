@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """
 
-
 """
-
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
-# import abc
+# ##-- stdlib imports
 import datetime
 import enum
 import functools as ftz
+import importlib
 import itertools as itz
 import logging as logmod
 import pathlib as pl
@@ -18,26 +17,51 @@ import re
 import time
 import types
 import weakref
-# from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from importlib.metadata import EntryPoint
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
+# ##-- 3rd party imports
+from pydantic import field_validator, model_validator
+from tomlguard import TomlGuard
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+from jgdv.structs.name import StructuredName
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-from pydantic import field_validator, model_validator
-import importlib
-from importlib.metadata import EntryPoint
-from tomlguard import TomlGuard
-from jgdv.structs.name.structured_name import StructuredName
 
 class CodeReference(StructuredName):
     """
@@ -52,20 +76,14 @@ class CodeReference(StructuredName):
     @classmethod
     def build(cls, name:str|type|EntryPoint):
         match name:
-            case str() if cls._separator not in name:
-                raise ValueError("a separator needs to be used", name, cls._separator)
             case str():
-                groupHead_r, taskHead_r = name.split(cls._separator)
-                return cls(head=[groupHead_r], tail=[taskHead_r])
+                return cls(base=name)
             case type():
-                group, code = name.__module__, name.__name__
-                ref = cls(head=[group], tail=[code], _type=name)
-                return ref
+                base = f"{name.__module__}:{name.__name__}"
+                return cls(base=base, _type=name)
             case EntryPoint():
-                loaded      = ctor.load()
-                group, code = loaded.__module__, loaded.__name__
-                ref         = cls(head=[group], tail=[code], _type=loaded)
-                return ref
+                base = name.value
+                return cls(head=[group], tail=[code], _type=loaded)
             case _:
                 raise ValueError("Bad Value used to try to build a coderef", name)
 
@@ -79,9 +97,6 @@ class CodeReference(StructuredName):
                 return CodeReference.build(x.value)
             case _:
                 return CodeReference.build(alias)
-
-    def __str__(self) -> str:
-        return "{}{}{}".format(self.module, self._separator, self.value)
 
     def __repr__(self) -> str:
         code_path = str(self)
