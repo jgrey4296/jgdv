@@ -13,20 +13,17 @@ import warnings
 
 import pytest
 
-from jgdv.structs.dkey import DKey
+from jgdv.structs.dkey import DKey, DKeyed
 from jgdv.structs.dkey import DKeyExpansionDecorator as DKexd
+from jgdv.decorators.base import _TargetType_e
+from jgdv.structs.dkey.decorator import DKeyMetaDecorator
 
 logging = logmod.root
 
 class TestDkeyDecorator:
 
-    @pytest.fixture(scope="function")
-    def setup(self):
-        pass
-
-    @pytest.fixture(scope="function")
-    def cleanup(self):
-        pass
+    def test_sanity(self):
+        assert(True is not False)
 
     def test_initial(self):
         value = DKexd([])
@@ -37,110 +34,186 @@ class TestDkeyDecorator:
         assert(isinstance(value, DKexd))
         assert(bool(value._data))
 
-    def test_apply_mark(self):
-        dec = DKexd([])
+    def test_verify_signature_method_head(self):
+        dec   = DKexd([])
+        ttype = _TargetType_e.METHOD
 
-        def simple(self):
+        def simple(self, spec, state):
             pass
 
-        assert(not dec._is_marked(simple))
-        marked = dec._apply_mark(simple)
-        assert(simple is marked)
-        assert(dec._is_marked(marked))
+        sig = dec._signature(simple)
+        dec._verify_signature(sig, ttype, [])
+        assert(True)
 
 
-    def test_verify_signature_head(self):
-        dec = DKexd([])
+    def test_verify_signature_method_head_fail(self):
+        dec   = DKexd([])
+        ttype = _TargetType_e.METHOD
 
-        def simple(self):
+        def simple(self, spec, notstate):
             pass
 
-        assert(dec._verify_signature(simple, ["self"]))
+        sig = dec._signature(simple)
+        with pytest.raises(TypeError):
+            dec._verify_signature(sig, ttype, [])
 
 
-    def test_verify_signature_head_fail(self):
-        dec = DKexd([])
+    def test_verify_signature_func_head(self):
+        dec   = DKexd([])
+        ttype = _TargetType_e.FUNC
 
-        def simple(self):
+        def simple(spec, state):
             pass
 
-        assert(not dec._verify_signature(simple, ["bloo"]))
+        sig = dec._signature(simple)
+        dec._verify_signature(sig, ttype, [])
+        assert(True)
 
 
-    def test_verify_signature_multi_head(self):
-        dec = DKexd([])
+    def test_verify_signature_func_head_fail(self):
+        dec   = DKexd([])
+        ttype = _TargetType_e.FUNC
 
-        def simple(self, first, second, third):
+        def simple(spec, notstate):
             pass
 
-        assert(dec._verify_signature(simple, ["self", "first", "second", "third"]))
+        sig = dec._signature(simple)
+        with pytest.raises(TypeError):
+            dec._verify_signature(sig, ttype, [])
 
 
-    def test_verify_signature_multi_head_fail(self):
-        dec = DKexd([])
+    def test_verify_signature_method_tail(self):
+        dec   = DKexd([])
+        ttype = _TargetType_e.METHOD
 
-        def simple(self, first, second, third):
+        def simple(self, spec, state, bloo, blee):
             pass
 
-        assert(not dec._verify_signature(simple, ["self", "first", "bloo", "third"]))
+        sig = dec._signature(simple)
+        dec._verify_signature(sig, ttype, ["bloo", "blee"])
+        assert(True)
 
 
-    def test_verify_signature_tail(self):
-        dec = DKexd([])
+    def test_verify_signature_method_tail_fail(self):
+        dec   = DKexd([])
+        ttype = _TargetType_e.METHOD
 
-        def simple(self, first, second, third):
+        def simple(self, spec, state, bloo, blee):
             pass
 
-        assert(dec._verify_signature(simple, ["self"], ["third"]))
+        sig = dec._signature(simple)
+        with pytest.raises(TypeError):
+            dec._verify_signature(sig, ttype, ["bloo", "blah"])
 
 
-    def test_verify_signature_multi_tail(self):
-        dec = DKexd([])
+    def test_verify_signature_func_tail(self):
+        dec   = DKexd([])
+        ttype = _TargetType_e.FUNC
 
-        def simple(self, first, second, third):
+        def simple(spec, state, bloo, blee):
             pass
 
-        assert(dec._verify_signature(simple, ["self"], ["second", "third"]))
+        sig = dec._signature(simple)
+        dec._verify_signature(sig, ttype, ["bloo", "blee"])
+        assert(True)
 
 
-    def test_verify_signature_multi_tail_fail(self):
-        dec = DKexd([])
+    def test_verify_signature_func_tail_fail(self):
+        dec   = DKexd([])
+        ttype = _TargetType_e.FUNC
 
-        def simple(self, first, second, third):
+        def simple(spec, state, bloo, blee):
             pass
 
-        assert(not dec._verify_signature(simple, ["self"], ["first", "bloo", "third"]))
+        sig = dec._signature(simple)
+        with pytest.raises(TypeError):
+            dec._verify_signature(sig, ttype, ["bloo", "blah"])
 
 
-    def test_update_annotations_empty(self):
-        dec = DKexd([])
+    def test_verify_signature_incomplete_tail(self):
+        dec   = DKexd([])
+        ttype = _TargetType_e.FUNC
 
-        def simple(self, first, second, third):
+        def simple(spec, state, bloo, blee, blob):
             pass
 
-        annots = dec._update_annotations(simple)
-        assert(isinstance( annots, list ))
-        assert(not bool(annots))
+        sig = dec._signature(simple)
+        dec._verify_signature(sig, ttype, ["blee", "blob"])
+        assert(True)
 
 
-    def test_update_annotations_simple(self):
-        dec = DKexd([DKey("first"), DKey("second")])
+    def test_verify_signature_skip_ignores(self):
+        dec   = DKexd([])
+        ttype = _TargetType_e.FUNC
 
-        def simple(self, first, second, third):
+        def simple(spec, state, _bloo, blee_ex, blob):
             pass
 
-        annots = dec._update_annotations(simple)
-        assert(isinstance( annots, list ))
-        assert(bool(annots))
+        sig = dec._signature(simple)
+        dec._verify_signature(sig, ttype, ["awef", "aweg", "blob"])
+        assert(True)
 
 
-    def test_get_annotations(self):
-        dec = DKexd([DKey("first"), DKey("second")])
+class TestDKeyDecoratorExpansion:
 
-        def simple(self, first, second, third):
+    def test_sanity(self):
+        assert(True is not False)
+
+    def test_basic(self):
+        state = { "basic": "blah" }
+
+        @DKeyed.types("basic")
+        def simple(spec, state, basic):
+            assert(basic == "blah")
+
+        simple(None, state)
+
+
+    def test_mismatch_signature(self):
+        with pytest.raises(TypeError):
+            @DKeyed.types("other")
+            def simple(spec, state, basic):
+                assert(basic == "blah")
+
+
+    def test_expansion_fallback(self):
+        state = { "notbasic": "bloo" }
+
+        @DKeyed.types("basic", fallback="blah")
+        def simple(spec, state, basic):
+            assert(basic == "blah")
+
+        simple(None, state)
+
+
+    def test_multi_expansion(self):
+        state = { "basic": "bloo", "other": "qwerty" }
+
+        @DKeyed.types("basic", fallback="blah")
+        @DKeyed.types("other", fallback="aweg")
+        def simple(spec, state, basic, other):
+            assert(basic == "bloo")
+            assert(other == "qwerty")
+
+        simple(None, state)
+
+
+    def test_multi_expansion_fallback(self):
+        state = { "notbasic": "bloo", "notother": "qwerty" }
+
+        @DKeyed.types("basic", fallback="blah")
+        @DKeyed.types("other", fallback="aweg")
+        def simple(spec, state, basic, other):
+            assert(basic == "blah")
+            assert(other == "aweg")
+
+        simple(None, state)
+
+
+    def test_meta_decorator_no_change(self):
+        @DKeyed.requires("basic")
+        @DKeyed.requires("other")
+        def simple(spec, state):
             pass
 
-        annots = dec._update_annotations(simple)
-        assert(isinstance( annots, list ))
-        assert(bool(annots))
-        assert(annots == dec.get_annotations(simple))
+        simple(None, None)
