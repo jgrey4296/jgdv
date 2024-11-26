@@ -72,36 +72,8 @@ class StructuredName(mixins.StrStruct_m, BaseModel, Nameable_p, Buildable_p,  me
         cls._pre_validate(data)
         return data
 
-
     @model_validator(mode="after")
     def _extract_metadata(self):
         head, tail, params = self._process()
         self.head += head
         self.tail += tail
-
-    # def _process_head(cls, head):
-    #     sub_split = ftz.partial(aware_splitter, sep=cls._subseparator)
-    #     match head:
-    #         case None | []:
-    #             head = ["default"]
-    #         case ["tasks", x] if x.startswith('"') and x.endswith('"'):
-    #             head = ftz.reduce(lambda x, y: x + y, map(sub_split, x[1:-1]))
-    #         case ["tasks", *xs]:
-    #             head = ftz.reduce(lambda x, y: x + y, map(sub_split, xs))
-    #         case list():
-    #             head = ftz.reduce(lambda x, y: x + y, map(sub_split, head))
-    #         case _:
-    #             raise ValueError("Bad Head Value", head)
-
-    #     return head
-
-    # def _process_tail(cls, tail):
-    #     sub_split = ftz.partial(aware_splitter, sep=cls._subseparator)
-    #     match tail:
-    #         case None | []:
-    #             tail = ["default"]
-    #         case list():
-    #             tail = ftz.reduce(lambda x, y: x + y, map(sub_split, tail))
-    #         case _:
-    #             raise ValueError("Bad Tail Value", tail)
-    #     return tail
