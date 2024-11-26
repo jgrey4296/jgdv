@@ -64,7 +64,6 @@ def identity(x):
     return x
 
 class DKeyFormatting_m:
-
     """ General formatting for dkeys """
 
     def __format__(self, spec:str) -> str:
