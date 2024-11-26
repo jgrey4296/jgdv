@@ -34,13 +34,14 @@ class TimeCtx:
     A Simple Timer Ctx class to log how long things take
     Give it a logger, a message, and a level.
     The message doesn't do any interpolation
+
     """
 
-    def __init__(self, logger=None, entry_msg=None, exit_msg=None, level=10):
+    def __init__(self, logger=None, entry_msg=None, exit_msg=None, level:None|int|str=None):
         assert(isinstance(level, int))
         self._start_time = None
         self._logger     = logger or logging
-        self._level      = level
+        self._level      = level or 10
         self._entry_msg  = entry_msg or "Starting Timer"
         self._exit_msg   = exit_msg  or "Time Elapsed"
 

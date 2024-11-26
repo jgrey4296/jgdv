@@ -2,7 +2,7 @@
 """
 
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:
@@ -45,6 +45,7 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from jgdv.util.time_ctx import TimeCtx
+from jgdv.decorators.base import MetaDecorator
 
 # ##-- end 1st party imports
 
@@ -53,17 +54,25 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 
-def wraplog(logger, level, enter, exit):
-    """ TODO decorator to log entry and exit of a function,
-      and its time taken
-      """
+class TrackTime(MetaDecorator):
+    """ Decorate a callable to track its timing """
 
-    def applicator(fn):
-        @ftz.wraps(fn)
-        def wrapper(*args, **kwargs):
+    def __init__(self, logger:None|logmod.Logger=None, level:None|int|str=None, entry:str=None, exit:str=None, **kwargs):
+        kwargs.setdefault("mark", "_timetrack_mark")
+        kwargs.setdefault("data", "_timetrack_data")
+        super().__init__([], **kargs)
+        self._logger = logger
+        self._level  =  level
+        self._entry  = entry
+        self._exit   = exit
+    
+    def wrap_fn(self, fn):
+
+        def track_time_wrapper(*args, **kwargs):
             with TimeCtx(logger, enter, exit, level):
                 return fn(*args, **kwargs)
 
-        return wrapper
+        return track_time_wrapper
 
-    return applicator
+    def wrap_method(self, fn):
+        return self._wrap_fn(fn)
