@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:
@@ -62,10 +62,9 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 WRAPPED             : Final[str]       = "__wrapped__"
-ANNOTATIONS_PREFIX  : Final[str]       = "__JGDV_ANNOTATIONS__"
-MARK_SUFFIX         : Final[str]       = "_"
-DATA_SUFFIX         : Final[str]       = "_expansion_keys"
-PARAM_IGNORES       : Final[list[str]] = ["_", "_ex"]
+ANNOTATIONS_PREFIX  : Final[str]       = "__JGDV__"
+MARK_SUFFIX         : Final[str]       = "_mark"
+DATA_SUFFIX         : Final[str]       = "_data"
 
 class _TargetType_e(enum.Enum):
 
@@ -89,7 +88,7 @@ class DecoratorBase(Decorator_p):
     so no need for ftz.wraps in _wrap_method or _wrap_fn
     """
 
-    def __init__(self, *, prefix=None, mark=None, data=None):
+    def __init__(self, *, prefix:None|str=None, mark:None|str=None, data:None|str=None):
         self._annotation_prefix   : str              = prefix  or ANNOTATIONS_PREFIX
         self._mark_suffix         : str              = mark    or MARK_SUFFIX
         self._data_suffix         : str              = data    or DATA_SUFFIX
@@ -121,8 +120,6 @@ class DecoratorBase(Decorator_p):
 
         return depth
 
-    
-
     def _signature(self, fn) -> inspect.Signature:
         return inspect.signature(fn, follow_wrapped=False)
 
@@ -151,14 +148,14 @@ class DecoratorBase(Decorator_p):
 
         if self._is_marked(fn):
             assert(total_annotations == self.get_annotations(fn))
-            self._verify_signature(self._signature(fn), total_annotations)
-            self._verify_target(fn, total_annotations)
+            self._verify_signature(self._signature(fn), t_type, total_annotations)
+            self._verify_target(fn, t_type, total_annotations)
             return orig
 
         assert(orig is fn)
         # Not already decorated
-        self._verify_target(fn, total_annotations)
-        self._verify_signature(self._signature(fn), total_annotations)
+        self._verify_target(fn, t_type, total_annotations)
+        self._verify_signature(self._signature(fn), t_type, total_annotations)
 
         # add wrapper by target type
         match t_type:
@@ -224,13 +221,13 @@ class DecoratorBase(Decorator_p):
                 return self._mark_key in fn.__dict__
                 # return hasattr(fn, self._mark_key)
 
-    def _verify_target(self, fn, args) -> None:
+    def _verify_target(self, fn, ttype:_TargetType_e, args) -> None:
         """ Abstract class for specialization.
         Given the original target, throw an error here if it isn't 'correct' in some way
         """
         pass
 
-    def _verify_signature(self, sig, head, tail=None):
+    def _verify_signature(self, sig, ttype:_TargetType_e, args):
         pass
 
     def get_annotations(self, fn) -> list[str]:
@@ -244,9 +241,15 @@ class MetaDecorator(DecoratorBase):
     Adds metadata without modifying runtime behaviour of target
     """
 
-    def __init__(self, value, **kwargs):
+    def __init__(self, value:str|list[str], **kwargs):
+        kwargs.setdefault("mark", "_meta_marked")
+        kwargs.setdefault("data", "_meta_vals")
         super().__init__(**kwargs)
-        self._data = value
+        match value:
+            case list():
+                self._data = value
+            case _:
+                self._data = [value]
 
     def _update_annotations(self, fn) -> list:
         """ Apply metadata to target
@@ -254,25 +257,23 @@ class MetaDecorator(DecoratorBase):
         prepend annotations, so written decorator order is the same as written arg order:
         (ie: @wrap(x) @wrap(y) @wrap(z) def fn (x, y, z), even though z's decorator is applied first
         """
-        match self._data:
-            case list():
-                new_annotations = self._data + fn.__dict__.get(self._data_key, [])
-                fn.__dict__[self._data_key] = new_annotations
-                return new_annotations
-            case str():
-                new_annotations = [self._data] + fn.__dict__.get(self._data_key, [])
-                fn.__dict__[self._data_key] = new_annotations
-                return new_annotations
-            case _:
-                raise TypeError("Unknown decoration key type")
+        data                        = self._data[:]
+        new_annotations             = data + fn.__dict__.get(self._data_key, [])
+        fn.__dict__[self._data_key] = new_annotations
+        return new_annotations
 
 class DataDecorator(DecoratorBase):
     """ Adds Data to the target for use in the decorator """
 
-    def __init__(self, keys:list[str], **kwargs):
+    def __init__(self, keys:str|list[str], **kwargs):
+        kwargs.setdefault("mark", "_d_marked")
+        kwargs.setdefault("data", "_d_vals")
         super().__init__(**kwargs)
-        self._param_ignores     : list[str]        = ignores or PARAM_IGNORES
-        self._data              : list[Any]        = keys
+        match keys:
+            case list():
+                self._data = keys
+            case _:
+                self._data = [keys]
 
     def __call__(self, fn):
         if not bool(self._data):
@@ -286,13 +287,10 @@ class DataDecorator(DecoratorBase):
         prepend annotations, so written decorator order is the same as written arg order:
         (ie: @wrap(x) @wrap(y) @wrap(z) def fn (x, y, z), even though z's decorator is applied first
         """
-        match self._data:
-            case list():
-                new_annotations = self._data + getattr(fn, self._data_key, [])
-                setattr(fn, self._data_key, new_annotations)
-                return new_annotations
-            case _:
-                raise TypeError("Unknown decoration key type")
+        data                        = self._data[:]
+        new_annotations             = data + fn.__dict__.get(self._data_key, [])
+        fn.__dict__[self._data_key] = new_annotations
+        return new_annotations
 
 class DecoratorAccessor_m:
     """ A Base Class for building Decorator Accessors like DKeyed.
@@ -310,66 +308,3 @@ class DecoratorAccessor_m:
         """ Retrieve key annotations from a decorated function """
         dec = cls._build_decorator([])
         return dec.get_annotations(fn)
-
-class _other:
-
-    def __call__(self, fn):
-        orig = fn
-        fn   = self._unwrap(fn)
-        # update annotations
-        total_annotations = self._update_annotations(fn)
-
-        if self._is_marked(fn):
-            self._update_annotations(orig)
-            return orig
-
-        if isinstance(fn, type):
-            self._wrap_class(fn)
-            self._apply_mark(fn.__call__)
-            return self._apply_mark(fn)
-
-        # add wrapper
-        is_func = inspect.signature(fn).parameters.get("self", None) is None
-        match is_func:
-            case False:
-                wrapper = self._wrap_method(fn)
-            case True:
-                wrapper = self._wrap_fn(fn)
-
-        return self._apply_mark(wrapper)
-
-    def _wrap_class(self, cls) -> type:
-        original = cls.__call__
-        cls.__call__ = self._wrap_method(cls.__call__)
-        return cls
-
-    def _wrap_method(self, fn):
-        return fn
-
-    def _wrap_fn(self, fn):
-        return fn
-
-    def get_annotations(self, fn):
-        fn = self._unwrap(fn)
-        return getattr(fn, self._data_key, [])
-
-    def _unwrap(self, fn) -> Callable:
-        return inspect.unwrap(fn)
-
-    def _update_annotations(self, fn) -> list:
-        # prepend annotations, so written decorator order is the same as written arg order:
-        # (ie: @wrap(x) @wrap(y) @wrap(z) def fn (x, y, z), even though z's decorator is applied first
-        new_annotations = self._data + getattr(fn, self._data_key, [])
-        setattr(fn, self._data_key, new_annotations)
-        return new_annotations
-
-    def _is_marked(self, fn) -> bool:
-        match fn:
-            case type():
-                return hasattr(fn, self._mark_key) or hasattr(fn.__call__, self._mark_key)
-            case _:
-                return hasattr(fn, self._mark_key)
-
-    def _apply_mark(self, fn:Callable) -> Callable:
-        setattr(fn, self._mark_key, True)
-        return fn

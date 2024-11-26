@@ -79,7 +79,7 @@ class RedirectionDKey(SingleDKey, mark=DKeyMark_e.REDIRECT, tparam="R"):
     """
 
     def __init__(self, data, multi=False, re_mark=None, **kwargs):
-        kwargs['fallback'] = kwargs.get('fallback', Self)
+        kwargs.setdefault("fallback", Self)
         super().__init__(data, **kwargs)
         self.multi_redir      = multi
         self.re_mark          = re_mark

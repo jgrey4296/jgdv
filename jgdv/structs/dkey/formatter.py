@@ -39,6 +39,7 @@ import sh
 from jgdv.structs.code_ref import CodeReference
 from jgdv.structs.dkey.dkey import DKey, DKeyMark_e
 from jgdv._abstract.protocols import Key_p, SpecStruct_p
+from jgdv.util.chain_get import ChainedKeyGetter
 
 # ##-- end 1st party imports
 
@@ -60,32 +61,7 @@ DEFAULT_COUNT       : Final[int]                = 1
 RECURSE_GUARD_COUNT : Final[int]                = 2
 PAUSE_COUNT         : Final[int]                = 0
 
-def chained_get(key:str, *sources:dict|SpecStruct_p, fallback=None) -> None|Any:
-    """
-      Get a key's value from an ordered sequence of potential sources.
-      Try to get {key} then {key_} in order of sources passed in
-    """
-    replacement = fallback
-    for source in sources:
-        match source:
-            case None | []:
-                continue
-            case list():
-                replacement = source.pop()
-            case _ if hasattr(source, "get"):
-                if key not in source:
-                    continue
-                replacement = source.get(key, fallback)
-            case SpecStruct_p():
-                params      = source.params
-                replacement = params.get(key, fallback)
-            case _:
-                raise TypeError("Unknown Type in chained_get", source)
-
-        if replacement is not fallback:
-            return replacement
-
-    return fallback
+chained_get = ChainedKeyGetter.chained_get
 
 class _DKeyParams(BaseModel):
     """ Utility class for parsed string parameters """
