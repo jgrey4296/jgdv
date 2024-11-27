@@ -82,7 +82,7 @@ class JGDVLocations(PathManip_m):
       """
     locmeta = LocationMeta_f
 
-    @staticmethod
+    @property
     def _global_(self):
         return _LocationsGlobal.peek()
 
@@ -172,12 +172,12 @@ class JGDVLocations(PathManip_m):
         """
         _LocationsGlobal.push(self)
         os.chdir(self._root)
-        return self
+        return self._global_
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
         """ returns the global state to its original, """
         _LocationsGlobal.pop()
-        os.chdir(_LocationsGlobal.peek()._root)
+        os.chdir(self._global_._root)
         return False
 
     def get(self, key:None|DKey|str, fallback:None|False|str|pl.Path=Any) -> None|pl.Path:

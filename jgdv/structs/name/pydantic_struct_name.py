@@ -47,7 +47,7 @@ logging = logmod.getLogger(__name__)
 
 from jgdv.structs.name import mixins
 PAD           : Final[int] = 15
-TailEntry     : TypeAlias  = str|int|UUID
+TailEntry                  = mixins.TailEntry
 
 class StructuredName(mixins.StrStruct_m, BaseModel, Nameable_p, Buildable_p,  metaclass=ProtocolModelMeta):
     """ A Complex name class for identifying tasks and classes.

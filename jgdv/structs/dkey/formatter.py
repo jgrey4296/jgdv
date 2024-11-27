@@ -231,7 +231,7 @@ class DKeyFormatter_Expansion_m:
                      continue
                 case Key_p() if current._mark is DKey.mark.PATH and count != RECURSE_GUARD_COUNT:
                     with self(sources=self.sources + [x for x in current.extra_sources() if x not in self.sources]) as sub:
-                        logging.debug("Handling Path key")
+                        logging.debug("Handling Path key, sources: %s", (type(x) for x in sub.sources))
                         current = sub._expand(current, count=RECURSE_GUARD_COUNT)
                 case Key_p() if current.multi:
                     current = self._multi_expand(current)
