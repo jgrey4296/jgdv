@@ -52,6 +52,7 @@ logging = logmod.getLogger(__name__)
 
 from tomlguard import TomlGuard
 from pydantic import BaseModel, Field, field_validator
+TailEntry     : TypeAlias  = str|int|UUID
 
 def aware_splitter(x, sep=".") -> list[str]:
     match x:

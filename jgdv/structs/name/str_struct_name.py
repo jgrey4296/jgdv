@@ -40,7 +40,7 @@ logging = logmod.getLogger(__name__)
 
 from jgdv.structs.name import mixins
 
-TailEntry      : TypeAlias                 = str|int|UUID
+TailEntry      : TypeAlias                 = mixins.TailEntry
 FMT_PATTERN    : Final[re.Pattern]         = re.compile("^(h?)(t?)(p?)")
 SEP_DEFAULT    : Final[str]                = ":"
 SUBSEP_DEFAULT : Final[str]                = "."
