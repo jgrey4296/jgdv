@@ -4,4 +4,6 @@ which parses and stores metadata out of the string.
 """
 
 from .pydantic_struct_name import StructuredName
-from .mixins import TailEntry
+from .strang import Strang
+
+from .mixins import aware_splitter, TailEntry
