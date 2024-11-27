@@ -17,8 +17,7 @@ logging = logmod.root
 from jgdv.structs.name.pydantic_struct_name import StructuredName as PydStrName
 from jgdv.structs.name.str_struct_name import StructuredName as StrName
 
-# @pytest.mark.parametrize(["ctor"], [(PydStrName,), (StrName,)])
-@pytest.mark.parametrize(["ctor"], [(StrName,)])
+@pytest.mark.parametrize(["ctor"], [(PydStrName,), (StrName,)])
 class TestStructuredName:
     """ Ensure basic functionality of structured names,
     but ensuring StrName is a str.
@@ -41,10 +40,10 @@ class TestStructuredName:
         with pytest.raises(ValueError):
             ctor.build("head.tail")
 
-    def test_group_str(self, ctor):
+    def test_head_str(self, ctor):
         obj = ctor.build("head.a.b.c:tail")
-        assert(obj.group == ["head", "a", "b", "c"])
-        assert(obj.group_str() == "head.a.b.c")
+        assert(obj.head == ["head", "a", "b", "c"])
+        assert(obj.head_str() == "head.a.b.c")
 
     def test_tail_str(self, ctor):
         obj = ctor.build("head:tail.a.b.c")
