@@ -28,6 +28,7 @@ from uuid import UUID, uuid1
 
 ##-- end builtin imports
 
+from jgdv._abstract.protocols import SpecStruct_p
 
 ##-- logging
 logging = logmod.getLogger(__name__)
