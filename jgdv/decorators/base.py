@@ -152,7 +152,6 @@ class DecoratorBase(Decorator_p):
             self._verify_target(fn, t_type, total_annotations)
             return orig
 
-        assert(orig is fn)
         # Not already decorated
         self._verify_target(fn, t_type, total_annotations)
         self._verify_signature(self._signature(fn), t_type, total_annotations)
@@ -174,7 +173,6 @@ class DecoratorBase(Decorator_p):
     def _wrap_method(self, fn) -> Callable:
         """ Override this to add a decoration function to method """
 
-        @ftz.wraps(fn)
         def basic_method_wrapper(_self, *args, **kwargs):
             logging.debug("Calling Wrapped Method: %s", fn.__qualname__)
             return fn(_self, *args, **kwargs)
