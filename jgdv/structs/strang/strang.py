@@ -38,7 +38,7 @@ from tomlguard import TomlGuard
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from jgdv.structs.name import strang_mixins as mixins
+from jgdv.structs.strang import strang_mixins as mixins
 
 FMT_PATTERN    : Final[re.Pattern]         = re.compile("^(h?)(t?)(p?)")
 SEP_DEFAULT    : Final[str]                = "::"

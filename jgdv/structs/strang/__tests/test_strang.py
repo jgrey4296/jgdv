@@ -13,7 +13,7 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 import warnings
 import pytest
 
-from jgdv.structs.name.strang import Strang
+from jgdv.structs.strang import Strang
 logging = logmod.root
 
 UUID_STR = str(uuid.uuid1())

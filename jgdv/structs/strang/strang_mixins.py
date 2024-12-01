@@ -51,7 +51,6 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from tomlguard import TomlGuard
 from pydantic import BaseModel, Field, field_validator
 
 BodyEntry      : TypeAlias                 = str|int|UUID
