@@ -4,6 +4,5 @@ which parses and stores metadata out of the string.
 """
 
 from .structured_name import StructuredName
-from .strang import Strang
 
 from .mixins import aware_splitter, TailEntry
