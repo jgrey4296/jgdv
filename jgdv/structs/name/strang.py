@@ -107,21 +107,3 @@ class Strang(mixins.Strang_m, str):
     def sbody(self) -> str:
         return STRGET(self, slice(self._body[0].start, self._body[-1].stop))
 
-    def __format__(self, spec) -> str:
-        """ format additions for structured strings:
-          {:h} = print only the group_str
-          {:t} = print only the body_str
-          {:p} = print only the params_str
-
-          """
-        relevant   = FMT_PATTERN.search(spec)
-        remaining  = FMT_PATTERN.sub("", spec)
-        result     = []
-        if bool(relevant[1]):
-            result.append(self.group_str())
-        if bool(relevant[2]):
-            result.append(self.body_str())
-        if bool(relevant[3]) and bool(self.params):
-            result.append(str(self.params))
-
-        return format(self._sep.join(result), remaining)

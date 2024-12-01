@@ -16,7 +16,7 @@ logging = logmod.root
 
 from jgdv.structs.name.strang import Strang
 
-class TestStrang:
+class TestStrangBase:
     """ Ensure basic functionality of structured names,
     but ensuring StrName is a str.
     """
@@ -33,7 +33,6 @@ class TestStrang:
     def test_needs_separator(self):
         with pytest.raises(ValueError):
             Strang("head|tail")
-
 
     def test_needs_one_separator(self):
         with pytest.raises(ValueError):
@@ -54,11 +53,21 @@ class TestStrang:
         assert(list(obj.body) == ["tail", "a", "blah", "c"])
         assert(obj.sbody == "tail.a.blah.c")
 
-
     def test_empty_component(self):
         obj = Strang("head:tail..c")
         assert(list(obj.body) == ["tail", "", "c"])
         assert(obj.sbody == "tail..c")
+
+class TestStrangValidation:
+
+    def test_sanity(self):
+        assert(True is not False)
+
+    def test_build_uuids(self):
+        assert(True is not False)
+
+    def test_build_marks(self):
+        assert(True is not False)
 
 class TestStrangCmp:
 
@@ -98,6 +107,9 @@ class TestStrangCmp:
         obj2 = Strang("head:tail.a.b.c.e")
         assert(obj not in obj2)
 
+    def test_match_vesion(self):
+        pass
+
 class TestStrangAccess:
 
     def test_sanity(self):
@@ -114,3 +126,54 @@ class TestStrangAccess:
         assert(val[0:2] == "awef")
         assert(val[1:0] == "a")
         assert(val[1:2] == "c")
+
+class TestStrangSubGen:
+
+    def test_sanity(self):
+        assert(True is not False)
+
+    def test_head(self):
+        pass
+
+    def test_canon(self):
+        pass
+
+    def test_root(self):
+        pass
+
+    def test_pop(self):
+        pass
+
+    def test_push(self):
+        pass
+
+    def test_extend(self):
+        pass
+
+    def test_instantiate(self):
+        pass
+
+    def test_uninstantiate(self):
+        pass
+
+    def test_last(self):
+        pass
+
+class TestTrangTests:
+
+    def test_sanity(self):
+        assert(True is not False)
+
+    def test_is_instantiated(self):
+        assert(True is not False)
+
+    def test_has_root(self):
+        assert(True is not False)
+
+class TestStrangFormatting:
+
+    def test_sanity(self):
+        assert(True is not False)
+
+    def test_format(self):
+        assert(True is not False)

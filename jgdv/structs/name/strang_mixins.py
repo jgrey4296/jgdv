@@ -55,13 +55,6 @@ from pydantic import BaseModel, Field, field_validator
 
 BodyEntry      : TypeAlias                 = str|int|UUID
 
-def aware_splitter(x, sep=".") -> list[str]:
-    match x:
-        case str():
-            return x.split(sep)
-        case _:
-            return [x]
-
 class _Strang_cmp_m:
 
     def __le__(self, other) -> bool:
@@ -127,6 +120,18 @@ class _Strang_validation_m:
 
         return (group_slices, body_slices, params)
 
+    def _post_process(self) -> None:
+        """
+        go through body elements, and parse UUIDs, markers, params
+        """
+        raise NotImplementedError()
+
+    def _build_uuids(self):
+        pass
+
+    def _build_marks(self):
+        pass
+
     @classmethod
     def _pre_validate(cls, data:str|dict) -> None:
         match data:
@@ -136,7 +141,6 @@ class _Strang_validation_m:
                 pass
             case _:
                 raise ValueError("Base data not malformed", data)
-
 
 class _Strang_test_m:
 
@@ -148,7 +152,7 @@ class _Strang_test_m:
         """ Test for if the name has a a root marker, not at the end of the name"""
         raise NotImplementedError()
 
-class _Strang_sub_m:
+class _Strang_subgen_m:
     """ Operations Mixin for manipulating TaskNames """
 
     def head(self) -> Strang:
@@ -211,5 +215,26 @@ class _Strang_sub_m:
         """
         return self.body[-1]
 
-class Strang_m(_Strang_validation_m, _Strang_cmp_m):
+class _Strang_format_m:
+
+    def __format__(self, spec) -> str:
+        """ format additions for structured strings:
+          {:h} = print only the group_str
+          {:t} = print only the body_str
+          {:p} = print only the params_str
+
+          """
+        relevant   = FMT_PATTERN.search(spec)
+        remaining  = FMT_PATTERN.sub("", spec)
+        result     = []
+        if bool(relevant[1]):
+            result.append(self.group_str())
+        if bool(relevant[2]):
+            result.append(self.body_str())
+        if bool(relevant[3]) and bool(self.params):
+            result.append(str(self.params))
+
+        return format(self._sep.join(result), remaining)
+
+class Strang_m(_Strang_validation_m, _Strang_cmp_m, _Strang_subgen_m, _Strang_test_m, _Strang_format_m):
     pass
