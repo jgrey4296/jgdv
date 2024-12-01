@@ -46,7 +46,13 @@ SUBSEP_DEFAULT : Final[str]                = "."
 
 STRGET = str.__getitem__
 
-class Strang(mixins.Strang_m, str):
+class _StrangMeta(type(str)):
+
+    def __call__(cls, *args, **kwargs):
+        """ Overrides normal str creation to allow passing args to init """
+        return cls.__new__(cls, *args, **kwargs)
+
+class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
     """
       A Structured String Baseclass.
       A Normal str, but is parsed on construction to extract and validate
@@ -106,4 +112,3 @@ class Strang(mixins.Strang_m, str):
     @property
     def sbody(self) -> str:
         return STRGET(self, slice(self._body[0].start, self._body[-1].stop))
-
