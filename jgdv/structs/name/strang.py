@@ -41,57 +41,97 @@ logging = logmod.getLogger(__name__)
 from jgdv.structs.name import strang_mixins as mixins
 
 FMT_PATTERN    : Final[re.Pattern]         = re.compile("^(h?)(t?)(p?)")
-SEP_DEFAULT    : Final[str]                = ":"
+SEP_DEFAULT    : Final[str]                = "::"
 SUBSEP_DEFAULT : Final[str]                = "."
+GEN_K          : Final[str]                = mixins.GEN_K
 
-STRGET = str.__getitem__
+STRGET                                     = str.__getitem__
+StrangMarker_e                             = mixins.StrangMarker_e
 
 class _StrangMeta(type(str)):
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls, data, *args, **kwargs):
         """ Overrides normal str creation to allow passing args to init """
-        return cls.__new__(cls, *args, **kwargs)
+        return cls.__new__(cls, data, *args, **kwargs)
 
 class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
     """
       A Structured String Baseclass.
       A Normal str, but is parsed on construction to extract and validate
       certain form and metadata.
+
+    Form: group{sep}body
+    body objs can be marks (Strang.mark_e), and UUID's as well as str's
+
+    strang[x] and strang[x:y] are changed.
+
     """
 
     _separator       : ClassVar[str] = SEP_DEFAULT
     _subseparator    : ClassVar[str] = SUBSEP_DEFAULT
+    _body_types      : ClassVar[Any] = str|UUID|StrangMarker_e
+    mark_e          : enum.Enum     = StrangMarker_e
 
-    @staticmethod
-    def build(val:str) -> Self:
-        return Strang(val)
-
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, data, *args, **kwargs):
         """ Overrides normal str creation to allow passing args to init """
-        result = str.__new__(cls, args[0])
+        data = cls.pre_process(data)
+        result = str.__new__(cls, data)
         result.__init__(*args, **kwargs)
+        # TODO don't call process and post_process if given the metadata in kwargs
+        result._process()
+        result._post_process()
         return result
 
-    def __init__(self, data, *, meta=None):
+    def __init__(self, *args, **kwargs):
         super().__init__()
-        self.metadata = {}
-        if meta:
-            self.metadata.update(meta)
-        self._pre_validate({"base":self})
-        group, body, params = self._process()
-        self._group : list[slice] = group
-        self._body  : list[slice] = body
+        self.metadata                                           = dict(kwargs)
+        # For easy head and body str's
+        self._base_slices : tuple[slice, slice]                 = (None,None)
+        self._mark_idx    : tuple[int, int]                     = (None,None)
+        self._group       : list[slice]                         = []
+        self._body        : list[slice]                         = []
+        self._body_objs   : list[None|Strang._body_types]       = []
 
-    def __iter__(self):
-        for x in self.group + self.body:
-            yield x
+    def __str__(self):
+        match self.metadata.get(GEN_K, False):
+            case False:
+                return super().__str__()
+            case True:
+                return self._expanded_str()
 
-    def __getitem__(self, i):
+    def __repr__(self):
+        body = self._subjoin(self.body(no_expansion=True))
+        return f"<Strang: {self[0:]}{self._separator}{body}>"
+
+    def __iter__(self) -> iter[Strang._body_types]:
+        """ iterate the body *not* the group """
+        for x in range(len(self._body)):
+            yield self[x]
+
+    def __getitem__(self, i) -> Strang._body_types|Strang:
+        """
+        strang[x] -> get a body obj or str
+        strang[0:x] -> a head str
+        strang[0:] -> the entire head str
+        strang[1:x] -> a body obj
+        strang[1:] -> the entire body str
+        strang[2:x] -> clone up to x of body
+        """
         match i:
+            case int():
+                return self._body_objs[i] or super().__getitem__(self._body[i])
+            case slice(start=0, stop=None):
+                return super().__getitem__(self._base_slices[0])
+            case slice(start=1, stop=None):
+                return super().__getitem__(self._base_slices[1])
             case slice(start=0, stop=x):
                 return super().__getitem__(self._group[x])
             case slice(start=1, stop=x):
-                return super().__getitem__(self._body[x])
+                return self._body_objs[x] or super().__getitem__(self._body[x])
+            case slice(start=2, stop=x):
+                return Strang(self._expanded_str(stop=x))
+            case slice(start=int()):
+                raise KeyError("Slicing a Strang only supports a start of 0 (group), 1 (body), and 2 (clone)", i)
 
     @property
     def base(self):
@@ -101,14 +141,44 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
     def group(self) -> list[str]:
         return [STRGET(self, x) for x in self._group]
 
-    @property
-    def body(self) -> iter[str]:
-        return [STRGET(self, x) for x in self._body]
+    def body(self, *, reject:None|callable=None, no_expansion:bool=False) -> list[str]:
+        """ Get the body, as a list of str's,
+        with values filtered out if a rejection fn is used
+        """
+        body = [self._body_objs[i] or STRGET(self, x) for i, x in enumerate(self._body)]
+        if reject:
+            body = [x for x in body if not reject(x)]
+
+        return [self._format_subval(x, no_expansion=no_expansion) for x in body]
 
     @property
-    def sgroup(self) -> str:
-        return STRGET(self, slice(self._group[0].start, self._group[-1].stop))
+    @ftz.cache
+    def shape(self) -> tuple[int, int]:
+        return (len(self._group), len(self._body))
 
-    @property
-    def sbody(self) -> str:
-        return STRGET(self, slice(self._body[0].start, self._body[-1].stop))
+    def _format_subval(self, val, no_expansion:bool=False) -> str:
+        match val:
+            case str():
+                return val
+            case UUID() if no_expansion:
+                return "<uuid>"
+            case UUID():
+                return f"<uuid:{val}>"
+            case _:
+                raise TypeError("Unknown body type", val)
+
+    def _expanded_str(self, *, stop:None|int=None):
+        """ Create a str of the Strang with gen uuid's replaced with actual uuids """
+        group = self[0:]
+        body = []
+        for val in self.body()[:stop]:
+            match val:
+                case str():
+                    body.append(val)
+                case UUID():
+                    body.append(f"<uuid:{val}>")
+                case _:
+                    raise TypeError("Unknown body type", val)
+
+        body_str = self._subjoin(body)
+        return f"{group}{self._separator}{body_str}"
