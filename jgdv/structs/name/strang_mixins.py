@@ -21,6 +21,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    Self,
 
     ClassVar,
     Final,
@@ -54,11 +55,199 @@ from tomlguard import TomlGuard
 from pydantic import BaseModel, Field, field_validator
 
 BodyEntry      : TypeAlias                 = str|int|UUID
+UUID_RE        : Final[re.Pattern]         = re.compile(r"<uuid(?::(.+?))?>")
+MARK_RE        : Final[re.Pattern]         = re.compile(r"\$(.+?)\$")
+INST_K         : Final[str]                = "instanced"
+GEN_K          : Final[str]                = "gen_uuid"
+
+class StrangMarker_e(enum.StrEnum):
+    """ Markers Used in a Strang """
+
+    head     = "$head$"
+    gen      = "$gen$"
+    mark     = ""
+    hide     = "_"
+    extend   = "+"
+
+class _Strang_validation_m:
+
+    @classmethod
+    def pre_process(cls, data:str) -> str:
+        """ run before str.__new__ is called, so can do early modification of the string """
+        # TODO expand <uuid> tags here
+        # TODO chop off tail [params] here
+        match data:
+            case cls() | str() if 0 < str.count(data, cls._separator):
+                return str(data).removesuffix(cls._subseparator).removesuffix(cls._subseparator)
+            case _:
+                raise ValueError("Base data malformed", data)
+
+    def _process(self) -> tuple[list[slice], list[slice], list|dict]:
+        """ Get slices of the strang to describe group and body components """
+        logging.debug("Processing Strang: %s", self)
+        index     = 0
+        sep_index = self.find(self._separator)
+        if sep_index == -1:
+            raise ValueError("Strang lacks a group{sep}body structure", str(self))
+
+        self._group += self._get_slices(0, sep_index)
+        self._body  += self._get_slices(sep_index, add_offset=True)
+        self._base_slices = (slice(self._group[0].start, self._group[-1].stop),
+                             slice(self._body[0].start, self._body[-1].stop))
+
+    def _get_slices(self, start:int=0, max:None|int=None, add_offset:bool=False):
+        index, end, offset = start, max or len(self), len(self._subseparator)
+        if add_offset:
+            index += len(self._separator)
+        slices    = []
+        # Get the group slices:
+        while -1 < index:
+            match self.find(self._subseparator, index, end):
+                case -1 if index == end:
+                    index = -1
+                case -1:
+                    slices.append(slice(index, end))
+                    index = -1
+                case x:
+                    slices.append(slice(index, x))
+                    index = x + offset
+        else:
+            return slices
+
+    def _post_process(self) -> None:
+        """
+        go through body elements, and parse UUIDs, markers, params
+        """
+        logging.debug("Post-processing Strang: %s", self)
+        max_body = len(self._body)
+        self._body_objs = [None for x in range(max_body)]
+        mark_idx : tuple[int, int] = (max_body, -1)
+        for i, elem in enumerate(self.body()):
+            match elem:
+                case x if (match:=UUID_RE.match(x)):
+                    self.metadata[INST_K] = min(i, self.metadata.get(INST_K, max_body))
+                    hex, *_ = match.groups()
+                    if hex is not None:
+                        logging.debug("(%s) Found UUID", i)
+                        self._body_objs[i] = UUID(match[1])
+                    else:
+                        logging.debug("(%s) Generating UUID", i)
+                        self._body_objs[i] = uuid1()
+                        self.metadata[GEN_K] = True
+                case x if (match:=MARK_RE.match(x)) and (x_l:=match[1].lower()) in self.mark_e.__members__:
+                    # Get explicit mark,
+                    logging.debug("(%s) Found Named Marker: %s", i, x_l)
+                    self._body_objs[i] = self.mark_e[x_l]
+                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
+                case "_" if i < 2: # _ and + coexist
+                    self._body_objs[i] = self.mark_e.hide
+                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
+                case "+" if i < 2: # _ and + coexist
+                    self._body_objs[i] = self.mark_e.extend
+                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
+                case "":
+                    self._body_objs[i] = self.mark_e.mark
+                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
+                case _:
+                    self._body_objs[i] = None
+        else:
+            # Set the root and last mark_idx for popping
+            match mark_idx:
+                case (x, -1):
+                    mark_idx = (x, x)
+                case (x, y):
+                    pass
+
+            self._mark_idx = mark_idx
 
 class _Strang_cmp_m:
 
+    def __hash__(self):
+        return str.__hash__(str(self))
+
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+
+    def __lt__(self, other) -> bool:
+        if not isinstance(other, _Strang_cmp_m):
+            raise NotImplementedError()
+
+        if not len(self) < len(other):
+            return False
+
+        if not self[0:] == other[0:]:
+            return False
+
+        for x,y in zip(self.body(), other.body()):
+            if x != y:
+                return False
+
+        return True
+
     def __le__(self, other) -> bool:
-        return (self == other) or (self < other)
+        return hash(self) == hash(other) or (self < other)
+
+class _Strang_subgen_m:
+    """ Operations Mixin for manipulating TaskNames """
+
+    @classmethod
+    def _subjoin(cls, lst) -> str:
+        return cls._subseparator.join(lst)
+
+    def canon(self) -> Self:
+        """ canonical name. no UUIDs"""
+        group = self[0:]
+        canon_body = self._subjoin(self.body(reject=lambda x: isinstance(x, UUID)))
+
+        return self.__class__(f"{group}{self._separator}{canon_body}")
+
+    def pop(self, *, top=False) -> Self:
+        """
+        Strip off one marker's worth of the name, or to the top marker.
+        eg:
+        root(test::a.b.c..<UUID>.sub..other) => test::a.b.c..<UUID>.sub
+        root(test::a.b.c..<UUID>.sub..other, top=True) => test::a.b.c
+        """
+        group : str       = self[0:]
+        end_id            = self._mark_idx[0 if top else 1]
+        return self[2:end_id]
+
+    def push(self, *vals:str) -> Self:
+        """ Add a root marker if the last element isn't already a root marker
+        eg: group::a.b.c => group.a.b.c.
+        (note the trailing '.')
+        """
+        return self.__class__(self._subjoin(x for x in [self, "", *vals] if x is not None))
+
+    def to_uniq(self, *, suffix=None) -> Self:
+        """ Generate a concrete instance of this name with a UUID appended,
+        optionally can add a prefix
+          # TODO possibly do $gen$.{prefix?}.<UUID>
+
+          ie: a.task.group::task.name..{prefix?}.$gen$.<UUID>
+        """
+        return self.push(self.mark_e.gen, "<uuid>", suffix)
+
+    def de_uniq(self) -> Self:
+        return self[2:self.metadata.get(INST_K, None)].pop()
+
+    def with_head(self) -> Self:
+        """ generate a canonical group/completion task name for this name
+        eg: (concrete) group::simple.task..$gen$.<UUID> ->  group::simple.task..$gen$.<UUID>..$group$
+        eg: (abstract) group::simple.task. -> group::simple.task..$group$
+
+        """
+        return self.push(self.mark_e.head)
+
+    def root(self) -> Self:
+        return self.pop(top=True)
+
+class _Strang_test_m:
+
+    @property
+    def is_uniq(self) -> bool:
+        """ utility method to test if this name refers to a name with a UUID """
+        return INST_K in self.metadata
 
     def __contains__(self, other) -> bool:
         """ test for conceptual containment of names
@@ -66,175 +255,26 @@ class _Strang_cmp_m:
         ie: self < other
         """
         match other:
-            case Strang_m() if len(self.body) > len(other.body):
-                # a.b.c.d is not in a.b
-                return False
-            case Strang_m():
-                group_matches = all(x==y for x,y in zip(self.group, other.group))
-                body_matches = all(x==y for x,y in zip(self.body, other.body))
-                return group_matches and body_matches
+            case UUID():
+                return other in self._body_objs
             case str():
                 return other in str(self)
             case _:
                 return False
 
-    def match_version(self, other) -> bool:
-        """ match version constraints of two task names against each other """
-        raise NotImplementedError()
-
-class _Strang_validation_m:
-
-    def _process(self) -> tuple[list[slice], list[slice], list|dict]:
-        """ Get slices of the strang to describe group and body components """
-        group_slices, body_slices, params = [], [], {}
-        index     = 0
-        sep_index = self.find(self._separator)
-        offset    = len(self._subseparator)
-        if sep_index == -1 or self.count(self._separator) > 1:
-            raise ValueError("Strang lacks a group{sep}body structure", str(self))
-        # Get the group slices:
-        while -1 < index:
-            match self.find(self._subseparator, index, sep_index):
-                case -1 if index == sep_index:
-                    index = -1
-                case -1:
-                    group_slices.append(slice(index, sep_index))
-                    index = -1
-                case x:
-                    group_slices.append(slice(index, x))
-                    index = x + offset
-
-        # And the body
-        index     = sep_index + offset
-        end       = len(self)
-        while -1 < index:
-            match self.find(self._subseparator, index):
-                case -1 if index == end:
-                    index = -1
-                case -1:
-                    body_slices.append(slice(index, len(self)))
-                    index = -1
-                case x:
-                    body_slices.append(slice(index, x))
-                    index = x + offset
-
-        return (group_slices, body_slices, params)
-
-    def _post_process(self) -> None:
-        """
-        go through body elements, and parse UUIDs, markers, params
-        """
-        raise NotImplementedError()
-
-    def _build_uuids(self):
-        pass
-
-    def _build_marks(self):
-        pass
-
-    @classmethod
-    def _pre_validate(cls, data:str|dict) -> None:
-        match data:
-            case str() if 1 < str.count(data, cls._separator) < 2:
-                pass
-            case {"base": base} if 1 <= str.count(base, cls._separator) < 2:
-                pass
-            case _:
-                raise ValueError("Base data not malformed", data)
-
-class _Strang_test_m:
-
-    def is_instantiated(self) -> bool:
-        """ utility method to test if this name refers to a concrete task """
-        raise NotImplementedError()
-
-    def has_root(self) -> bool:
-        """ Test for if the name has a a root marker, not at the end of the name"""
-        raise NotImplementedError()
-
-class _Strang_subgen_m:
-    """ Operations Mixin for manipulating TaskNames """
-
-    def head(self) -> Strang:
-        """ generate a canonical group/completion task name for this name
-        eg: (concrete) group::simple.task..$gen$.<UUID> ->  group::simple.task..$gen$.<UUID>..$group$
-        eg: (abstract) group::simple.task. -> group::simple.task..$group$
-
-        """
-        raise NotImplementedError()
-
-    def canon(self) -> Strang:
-        """ canonical cleanup name """
-        raise NotImplementedError()
-
-    def root(self):
-        return self.pop(top=True)
-
-    def pop(self, *, top=False) -> Strang:
-        """
-        Strip off one root marker's worth of the name, or to the top marker.
-        eg:
-        root(test::a.b.c..<UUID>.sub..other) => test::a.b.c..<UUID>.sub.
-        root(test::a.b.c..<UUID>.sub..other, top=True) => test::a.b.c.
-
-        """
-        raise NotImplementedError()
-
-    def push(self) -> TaskName:
-        """ Add a root marker if the last element isn't already a root marker
-        eg: group::a.b.c => group.a.b.c.
-        (note the trailing '.')
-        """
-        raise NotImplementedError()
-
-    def extend(self, *subtasks, **kwargs) -> Strang:
-        """ generate an extended name, with more information
-        eg: a.group::simple.task
-        ->  a.group::simple.task..targeting.something
-
-        adds a root marker to recover the original
-        """
-        raise NotImplementedError()
-
-    def instantiate(self, *, prefix=None) -> Strang:
-        """ Generate a concrete instance of this name with a UUID appended,
-        optionally can add a prefix
-          # TODO possibly do $gen$.{prefix?}.<UUID>
-
-          ie: a.task.group::task.name..{prefix?}.$gen$.<UUID>
-        """
-        raise NotImplementedError()
-
-    def uninstantiate(self) -> Strang:
-        """ take a name and remove the $gen$.{prefix?}.<UUID> parts """
-        raise NotImplementedError()
-
-    def last(self) -> None|BodyEntry:
-        """
-        Get the last value of the task/body
-        """
-        return self.body[-1]
-
 class _Strang_format_m:
 
     def __format__(self, spec) -> str:
-        """ format additions for structured strings:
-          {:h} = print only the group_str
-          {:t} = print only the body_str
-          {:p} = print only the params_str
+        """ format additions for strangs:
+          {strang:g} = print only the group
+          {strang:b} = print only the body
 
           """
-        relevant   = FMT_PATTERN.search(spec)
-        remaining  = FMT_PATTERN.sub("", spec)
-        result     = []
-        if bool(relevant[1]):
-            result.append(self.group_str())
-        if bool(relevant[2]):
-            result.append(self.body_str())
-        if bool(relevant[3]) and bool(self.params):
-            result.append(str(self.params))
-
-        return format(self._sep.join(result), remaining)
+        match spec:
+            case "g":
+                return self[0:]
+            case "b":
+                return self[1:]
 
 class Strang_m(_Strang_validation_m, _Strang_cmp_m, _Strang_subgen_m, _Strang_test_m, _Strang_format_m):
     pass
