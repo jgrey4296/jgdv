@@ -19,10 +19,10 @@ import types
 import weakref
 from typing import (
     TYPE_CHECKING,
+    Annotated,
     Any,
     Callable,
     Self,
-
     ClassVar,
     Final,
     Generator,
@@ -74,7 +74,7 @@ class _Strang_validation_m:
     def pre_process(cls, data:str) -> str:
         """ run before str.__new__ is called, so can do early modification of the string """
         # TODO expand <uuid> tags here
-        # TODO chop off tail [params] here
+        # TODO chop off tail [param] here
         match data:
             case cls() | str() if 0 < str.count(data, cls._separator):
                 return str(data).removesuffix(cls._subseparator).removesuffix(cls._subseparator)
@@ -115,7 +115,7 @@ class _Strang_validation_m:
 
     def _post_process(self) -> None:
         """
-        go through body elements, and parse UUIDs, markers, params
+        go through body elements, and parse UUIDs, markers, param
         """
         logging.debug("Post-processing Strang: %s", self)
         max_body = len(self._body)
@@ -275,5 +275,27 @@ class _Strang_format_m:
             case "b":
                 return self[1:]
 
-class Strang_m(_Strang_validation_m, _Strang_cmp_m, _Strang_subgen_m, _Strang_test_m, _Strang_format_m):
+class _Strang_annotation_m:
+    """
+    Enable Strang[int] and Strang['blah'] subclasses variants,
+    to annotate the purpose of the Strang
+
+    TODO maybe use an explicit cache instead of ftz.cache
+    """
+
+    @classmethod
+    @ftz.cache
+    def __class_getitem__(cls, param) -> Annotated[_Strang_annotation_m]:
+        """ Auto-subclass as {cls.__name__}[param]"""
+        match param:
+            case type():
+                p_str = param.__name__
+            case str():
+                p_str = param
+
+        sub = type(f"{cls.__name__}[{p_str}]", (cls,), {"_typevar":param})
+        return sub
+
+
+class Strang_m(_Strang_annotation_m, _Strang_validation_m, _Strang_cmp_m, _Strang_subgen_m, _Strang_test_m, _Strang_format_m):
     pass

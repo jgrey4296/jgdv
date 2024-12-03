@@ -7,7 +7,7 @@ from __future__ import annotations
 import uuid
 import logging as logmod
 import pathlib as pl
-from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
+from typing import (Any, Annotated, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
                     TypeVar, cast)
 import warnings
@@ -109,7 +109,6 @@ class TestStrangValidation:
     def test_extension_mark(self):
         obj = Strang(f"head::+.tail.blah")
         assert(obj[0] == Strang.mark_e.extend)
-
 
 class TestStrangCmp:
 
@@ -342,6 +341,22 @@ class TestStrangTests:
         obj2 = Strang("head::tail.a.b")
         assert(obj2 in obj)
 
+    def test_match_against_str(self):
+        obj  = Strang("head::tail.a.b.c")
+        match obj:
+            case "head::tail.a.b.c":
+                assert(True)
+            case _:
+                assert(False)
+
+    def test_match_against_strang(self):
+        obj  = Strang("head::tail.a.b.c")
+        match obj:
+            case Strang("head::tail.a.b.c"):
+                assert(True)
+            case _:
+                assert(False)
+
     def test_not_contains(self):
         obj = Strang("head::tail.a.b.c")
         obj2 = Strang("head::tail.a.c.b")
@@ -394,3 +409,77 @@ class TestStrangFormatting:
     def test_format_body(self):
         obj = Strang("group.blah::body.a.b.c")
         assert(f"{obj:b}" == "body.a.b.c")
+
+class TestStrangAnnotation:
+
+    def test_sanity(self):
+        assert(True is not False)
+
+    def test_unannotated(self):
+        obj = Strang("group::body")
+        assert(Strang._typevar is None)
+        assert(obj._typevar is None)
+
+    def test_type_annotated(self):
+        cls = Strang[int]
+        assert(issubclass(cls, Strang))
+        assert(cls._typevar is int)
+
+    def test_str_annotation(self):
+        cls = Strang["blah"]
+        assert(issubclass(cls, Strang))
+        assert(cls._typevar == "blah")
+
+    def test_annotated_instance(self):
+        cls = Strang[int]
+        ref = cls("group.a.b::body.c.d")
+        assert(isinstance(ref, Strang))
+        assert(ref._typevar == int)
+
+    def test_match_type(self):
+        match Strang[int]("group.a.b::body.c.d"):
+            case Strang():
+                assert(True)
+            case _:
+                assert(False)
+
+
+    def test_match_on_strang(self):
+        match Strang[int]("group.a.b::body.c.d"):
+            case Strang("group.a.b::body.c.d"):
+                assert(True)
+            case _:
+                assert(False)
+
+    def test_match_on_literal(self):
+        match Strang[int]("group.a.b::body.c.d"):
+            case "group.a.b::body.c.d":
+                assert(True)
+            case _:
+                assert(False)
+
+    def test_match_on_subtype(self):
+        cls = Strang[int]
+        match Strang[int]("group.a.b::body.c.d"):
+            case cls():
+                assert(True)
+            case _:
+                assert(False)
+
+    def test_match_on_subtype_fail(self):
+        cls = Strang[bool]
+        match Strang[int]("group.a.b::body.c.d"):
+            case cls():
+                assert(False)
+            case _:
+                assert(True)
+
+    def test_subclass_annotate(self):
+
+        class StrangSub(Strang):
+            pass
+
+        ref = StrangSub[int]("group.a.b::body.c.d")
+        assert(ref._typevar is int)
+        assert(isinstance(ref, Strang))
+        assert(isinstance(ref, StrangSub))
