@@ -49,6 +49,7 @@ class CodeReference(Strang):
 
     _separator       : ClassVar[str]                    = ":"
     _value           : None|type                        = None
+    _body_types      : ClassVar[Any]                    = str
 
     def __init__(self, *, value:None|type=None, check:None|type=None):
         super().__init__()
