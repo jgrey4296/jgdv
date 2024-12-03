@@ -37,7 +37,7 @@ except ImportError:
 
 from collections import ChainMap
 from collections.abc import Mapping, ItemsView, KeysView, ValuesView
-from jgdv.structs.guarded_chain import TomlTypes
+from jgdv.structs.chainguard import TomlTypes
 from .error import GuardedAccessError
 from .mixins.access_m import super_get, super_set
 
@@ -49,7 +49,7 @@ dict_items = type({}.items())
 
 class GuardBase(Mapping[str, TomlTypes]):
     """
-    Provides access to toml data (GuardedChain.load(apath))
+    Provides access to toml data (ChainGuard.load(apath))
     but as attributes (data.a.path.in.the.data)
     instead of key access (data['a']['path']['in']['the']['data'])
 
@@ -67,13 +67,13 @@ class GuardBase(Mapping[str, TomlTypes]):
         super_set(self, "__mutable" , mutable)
 
     def __repr__(self) -> str:
-        return f"<GuardedChain:{list(self.keys())}>"
+        return f"<{self.__class__.__name__}:{list(self.keys())}>"
 
     def __len__(self) -> int:
         return len(self._table())
 
     def __call__(self) -> TomlTypes:
-        raise GuardedAccessError("Don't call a GuardedChain, call a GuardProxy using methods like .on_fail")
+        raise GuardedAccessError("Don't call a ChainGuard, call a GuardProxy using methods like .on_fail")
 
     def __iter__(self):
         return iter(getattr(self, "__table").items())

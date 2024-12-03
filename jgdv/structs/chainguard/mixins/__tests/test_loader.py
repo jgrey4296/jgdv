@@ -15,7 +15,7 @@ import warnings
 ##-- end imports
 
 import pytest
-from jgdv.structs.guarded_chain import GuardedChain
+from jgdv.structs.chainguard import ChainGuard
 
 logging = logmod.root
 
@@ -27,29 +27,29 @@ class TestGuardLoader:
     def test_initial(self):
         data_str = (data_dir / "data.toml").read_text()
         assert(bool(data_str))
-        simple = GuardedChain.read(data_str)
+        simple = ChainGuard.read(data_str)
         assert(bool(simple))
 
     def test_content(self):
         data_str = (data_dir / "data.toml").read_text()
         assert(bool(data_str))
-        simple = GuardedChain.read(data_str)
+        simple = ChainGuard.read(data_str)
         assert("basic" in simple)
         assert("value" in simple)
 
     def test_from_dict(self):
-        simple = GuardedChain.from_dict({"val": 5, "other": "blah", "nested": {"val": True}})
+        simple = ChainGuard.from_dict({"val": 5, "other": "blah", "nested": {"val": True}})
         assert("val" in simple)
         assert("other" in simple)
         assert(simple.nested.val is True)
 
     def test_load(self):
-        simple = GuardedChain.load(data_dir / "data.toml")
+        simple = ChainGuard.load(data_dir / "data.toml")
         assert("basic" in simple)
         assert(simple.basic == "test")
 
     def test_load_dir(self):
-        simple = GuardedChain.load_dir(data_dir)
+        simple = ChainGuard.load_dir(data_dir)
         assert("basic" in simple)
         assert("a-different-val" in simple)
         assert(simple.a_different_val == "blah")

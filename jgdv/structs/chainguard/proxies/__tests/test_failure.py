@@ -15,8 +15,8 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 logging = logmod.root
 
 import pytest
-from jgdv.structs.guarded_chain.proxies.failure import GuardFailureProxy
-from jgdv.structs.guarded_chain.proxies.base import GuardProxy
+from jgdv.structs.chainguard.proxies.failure import GuardFailureProxy
+from jgdv.structs.chainguard.proxies.base import GuardProxy
 
 class TestFailureProxy:
 

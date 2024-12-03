@@ -31,9 +31,9 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from jgdv.structs.guarded_chain.proxies.base import GuardProxy
-from jgdv.structs.guarded_chain.proxies.failure import GuardFailureProxy
-from jgdv.structs.guarded_chain.error import GuardedAccessError
+from jgdv.structs.chainguard.proxies.base import GuardProxy
+from jgdv.structs.chainguard.proxies.failure import GuardFailureProxy
+from jgdv.structs.chainguard.error import GuardedAccessError
 
 class GuardProxyEntry_m:
     """ A Mixin to add to GuardBase.

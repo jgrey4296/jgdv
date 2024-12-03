@@ -15,129 +15,129 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 logging = logmod.root
 
 import pytest
-from jgdv.structs.guarded_chain.error import GuardedAccessError
-from jgdv.structs.guarded_chain import GuardedChain
+from jgdv.structs.chainguard.error import GuardedAccessError
+from jgdv.structs.chainguard import ChainGuard
 
 class TestBaseGuard:
 
     def test_initial(self):
-        basic = GuardedChain({"test": "blah"})
+        basic = ChainGuard({"test": "blah"})
         assert(basic is not None)
 
     def test_basic_access(self):
-        basic = GuardedChain({"test": "blah"})
+        basic = ChainGuard({"test": "blah"})
         assert(basic.test == "blah")
 
     def test_basic_item_access(self):
-        basic = GuardedChain({"test": "blah"})
+        basic = ChainGuard({"test": "blah"})
         assert(basic['test'] == "blah")
 
     def test_multi_item_access(self):
-        basic = GuardedChain({"test": {"blah": "bloo"}})
+        basic = ChainGuard({"test": {"blah": "bloo"}})
         assert(basic['test', "blah"] ==  "bloo")
 
     def test_basic_access_error(self):
-        basic = GuardedChain({"test": "blah"})
+        basic = ChainGuard({"test": "blah"})
         with pytest.raises(GuardedAccessError):
             basic.none_existing
 
     def test_item_access_error(self):
-        basic = GuardedChain({"test": "blah"})
+        basic = ChainGuard({"test": "blah"})
         with pytest.raises(GuardedAccessError):
             basic['non_existing']
 
     def test_dot_access(self):
-        basic = GuardedChain({"test": "blah"})
+        basic = ChainGuard({"test": "blah"})
         assert(basic.test == "blah")
 
     def test_index(self):
-        basic = GuardedChain({"test": "blah"})
+        basic = ChainGuard({"test": "blah"})
         assert(basic._index() == ["<root>"])
 
     def test_index_independence(self):
-        basic = GuardedChain({"test": "blah"})
+        basic = ChainGuard({"test": "blah"})
         assert(basic._index() == ["<root>"])
         basic.test
         assert(basic._index() == ["<root>"])
 
     def test_nested_access(self):
-        basic = GuardedChain({"test": {"blah": 2}})
+        basic = ChainGuard({"test": {"blah": 2}})
         assert(basic.test.blah == 2)
 
     def test_repr(self):
-        basic = GuardedChain({"test": {"blah": 2}, "bloo": 2})
-        assert(repr(basic) == "<GuardedChain:['test', 'bloo']>")
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
+        assert(repr(basic) == "<ChainGuard:['test', 'bloo']>")
 
     def test_immutable(self):
-        basic = GuardedChain({"test": {"blah": 2}, "bloo": 2})
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
         with pytest.raises(TypeError):
             basic.test = 5
 
     def test_uncallable(self):
-        basic = GuardedChain({"test": {"blah": 2}, "bloo": 2})
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
         with pytest.raises(GuardedAccessError):
             basic()
 
     def test_iter(self):
-        basic = GuardedChain({"test": {"blah": 2}, "bloo": 2})
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
         pairs = list(basic)
         assert(pairs == [("test", {"blah":2}), ("bloo", 2)])
 
     def test_contains(self):
-        basic = GuardedChain({"test": {"blah": 2}, "bloo": 2})
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
         assert("test" in basic)
 
     def test_contains_fail(self):
-        basic = GuardedChain({"test": {"blah": 2}, "bloo": 2})
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
         assert("blah" not in basic)
 
     def test_get(self):
-        basic = GuardedChain({"test": {"blah": 2}, "bloo": 2})
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
         assert(basic.get("bloo") == 2)
 
     def test_get_default(self):
-        basic = GuardedChain({"test": {"blah": 2}, "bloo": 2})
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
         assert(basic.get("blah") is None)
 
     def test_get_default_value(self):
-        basic = GuardedChain({"test": {"blah": 2}, "bloo": 2})
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
         assert(basic.get("blah", 5) == 5)
 
     def test_keys(self):
-        basic = GuardedChain({"test": {"blah": 2}, "bloo": 2})
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
         assert(list(basic.keys()) == ["test", "bloo"])
 
     def test_items(self):
-        basic = GuardedChain({"test": {"blah": 2}, "bloo": 2})
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
         assert(list(basic.items()) == [("test", {"blah": 2}), ("bloo", 2)])
 
     def test_values(self):
-        basic = GuardedChain({"test": {"blah": 2}, "bloo": 2})
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
         assert(list(basic.values()) == [{"blah": 2}, 2])
 
     def test_list_access(self):
-        basic = GuardedChain({"test": {"blah": [1,2,3]}, "bloo": ["a","b","c"]})
+        basic = ChainGuard({"test": {"blah": [1,2,3]}, "bloo": ["a","b","c"]})
         assert(basic.test.blah == [1,2,3])
         assert(basic.bloo == ["a","b","c"])
 
     def test_contains(self):
-        basic = GuardedChain({"test": {"blah": [1,2,3]}, "bloo": ["a","b","c"]})
+        basic = ChainGuard({"test": {"blah": [1,2,3]}, "bloo": ["a","b","c"]})
         assert("test" in basic)
 
     def test_contains_false(self):
-        basic = GuardedChain({"test": {"blah": [1,2,3]}, "bloo": ["a","b","c"]})
+        basic = ChainGuard({"test": {"blah": [1,2,3]}, "bloo": ["a","b","c"]})
         assert("doesntexist" not in basic)
 
     def test_contains_nested_but_doesnt_recurse(self):
-        basic = GuardedChain({"test": {"blah": [1,2,3]}, "bloo": ["a","b","c"]})
+        basic = ChainGuard({"test": {"blah": [1,2,3]}, "bloo": ["a","b","c"]})
         assert("blah" not in basic)
 
     def test_contains_nested(self):
-        basic = GuardedChain({"test": {"blah": [1,2,3]}, "bloo": ["a","b","c"]})
+        basic = ChainGuard({"test": {"blah": [1,2,3]}, "bloo": ["a","b","c"]})
         assert("blah" in basic.test)
 
     def test_contains_nested_false(self):
-        basic = GuardedChain({"test": {"blah": [1,2,3]}, "bloo": ["a","b","c"]})
+        basic = ChainGuard({"test": {"blah": [1,2,3]}, "bloo": ["a","b","c"]})
         assert("doesntexist" not in basic.test)
 
 
@@ -151,52 +151,52 @@ class TestLoaderGuard:
 class TestGuardMerge:
 
     def test_initial(self):
-        simple = GuardedChain.merge({"a":2}, {"b": 5})
-        assert(isinstance(simple, GuardedChain))
+        simple = ChainGuard.merge({"a":2}, {"b": 5})
+        assert(isinstance(simple, ChainGuard))
         assert(simple._table() == {"a": 2, "b": 5})
 
     def test_merge_conflict(self):
         with pytest.raises(KeyError):
-            GuardedChain.merge({"a":2}, {"a": 5})
+            ChainGuard.merge({"a":2}, {"a": 5})
 
     def test_merge_with_shadowing(self):
-        basic = GuardedChain.merge({"a":2}, {"a": 5, "b": 5}, shadow=True)
+        basic = ChainGuard.merge({"a":2}, {"a": 5, "b": 5}, shadow=True)
         assert(dict(basic) == {"a":2, "b": 5})
 
 
     def test_merge_guards(self):
-        first  = GuardedChain({"a":2})
-        second = GuardedChain({"a": 5, "b": 5})
+        first  = ChainGuard({"a":2})
+        second = ChainGuard({"a": 5, "b": 5})
 
-        merged = GuardedChain.merge(first ,second, shadow=True)
+        merged = ChainGuard.merge(first ,second, shadow=True)
         assert(dict(merged) == {"a":2, "b": 5})
 
 
 class TestFailAccess:
 
     def test_basic(self):
-        obj = GuardedChain({})
+        obj = ChainGuard({})
         assert(obj is not  None)
 
     def test_basic_fail(self):
-        obj = GuardedChain({})
+        obj = ChainGuard({})
         result = obj.on_fail(5).nothing()
         assert(result == 5)
 
 
     def test_fail_access_dict(self):
-        obj = GuardedChain({"nothing": {}})
+        obj = ChainGuard({"nothing": {}})
         result = obj.on_fail({}).nothing['blah']()
         assert(isinstance(result, dict))
 
 
     def test_fail_access_list(self):
-        obj = GuardedChain({"nothing": []})
+        obj = ChainGuard({"nothing": []})
         result = obj.on_fail([]).nothing[1]()
         assert(isinstance(result, list))
 
 
     def test_fail_access_type_mismatch(self):
-        obj = GuardedChain({"nothing": {}})
+        obj = ChainGuard({"nothing": {}})
         result = obj.on_fail({}).nothing[1]()
         assert(isinstance(result, dict))

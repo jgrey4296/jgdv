@@ -37,7 +37,7 @@ try:
 except ImportError:
     Self = Any
 
-from jgdv.structs.guarded_chain import TomlTypes, GuardedAccessError
+from jgdv.structs.chainguard import TomlTypes, GuardedAccessError
 
 try:
     # For py 3.11 onwards:
@@ -50,23 +50,23 @@ class TomlLoader_m:
 
     @classmethod
     def read(cls, text:str) -> Self:
-        logging.debug("Reading GuardedChain for text")
+        logging.debug("Reading ChainGuard for text")
         try:
             return cls(toml.loads(text))
         except Exception as err:
-            raise IOError("GuardedChain Failed to Load: ", text, err.args) from err
+            raise IOError("ChainGuard Failed to Load: ", text, err.args) from err
 
     @classmethod
     def from_dict(cls, data:dict[str, TomlTypes]) -> Self:
-        logging.debug("Making GuardedChain from dict")
+        logging.debug("Making ChainGuard from dict")
         try:
             return cls(data)
         except Exception as err:
-            raise IOError("GuardedChain Failed to Load: ", data, err.args) from err
+            raise IOError("ChainGuard Failed to Load: ", data, err.args) from err
 
     @classmethod
     def load(cls, *paths:str|pl.Path) -> Self:
-        logging.debug("Creating GuardedChain for %s", paths)
+        logging.debug("Creating ChainGuard for %s", paths)
         try:
             texts = []
             for path in paths:
@@ -74,11 +74,11 @@ class TomlLoader_m:
 
             return cls(toml.loads("\n".join(texts)))
         except Exception as err:
-            raise IOError("GuardedChain Failed to Load: ", paths, err.args) from err
+            raise IOError("ChainGuard Failed to Load: ", paths, err.args) from err
 
     @classmethod
     def load_dir(cls, dirp:str|pl.Path) -> Self:
-        logging.debug("Creating GuardedChain for directory: %s", str(dirp))
+        logging.debug("Creating ChainGuard for directory: %s", str(dirp))
         try:
             texts = []
             for path in pl.Path(dirp).glob("*.toml"):
@@ -86,4 +86,4 @@ class TomlLoader_m:
 
             return cls(toml.loads("\n".join(texts)))
         except Exception as err:
-            raise IOError("GuardedChain Failed to Directory: ", dirp, err.args) from err
+            raise IOError("ChainGuard Failed to Directory: ", dirp, err.args) from err

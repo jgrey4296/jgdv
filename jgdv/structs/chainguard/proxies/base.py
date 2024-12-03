@@ -35,8 +35,8 @@ from weakref import ref
 
 # ##-- end stdlib imports
 
-from jgdv.structs.guarded_chain._base import GuardBase
-from jgdv.structs.guarded_chain.mixins.reporter_m import DefaultedReporter_m
+from jgdv.structs.chainguard._base import GuardBase
+from jgdv.structs.chainguard.mixins.reporter_m import DefaultedReporter_m
 
 ##-- logging
 logging = logmod.getLogger(__name__)

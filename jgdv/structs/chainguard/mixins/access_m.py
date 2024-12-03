@@ -38,7 +38,7 @@ from weakref import ref
 
 from collections import ChainMap
 from collections.abc import Mapping, ItemsView, KeysView, ValuesView
-from jgdv.structs.guarded_chain import GuardedAccessError
+from jgdv.structs.chainguard import GuardedAccessError
 
 ##-- logging
 logging = logmod.getLogger(__name__)

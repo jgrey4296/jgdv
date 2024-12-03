@@ -4,7 +4,7 @@ from typing import Final, TypeAlias
 import datetime
 from collections import ChainMap
 
-__all__     = ["GuardedAccessError", "GuardedChain", "load"]
+__all__     = ["GuardedAccessError", "ChainGuard", "load"]
 
 __version__ : Final[str] = "0.4.0"
 
@@ -12,8 +12,8 @@ TomlTypes : TypeAlias = str | int | float | bool | list['TomlTypes'] | dict[str,
 TGDict    : TypeAlias = dict | ChainMap
 
 from .error import GuardedAccessError
-from .guarded_chain import GuardedChain
+from .chainguard import ChainGuard
 
-load        = GuardedChain.load
-load_dir    = GuardedChain.load_dir
-read        = GuardedChain.read
+load        = ChainGuard.load
+load_dir    = ChainGuard.load_dir
+read        = ChainGuard.read
