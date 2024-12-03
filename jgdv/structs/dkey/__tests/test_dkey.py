@@ -16,7 +16,7 @@ import pytest
 logging = logmod.root
 
 from tomlguard import TomlGuard
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 
 from jgdv.structs import dkey
 from jgdv.structs.dkey.formatter import DKeyFormatter
