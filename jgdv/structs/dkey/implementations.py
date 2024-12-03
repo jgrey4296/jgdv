@@ -37,7 +37,7 @@ from tomlguard import TomlGuard
 
 # ##-- 1st party imports
 from jgdv._abstract.protocols import Key_p, SpecStruct_p, Buildable_p
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey.dkey import DKey, REDIRECT_SUFFIX, CONV_SEP, DKeyMark_e
 from jgdv.structs.dkey.formatter import DKeyFormatter
 from jgdv.structs.dkey.mixins import DKeyFormatting_m, DKeyExpansion_m, identity
@@ -151,6 +151,6 @@ class ImportDKey(SingleDKey, mark=DKeyMark_e.CODE, tparam="c"):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._expansion_type  = CodeReference.build
+        self._expansion_type  = CodeReference
         self._typecheck = CodeReference
 

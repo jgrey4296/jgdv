@@ -17,7 +17,7 @@ logging = logmod.root
 
 from tomlguard import TomlGuard
 from jgdv._abstract.protocols import Key_p
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey import implementations as dkey
 from jgdv.structs.dkey.formatter import DKeyFormatter
 

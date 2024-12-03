@@ -36,7 +36,7 @@ import sh
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from jgdv.structs.code_ref import CodeReference
+from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey.dkey import DKey, DKeyMark_e
 from jgdv._abstract.protocols import Key_p, SpecStruct_p
 from jgdv.util.chain_get import ChainedKeyGetter
