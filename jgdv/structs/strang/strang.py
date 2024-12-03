@@ -34,16 +34,17 @@ from tomlguard import TomlGuard
 
 # ##-- end 3rd party imports
 
+from jgdv.structs.strang import strang_mixins as mixins
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-from jgdv.structs.strang import strang_mixins as mixins
 
 FMT_PATTERN    : Final[re.Pattern]         = re.compile("^(h?)(t?)(p?)")
 SEP_DEFAULT    : Final[str]                = "::"
 SUBSEP_DEFAULT : Final[str]                = "."
 GEN_K          : Final[str]                = mixins.GEN_K
+_T             : TypeVar                   = TypeVar("_T")
 
 STRGET                                     = str.__getitem__
 StrangMarker_e                             = mixins.StrangMarker_e
@@ -67,10 +68,12 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
 
     """
 
-    _separator       : ClassVar[str] = SEP_DEFAULT
-    _subseparator    : ClassVar[str] = SUBSEP_DEFAULT
-    _body_types      : ClassVar[Any] = str|UUID|StrangMarker_e
-    mark_e          : enum.Enum     = StrangMarker_e
+    _separator       : ClassVar[str]  = SEP_DEFAULT
+    _subseparator    : ClassVar[str]  = SUBSEP_DEFAULT
+    _body_types      : ClassVar[Any]  = str|UUID|StrangMarker_e
+    _typevar         : ClassVar[type] = None
+    mark_e           : enum.Enum      = StrangMarker_e
+
 
     def __new__(cls, data, *args, **kwargs):
         """ Overrides normal str creation to allow passing args to init """
