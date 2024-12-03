@@ -57,7 +57,7 @@ class TestCodeReference:
         assert(imported == build_slice)
 
     def test_import_module_fail(self):
-        ref = CodeReference("doot.taskSSSSS.base_task:DootTask")
+        ref = CodeReference("jgdv.taskSSSSS.base_task:DootTask")
         match ref():
             case ImportError():
                 assert(True)
@@ -65,7 +65,7 @@ class TestCodeReference:
                 assert(False)
 
     def test_import_class_fail(self):
-        ref = CodeReference("doot.task.base_task:DootTaskSSSSSS")
+        ref = CodeReference("jgdv.structs.strang:DootTaskSSSSSS")
         match ref():
             case ImportError():
                 assert(True)
