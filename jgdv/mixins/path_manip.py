@@ -35,7 +35,7 @@ from jgdv.structs.dkey import DKey
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-MARKER : Final[str] = ".marker"
+MARKER       : Final[str]  = ".marker"
 walk_ignores : Final[list] = ['.git', '.DS_Store', "__pycache__"] # TODO use a .ignore file
 walk_halts   : Final[str]  = [".doot_ignore"]
 

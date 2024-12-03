@@ -49,7 +49,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 from jgdv._abstract.protocols import Buildable_p
-from jgdv.structs.dkey.dkey import DKey, REDIRECT_SUFFIX, CONV_SEP, DKeyMark_e
+from jgdv.structs.dkey.meta import DKey, REDIRECT_SUFFIX, CONV_SEP, DKeyMark_e
 from jgdv.structs.dkey.formatter import DKeyFormatter
 
 ##-- logging

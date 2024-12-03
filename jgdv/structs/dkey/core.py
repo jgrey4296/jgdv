@@ -48,9 +48,8 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from jgdv._abstract.protocols import Buildable_p, Key_p, SpecStruct_p
-from jgdv.structs.strang import CodeReference
+from jgdv.structs.dkey.meta import CONV_SEP, REDIRECT_SUFFIX, DKey, DKeyMark_e
 from jgdv.structs.dkey.base import DKeyBase
-from jgdv.structs.dkey.dkey import CONV_SEP, REDIRECT_SUFFIX, DKey, DKeyMark_e
 from jgdv.structs.dkey.formatter import DKeyFormatter
 from jgdv.structs.dkey.mixins import DKeyExpansion_m, DKeyFormatting_m, identity
 

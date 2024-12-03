@@ -38,7 +38,7 @@ from tomlguard import TomlGuard
 # ##-- 1st party imports
 from jgdv._abstract.protocols import Key_p, SpecStruct_p, Buildable_p
 from jgdv.structs.strang import CodeReference
-from jgdv.structs.dkey.dkey import DKey, REDIRECT_SUFFIX, CONV_SEP, DKeyMark_e
+from jgdv.structs.dkey.meta import DKey, REDIRECT_SUFFIX, CONV_SEP, DKeyMark_e
 from jgdv.structs.dkey.formatter import DKeyFormatter
 from jgdv.structs.dkey.mixins import DKeyFormatting_m, DKeyExpansion_m, identity
 from jgdv.structs.dkey.base import DKeyBase
@@ -64,6 +64,9 @@ CWD_MARKER      : Final[str]                = "__cwd"
 
 
 class StrDKey(SingleDKey, mark=DKeyMark_e.STR, tparam="s"):
+    """
+
+    """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -32,12 +32,17 @@ logging = logmod.getLogger(__name__)
 
 import zipfile
 
-zip_name_default : Final[str]  = "default"
-zip_overwrite_default    : Final[bool] = False
-zip_compression_default  : Final[str]  = "ZIP_DEFLATED"
-zip_level_default        : Final[int]  = 4
+zip_name_default         : Final[str]                   = "default"
+zip_overwrite_default    : Final[bool]                  = False
+zip_compression_default  : Final[str]                   = "ZIP_DEFLATED"
+zip_level_default        : Final[int]                   = 4
 
-zip_choices : Final[list[tuple[str, str]]] = [("none", "No compression"), ("zip", "Default Zip Compression"), ("bzip2", "bzip2 Compression"), ("lzma", "lzma compression")]
+zip_choices              : Final[list[tuple[str, str]]] = [
+    ("none", "No compression"),
+    ("zip", "Default Zip Compression"),
+    ("bzip2", "bzip2 Compression"),
+    ("lzma", "lzma compression")
+]
 
 class Zipper_m:
     """

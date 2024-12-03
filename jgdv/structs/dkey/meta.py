@@ -31,6 +31,7 @@ from uuid import UUID, uuid1
 # ##-- 1st party imports
 from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
 from jgdv._abstract.protocols import Key_p
+from jgdv.mixins.annotate import AnnotateSubclass_m
 # ##-- end 1st party imports
 
 ##-- logging
@@ -44,6 +45,7 @@ class DKeyMark_e(EnumBuilder_m, enum.Enum):
     """
       Enums for how to use/build a dkey
 
+    TODO refactor this to StrEnum
     """
     FREE     = enum.auto() # -> Any
     PATH     = enum.auto() # -> pl.Path
@@ -61,12 +63,15 @@ class DKeyMark_e(EnumBuilder_m, enum.Enum):
 class DKeyMeta(type(str)):
     """
       The Metaclass for keys, which ensures that subclasses of DKeyBase
-      are DKey's, despite there not being an actual subclass relation between them
+      are DKey's, despite there not being an actual subclass relation between them.
+
+    This allows DKeyBase to actually bottom out at str
     """
 
     def __call__(cls, *args, **kwargs):
         """ Runs on class instance creation
         skips running cls.__init__, allowing cls.__new__ control
+        (ie: Allows The DKey accessor to control the class it creates, and how it is init'd)
         """
         # TODO maybe move dkey discrimination to here
         return cls.__new__(cls, *args, **kwargs)
@@ -78,9 +83,11 @@ class DKeyMeta(type(str)):
         candidates = {Key_p}
         return any(x in candidates for x in sub.mro())
 
-class DKey(metaclass=DKeyMeta):
+class DKey(AnnotateSubclass_m, metaclass=DKeyMeta):
     """ A facade for DKeys and variants.
       Implements __new__ to create the correct key type, from a string, dynamically.
+
+    TODO use subclass annotation
 
       kwargs:
       explicit = insists that keys in the string are wrapped in braces '{akey} {anotherkey}'.
@@ -194,6 +201,7 @@ class DKey(metaclass=DKeyMeta):
 
     @staticmethod
     def register_key(ctor:type, mark:DKeyMark_e, tparam:None|str=None, multi=False):
+        """ Register a DKeyBase implementation to a mark """
         match mark:
             case None:
                 pass
@@ -215,6 +223,7 @@ class DKey(metaclass=DKeyMeta):
 
     @staticmethod
     def get_initiator(mark, *, multi:bool=False) -> type:
+        """ Get the Ctor for a key, with a fallback to Multi or Free ctors"""
         match multi:
             case True:
                 ctor = DKey._multi_registry.get(mark, None)

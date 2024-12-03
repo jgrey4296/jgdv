@@ -41,7 +41,7 @@ from jgdv.structs.strang import CodeReference
 # ##-- 1st party imports
 from jgdv.structs.dkey import errors as dkey_errs
 from jgdv._abstract.protocols import Key_p, SpecStruct_p, Decorator_p
-from jgdv.structs.dkey.dkey import DKey
+from jgdv.structs.dkey.meta import DKey
 from jgdv.decorators.base import MetaDecorator, DataDecorator, DecoratorAccessor_m, _TargetType_e
 
 # ##-- end 1st party imports

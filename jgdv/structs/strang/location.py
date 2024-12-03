@@ -73,20 +73,31 @@ class LocationMeta_f(FlagsBuilder_m, enum.Flag):
     default      = directory
 
 class Location(PathManip_m, Strang):
-    """ A Location to be used by tasks in Doot.
+    """ A Location is an abstraction higher than a path.
       ie: a path, with metadata.
 
-    A Strang subclass, of {meta}::a/path/location [metadata]
-    eg: file::.temp/docs/blah.rst
+    Doesn't expand on its own, requires a JGDVLocations store
 
-    Or in a task's action groups like depends_on, required_for,
-      while will be incorporated into a RelationSpec,
-      with an anonymous key.
+    A Strang subclass, of {meta}+::a/path/location
+    eg: file/clean::.temp/docs/blah.rst
+
+    TODO use annotations to require certain metaflags.
+    eg: ProtectedLoc = Location['protect']
+        Cleanable    = Location['clean']
+        FileLoc      = Location['file']
+
+    TODO add an ExpandedLoc subclass that holds the expanded path,
+    and removes the need for much of PathManip_m?
+
+    TODO add a ShadowLoc subclass using annotations
+    eg: BackupTo = ShadowLoc[root='/vols/BackupSD']
+        a_loc = BackupTo('file::a/b/c.mp3')
+        a_loc.path_pair() -> ('/vols/BackupSD/a/b/c.mp3', '~/a/b/c.mp3')
     """
-    _subseparator       : ClassVar[str]   = "/"
-    _body_types         : ClassVar[Any]   = str|WildCard_e
-    mark_e                                = LocationMeta_f
-    wild_e                                = WildCard_e
+    _subseparator       : ClassVar[str]        = "/"
+    _body_types         : ClassVar[Any]        = str|WildCard_e
+    mark_e              : ClassVar[enum.Enum]  = LocationMeta_f
+    wild_e              : ClassVar[enum.Enum]  = WildCard_e
 
     def __init__(self):
         super().__init__()
@@ -126,7 +137,7 @@ class Location(PathManip_m, Strang):
         return self
 
     def __contains__(self, other:LocationMeta_f|Location|pl.Path) -> bool:
-        """ whether a definite artifact is matched by self, an abstract artifact
+        """ TODO whether a definite artifact is matched by self, an abstract artifact
           a/b/c.py ∈ a/b/*.py
           ________ ∈ a/*/c.py
           ________ ∈ a/b/c.*
@@ -160,20 +171,12 @@ class Location(PathManip_m, Strang):
         stem        = abs_stem or self.path.stem == path.stem
         return  suffix and stem
 
-    def __call__(self) -> pl.Path:
-        return self.expand()
-
     def is_concrete(self) -> bool:
         return LocationMeta_f.abstract not in self.flags
 
-    def check(self, meta:LocationMeta_f) -> bool:
+    def check(self, meta:Location.mark_e) -> bool:
         """ return True if this location has any of the test flags """
         return bool(self.meta & meta)
-
-    def exists(self) -> bool:
-        expanded = self.expand()
-        logging.debug("Testing for existence: %s", expanded)
-        return expanded.exists()
 
     @ftz.cached_property
     def path(self) -> pl.Path:
