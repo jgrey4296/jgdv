@@ -33,7 +33,6 @@ import keyword
 import inspect
 import more_itertools as mitz
 from pydantic import BaseModel, Field, field_validator, model_validator
-from tomlguard import TomlGuard
 from jgdv.structs.strang import CodeReference
 
 # ##-- end 3rd party imports

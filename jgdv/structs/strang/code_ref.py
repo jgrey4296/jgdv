@@ -33,7 +33,7 @@ logging = logmod.getLogger(__name__)
 from pydantic import field_validator, model_validator
 import importlib
 from importlib.metadata import EntryPoint
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
 from . import Strang
 
 class CodeReference(Strang):
@@ -104,7 +104,7 @@ class CodeReference(Strang):
 
         Never()
 
-    def to_alias(self, group:str, plugins:dict|TomlGuard) -> str:
+    def to_alias(self, group:str, plugins:dict|ChainGuard) -> str:
         """ TODO Given a nested dict-like, see if this reference can be reduced to an alias """
         base_alias = str(self)
         match [x for x in plugins[group] if x.value == base_alias]:

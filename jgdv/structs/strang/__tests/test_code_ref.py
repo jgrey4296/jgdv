@@ -14,7 +14,6 @@ import warnings
 import pytest
 logging = logmod.root
 
-import tomlguard
 
 from jgdv.structs.strang import Strang
 from jgdv.structs.strang.code_ref import CodeReference

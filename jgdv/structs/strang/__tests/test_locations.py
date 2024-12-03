@@ -13,7 +13,6 @@ import warnings
 
 import pytest
 
-import tomlguard
 from jgdv.structs.strang.errors import DirAbsent, LocationExpansionError, LocationError
 from jgdv.structs.strang.locations import JGDVLocations, _LocationsGlobal
 from jgdv.structs.dkey import DKey, NonDKey

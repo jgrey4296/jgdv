@@ -30,7 +30,7 @@ logging = logmod.getLogger(__name__)
 
 import os
 import re
-import tomlguard
+from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang.errors import DirAbsent, LocationExpansionError, LocationError
 from jgdv.structs.strang.location import Location, LocationMeta_f
 from jgdv.structs.dkey import MultiDKey, NonDKey, SingleDKey, DKey, DKeyFormatter
@@ -259,16 +259,16 @@ class JGDVLocations(PathManip_m):
         """
         return self._root
 
-    def update(self, extra:dict|tomlguard.TomlGuard|Location|JGDVLocations, strict=True) -> Self:
+    def update(self, extra:dict|ChainGuard|Location|JGDVLocations, strict=True) -> Self:
         """
-          Update the registered locations with a dict, tomlguard, or other dootlocations obj.
+          Update the registered locations with a dict, chainguard, or other dootlocations obj.
         """
         match extra: # unwrap to just a dict
             case dict():
                 pass
             case Location():
                 pass
-            case tomlguard.TomlGuard():
+            case ChainGuard():
                 return self.update(extra._table(), strict=strict)
             case JGDVLocations():
                 return self.update(extra._data, strict=strict)
