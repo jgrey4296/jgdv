@@ -44,9 +44,9 @@ try:
             path.write_text(str(self))
 
 except ImportError:
-    logging.debug("No Tomli-w found, GuardedChain will not write toml, only read it")
+    logging.debug("No Tomli-w found, ChainGuard will not write toml, only read it")
 
     class TomlWriter_m:
 
         def to_file(self, path:pl.Path) -> None:
-            raise NotImplementedError("Tomli-w isn't installed, so GuardedChain can't write, only read")
+            raise NotImplementedError("Tomli-w isn't installed, so ChainGuard can't write, only read")

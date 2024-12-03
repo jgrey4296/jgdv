@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-A Proxy for GuardedChains,
+A Proxy for ChainGuard,
   which allows you to use the default attribute access
   (data.a.b.c)
   even when there might not be an `a.b.c` path in the data.
@@ -48,10 +48,10 @@ from weakref import ref
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv.structs.guarded_chain import TomlTypes
-from jgdv.structs.guarded_chain._base import GuardBase
-from jgdv.structs.guarded_chain.error import GuardedAccessError
-from jgdv.structs.guarded_chain.proxies.base import NullFallback, GuardProxy
+from jgdv.structs.chainguard import TomlTypes
+from jgdv.structs.chainguard._base import GuardBase
+from jgdv.structs.chainguard.error import GuardedAccessError
+from jgdv.structs.chainguard.proxies.base import NullFallback, GuardProxy
 
 # ##-- end 1st party imports
 

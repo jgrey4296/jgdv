@@ -40,11 +40,11 @@ import pytest
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from jgdv.structs.guarded_chain._base import GuardBase
-from jgdv.structs.guarded_chain.error import GuardedAccessError
-from jgdv.structs.guarded_chain.proxies.failure import GuardFailureProxy
-from jgdv.structs.guarded_chain import GuardedChain
-from jgdv.structs.guarded_chain.mixins.reporter_m import DefaultedReporter_m
+from jgdv.structs.chainguard._base import GuardBase
+from jgdv.structs.chainguard.error import GuardedAccessError
+from jgdv.structs.chainguard.proxies.failure import GuardFailureProxy
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.chainguard.mixins.reporter_m import DefaultedReporter_m
 
 # ##-- end 1st party imports
 
@@ -65,33 +65,33 @@ class TestDefaultedReporter:
 
     def test_proxied_report_empty(self, mocker):
         mocker.patch.object(DefaultedReporter_m, "_defaulted", set())
-        base     = GuardedChain({"test": { "blah": {"bloo": "final", "aweg": "joijo"}}})
-        assert(GuardedChain.report_defaulted() == [])
+        base     = ChainGuard({"test": { "blah": {"bloo": "final", "aweg": "joijo"}}})
+        assert(ChainGuard.report_defaulted() == [])
 
     def test_proxied_report_no_existing_values(self, mocker):
         mocker.patch.object(DefaultedReporter_m, "_defaulted", set())
-        base     = GuardedChain({"test": { "blah": {"bloo": "final", "aweg": "joijo"}}})
+        base     = ChainGuard({"test": { "blah": {"bloo": "final", "aweg": "joijo"}}})
         base.test.blah.bloo
         base.test.blah.aweg
-        assert(GuardedChain.report_defaulted() == [])
+        assert(ChainGuard.report_defaulted() == [])
 
     def test_proxied_report_missing_values(self, mocker):
         mocker.patch.object(DefaultedReporter_m, "_defaulted", set())
-        base              = GuardedChain({"test": { "blah": {"bloo": "final", "aweg": "joijo"}}})
+        base              = ChainGuard({"test": { "blah": {"bloo": "final", "aweg": "joijo"}}})
         base.on_fail(False).this.doesnt.exist()
         base.on_fail(False).test.blah.other()
 
-        defaulted = GuardedChain.report_defaulted()
+        defaulted = ChainGuard.report_defaulted()
         assert("<root>.this.doesnt.exist = false # <Any>" in defaulted)
         assert("<root>.test.blah.other = false # <Any>" in defaulted)
 
     def test_proxied_report_missing_typed_values(self, mocker):
         mocker.patch.object(DefaultedReporter_m, "_defaulted", set())
-        base     = GuardedChain({"test": { "blah": {"bloo": "final", "aweg": "joijo"}}})
+        base     = ChainGuard({"test": { "blah": {"bloo": "final", "aweg": "joijo"}}})
         base.on_fail("aValue", str).this.doesnt.exist()
         base.on_fail(2, int).test.blah.other()
 
-        defaulted = GuardedChain.report_defaulted()
+        defaulted = ChainGuard.report_defaulted()
         assert("<root>.this.doesnt.exist = 'aValue' # <str>" in defaulted)
         assert("<root>.test.blah.other = 2 # <int>" in defaulted)
 

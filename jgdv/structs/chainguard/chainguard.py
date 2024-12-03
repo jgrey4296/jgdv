@@ -15,7 +15,7 @@ object.__getattribute(self, name):
     except AttributeError:
         return self.__getattr__(name)
 
-So by looking up values in GuardedChain.__table and handling missing values,
+So by looking up values in ChainGuard.__table and handling missing values,
 we can skip dict style key access
 
 """
@@ -71,14 +71,14 @@ logging = logmod.getLogger(__name__)
 
 MIXINS : Final[list[type]] = (GuardProxyEntry_m, TomlLoader_m, TomlWriter_m, TomlAccess_m, DefaultedReporter_m)
 
-class GuardedChain(*MIXINS, GuardBase):
+class ChainGuard(*MIXINS, GuardBase):
 
     @classmethod
     def merge(cls, *guards:Self, dfs:callable=None, index=None, shadow=False) -> Self:
         """
         Given an ordered list of guards and dicts, convert them to dicts,
         update an empty dict with each,
-        then wrap that combined dict in a GuardedChain
+        then wrap that combined dict in a ChainGuard
 
         *NOTE*: classmethod, not instance. search order is same as arg order.
         So merge(a, b, c) will retrive from c only if a, then b, don't have the key
@@ -94,12 +94,12 @@ class GuardedChain(*MIXINS, GuardBase):
             curr_keys |= new_keys
 
         # Build a TG from a chainmap
-        return GuardedChain.from_dict(ChainMap(*(dict(x) for x in guards)))
+        return ChainGuard.from_dict(ChainMap(*(dict(x) for x in guards)))
 
-    def remove_prefix(self, prefix) -> GuardedChain:
+    def remove_prefix(self, prefix) -> ChainGuard:
         """ Try to remove a prefix from loaded data
-          eg: GuardedChain(tools.GuardedChain.data..).remove_prefix("tools.GuardedChain")
-          -> GuardedChain(data..)
+          eg: ChainGuard(tools.ChainGuard.data..).remove_prefix("tools.ChainGuard")
+          -> ChainGuard(data..)
         """
         match prefix:
             case None:
@@ -111,6 +111,6 @@ class GuardedChain(*MIXINS, GuardBase):
                     for x in prefix.split("."):
                         attempt = attempt[x]
                     else:
-                        return GuardedChain(attempt)
+                        return ChainGuard(attempt)
                 except GuardedAccessError:
                     return self
