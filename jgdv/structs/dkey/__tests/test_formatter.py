@@ -15,7 +15,6 @@ import pytest
 
 logging = logmod.root
 
-from tomlguard import TomlGuard
 
 from jgdv.structs.dkey import DKey, MultiDKey, DKeyFormatter
 

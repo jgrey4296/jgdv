@@ -15,7 +15,6 @@ import pytest
 
 logging = logmod.root
 
-from tomlguard import TomlGuard
 from jgdv._abstract.protocols import Key_p
 from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey import implementations as dkey

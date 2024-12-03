@@ -14,7 +14,6 @@ classifiers     = [
 ]
 
 dependencies   = [
-               "tomlguard",
                "pyparsing",
                "networkx",
                "pydantic",

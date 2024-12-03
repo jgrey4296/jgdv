@@ -30,7 +30,8 @@ from uuid import UUID, uuid1
 
 from jgdv.logging.log_colour import (JGDVColourFormatter,
                                      JGDVColourStripFormatter)
-from tomlguard import TomlGuard
+from jgdv.structs.chainguard import ChainGuard
+
 from jgdv.logging.logger_spec import LoggerSpec
 
 ##-- logging
@@ -95,7 +96,7 @@ class JGDVLogConfig:
         logging.info("Known Print Children: %s", acceptable_names)
         for data in subprint_data.items():
             match data :
-                case ("default", TomlGuard()|dict() as spec_data):
+                case ("default", ChainGuard()|dict() as spec_data):
                     for name in {x for x in acceptable_names if x not in subprint_data}:
                         match LoggerSpec.build(spec_data, name=name, base=basename):
                             case None:
@@ -108,7 +109,7 @@ class JGDVLogConfig:
                 case (str(), False|None):
                     # disable the subprinter
                     LoggerSpec.build({"disabled":True}, name=name, base=basename).apply()
-                case (str() as name, TomlGuard()|dict() as spec_data):
+                case (str() as name, ChainGuard()|dict() as spec_data):
                     match LoggerSpec.build(spec_data, name=name, base=basename):
                         case None:
                             print("Could not build LoggerSpec for {}".format(name))
@@ -127,7 +128,7 @@ class JGDVLogConfig:
                 case LoggerSpec() as spec:
                     spec.apply()
 
-    def setup(self, config:TomlGuard):
+    def setup(self, config:ChainGuard):
         """ a setup that uses config values """
         if config is None:
             raise ValueError("Config data has not been configured")

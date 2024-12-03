@@ -30,7 +30,6 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 import decorator
 from pydantic import BaseModel, Field, field_validator, model_validator
-from tomlguard import TomlGuard
 import sh
 
 # ##-- end 3rd party imports
@@ -39,6 +38,8 @@ import sh
 from jgdv.structs.dkey.meta import DKey, DKeyMark_e
 from jgdv._abstract.protocols import Key_p, SpecStruct_p
 from jgdv.util.chain_get import ChainedKeyGetter
+from jgdv.structs.chainguard import ChainGuard
+
 
 # ##-- end 1st party imports
 

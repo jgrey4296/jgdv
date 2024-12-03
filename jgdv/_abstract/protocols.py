@@ -29,10 +29,12 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from tomlguard import TomlGuard
+
 from pydantic import BaseModel
 
 # ##-- end 3rd party imports
+
+from jgdv.structs.chainguard import ChainGuard
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -90,7 +92,7 @@ class SpecStruct_p(Protocol):
     """ Base class for specs, for type matching """
 
     @property
-    def params(self) -> dict|TomlGuard:
+    def params(self) -> dict|ChainGuard:
         pass
 
 @runtime_checkable
@@ -149,10 +151,10 @@ class Loader_p(Protocol):
     TODO add a type parameter
     """
 
-    def setup(self, extra_config:TomlGuard) -> Self:
+    def setup(self, extra_config:ChainGuard) -> Self:
         pass
 
-    def load(self) -> TomlGuard:
+    def load(self) -> ChainGuard:
         pass
 
 @runtime_checkable
@@ -209,7 +211,7 @@ class Key_p(Protocol):
     def to_path(self, spec=None, state=None, *, chain:list[Key_p]=None, locs:"Locations"=None, on_fail:None|str|pl.Path|Key_p=Any, symlinks:bool=False) -> pl.Path:
         pass
 
-    def within(self, other:str|dict|TomlGuard) -> bool:
+    def within(self, other:str|dict|ChainGuard) -> bool:
         pass
 
     def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[Key_p]=None, on_fail=Any, locs:"Locations"=None, **kwargs) -> str:
