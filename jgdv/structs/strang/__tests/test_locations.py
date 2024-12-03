@@ -15,10 +15,16 @@ import pytest
 
 import tomlguard
 from jgdv.structs.strang.errors import DirAbsent, LocationExpansionError, LocationError
-from jgdv.structs.strang.locations import JGDVLocations
+from jgdv.structs.strang.locations import JGDVLocations, _LocationsGlobal
 from jgdv.structs.dkey import DKey, NonDKey
 
 logging = logmod.root
+
+match JGDVLocations.Current:
+    case None:
+        initial_loc = JGDVLocations(pl.Path.cwd())
+    case x:
+        initial_loc = x
 
 class TestLocations:
 
@@ -75,23 +81,13 @@ class TestLocations:
     def test_empty_repr(self):
         simple = JGDVLocations(pl.Path.cwd())
         repr_str = repr(simple)
-        assert(repr_str == f"<JGDVLocations : {str(pl.Path.cwd())} : ()>")
+        assert(repr_str == f"<JGDVLocations (1) : {str(pl.Path.cwd())} : ()>")
 
     def test_non_empty_repr(self):
         simple = JGDVLocations(pl.Path.cwd())
         simple.update({"a": "dir::blah", "b": "dir::aweg", "awegewag": "dir::wejgio"})
         repr_str = repr(simple)
-        assert(repr_str == f"<JGDVLocations : {str(pl.Path.cwd())} : (a, b, awegewag)>")
-
-    def test_context_manager(self):
-        simple = JGDVLocations(pl.Path.cwd())
-        assert(not bool(simple._data))
-        simple.update({"a": "dir::blah"})
-        assert(bool(simple._data))
-        assert(simple.a == pl.Path("blah").resolve())
-
-        with simple(pl.Path("~/Desktop")) as ctx:
-            assert(ctx.a == pl.Path("~/Desktop/blah").expanduser().resolve())
+        assert(repr_str == f"<JGDVLocations (1) : {str(pl.Path.cwd())} : (a, b, awegewag)>")
 
     def test_clear(self):
         simple = JGDVLocations(pl.Path.cwd())
@@ -367,11 +363,33 @@ class TestLocationsGlobal:
         locs = JGDVLocations(pl.Path.cwd())
         assert(isinstance(JGDVLocations.Current, JGDVLocations))
 
-    def test_enter(self):
-        locs  = JGDVLocations(pl.Path.cwd())
-        locs2 = JGDVLocations(pl.Path.cwd())
-        assert(JGDVLocations.Current is locs)
-        with locs2:
+    def test_ctx_manager_basic(self):
+        assert(JGDVLocations.Current is initial_loc)
+        with JGDVLocations.Current() as locs2:
             assert(JGDVLocations.Current is locs2)
 
-        assert(JGDVLocations.Current is locs)
+        assert(JGDVLocations.Current is initial_loc)
+
+    def test_ctx_manager_cwd_change(self):
+        simple = JGDVLocations(pl.Path.cwd())
+        assert(not bool(simple._data))
+        simple.update({"a": "dir::blah"})
+        assert(bool(simple._data))
+        assert(simple.a == pl.Path("blah").resolve())
+
+        with simple(pl.Path("~/Desktop")) as ctx:
+            assert(ctx.a == pl.Path("~/Desktop/blah").expanduser().resolve())
+
+    def test_stacklen(self):
+        assert(_LocationsGlobal.stacklen() == 1)
+        locs  = JGDVLocations(pl.Path.cwd())
+        assert(_LocationsGlobal.stacklen() == 1)
+        with locs() as locs2:
+            assert(_LocationsGlobal.stacklen() == 2)
+            with locs2() as locs3:
+                assert(_LocationsGlobal.stacklen() == 3)
+
+            assert(_LocationsGlobal.stacklen() == 2)
+
+        assert(_LocationsGlobal.stacklen() == 1)
+        assert(JGDVLocations.Current is initial_loc)

@@ -41,8 +41,13 @@ class _LocationsGlobal:
     Provides the enter/exit store for JGDVLocations objects
     """
 
-    _global_locs : ClassVar[list[ref["JGDVLocations"]]] = []
+    _global_locs : ClassVar[list["JGDVLocations"]] = []
+    # _global_locs : ClassVar[list[ref["JGDVLocations"]]] = []
     _startup_cwd : ClasVar[pl.Path] = pl.Path.cwd()
+
+    @staticmethod
+    def stacklen() -> int:
+        return len(_LocationsGlobal._global_locs)
 
     @staticmethod
     def peek() -> None|"JGDVLocations":
@@ -50,11 +55,11 @@ class _LocationsGlobal:
             case []:
                 return None
             case [*_, x]:
-                return x()
+                return x
 
     @staticmethod
     def push(locs):
-        _LocationsGlobal._global_locs.append(ref(locs))
+        _LocationsGlobal._global_locs.append(locs)
 
     @staticmethod
     def pop() -> None|"JGDVLocations":
@@ -63,7 +68,7 @@ class _LocationsGlobal:
                 return None
             case [*xs, x]:
                 _LocationsGlobal._global_locs = xs
-                return x()
+                return x
 
     def __get__(self, obj, objtype=None):
         return _LocationsGlobal.peek()
@@ -94,10 +99,12 @@ class JGDVLocations(PathManip_m):
         match self.Current:
             case None:
                 _LocationsGlobal.push(self)
+            case JGDVLocations():
+                pass
 
     def __repr__(self):
         keys = ", ".join(iter(self))
-        return f"<JGDVLocations : {str(self.root)} : ({keys})>"
+        return f"<JGDVLocations ({_LocationsGlobal.stacklen()}) : {str(self.root)} : ({keys})>"
 
     def __getattr__(self, key:str) -> pl.Path:
         """
