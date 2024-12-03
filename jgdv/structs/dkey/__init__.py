@@ -1,5 +1,5 @@
 
-from .dkey import DKey, DKeyMark_e
+from .meta import DKey, DKeyMark_e
 from .base import DKeyBase
 from .core import SingleDKey, MultiDKey, NonDKey
 from . import implementations

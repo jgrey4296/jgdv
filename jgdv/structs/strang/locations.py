@@ -71,19 +71,27 @@ class _LocationsGlobal:
                 return x
 
     def __get__(self, obj, objtype=None):
+        """ use the descriptor protocol to make a pseudo static-variable
+        https://docs.python.org/3/howto/descriptor.html
+        """
         return _LocationsGlobal.peek()
 
 class JGDVLocations(PathManip_m):
     """
-      A Single point of truth for task access to locations.
+      A managing context for storing and converting Locations to Paths.
       key=value pairs in [[locations]] toml blocks are integrated into it.
 
-      it expands relative paths according to cwd(),
-      but can be used as a context manager to expand from a temp different root
+      It expands relative paths according to cwd(),
+      (or the cwd at program start if the Location has the earlycwd flag)
 
-      location designations are of the form:
-      key = 'location/subdirectory/file'
-      simple locations can be accessed as attributes: locs.temp
+      Can be used as a context manager to expand from a temp different root.
+      In which case the current global loc store is at JGDVLocations.Current
+
+      Locations are of the form:
+      key = "meta/vars::path/to/dir/or/file.ext"
+
+      simple locations can be accessed as attributes.
+      eg: locs.temp
 
       more complex locations, with expansions, are accessed as items:
       locs['{temp}/somewhere']

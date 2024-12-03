@@ -83,6 +83,7 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
         result.__init__(*args, **kwargs)
         # TODO don't call process and post_process if given the metadata in kwargs
         result._process()
+        # TODO allow post-process to override and return a different object?
         result._post_process()
         return result
 
@@ -134,7 +135,7 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
             case slice(start=1, stop=x):
                 return self._body_objs[x] or super().__getitem__(self._body[x])
             case slice(start=2, stop=x):
-                return Strang(self._expanded_str(stop=x))
+                return self.__class__(self._expanded_str(stop=x))
             case slice(start=int()):
                 raise KeyError("Slicing a Strang only supports a start of 0 (group), 1 (body), and 2 (clone)", i)
 

@@ -48,11 +48,11 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
+from jgdv.mixins.annotate import AnnotateSubclass_m
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-from pydantic import BaseModel, Field, field_validator
 
 INST_K         : Final[str]                = "instanced"
 GEN_K          : Final[str]                = "gen_uuid"
@@ -71,8 +71,7 @@ class _Strang_validation_m:
     @classmethod
     def pre_process(cls, data:str) -> str:
         """ run before str.__new__ is called, so can do early modification of the string """
-        # TODO expand <uuid> tags here
-        # TODO chop off tail [param] here
+        # TODO expand <uuid> gen tags here
         match data:
             case cls() | str() if 0 < str.count(data, cls._separator):
                 return str(data).removesuffix(cls._subseparator).removesuffix(cls._subseparator)
@@ -176,14 +175,17 @@ class _Strang_subgen_m:
 
     def to_uniq(self, *, suffix=None) -> Self:
         """ Generate a concrete instance of this name with a UUID appended,
-        optionally can add a prefix
-          # TODO possibly do $gen$.{prefix?}.<UUID>
+        optionally can add a suffix
 
           ie: a.task.group::task.name..{prefix?}.$gen$.<UUID>
         """
         return self.push(self.mark_e.gen, "<uuid>", suffix)
 
     def de_uniq(self) -> Self:
+        """ return the strang up to, but not including, the first instance mark.
+
+        eg: 'group.a::q.w.e.<uuid>.t.<uuid>.y'.de_uniq() -> 'group.a::q.w.e'
+        """
         return self[2:self.metadata.get(INST_K, None)].pop()
 
     def with_head(self) -> Self:
@@ -231,26 +233,10 @@ class _Strang_format_m:
             case "b":
                 return self[1:]
 
-class _Strang_annotation_m:
-    """
-    Enable Strang[int] and Strang['blah'] subclasses variants,
-    to annotate the purpose of the Strang
-
-    TODO maybe use an explicit cache instead of ftz.cache
-    """
-
-    @classmethod
-    @ftz.cache
-    def __class_getitem__(cls, param) -> Annotated[_Strang_annotation_m]:
-        """ Auto-subclass as {cls.__name__}[param]"""
-        match param:
-            case type():
-                p_str = param.__name__
-            case str():
-                p_str = param
-
-        sub = type(f"{cls.__name__}[{p_str}]", (cls,), {"_typevar":param})
-        return sub
-
-class Strang_m(_Strang_annotation_m, _Strang_validation_m, _Strang_cmp_m, _Strang_subgen_m, _Strang_test_m, _Strang_format_m):
+class Strang_m(_Strang_validation_m,
+               _Strang_cmp_m,
+               _Strang_subgen_m,
+               _Strang_test_m,
+               _Strang_format_m,
+               AnnotateSubclass_m):
     pass

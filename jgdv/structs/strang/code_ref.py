@@ -104,19 +104,14 @@ class CodeReference(Strang):
 
         Never()
 
-    def to_alias(self, group:str, plugins:dict|TomlGuard) -> tuple[str, list[str]]:
-        """ Given a nested dict-like, see if this reference can be reduced to an alias """
+    def to_alias(self, group:str, plugins:dict|TomlGuard) -> str:
+        """ TODO Given a nested dict-like, see if this reference can be reduced to an alias """
         base_alias = str(self)
         match [x for x in plugins[group] if x.value == base_alias]:
             case [x, *xs]:
                 base_alias = x.name
 
-        if group != "mixins":
-            mixins = [x.to_aliases("mixins", plugins)[0] for x in  self._calculate_minimal_mixins(plugins)]
-        else:
-            mixins = []
-
-        return base_alias, mixins
+        return base_alias
 
     def to_uniq(self):
         raise NotImplementedError("Code References shouldn't need UUIDs")
