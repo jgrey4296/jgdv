@@ -23,6 +23,7 @@ from typing import (
     Any,
     Callable,
     Self,
+
     ClassVar,
     Final,
     Generator,
@@ -53,9 +54,6 @@ logging = logmod.getLogger(__name__)
 
 from pydantic import BaseModel, Field, field_validator
 
-BodyEntry      : TypeAlias                 = str|int|UUID
-UUID_RE        : Final[re.Pattern]         = re.compile(r"<uuid(?::(.+?))?>")
-MARK_RE        : Final[re.Pattern]         = re.compile(r"\$(.+?)\$")
 INST_K         : Final[str]                = "instanced"
 GEN_K          : Final[str]                = "gen_uuid"
 
@@ -114,50 +112,8 @@ class _Strang_validation_m:
             return slices
 
     def _post_process(self) -> None:
-        """
-        go through body elements, and parse UUIDs, markers, param
-        """
-        logging.debug("Post-processing Strang: %s", self)
-        max_body = len(self._body)
-        self._body_objs = [None for x in range(max_body)]
-        mark_idx : tuple[int, int] = (max_body, -1)
-        for i, elem in enumerate(self.body()):
-            match elem:
-                case x if (match:=UUID_RE.match(x)):
-                    self.metadata[INST_K] = min(i, self.metadata.get(INST_K, max_body))
-                    hex, *_ = match.groups()
-                    if hex is not None:
-                        logging.debug("(%s) Found UUID", i)
-                        self._body_objs[i] = UUID(match[1])
-                    else:
-                        logging.debug("(%s) Generating UUID", i)
-                        self._body_objs[i] = uuid1()
-                        self.metadata[GEN_K] = True
-                case x if (match:=MARK_RE.match(x)) and (x_l:=match[1].lower()) in self.mark_e.__members__:
-                    # Get explicit mark,
-                    logging.debug("(%s) Found Named Marker: %s", i, x_l)
-                    self._body_objs[i] = self.mark_e[x_l]
-                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
-                case "_" if i < 2: # _ and + coexist
-                    self._body_objs[i] = self.mark_e.hide
-                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
-                case "+" if i < 2: # _ and + coexist
-                    self._body_objs[i] = self.mark_e.extend
-                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
-                case "":
-                    self._body_objs[i] = self.mark_e.mark
-                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
-                case _:
-                    self._body_objs[i] = None
-        else:
-            # Set the root and last mark_idx for popping
-            match mark_idx:
-                case (x, -1):
-                    mark_idx = (x, x)
-                case (x, y):
-                    pass
-
-            self._mark_idx = mark_idx
+        """ Abstract no-op to do additional post-processing extraction of metadata """
+        pass
 
 class _Strang_cmp_m:
 
@@ -295,7 +251,6 @@ class _Strang_annotation_m:
 
         sub = type(f"{cls.__name__}[{p_str}]", (cls,), {"_typevar":param})
         return sub
-
 
 class Strang_m(_Strang_annotation_m, _Strang_validation_m, _Strang_cmp_m, _Strang_subgen_m, _Strang_test_m, _Strang_format_m):
     pass
