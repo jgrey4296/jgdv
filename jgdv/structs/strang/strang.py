@@ -44,7 +44,9 @@ FMT_PATTERN    : Final[re.Pattern]         = re.compile("^(h?)(t?)(p?)")
 SEP_DEFAULT    : Final[str]                = "::"
 SUBSEP_DEFAULT : Final[str]                = "."
 GEN_K          : Final[str]                = mixins.GEN_K
-_T             : TypeVar                   = TypeVar("_T")
+INST_K                                     = mixins.INST_K
+UUID_RE        : Final[re.Pattern]         = re.compile(r"<uuid(?::(.+?))?>")
+MARK_RE        : Final[re.Pattern]         = re.compile(r"\$(.+?)\$")
 
 STRGET                                     = str.__getitem__
 StrangMarker_e                             = mixins.StrangMarker_e
@@ -73,7 +75,6 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
     _body_types      : ClassVar[Any]  = str|UUID|StrangMarker_e
     _typevar         : ClassVar[type] = None
     mark_e           : enum.Enum      = StrangMarker_e
-
 
     def __new__(cls, data, *args, **kwargs):
         """ Overrides normal str creation to allow passing args to init """
@@ -104,7 +105,8 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
 
     def __repr__(self):
         body = self._subjoin(self.body(no_expansion=True))
-        return f"<Strang: {self[0:]}{self._separator}{body}>"
+        cls = self.__class__.__name__
+        return f"<{cls}: {self[0:]}{self._separator}{body}>"
 
     def __iter__(self) -> iter[Strang._body_types]:
         """ iterate the body *not* the group """
@@ -137,7 +139,7 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
                 raise KeyError("Slicing a Strang only supports a start of 0 (group), 1 (body), and 2 (clone)", i)
 
     @property
-    def base(self):
+    def base(self) -> Self:
         return self
 
     @property
@@ -185,3 +187,50 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
 
         body_str = self._subjoin(body)
         return f"{group}{self._separator}{body_str}"
+
+    def _post_process(self) -> None:
+        """
+        go through body elements, and parse UUIDs, markers, param
+        setting self._body_objs and self._mark_idx
+        """
+        logging.debug("Post-processing Strang: %s", self)
+        max_body = len(self._body)
+        self._body_objs = [None for x in range(max_body)]
+        mark_idx : tuple[int, int] = (max_body, -1)
+        for i, elem in enumerate(self.body()):
+            match elem:
+                case x if (match:=UUID_RE.match(x)):
+                    self.metadata[INST_K] = min(i, self.metadata.get(INST_K, max_body))
+                    hex, *_ = match.groups()
+                    if hex is not None:
+                        logging.debug("(%s) Found UUID", i)
+                        self._body_objs[i] = UUID(match[1])
+                    else:
+                        logging.debug("(%s) Generating UUID", i)
+                        self._body_objs[i] = uuid1()
+                        self.metadata[GEN_K] = True
+                case x if (match:=MARK_RE.match(x)) and (x_l:=match[1].lower()) in self.mark_e.__members__:
+                    # Get explicit mark,
+                    logging.debug("(%s) Found Named Marker: %s", i, x_l)
+                    self._body_objs[i] = self.mark_e[x_l]
+                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
+                case "_" if i < 2: # _ and + coexist
+                    self._body_objs[i] = self.mark_e.hide
+                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
+                case "+" if i < 2: # _ and + coexist
+                    self._body_objs[i] = self.mark_e.extend
+                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
+                case "":
+                    self._body_objs[i] = self.mark_e.mark
+                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
+                case _:
+                    self._body_objs[i] = None
+        else:
+            # Set the root and last mark_idx for popping
+            match mark_idx:
+                case (x, -1):
+                    mark_idx = (x, x)
+                case (x, y):
+                    pass
+
+            self._mark_idx = mark_idx
