@@ -31,17 +31,18 @@ logging = logmod.getLogger(__name__)
 import os
 import re
 import tomlguard
-from jgdv.structs.location.errors import DirAbsent, LocationExpansionError, LocationError
-from jgdv.structs.location.location import Location, LocationMeta_f
+from jgdv.structs.strang.errors import DirAbsent, LocationExpansionError, LocationError
+from jgdv.structs.strang.location import Location, LocationMeta_f
 from jgdv.structs.dkey import MultiDKey, NonDKey, SingleDKey, DKey, DKeyFormatter
 from jgdv.mixins.path_manip import PathManip_m
 
-KEY_PAT        = "{(.+?)}"
-MAX_EXPANSIONS = 10
-
 class _LocationsGlobal:
+    """ A program global stack of locations.
+    Provides the enter/exit store for JGDVLocations objects
+    """
 
-    _global_locs : ClassVar[list["JGDVLocations"]] = []
+    _global_locs : ClassVar[list[ref["JGDVLocations"]]] = []
+    _startup_cwd : ClasVar[pl.Path] = pl.Path.cwd()
 
     @staticmethod
     def peek() -> None|"JGDVLocations":
@@ -49,11 +50,11 @@ class _LocationsGlobal:
             case []:
                 return None
             case [*_, x]:
-                return x
+                return x()
 
     @staticmethod
     def push(locs):
-        _LocationsGlobal._global_locs.append(locs)
+        _LocationsGlobal._global_locs.append(ref(locs))
 
     @staticmethod
     def pop() -> None|"JGDVLocations":
@@ -62,7 +63,10 @@ class _LocationsGlobal:
                 return None
             case [*xs, x]:
                 _LocationsGlobal._global_locs = xs
-                return x
+                return x()
+
+    def __get__(self, obj, objtype=None):
+        return _LocationsGlobal.peek()
 
 class JGDVLocations(PathManip_m):
     """
@@ -81,16 +85,13 @@ class JGDVLocations(PathManip_m):
       will expand 'temp' (if it is a registered location)
       """
     locmeta = LocationMeta_f
-
-    @property
-    def _global_(self):
-        return _LocationsGlobal.peek()
+    Current : ClassVar[_LocationsGlobal] = _LocationsGlobal()
 
     def __init__(self, root:pl.Path):
         self._root    : pl.Path()               = root.expanduser().resolve()
         self._data    : dict[str, Location]     = dict()
         self._loc_ctx : None|JGDVLocations      = None
-        match _LocationsGlobal.peek():
+        match self.Current:
             case None:
                 _LocationsGlobal.push(self)
 
@@ -111,7 +112,7 @@ class JGDVLocations(PathManip_m):
 
         return self.normalize(self.get(key, fallback=False))
 
-    def __getitem__(self, val:pl.Path|str) -> pl.Path:
+    def __getitem__(self, val:pl.Path|Location|str) -> pl.Path:
         """
           doot.locs['{data}/somewhere']
           or doot.locs[pl.Path('data/other/somewhere')]
@@ -172,12 +173,12 @@ class JGDVLocations(PathManip_m):
         """
         _LocationsGlobal.push(self)
         os.chdir(self._root)
-        return self._global_
+        return self.Current
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
         """ returns the global state to its original, """
         _LocationsGlobal.pop()
-        os.chdir(self._global_._root)
+        os.chdir(self.Current._root)
         return False
 
     def get(self, key:None|DKey|str, fallback:None|False|str|pl.Path=Any) -> None|pl.Path:
@@ -202,12 +203,22 @@ class JGDVLocations(PathManip_m):
             case _:
                 return pl.Path(key)
 
-    def normalize(self, path:pl.Path, symlinks:bool=False) -> pl.Path:
+    def normalize(self, path:pl.Path|Location, symlinks:bool=False) -> pl.Path:
         """
           Expand a path to be absolute, taking into account the set doot root.
           resolves symlinks unless symlinks=True
         """
-        return self._normalize(path, root=self.root)
+        match path:
+            case Location() if Location.mark_e.earlycwd in path.flags:
+                the_path = path.path
+                return self._normalize(the_path, root=_LocationsGlobal._startup_cwd)
+            case Location():
+                the_path = path.path
+                return self._normalize(the_path, root=self.root)
+            case pl.Path():
+                return self._normalize(path, root=self.root)
+            case _:
+                raise TypeError("Bad type to normalize", path)
 
     def metacheck(self, key:str|DKey, meta:LocationMeta_f) -> bool:
         """ return True if key provided has the applicable meta flags """
@@ -257,9 +268,9 @@ class JGDVLocations(PathManip_m):
             raise LocationError("Strict Location Update conflicts", conflicts)
 
         for k,v in extra.items():
-            match Location.build(v, key=k):
+            match Location(v):
                 case Location() as l:
-                    raw[l.key] = l
+                    raw[k] = l
                 case _:
                     raise LocationError("Couldn't build a Location", k, v)
 

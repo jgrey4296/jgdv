@@ -39,7 +39,7 @@ MARKER : Final[str] = ".marker"
 walk_ignores : Final[list] = ['.git', '.DS_Store', "__pycache__"] # TODO use a .ignore file
 walk_halts   : Final[str]  = [".doot_ignore"]
 
-class LoopControl_e(enum.Enum):
+class LoopControl_e(enum.StrEnum):
     """
       Describes how to continue an accumulating loop.
       (like walking a a tree)
@@ -49,10 +49,10 @@ class LoopControl_e(enum.Enum):
     noBut      : not a result, try others.
     no         : not a result, don't try others, Finish.
     """
-    yesAnd  = enum.auto()
-    yes     = enum.auto()
-    noBut   = enum.auto()
-    no      = enum.auto()
+    yesAnd  = "yesAnd"
+    yes     = "yes"
+    noBut   = "noBut"
+    no      = "no"
 
     @classmethod
     @property

@@ -14,8 +14,8 @@ import warnings
 import pytest
 
 import tomlguard
-from jgdv.structs.location import DirAbsent, LocationExpansionError, LocationError
-from jgdv.structs.location import JGDVLocations
+from jgdv.structs.strang.errors import DirAbsent, LocationExpansionError, LocationError
+from jgdv.structs.strang.locations import JGDVLocations
 from jgdv.structs.dkey import DKey, NonDKey
 
 logging = logmod.root
@@ -30,21 +30,21 @@ class TestLocations:
     def test_update(self):
         simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
-        simple.update({"blah": "bloo"})
+        simple.update({"blah": "file::bloo"})
         assert(bool(simple._data))
         assert("blah" in simple)
 
     def test_registered(self):
         simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
-        simple.update({"a": "blah"})
+        simple.update({"a": "file::blah"})
         assert(bool(simple._data))
         simple.registered("a")
 
     def test_registered_fail(self):
         simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
-        simple.update({"a": "blah"})
+        simple.update({"a": "file::blah"})
         assert(bool(simple._data))
 
         with pytest.raises(DirAbsent):
@@ -52,20 +52,20 @@ class TestLocations:
 
     def test_update_conflict(self):
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"blah": "bloo"})
+        simple.update({"blah": "dir::bloo"})
         with pytest.raises(LocationError):
-            simple.update({"blah": "blah"})
+            simple.update({"blah": "dir::blah"})
 
     def test_update_non_strict(self):
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"blah": "bloo"})
-        simple.update({"blah": "bloo"}, strict=False)
+        simple.update({"blah": "dir::bloo"})
+        simple.update({"blah": "dir::bloo"}, strict=False)
 
     def test_update_overwrite(self):
         target = pl.Path("aweg")
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"blah": "bloo"})
-        simple.update({"blah": "aweg"}, strict=False)
+        simple.update({"blah": "dir::bloo"})
+        simple.update({"blah": "dir::aweg"}, strict=False)
         assert("blah" in simple)
         assert(simple._data["blah"].path == target)
         assert(simple.get('blah') == target)
@@ -79,14 +79,14 @@ class TestLocations:
 
     def test_non_empty_repr(self):
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "blah", "b": "aweg", "awegewag": "wejgio"})
+        simple.update({"a": "dir::blah", "b": "dir::aweg", "awegewag": "dir::wejgio"})
         repr_str = repr(simple)
         assert(repr_str == f"<JGDVLocations : {str(pl.Path.cwd())} : (a, b, awegewag)>")
 
     def test_context_manager(self):
         simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
-        simple.update({"a": "blah"})
+        simple.update({"a": "dir::blah"})
         assert(bool(simple._data))
         assert(simple.a == pl.Path("blah").resolve())
 
@@ -96,7 +96,7 @@ class TestLocations:
     def test_clear(self):
         simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
-        simple.update({"a": "blah"})
+        simple.update({"a": "dir::blah"})
         assert("a" in simple)
         simple._clear()
         assert("a" not in simple)
@@ -108,7 +108,7 @@ class TestLocationsBasicGet:
           loc.get(None) -> None
         """
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "blah"})
+        simple.update({"a": "dir::blah"})
         result = simple.get(None)
         assert(result is None)
 
@@ -117,7 +117,7 @@ class TestLocationsBasicGet:
           loc.get(NonDKey(simple)) -> pl.Path(.../simple)
         """
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "blah"})
+        simple.update({"a": "dir::blah"})
         key = DKey("simple", implicit=False)
         assert(isinstance(key, NonDKey))
         result = simple.get(key)
@@ -128,7 +128,7 @@ class TestLocationsBasicGet:
           loc.get('simple') -> pl.Path(.../simple)
         """
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "blah"})
+        simple.update({"a": "dir::blah"})
         key = "simple"
         result = simple.get(key)
         assert(result == pl.Path("simple"))
@@ -138,7 +138,7 @@ class TestLocationsBasicGet:
           loc.get('{simple}') -> pl.Path(.../{simple})
         """
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "blah", "simple":"bloo"})
+        simple.update({"a": "dir::blah", "simple":"dir::bloo"})
         key = "{simple}"
         result = simple.get(key)
         assert(result == pl.Path("{simple}"))
@@ -148,7 +148,7 @@ class TestLocationsBasicGet:
           loc.get(DKey('simple')) => pl.Path(...bloo)
         """
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "blah", "simple":"bloo"})
+        simple.update({"a": "dir::blah", "simple":"dir::bloo"})
         key = DKey("simple")
         result = simple.get(key)
         assert(result == pl.Path("bloo"))
@@ -158,20 +158,20 @@ class TestLocationsBasicGet:
           loc.get(DKey('simple')) => pl.Path(...{simple})
         """
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "blah"})
+        simple.update({"a": "dir::blah"})
         key = DKey("simple", implicit=True)
         result = simple.get(key)
         assert(result == pl.Path("{simple}"))
 
     def test_get_fallback(self):
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "blah"})
+        simple.update({"a": "dir::blah"})
         result = simple.get("{b}", pl.Path("bloo"))
         assert(result == pl.Path("bloo"))
 
     def test_get_raise_error_with_false_fallback(self):
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "blah"})
+        simple.update({"a": "dir::blah"})
         with pytest.raises(LocationError):
             simple.get("badkey", False)
 
@@ -182,7 +182,7 @@ class TestLocationsGetItem:
           loc[a] => pl.Path(.../a)
         """
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "blah"})
+        simple.update({"a": "dir::blah"})
         result        = simple.__getitem__("a")
         result_alt    = simple['a']
         assert(result == result_alt)
@@ -194,7 +194,7 @@ class TestLocationsGetItem:
           loc[{a}] -> pl.Path(.../blah)
         """
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "blah"})
+        simple.update({"a": "dir::blah"})
         result = simple.__getitem__("{a}")
         assert(result == simple.normalize(pl.Path("blah")))
 
@@ -203,7 +203,7 @@ class TestLocationsGetItem:
           loc[{b}] -> pl.Path(.../{b})
         """
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "blah"})
+        simple.update({"a": "dir::blah"})
         with pytest.raises(LocationError):
             simple.__getitem__("{b}")
 
@@ -212,7 +212,7 @@ class TestLocationsGetItem:
           loc[pl.Path(a/b/c)] -> pl.Path(.../a/b/c)
         """
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "blah"})
+        simple.update({"a": "dir::blah"})
         result = simple.__getitem__(pl.Path("a/b/c"))
         assert(result == simple.normalize(pl.Path("a/b/c")))
 
@@ -221,12 +221,12 @@ class TestLocationsGetItem:
           loc[pl.Path({a}/b/c)] -> pl.Path(.../blah/b/c)
         """
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "blah"})
+        simple.update({"a": "dir::blah"})
         result = simple.__getitem__(pl.Path("{a}/b/c"))
         assert(result == simple.normalize(pl.Path("blah/b/c")))
 
     def test_getitem_fail_with_multikey(self):
-        simple = JGDVLocations(pl.Path.cwd()).update({"a": "{other}/blah", "other": "bloo"})
+        simple = JGDVLocations(pl.Path.cwd()).update({"a": "dir::{other}/blah", "other": "dir::bloo"})
         key = DKey("{a}", ctor=pl.Path)
         with pytest.raises(TypeError):
             simple[key]
@@ -234,7 +234,7 @@ class TestLocationsGetItem:
     def test_getitem_expansion_item(self):
         simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
-        simple.update({"a": "{other}", "other": "bloo"})
+        simple.update({"a": "dir::{other}", "other": "dir::bloo"})
         assert(bool(simple._data))
 
         assert(isinstance(simple['{a}'], pl.Path))
@@ -243,7 +243,7 @@ class TestLocationsGetItem:
     def test_getitem_expansion_multi_recursive(self):
         simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
-        simple.update({"a": "{other}", "other": "{aweg}/bloo", "aweg":"aweg/{blah}", "blah":"blah/jojo"})
+        simple.update({"a": "dir::{other}", "other": "dir::{aweg}/bloo", "aweg":"dir::aweg/{blah}", "blah":"dir::blah/jojo"})
         assert(bool(simple._data))
 
         assert(isinstance(simple['{a}'], pl.Path))
@@ -252,7 +252,7 @@ class TestLocationsGetItem:
     def test_getitem_expansion_in_item(self):
         simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
-        simple.update({"other": "bloo"})
+        simple.update({"other": "dir::bloo"})
         assert(bool(simple._data))
 
         assert(isinstance(simple['{other}'], pl.Path))
@@ -262,14 +262,14 @@ class TestLlocationsGetAttr:
 
     def test_attr_access_success(self):
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "blah"})
+        simple.update({"a": "dir::blah"})
         result = simple.a
         assert(simple.a == pl.Path("blah").absolute())
         assert(isinstance(simple.a, pl.Path))
 
     def test_attr_access_simple_expansion(self):
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "{other}/blah", "other": "bloo"})
+        simple.update({"a": "dir::{other}/blah", "other": "dir::bloo"})
         assert(simple.a == simple.normalize(pl.Path("{other}/blah")))
         assert(isinstance(simple.a, pl.Path))
 
@@ -278,14 +278,14 @@ class TestLlocationsGetAttr:
           locs.a => pl.Path(.../{other})
         """
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "{other}", "other": "bloo"})
+        simple.update({"a": "dir::{other}", "other": "dir::bloo"})
 
         assert(isinstance(simple.a, pl.Path))
         assert(simple.a == pl.Path("{other}").absolute())
 
     def test_attr_access_non_existing_path(self):
         simple = JGDVLocations(pl.Path.cwd())
-        simple.update({"a": "blah"})
+        simple.update({"a": "dir::blah"})
         with pytest.raises(LocationError):
             simple.b
 
@@ -294,7 +294,7 @@ class TestLocationsFails:
     def test_getitem_expansion_missing_key(self):
         simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
-        simple.update({"other": "bloo"})
+        simple.update({"other": "dir::bloo"})
         assert(bool(simple._data))
 
         with pytest.raises(LocationError):
@@ -303,7 +303,7 @@ class TestLocationsFails:
     def test_attr_access_doesnt_expand_subkeys(self):
         simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
-        simple.update({"a": "{other}/blah", "other": "{aweg}/bloo/{awog}", "aweg": "first", "awog": "second"})
+        simple.update({"a": "dir::{other}/blah", "other": "dir::{aweg}/bloo/{awog}", "aweg": "dir::first", "awog": "dir::second"})
         assert(bool(simple._data))
         result = simple.a
         assert(result != pl.Path("first/bloo/second/blah").resolve())
@@ -313,14 +313,14 @@ class TestLocationsFails:
     def test_item_access_expansion_recursion_fail(self):
         simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
-        simple.update({"a": "{other}/blah", "other": "/bloo/{a}"})
+        simple.update({"a": "dir::{other}/blah", "other": "dir::/bloo/{a}"})
         with pytest.raises(LocationExpansionError):
             simple['{a}']
 
     def test_get_returns_path(self):
         simple = JGDVLocations(pl.Path.cwd())
         assert(not bool(simple._data))
-        simple.update({"a": "blah"})
+        simple.update({"a": "dir::blah"})
         assert(bool(simple._data))
 
         assert(isinstance(simple.get("b", pl.Path("bloo")), pl.Path))
@@ -357,3 +357,21 @@ class TestLocationsUtils:
         result = simple.normalize(pl.Path("blah"))
         assert(result.is_absolute())
         assert(result == (pl.Path("~/desktop/") / "blah").expanduser().absolute())
+
+class TestLocationsGlobal:
+
+    def test_sanity(self):
+        assert(True is not False)
+
+    def test_global_Current(self):
+        locs = JGDVLocations(pl.Path.cwd())
+        assert(isinstance(JGDVLocations.Current, JGDVLocations))
+
+    def test_enter(self):
+        locs  = JGDVLocations(pl.Path.cwd())
+        locs2 = JGDVLocations(pl.Path.cwd())
+        assert(JGDVLocations.Current is locs)
+        with locs2:
+            assert(JGDVLocations.Current is locs2)
+
+        assert(JGDVLocations.Current is locs)
