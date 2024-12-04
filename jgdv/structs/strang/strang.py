@@ -21,7 +21,7 @@ import weakref
 # from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
+                    Generic, Iterable, Iterator, Mapping, Match, Self,
                     MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
                     TypeGuard, TypeVar, cast, final, overload,
                     runtime_checkable)
@@ -230,7 +230,7 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
             match mark_idx:
                 case (x, -1):
                     mark_idx = (x, x)
-                case (x, y):
+                case (_, _):
                     pass
 
             self._mark_idx = mark_idx

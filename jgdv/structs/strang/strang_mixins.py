@@ -194,7 +194,7 @@ class _Strang_subgen_m:
         eg: (abstract) group::simple.task. -> group::simple.task..$group$
 
         """
-        return self.push(self.mark_e.head)
+        return self.de_uniq().push(self.mark_e.head)
 
     def root(self) -> Self:
         return self.pop(top=True)
