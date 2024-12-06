@@ -319,6 +319,12 @@ class TestStrangSubGen:
         assert(obj < result)
         assert(obj == "group::body")
 
+
+    def test_idempotent_with_head(self):
+        obj = Strang("group::body")
+        assert((result:=obj.with_head()) == "group::body..$head$")
+        assert(result == result.with_head().with_head())
+
     def test_uuid_with_head(self):
         obj = Strang(f"group::body.<uuid:{UUID_STR}>")
         assert(isinstance((result:=obj.with_head()), Strang))

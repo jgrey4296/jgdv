@@ -161,33 +161,6 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
     def shape(self) -> tuple[int, int]:
         return (len(self._group), len(self._body))
 
-    def _format_subval(self, val, no_expansion:bool=False) -> str:
-        match val:
-            case str():
-                return val
-            case UUID() if no_expansion:
-                return "<uuid>"
-            case UUID():
-                return f"<uuid:{val}>"
-            case _:
-                raise TypeError("Unknown body type", val)
-
-    def _expanded_str(self, *, stop:None|int=None):
-        """ Create a str of the Strang with gen uuid's replaced with actual uuids """
-        group = self[0:]
-        body = []
-        for val in self.body()[:stop]:
-            match val:
-                case str():
-                    body.append(val)
-                case UUID():
-                    body.append(f"<uuid:{val}>")
-                case _:
-                    raise TypeError("Unknown body type", val)
-
-        body_str = self._subjoin(body)
-        return f"{group}{self._separator}{body_str}"
-
     def _post_process(self) -> None:
         """
         go through body elements, and parse UUIDs, markers, param

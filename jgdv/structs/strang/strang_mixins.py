@@ -93,10 +93,9 @@ class _Strang_validation_m:
 
     def _get_slices(self, start:int=0, max:None|int=None, add_offset:bool=False):
         index, end, offset = start, max or len(self), len(self._subseparator)
+        slices    = []
         if add_offset:
             index += len(self._separator)
-        slices    = []
-        # Get the group slices:
         while -1 < index:
             match self.find(self._subseparator, index, end):
                 case -1 if index == end:
@@ -171,7 +170,7 @@ class _Strang_subgen_m:
         eg: group::a.b.c => group.a.b.c.
         (note the trailing '.')
         """
-        return self.__class__(self._subjoin(x for x in [self, "", *vals] if x is not None))
+        return self.__class__(self._subjoin(x for x in [self[2:], self.mark_e.mark, *vals] if x is not None))
 
     def to_uniq(self, *, suffix=None) -> Self:
         """ Generate a concrete instance of this name with a UUID appended,
@@ -194,7 +193,11 @@ class _Strang_subgen_m:
         eg: (abstract) group::simple.task. -> group::simple.task..$group$
 
         """
-        return self.push(self.mark_e.head)
+        match self[1:-1]:
+            case self.mark_e.head:
+                return self
+            case _:
+                return self.push(self.mark_e.head)
 
     def root(self) -> Self:
         return self.pop(top=True)
@@ -220,6 +223,33 @@ class _Strang_test_m:
                 return False
 
 class _Strang_format_m:
+
+    def _format_subval(self, val, no_expansion:bool=False) -> str:
+        match val:
+            case str():
+                return val
+            case UUID() if no_expansion:
+                return "<uuid>"
+            case UUID():
+                return f"<uuid:{val}>"
+            case _:
+                raise TypeError("Unknown body type", val)
+
+    def _expanded_str(self, *, stop:None|int=None):
+        """ Create a str of the Strang with gen uuid's replaced with actual uuids """
+        group = self[0:]
+        body = []
+        for val in self.body()[:stop]:
+            match val:
+                case str():
+                    body.append(val)
+                case UUID():
+                    body.append(f"<uuid:{val}>")
+                case _:
+                    raise TypeError("Unknown body type", val)
+
+        body_str = self._subjoin(body)
+        return f"{group}{self._separator}{body_str}"
 
     def __format__(self, spec) -> str:
         """ format additions for strangs:
