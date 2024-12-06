@@ -1,7 +1,7 @@
 #!/usr/bin/env python2
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:
@@ -9,8 +9,7 @@ from __future__ import annotations
 
 # ##-- stdlib imports
 import abc
-
-# import abc
+import sys
 import datetime
 import enum
 import functools as ftz
@@ -26,6 +25,7 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+
     ClassVar,
     Final,
     Generator,
@@ -53,6 +53,7 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import decorator
+from jgdv._abstract.protocols import Decorator_p
 
 # ##-- end 3rd party imports
 
@@ -60,154 +61,248 @@ import decorator
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-FUNC_WRAPPED     : Final[str]                = "__wrapped__"
-jgdv_ANNOTATIONS : Final[str]                = "__JGDV_ANNOTATIONS__"
-WRAPPER          : Final[str]                = "__wrapper"
+WRAPPED             : Final[str]       = "__wrapped__"
+ANNOTATIONS_PREFIX  : Final[str]       = "__JGDV__"
+MARK_SUFFIX         : Final[str]       = "_mark"
+DATA_SUFFIX         : Final[str]       = "_data"
 
-class JGDVDecorator(Decorator_p):
+class _TargetType_e(enum.Enum):
+
+    CLASS    = enum.auto()
+    FUNC     = enum.auto()
+    METHOD   = enum.auto()
+
+class DecoratorBase(Decorator_p):
     """
-    Utility class for idempotently decorating actions with auto-expanded keys
+    Utility Base class for idempotently decorating functions, methods, and classes
+
+    Already decorated targets are 'marked' with _mark_key as an attr.
+
+    Can annotate targets with metadata without modifying the runtime behaviour,
+    or modify the runtime behaviour
+
+    annotations are assigned as setattr(fn, DecoratorBase._data_key, [])
+    the mark is set(fn, DecoratorBase._mark_key, True)
+
+    Moving data from wrapped to wrapper is taken care of,
+    so no need for ftz.wraps in _wrap_method or _wrap_fn
     """
 
-    def __init__(self, keys, *, prefix=None, mark=None, data=None, ignores=None):
-        self._data              = keys
-        self._annotation_prefix = prefix  or jgdv_ANNOTATIONS
-        self._mark_suffix       = mark    or "_keys_expansion_handled_"
-        self._data_suffix       = data    or "_expansion_keys"
-        self._param_ignores     = ignores or ["_", "_ex"]
-        self._mark_key          = f"{self._annotation_prefix}:{self._mark_suffix}"
-        self._data_key          = f"{self._annotation_prefix}:{self._data_suffix}"
+    def __init__(self, *, prefix:None|str=None, mark:None|str=None, data:None|str=None):
+        self._annotation_prefix   : str              = prefix  or ANNOTATIONS_PREFIX
+        self._mark_suffix         : str              = mark    or MARK_SUFFIX
+        self._data_suffix         : str              = data    or DATA_SUFFIX
+        self._wrapper_assignments : list[str]        = list(ftz.WRAPPER_ASSIGNMENTS)
+        self._wrapper_updates     : list[str]        = list(ftz.WRAPPER_UPDATES)
+        self._mark_key            : str              = f"{self._annotation_prefix}:{self._mark_suffix}"
+        self._data_key            : str              = f"{self._annotation_prefix}:{self._data_suffix}"
+
+    def _wraps(self, wrapper, wrapped):
+        return ftz.update_wrapper(wrapper, wrapped, assigned=self._wrapper_assignments, updated=self._wrapper_updates)
+
+    def _unwrap(self, fn) -> Callable:
+        """ Get the un-decorated function if there is one """
+        return inspect.unwrap(fn)
+
+    def _unwrapped_depth(self, fn) -> int:
+        """ the code of inspect.unwrap, but used for getting the unwrap depth """
+        f               = fn
+        memo            = {id(f): f}
+        depth           = 0
+        recursion_limit = sys.getrecursionlimit()
+        while not isinstance(f, type) and hasattr(f, WRAPPED):
+            f = f.__wrapped__
+            depth += 1
+            id_func = id(f)
+            if (id_func in memo) or (len(memo) >= recursion_limit):
+                raise ValueError('wrapper loop when unwrapping {!r}'.format(fn))
+            memo[id_func] = f
+
+        return depth
+
+    def _signature(self, fn) -> inspect.Signature:
+        return inspect.signature(fn, follow_wrapped=False)
+
+    def _target_type(self, fn) -> _TargetType_e:
+        if inspect.isclass(fn):
+            return _TargetType_e.CLASS
+        if inspect.ismethod(fn):
+            return _TargetType_e.METHOD
+        if inspect.ismethodwrapper(fn):
+            return _TargetType_e.METHOD
+
+        match self._signature(fn).parameters.get("self", False):
+            case False:
+                return _TargetType_e.FUNC
+            case _:
+                return _TargetType_e.METHOD
+
+        raise TypeError("Unknown decoration target type", fn)
+
+    def __call__(self, fn):
+        """ Decorate the passed target """
+        orig              = fn
+        fn                = self._unwrap(fn)
+        t_type            = self._target_type(fn)
+        total_annotations = self._update_annotations(fn)
+
+        if self._is_marked(fn):
+            assert(total_annotations == self.get_annotations(fn))
+            self._verify_signature(self._signature(fn), t_type, total_annotations)
+            self._verify_target(fn, t_type, total_annotations)
+            return orig
+
+        # Not already decorated
+        self._verify_target(fn, t_type, total_annotations)
+        self._verify_signature(self._signature(fn), t_type, total_annotations)
+
+        # add wrapper by target type
+        match t_type:
+            case _TargetType_e.CLASS:
+                wrapper = self._wrap_class(fn)
+            case _TargetType_e.METHOD:
+                wrapper = self._wrap_method(fn)
+                updated_wrapper = self._wraps(wrapper, fn)
+            case _TargetType_e.FUNC:
+                wrapper = self._wrap_fn(fn)
+                updated_wrapper = self._wraps(wrapper, fn)
+
+        self._apply_mark(fn, wrapper)
+        return updated_wrapper
+
+    def _wrap_method(self, fn) -> Callable:
+        """ Override this to add a decoration function to method """
+
+        def basic_method_wrapper(_self, *args, **kwargs):
+            logging.debug("Calling Wrapped Method: %s", fn.__qualname__)
+            return fn(_self, *args, **kwargs)
+
+        return basic_method_wrapper
+
+    def _wrap_fn(self, fn) -> Callable:
+        """ override this to add a decorator to a function """
+
+        def basic_fn_wrapper(*args, **kwargs):
+            logging.debug("Calling Wrapped Fn: %s", fn.__qualname__)
+            return fn(*args, **kwargs)
+
+        return basic_fn_wrapper
+
+    def _wrap_class(self, cls) -> type:
+        original        = cls.__call__
+        wrapper         = self._wrap_method(original)
+        updated_wrapper = self._wraps(wrapper, original)
+        cls.__call__    = updated_wrapper
+        return cls
+
+    def _update_annotations(self, fn) -> list:
+        """ Apply metadata to target
+        Override this to specialize
+        """
+        fn.__dict__[self._data_key] = fn.__dict__.get(self._data_key, [])
+        return []
+
+    def _apply_mark(self, bottom:Callable, top:Callable=None) -> None:
+        """ Mark the UNWRAPPED, original target as already decorated """
+        assert(self._unwrapped_depth(bottom) == 0)
+        bottom.__dict__[self._mark_key]      = True
+        if top is not None:
+            top.__dict__[self._mark_key]         = True
+        # setattr(fn, self._mark_key, True)
+
+    def _is_marked(self, fn) -> bool:
+        match self._target_type(fn):
+            case _TargetType_e.CLASS:
+                return self._mark_key in fn.__call__.__dict__
+                # return hasattr(fn.__call__, self._mark_key)
+            case _:
+                return self._mark_key in fn.__dict__
+                # return hasattr(fn, self._mark_key)
+
+    def _verify_target(self, fn, ttype:_TargetType_e, args) -> None:
+        """ Abstract class for specialization.
+        Given the original target, throw an error here if it isn't 'correct' in some way
+        """
+        pass
+
+    def _verify_signature(self, sig, ttype:_TargetType_e, args):
+        pass
+
+    def get_annotations(self, fn) -> list[str]:
+        """ Get the annotations of the target """
+        fn   = self._unwrap(fn)
+        data = getattr(fn, self._data_key, [])
+        return data[:]
+
+class MetaDecorator(DecoratorBase):
+    """
+    Adds metadata without modifying runtime behaviour of target
+    """
+
+    def __init__(self, value:str|list[str], **kwargs):
+        kwargs.setdefault("mark", "_meta_marked")
+        kwargs.setdefault("data", "_meta_vals")
+        super().__init__(**kwargs)
+        match value:
+            case list():
+                self._data = value
+            case _:
+                self._data = [value]
+
+    def _update_annotations(self, fn) -> list:
+        """ Apply metadata to target
+
+        prepend annotations, so written decorator order is the same as written arg order:
+        (ie: @wrap(x) @wrap(y) @wrap(z) def fn (x, y, z), even though z's decorator is applied first
+        """
+        data                        = self._data[:]
+        new_annotations             = data + fn.__dict__.get(self._data_key, [])
+        fn.__dict__[self._data_key] = new_annotations
+        return new_annotations
+
+class DataDecorator(DecoratorBase):
+    """ Adds Data to the target for use in the decorator """
+
+    def __init__(self, keys:str|list[str], **kwargs):
+        kwargs.setdefault("mark", "_d_marked")
+        kwargs.setdefault("data", "_d_vals")
+        super().__init__(**kwargs)
+        match keys:
+            case list():
+                self._data = keys
+            case _:
+                self._data = [keys]
 
     def __call__(self, fn):
         if not bool(self._data):
             return fn
 
-        orig = fn
-        fn   = self._unwrap(fn)
-        # update annotations
-        total_annotations = self._update_annotations(self, fn)
-
-        if not self._verify_action(fn, total_annotations):
-            raise TypeError("Annotations do not match signature", orig)
-
-        if self._is_marked(fn):
-            self._update_annotations(self, orig)
-            return orig
-
-        # add wrapper
-        is_func = inspect.signature(fn).parameters.get("self", None) is None
-
-        match is_func:
-            case False:
-                wrapper = self._target_method(fn)
-            case True:
-                wrapper = self._target_fn(fn)
-
-        return self._apply_mark(fn)
-
-    def get_annotations(self, fn):
-        fn = self._unwrap(fn)
-        return getattr(fn, self._data_key, [])
-
-    def _unwrap(self, fn) -> Callable:
-        return inspect.unwrap(fn)
-
-    def _target_method(self, fn) -> Callable:
-        data_key = self._data_key
-
-        @ftz.wraps(fn)
-        def method_action_expansions(self, spec, state, *call_args, **kwargs):
-            try:
-                expansions = [x(spec, state) for x in getattr(fn, data_key)]
-            except KeyError as err:
-                logging.warning("Action State Expansion Failure: %s", err)
-                return False
-            else:
-                all_args = (*call_args, *expansions)
-                return fn(self, spec, state, *all_args, **kwargs)
-
-        # -
-        return method_action_expansions
-
-    def _target_fn(self, fn) -> Callable:
-        data_key = self._data_key
-
-        @ftz.wraps(fn)
-        def fn_action_expansions(spec, state, *call_args, **kwargs):
-            try:
-                expansions = [x(spec, state) for x in getattr(fn, data_key)]
-            except KeyError as err:
-                logging.warning("Action State Expansion Failure: %s", err)
-                return False
-            else:
-                all_args = (*call_args, *expansions)
-                return fn(spec, state, *all_args, **kwargs)
-
-        # -
-        return fn_action_expansions
-
-    def _target_class(self, cls) -> type:
-        raise NotImplementedError()
+        return super().__call__(fn)
 
     def _update_annotations(self, fn) -> list:
-        # prepend annotations, so written decorator order is the same as written arg order:
-        # (ie: @wrap(x) @wrap(y) @wrap(z) def fn (x, y, z), even though z's decorator is applied first
-        new_annotations = self._data + getattr(fn, self._data_key, [])
-        setattr(fn, self._data_key, new_annotations)
+        """ Apply metadata to target
+
+        prepend annotations, so written decorator order is the same as written arg order:
+        (ie: @wrap(x) @wrap(y) @wrap(z) def fn (x, y, z), even though z's decorator is applied first
+        """
+        data                        = self._data[:]
+        new_annotations             = data + fn.__dict__.get(self._data_key, [])
+        fn.__dict__[self._data_key] = new_annotations
         return new_annotations
 
-    def _is_marked(self, fn) -> bool:
-        return hasattr(fn, self._mark_key)
+class DecoratorAccessor_m:
+    """ A Base Class for building Decorator Accessors like DKeyed.
+    Holds a _decoration_builder class, and helps you build it
+    """
 
-    def _apply_mark(self, fn:Callable) -> Callable:
-        setattr(fn, self._mark_key, True)
-        return fn
+    _decoration_builder : ClassVar[type] = DataDecorator
 
-    def _verify_action(self, fn, args) -> bool:
-        match fn:
-            case inspect.Signature():
-                sig = fn
-            case _:
-                sig = inspect.signature(fn, follow_wrapped=False)
+    @classmethod
+    def _build_decorator(cls, keys) -> JGDVDecorator:
+        return cls._decoration_builder(keys)
 
-        match sig.parameters.get("self", None):
-            case None:
-                head_sig = ["spec", "state"]
-            case _:
-                head_sig = ["self", "spec", "state"]
-
-        return self._verify_signature(sig, head_sig, args)
-
-    def _verify_signature(self, sig:Callable|inspect.Signature, head:list, tail=None) -> bool:
-        match sig:
-            case inspect.Signature():
-                pass
-            case _:
-                sig = inspect.signature(sig)
-
-        params      = list(sig.parameters)
-        tail        = tail or []
-
-        for x,y in zip(params, head):
-            if x != y:
-                logging.debug("Mismatch in signature head: %s != %s", x, y)
-                return False
-
-        prefix_ig, suffix_ig = self._param_ignores
-        for x,y in zip(params[::-1], tail[::-1]):
-            key_str = str(y)
-            if x.startswith(prefix_ig) or x.endswith(suffix_ig):
-                continue
-            if keyword.iskeyword(key_str):
-                logging.debug("Key is a keyword, the function sig needs to use _{} or {}_ex: %s : %s", x, y)
-                return False
-
-            if not key_str.isidentifier():
-                logging.debug("Key is not an identifier, the function sig needs to use _{} or {}_ex: %s : %s", x,y)
-                return False
-
-            if x != y:
-                logging.debug("Mismatch in signature tail: %s != %s", x, y)
-                return False
-        else:
-            return True
+    @classmethod
+    def get_keys(cls, fn) -> list:
+        """ Retrieve key annotations from a decorated function """
+        dec = cls._build_decorator([])
+        return dec.get_annotations(fn)

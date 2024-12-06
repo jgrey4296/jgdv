@@ -28,6 +28,7 @@ from uuid import UUID, uuid1
 
 ##-- end builtin imports
 
+from jgdv._abstract.protocols import SpecStruct_p
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -42,12 +43,29 @@ class ChainedKeyGetter:
     """
 
     @staticmethod
-    def chained_get(key:str, *sources:dict|JGDVLocations) -> Any:
+    def chained_get(key:str, *sources:dict|SpecStruct_p|JGDVLocations, fallback=None) -> None|Any:
+        """
+        Get a key's value from an ordered sequence of potential sources.
+        Try to get {key} then {key_} in order of sources passed in
+        """
+        replacement = fallback
         for source in sources:
-            if source is None:
-                continue
-            replacement = source.get(key, None)
-            if replacement is not None:
+            match source:
+                case None | []:
+                    continue
+                case list():
+                    replacement = source.pop()
+                case _ if hasattr(source, "get"):
+                    if key not in source:
+                        continue
+                    replacement = source.get(key, fallback)
+                case SpecStruct_p():
+                    params      = source.params
+                    replacement = params.get(key, fallback)
+                case _:
+                    raise TypeError("Unknown Type in chained_get", source)
+
+            if replacement is not fallback:
                 return replacement
 
-        return None
+        return fallback

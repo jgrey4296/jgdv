@@ -2,7 +2,7 @@
 """
 
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 ##-- builtin imports
@@ -38,21 +38,24 @@ class EnumBuilder_m:
     """ A Mixin to add a .build(str) method for the enum """
 
     @classmethod
-    def build(cls, val:str) -> Self:
+    def build(cls, val:str, *, strict=True) -> Self:
         try:
             match val:
                 case str():
                     return cls[val]
                 case cls():
                     return val
-        except KeyError:
+        except KeyError as err:
             logging.warning("Can't Create a flag of (%s):%s. Available: %s", cls, val, list(cls.__members__.keys()))
+            if strict:
+                raise err
+
 
 class FlagsBuilder_m:
     """ A Mixin to add a .build(vals) method for EnumFlags """
 
     @classmethod
-    def build(cls, vals:str|list|dict) -> Self:
+    def build(cls, vals:str|list|dict, *, strict=True) -> Self:
         match vals:
             case str():
                 vals = [vals]
@@ -69,7 +72,9 @@ class FlagsBuilder_m:
                         base |= cls[x]
                     case cls():
                         base |= x
-            except KeyError:
+            except KeyError as err:
                 logging.warning("Can't create a flag of (%s):%s. Available: %s", cls, x, list(cls.__members__.keys()))
-
-        return base
+                if strict:
+                    raise err
+        else:
+            return base

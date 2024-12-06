@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 
-See EOF for license/metadata/notes as applicable
+
 """
 
 # Imports:
@@ -33,13 +33,14 @@ from uuid import UUID, uuid1
 # ##-- 3rd party imports
 from pydantic import (BaseModel, Field, ValidationError, field_validator,
                       model_validator)
-from tomlguard import TomlGuard
+
 
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 from jgdv.logging.log_colour import JGDVColourFormatter, JGDVColourStripFormatter
 from jgdv._abstract.protocols import Buildable_p, ProtocolModelMeta
+from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
 
@@ -167,7 +168,7 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
                 for x in data:
                     nested.append(LoggerSpec.build(x, **kwargs))
                 return LoggerSpec(nested=nested, **kwargs)
-            case TomlGuard():
+            case ChainGuard():
                 as_dict = data._table().copy()
                 as_dict.update(kwargs)
                 return LoggerSpec.model_validate(as_dict)
