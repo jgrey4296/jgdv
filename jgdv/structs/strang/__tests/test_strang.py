@@ -12,6 +12,7 @@ from typing import (Any, Annotated, Callable, ClassVar, Generic, Iterable, Itera
                     TypeVar, cast)
 import warnings
 import pytest
+from random import randint
 
 from jgdv.structs.strang import Strang
 logging = logmod.root
@@ -58,6 +59,10 @@ class TestStrangValidation:
 
     def test_sanity(self):
         assert(True is not False)
+
+    def test_pre_filter_repeat_gaps(self):
+        val = Strang("group::a.b....c....d.e")
+        assert(val == "group::a.b..c..d.e")
 
     def test_gap_mark(self):
         obj = Strang("head::tail..blah")
@@ -166,7 +171,9 @@ class TestStrangCmp:
 
     def test_le_on_uuid(self):
         obj  = Strang("head::tail.a.b.c.<uuid>")
+        assert(obj.metadata.get("gen_uuid"))
         obj2 = Strang(obj)
+        assert(obj[-1] == obj2[-1])
         assert(obj == obj2)
         assert(obj <= obj2 )
 
@@ -290,11 +297,23 @@ class TestStrangSubGen:
         assert(r3 == f"group::body.a.b.c..first..second..third")
         assert(obj == "group::body.a.b.c")
 
+    def test_push_number(self):
+        obj = Strang(f"group::body.a.b.c")
+        for x in range(10):
+            num = randint(0, 100)
+            assert(obj.push(num) == f"group::body.a.b.c..{num}")
+
     def test_to_uniq(self):
         obj = Strang(f"group::body.a.b.c")
         assert(isinstance((r1:=obj.to_uniq()), Strang))
         assert(isinstance((r1_uuid:=r1[-1]), uuid.UUID))
         assert(r1 == f"group::body.a.b.c..$gen$.<uuid:{r1_uuid}>")
+
+    def test_to_uniq_idempotent(self):
+        obj = Strang(f"group::body.a.b.c")
+        r1  = obj.to_uniq()
+        r2  = r1.to_uniq()
+        assert(r1 is r2)
 
     def test_to_uniq_with_suffix(self):
         obj = Strang(f"group::body.a.b.c")
@@ -318,7 +337,6 @@ class TestStrangSubGen:
         assert((result:=obj.with_head()) == "group::body..$head$")
         assert(obj < result)
         assert(obj == "group::body")
-
 
     def test_idempotent_with_head(self):
         obj = Strang("group::body")
@@ -448,7 +466,6 @@ class TestStrangAnnotation:
                 assert(True)
             case _:
                 assert(False)
-
 
     def test_match_on_strang(self):
         match Strang[int]("group.a.b::body.c.d"):

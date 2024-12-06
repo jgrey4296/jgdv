@@ -85,7 +85,7 @@ class CodeReference(Strang):
                 else:
                     self._value = curr
             case _:
-                pass
+                curr = self._value
 
         if not callable(self._value):
             return ImportError("Imported value was not a callable or type", self._value, self)

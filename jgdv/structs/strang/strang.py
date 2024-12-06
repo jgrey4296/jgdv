@@ -77,6 +77,11 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
 
     def __new__(cls, data, *args, **kwargs):
         """ Overrides normal str creation to allow passing args to init """
+        match data:
+            case cls():
+                data = str(data)
+            case _:
+                pass
         data = cls.pre_process(data)
         result = str.__new__(cls, data)
         result.__init__(*args, **kwargs)
@@ -166,7 +171,7 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
         go through body elements, and parse UUIDs, markers, param
         setting self._body_objs and self._mark_idx
         """
-        logging.debug("Post-processing Strang: %s", self)
+        logging.debug("Post-processing Strang: %s", str.__str__(self))
         max_body = len(self._body)
         self._body_objs = [None for x in range(max_body)]
         mark_idx : tuple[int, int] = (max_body, -1)

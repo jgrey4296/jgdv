@@ -73,14 +73,18 @@ class _Strang_validation_m:
         """ run before str.__new__ is called, so can do early modification of the string """
         # TODO expand <uuid> gen tags here
         match data:
-            case cls() | str() if 0 < str.count(data, cls._separator):
-                return str(data).removesuffix(cls._subseparator).removesuffix(cls._subseparator)
+            case str() if 0 < str.count(data, cls._separator):
+                subsep_double = re.escape(cls._subseparator * 2)
+                clean_re      = re.compile(f"{subsep_double}+")
+                cleaned       = clean_re.sub(cls._subseparator * 2, data)
+                val           = cleaned.removesuffix(cls._subseparator).removesuffix(cls._subseparator)
+                return val
             case _:
                 raise ValueError("Base data malformed", data)
 
     def _process(self) -> tuple[list[slice], list[slice], list|dict]:
         """ Get slices of the strang to describe group and body components """
-        logging.debug("Processing Strang: %s", self)
+        logging.debug("Processing Strang: %s", str.__str__(self))
         index     = 0
         sep_index = self.find(self._separator)
         if sep_index == -1:
@@ -170,7 +174,7 @@ class _Strang_subgen_m:
         eg: group::a.b.c => group.a.b.c.
         (note the trailing '.')
         """
-        return self.__class__(self._subjoin(x for x in [self[2:], self.mark_e.mark, *vals] if x is not None))
+        return self.__class__(self._subjoin(str(x) for x in [self[2:], self.mark_e.mark, *vals] if x is not None))
 
     def to_uniq(self, *, suffix=None) -> Self:
         """ Generate a concrete instance of this name with a UUID appended,
@@ -178,7 +182,11 @@ class _Strang_subgen_m:
 
           ie: a.task.group::task.name..{prefix?}.$gen$.<UUID>
         """
-        return self.push(self.mark_e.gen, "<uuid>", suffix)
+        match self[1:-1]:
+            case UUID():
+                return self
+            case _:
+                return self.push(self.mark_e.gen, "<uuid>", suffix)
 
     def de_uniq(self) -> Self:
         """ return the strang up to, but not including, the first instance mark.

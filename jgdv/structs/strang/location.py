@@ -72,7 +72,7 @@ class LocationMeta_f(FlagsBuilder_m, enum.Flag):
 
     default      = directory
 
-class Location(PathManip_m, Strang):
+class Location(Strang, PathManip_m):
     """ A Location is an abstraction higher than a path.
       ie: a path, with metadata.
 
@@ -102,6 +102,16 @@ class Location(PathManip_m, Strang):
     def __init__(self):
         super().__init__()
         self.flags               : LocationMeta_f  = LocationMeta_f.default
+
+
+    @classmethod
+    def pre_process(cls, data):
+        match data:
+            case pl.Path():
+                data = f"dir::{data}"
+            case _:
+                pass
+        return super().pre_process(data)
 
     def _post_process(self):
         max_body        = len(self._body)
