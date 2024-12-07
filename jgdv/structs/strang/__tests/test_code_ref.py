@@ -18,11 +18,22 @@ from jgdv.structs.strang import Strang
 from jgdv.structs.strang.code_ref import CodeReference
 from jgdv.util.slice import build_slice
 
-EX_STR : Final[str] = "fn::jgdv.util.slice:build_slice"
+EX_STR    : Final[str] = "fn::jgdv.util.slice:build_slice"
+NO_PREFIX : Final[str] = "jgdv.util.slice:build_slice"
 
 class TestCodeReference:
 
     def test_basic(self):
+        ref = CodeReference(EX_STR)
+        assert(isinstance(ref, CodeReference))
+
+
+    def test_with_no_prefix(self):
+        ref = CodeReference(NO_PREFIX)
+        assert(isinstance(ref, CodeReference))
+
+
+    def test_(self):
         ref = CodeReference(EX_STR)
         assert(isinstance(ref, CodeReference))
 

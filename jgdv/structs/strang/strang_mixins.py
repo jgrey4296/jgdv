@@ -69,7 +69,7 @@ class StrangMarker_e(enum.StrEnum):
 class _Strang_validation_m:
 
     @classmethod
-    def pre_process(cls, data:str) -> str:
+    def pre_process(cls, data:str, *, strict=False) -> str:
         """ run before str.__new__ is called, so can do early modification of the string
         Filters out extraneous duplicated separators
         """
@@ -84,7 +84,7 @@ class _Strang_validation_m:
             case _:
                 raise ValueError("Base data malformed", data)
 
-    def _process(self) -> tuple[list[slice], list[slice], list|dict]:
+    def _process(self) -> None:
         """ Get slices of the strang to describe group and body components """
         logging.debug("Processing Strang: %s", str.__str__(self))
         index     = 0

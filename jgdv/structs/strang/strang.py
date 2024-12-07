@@ -61,7 +61,8 @@ class _StrangMeta(type(str)):
                 data = str(data)
             case _:
                 pass
-        data = cls.pre_process(data)
+
+        data = cls.pre_process(data, strict=kwargs.get("strict", False))
         obj  = str.__new__(cls, data)
         obj.__init__(*args, **kwargs)
         # TODO don't call process and post_process if given the metadata in kwargs
@@ -101,7 +102,7 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
                 # Skip annotated types for now
                 continue
             try:
-                return sub(data, *args, **kwargs)
+                return sub(data, *args, strict=True, **kwargs)
             except (ValueError, KeyError):
                 pass
         else:

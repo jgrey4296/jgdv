@@ -38,7 +38,7 @@ from . import Strang
 
 class CodeRefMeta_e(enum.StrEnum):
     module  = "module"
-    cls     = "class"
+    cls     = "cls"
     value   = "value"
     fn      = "fn"
 
@@ -63,10 +63,12 @@ class CodeReference(Strang):
     gmark_e           : ClassVar[Enum]                   = CodeRefMeta_e
 
     @classmethod
-    def pre_process(cls, data):
+    def pre_process(cls, data, strict=False):
         match data:
              case Strang():
                  pass
+             case str() if cls._separator not in data:
+                 data = f"{cls.gmark_e.default}{cls._separator}{data}"
              case _:
                  pass
 
@@ -87,8 +89,8 @@ class CodeReference(Strang):
         self._value_idx = slice(last_slice.start+index+1, last_slice.stop)
 
 
-    def __init__(self, *, value:None|type=None, check:None|type=None):
-        super().__init__()
+    def __init__(self, *, value:None|type=None, check:None|type=None, **kwargs):
+        super().__init__(**kwargs)
         self._value = value
         self._value_idx = None
 

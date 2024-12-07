@@ -105,21 +105,21 @@ class Location(Strang, PathManip_m):
     bmark_e             : ClassVar[enum.Enum]  = WildCard_e
 
     @classmethod
-    def pre_process(cls, data:str|pl.Path):
+    def pre_process(cls, data:str|pl.Path, *, strict=False):
         match data:
             case Strang():
                 pass
-            case pl.Path() if data.suffix != "":
+            case pl.Path() if not strict and data.suffix != "":
                 data = f"{cls.gmark_e.file}{cls._separator}{data}"
-            case pl.Path():
+            case pl.Path() if not strict:
                 data = f"{cls.gmark_e.default}{cls._separator}{data}"
             case str() if cls._separator not in data:
-                return cls.pre_process(pl.Path(data))
+                return cls.pre_process(pl.Path(data), strict=strict)
             case str():
                 pass
             case _:
                 pass
-        return super().pre_process(data)
+        return super().pre_process(data, strict=strict)
 
     def _post_process(self):
         max_body         = len(self._body)
@@ -163,8 +163,8 @@ class Location(Strang, PathManip_m):
 
         return self
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self._group_meta = None
 
     def __contains__(self, other:Location.gmark_e|Location.bmark_e|Location|pl.Path) -> bool:
