@@ -46,11 +46,14 @@ logging = logmod.getLogger(__name__)
 
 from .strang import Strang
 
+TimeDelta = datetime.timedelta
+
 class WildCard_e(enum.StrEnum):
     """ Ways a path can have a wildcard. """
     glob       = "*"
     rec_glob   = "**"
     select     = "?"
+    key        = "{"
 
 class LocationMeta_e(enum.StrEnum):
     """ Available metadata attachable to a location """
@@ -62,7 +65,7 @@ class LocationMeta_e(enum.StrEnum):
     abstract     = "abstract"
     artifact     = "artifact"
     clean        = "clean"
-    earlycwd     = "earlcwd"
+    earlycwd     = "earlycwd"
     protect      = "protect"
     expand       = "expand"
     remote       = "remote"
@@ -92,126 +95,193 @@ class Location(Strang, PathManip_m):
     and removes the need for much of PathManip_m?
 
     TODO add a ShadowLoc subclass using annotations
-    eg: BackupTo = ShadowLoc[root='/vols/BackupSD']
-        a_loc = BackupTo('file::a/b/c.mp3')
+    eg: BackupTo                               = ShadowLoc[root='/vols/BackupSD']
+        a_loc                                  = BackupTo('file::a/b/c.mp3')
         a_loc.path_pair() -> ('/vols/BackupSD/a/b/c.mp3', '~/a/b/c.mp3')
     """
     _subseparator       : ClassVar[str]        = "/"
     _body_types         : ClassVar[Any]        = str|WildCard_e
-    mark_e              : ClassVar[enum.Enum]  = LocationMeta_e
-    wild_e              : ClassVar[enum.Enum]  = WildCard_e
-
-    def __init__(self):
-        super().__init__()
-        self._group_objs = None
+    gmark_e             : ClassVar[enum.Enum]  = LocationMeta_e
+    bmark_e             : ClassVar[enum.Enum]  = WildCard_e
 
     @classmethod
-    def pre_process(cls, data):
+    def pre_process(cls, data:str|pl.Path):
         match data:
+            case Strang():
+                pass
+            case pl.Path() if data.suffix != "":
+                data = f"{cls.gmark_e.file}{cls._separator}{data}"
             case pl.Path():
-                data = f"dir::{data}"
+                data = f"{cls.gmark_e.default}{cls._separator}{data}"
+            case str() if cls._separator not in data:
+                return cls.pre_process(pl.Path(data))
+            case str():
+                pass
             case _:
                 pass
         return super().pre_process(data)
 
     def _post_process(self):
         max_body         = len(self._body)
-        self._body_objs  = [None for x in range(max_body)]
-        self._group_objs = []
+        self._body_meta  = [None for x in range(max_body)]
+        self._group_meta = set()
 
         parent_bound     = max(len(self._body) - 0, 0)
 
+        # Group metadata
         for elem in self.group:
-            self._group_objs.append(self.mark_e[elem])
+            self._group_meta.add(self.gmark_e[elem])
 
+        # Body wildycards
         for i, elem in enumerate(self.body()):
             match elem:
-                case WildCard_e.glob:
-                    self._group_objs.append(LocationMeta_e.abstract)
-                    self._body_objs[i] = WildCard_e.glob
-                case WildCard_e.rec_glob:
-                    self._group_objs.append(LocationMeta_e.abstract)
-                    self._body_objs[i] = WildCard_e.rec_glob
-                case WildCard_e.select:
-                    self._group_objs.append(LocationMeta_e.abstract)
-                    self._body_objs[i] = WildCard_e.select
+                case self.bmark_e.glob:
+                    self._group_meta.add(self.gmark_e.abstract)
+                    self._body_meta[i] = self.bmark_e.glob
+                case self.bmark_e.rec_glob:
+                    self._group_meta.add(self.gmark_e.abstract)
+                    self._body_meta[i] = self.bmark_e.rec_glob
+                case self.bmark_e.select:
+                    self._group_meta.add(self.gmark_e.abstract)
+                    self._body_meta[i] = self.bmark_e.select
+                case str() if self.bmark_e.key in elem:
+                    self._group_meta.add(self.gmark_e.abstract)
+                    self._body_meta[i] = self.bmark_e.key
         else:
             match self.stem:
-                case (WildCard_e(), _):
-                    self._group_objs.append(LocationMeta_e.abstract)
+                case (self.bmark_e(), _):
+                    self._group_meta.add(self.gmark_e.abstract)
+                    self._group_meta.add(self.gmark_e.expand)
                 case _:
                     pass
 
-            match self.ext:
-                case (WildCard_e(), _):
-                    self._group_objs.append(LocationMeta_e.abstract)
+            match self.ext():
+                case (self.bmark_e(), _):
+                    self._group_meta.add(self.gmark_e.abstract)
                 case _:
                     pass
 
         return self
 
-    def __contains__(self, other:LocationMeta_e|Location|pl.Path) -> bool:
-        """ TODO whether a definite artifact is matched by self, an abstract artifact
+    def __init__(self):
+        super().__init__()
+        self._group_meta = None
+
+    def __contains__(self, other:Location.gmark_e|Location.bmark_e|Location|pl.Path) -> bool:
+        """ whether a definite artifact is matched by self, an abstract artifact
+          other    ∈ self
           a/b/c.py ∈ a/b/*.py
           ________ ∈ a/*/c.py
           ________ ∈ a/b/c.*
           ________ ∈ a/*/c.*
           ________ ∈ **/c.py
+          ________ ∈ a/b ie: self < other
 
         """
         match other:
-            case self.mark_e():
-                return self.check(other)
+            case self.gmark_e():
+                return super().__contains__(other)
+            case Location() if self.gmark_e.abstract in self._group_meta:
+                return self.check_wildcards(other)
             case Location():
-                path = other.path
-            case pl.Path():
-                path = other
+                return self < other
+            case pl.Path() | str():
+                return self.check_wildcards(Location(other))
             case _:
-                return False
-
-        if not self.check(LocationMeta_e.abstract):
-            return False
-
-        for x,y in zip(self.path.parent.parts, path.parent.parts):
-            if x == REC_GLOB or y == REC_GLOB:
-                break
-            if x == GLOB or y == GLOB:
-                continue
-            if x != y:
-                return False
-
-        _, abs_stem, abs_suff = self.abstracts
-        suffix      = abs_suff or self.path.suffix == path.suffix
-        stem        = abs_stem or self.path.stem == path.stem
-        return  suffix and stem
+                return super().__contains__(other)
 
     def is_concrete(self) -> bool:
-        return LocationMeta_e.abstract not in self
+        return self.gmark_e.abstract not in self._group_meta
 
-    def check(self, meta:Location.mark_e) -> bool:
-        """ return True if this location has any of the test flags """
-        return meta in self._group_objs
+    def check_wildcards(self, other:Location) -> bool:
+        """  """
+        logging.debug("Checking %s < %s", self, other)
+        if self.is_concrete():
+            return self < other
+
+        # Compare path
+        for x,y in zip(self.body_parent, other.body_parent):
+            match x, y:
+                case _, _ if x == y:
+                    pass
+                case self.bmark_e.rec_glob, _:
+                    break
+                case self.bmark_e(), str():
+                    pass
+                case str(), self.bmark_e():
+                    pass
+                case str(), str():
+                    return False
+
+        if not self.gmark_e.file in self._group_meta:
+            return True
+
+        logging.debug("%s and %s match on path", self, other)
+        # Compare the stem/ext
+        match self.stem, other.stem:
+            case x, y if x == y:
+                pass
+            case (xa, ya), (xb, yb) if xa == xb and ya == yb:
+                pass
+            case (xa, ya), str():
+                pass
+            case _, _:
+                return False
+
+        logging.debug("%s and %s match on stem", self, other)
+        match self.ext(), other.ext():
+            case None, None:
+                pass
+            case x, y if x == y:
+                pass
+            case (xa, ya), (xb, yb) if xa == xb and ya == yb:
+                pass
+            case (x, y), _:
+                pass
+            case _, _:
+                return False
+
+        logging.debug("%s and %s match", self, other)
+        return True
 
     @ftz.cached_property
     def path(self) -> pl.Path:
         return pl.Path(self[1:])
 
     @ftz.cached_property
-    def stem(self) -> str|tuple[WildCard_e, str]:
+    def body_parent(self) -> list[Location._body_type]:
+        if self.gmark_e.file in self:
+            return self.body()[:-1]
+
+        return self.body()
+
+    @ftz.cached_property
+    def stem(self) -> None|str|tuple[Location.bmark_e, str]:
         """ Return the stem, or a tuple describing how it is a wildcard """
+        if self.gmark_e.file not in self._group_meta:
+            return None
+
         elem = self[1:-1].split(".")[0]
-        if (wc:=WildCard_e.glob) in elem:
+        if elem == "":
+            return None
+        if (wc:=self.bmark_e.glob) in elem:
             return (wc, elem)
-        if (wc:=WildCard_e.select) in elem:
+        if (wc:=self.bmark_e.select) in elem:
             return (wc, elem)
+        if (wc:=self.bmark_e.key) in elem:
+            return (wc, elem)
+
         return elem
 
     @ftz.cache
-    def ext(self, *, last=False) -> None|str|tuple[WildCard_e, str]:
+    def ext(self, *, last=False) -> None|str|tuple[Location.bmark_e, str]:
         """ return the ext, or a tuple of how it is a wildcard.
         returns nothing if theres no extension,
         returns all suffixes if there are multiple, or just the last if last=True
         """
+        if self.gmark_e.file not in self._group_meta:
+            return None
+
         elem = self[1:-1]
         match elem.rfind(".") if last else elem.find("."):
             case -1:
@@ -228,3 +298,19 @@ class Location(Strang, PathManip_m):
                 return (wc, ext)
             case ext:
                 return ext
+
+    @ftz.cached_property
+    def keys(self):
+        raise NotImplementedError()
+
+    def __lt__(self, other:TimeDelta|str|pl.Path|Location) -> bool:
+        """ self < path|location
+            self < delta : self.modtime < (now - delta)
+        """
+        match other:
+            case TimeDelta() if self.is_concrete():
+                pass
+            case TimeDelta():
+                raise NotImplementedError()
+            case _:
+                return super().__lt__(other)

@@ -693,7 +693,7 @@ class TestDKeyCodeKeys:
         """
           test -> coderef
         """
-        state = {"test": "doot._structs.task_spec:TaskSpec"}
+        state = {"test": "cls::doot._structs.task_spec:TaskSpec"}
         key   = dkey.DKey("test", implicit=True, mark=dkey.DKey.mark.CODE)
         assert(isinstance(key, dkey.DKey))
         result = key.expand(state)

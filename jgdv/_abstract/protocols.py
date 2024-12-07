@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 # Imports:
@@ -229,10 +228,6 @@ class Location_p(Protocol):
     path                : pl.Path
     meta                : enum.EnumMeta
 
-    @property
-    def abstracts(self) -> tuple[bool, bool, bool]:
-        pass
-
     def check(self, data) -> bool:
         pass
 
@@ -321,7 +316,6 @@ class Decorator_p(Protocol):
 
     def _update_annotations(self, fn) -> None:
         pass
-
 
 @runtime_checkable
 class Persistent_p(Protocol):

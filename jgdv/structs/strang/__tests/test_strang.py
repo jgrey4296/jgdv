@@ -66,7 +66,7 @@ class TestStrangValidation:
 
     def test_gap_mark(self):
         obj = Strang("head::tail..blah")
-        assert(obj[1:1] == Strang.mark_e.mark)
+        assert(obj[1:1] == Strang.bmark_e.mark)
 
     def test_remove_gap_if_last(self):
         obj = Strang("head::tail.blah..")
@@ -96,24 +96,24 @@ class TestStrangValidation:
         assert(isinstance(s2[-1], uuid.UUID))
         assert(s1[-1] == s2[-1])
 
-    @pytest.mark.parametrize(["val"], [(x,) for x in iter(Strang.mark_e)])
+    @pytest.mark.parametrize(["val"], [(x,) for x in iter(Strang.bmark_e)])
     def test_build_named_mark(self, val):
         obj = Strang(f"head::{val}.blah")
-        assert(obj._body_objs[0] == val)
+        assert(obj._body_meta[0] == val)
         assert(obj[0] == val)
 
     def test_implicit_mark(self):
         obj = Strang(f"head::_.tail.blah")
-        assert(obj[0] == Strang.mark_e.hide)
+        assert(obj[0] == Strang.bmark_e.hide)
 
     def test_implicit_mark_fail(self):
         """ implicit only works in first two elements of body """
         obj = Strang(f"head::a.b.c._.tail.blah")
-        assert(obj._body_objs[3] == None)
+        assert(obj._body_meta[3] == None)
 
     def test_extension_mark(self):
         obj = Strang(f"head::+.tail.blah")
-        assert(obj[0] == Strang.mark_e.extend)
+        assert(obj[0] == Strang.bmark_e.extend)
 
 class TestStrangCmp:
 
@@ -131,6 +131,38 @@ class TestStrangCmp:
         obj = Strang("head::tail.a.b.<uuid>")
         obj2 = Strang("head::tail.a.b.<uuid>")
         assert(hash(obj) != hash(obj2))
+
+    def test_eq_to_str(self):
+        obj = Strang("head::tail.a.b.c")
+        other = "tail.a.b.c"
+        assert(obj == other)
+
+    def test_eq_to_full_str(self):
+        obj = Strang("head::tail.a.b.c")
+        other = "head::tail.a.b.c"
+        assert(obj == other)
+
+    def test_not_eq_to_str(self):
+        obj = Strang("head::tail.a.b.c")
+        other = "tail.a.b.c.d"
+        assert(obj != other)
+
+    def test_eq_to_strang(self):
+        obj = Strang("head::tail.a.b.c")
+        other = Strang("head::tail.a.b.c")
+        assert(obj == other)
+
+
+    def test_not_eq_to_strang(self):
+        obj = Strang("head::tail.a.b.c")
+        other = Strang("head::tail.a.b.c.d")
+        assert(obj != other)
+
+
+    def test_not_eq_to_strang_group(self):
+        obj = Strang("head::tail.a.b.c")
+        other = Strang("head.blah::tail.a.b.c")
+        assert(obj != other)
 
     def test_lt(self):
         obj = Strang("head::tail.a.b.c")
@@ -207,7 +239,7 @@ class TestStrangAccess:
 
     def test_getitem_mark(self):
         val = Strang("group.blah.awef::a..c")
-        assert(val[-2] == Strang.mark_e.mark)
+        assert(val[-2] == Strang.bmark_e.mark)
 
     def test_getitem_uuid(self):
         val = Strang("group.blah.awef::a.<uuid>")
@@ -401,11 +433,11 @@ class TestStrangTests:
 
     def test_contains_mark(self):
         obj = Strang("head::tail.a.b.c.$gen$.<uuid>")
-        assert(Strang.mark_e.gen in obj)
+        assert(Strang.bmark_e.gen in obj)
 
     def test_contains_mark_fail(self):
         obj = Strang("head::tail.a.b.c.<uuid>")
-        assert(Strang.mark_e.gen not in obj)
+        assert(Strang.bmark_e.gen not in obj)
 
     def test_is_uniq(self):
         obj = Strang("head::tail.a.b.c.<uuid>")
@@ -500,9 +532,10 @@ class TestStrangAnnotation:
     def test_subclass_annotate(self):
 
         class StrangSub(Strang):
+            _separator = ":|:"
             pass
 
-        ref = StrangSub[int]("group.a.b::body.c.d")
+        ref = StrangSub[int]("group.a.b:|:body.c.d")
         assert(ref._typevar is int)
         assert(isinstance(ref, Strang))
         assert(isinstance(ref, StrangSub))

@@ -70,7 +70,9 @@ class _Strang_validation_m:
 
     @classmethod
     def pre_process(cls, data:str) -> str:
-        """ run before str.__new__ is called, so can do early modification of the string """
+        """ run before str.__new__ is called, so can do early modification of the string
+        Filters out extraneous duplicated separators
+        """
         # TODO expand <uuid> gen tags here
         match data:
             case str() if 0 < str.count(data, cls._separator):
@@ -123,14 +125,22 @@ class _Strang_cmp_m:
         return str.__hash__(str(self))
 
     def __eq__(self, other):
-        return hash(self) == hash(other)
+        match other:
+            case _Strang_cmp_m():
+                return hash(self) == hash(other)
+            case str() if self._separator in other:
+                return hash(self) == hash(other)
+            case str():
+                return hash(self[1:]) == hash(other)
 
-    def __lt__(self, other) -> bool:
-        if not isinstance(other, _Strang_cmp_m):
-            raise NotImplementedError()
-
-        if not len(self) < len(other):
-            return False
+    def __lt__(self, other:str|Self) -> bool:
+        match other:
+            case _Strang_cmp_m() | str() if not len(self) < len(other):
+                return False
+            case _Strang_cmp_m():
+                pass
+            case _:
+                raise NotImplementedError()
 
         if not self[0:] == other[0:]:
             return False
@@ -174,7 +184,7 @@ class _Strang_subgen_m:
         eg: group::a.b.c => group.a.b.c.
         (note the trailing '.')
         """
-        return self.__class__(self._subjoin(str(x) for x in [self[2:], self.mark_e.mark, *vals] if x is not None))
+        return self.__class__(self._subjoin(str(x) for x in [self[2:], self.bmark_e.mark, *vals] if x is not None))
 
     def to_uniq(self, *, suffix=None) -> Self:
         """ Generate a concrete instance of this name with a UUID appended,
@@ -186,7 +196,7 @@ class _Strang_subgen_m:
             case UUID():
                 return self
             case _:
-                return self.push(self.mark_e.gen, "<uuid>", suffix)
+                return self.push(self.bmark_e.gen, "<uuid>", suffix)
 
     def de_uniq(self) -> Self:
         """ return the strang up to, but not including, the first instance mark.
@@ -202,10 +212,10 @@ class _Strang_subgen_m:
 
         """
         match self[1:-1]:
-            case self.mark_e.head:
+            case self.bmark_e.head:
                 return self
             case _:
-                return self.push(self.mark_e.head)
+                return self.push(self.bmark_e.head)
 
     def root(self) -> Self:
         return self.pop(top=True)
@@ -223,10 +233,14 @@ class _Strang_test_m:
         ie: self < other
         """
         match other:
-            case UUID():
-                return other in self._body_objs
+            case self.bmark_e() | UUID():
+                return other in self._body_meta
+            case self.gmark_e():
+                return other in self._group_meta
             case str():
                 return other in str(self)
+            case _ if self.gmark_e is None:
+                return False
             case _:
                 return False
 

@@ -97,7 +97,7 @@ class JGDVLocations(PathManip_m):
       locs['{temp}/somewhere']
       will expand 'temp' (if it is a registered location)
       """
-    mark_e = LocationMeta_e
+    gmark_e = LocationMeta_e
     Current : ClassVar[_LocationsGlobal] = _LocationsGlobal()
 
     def __init__(self, root:pl.Path):
@@ -224,7 +224,7 @@ class JGDVLocations(PathManip_m):
           resolves symlinks unless symlinks=True
         """
         match path:
-            case Location() if Location.mark_e.earlycwd in path:
+            case Location() if Location.gmark_e.earlycwd in path:
                 the_path = path.path
                 return self._normalize(the_path, root=_LocationsGlobal._startup_cwd)
             case Location():

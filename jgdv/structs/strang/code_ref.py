@@ -36,6 +36,15 @@ from importlib.metadata import EntryPoint
 from jgdv.structs.chainguard import ChainGuard
 from . import Strang
 
+class CodeRefMeta_e(enum.StrEnum):
+    module  = "module"
+    cls     = "class"
+    value   = "value"
+    fn      = "fn"
+
+    val     = "value"
+    default = cls
+
 class CodeReference(Strang):
     """
       A reference to a class or function. can be created from a string (so can be used from toml),
@@ -47,13 +56,41 @@ class CodeReference(Strang):
     __call__ imports the reference
     """
 
-    _separator       : ClassVar[str]                    = ":"
-    _value           : None|type                        = None
-    _body_types      : ClassVar[Any]                    = str
+    _separator        : ClassVar[str]                    = "::"
+    _tail_separator   : ClassVar[str]                    = ":"
+    _value            : None|type                        = None
+    _body_types       : ClassVar[Any]                    = str
+    gmark_e           : ClassVar[Enum]                   = CodeRefMeta_e
+
+    @classmethod
+    def pre_process(cls, data):
+        match data:
+             case Strang():
+                 pass
+             case _:
+                 pass
+
+        return super().pre_process(data)
+
+    def _post_process(self):
+        for elem in self.group:
+            self._group_meta.add(self.gmark_e[elem])
+
+        # Modify the last body slice
+        last_slice = self._body.pop()
+        last       = str.__getitem__(self, last_slice)
+        if self._tail_separator not in last:
+            raise ValueError("CodeRef didn't have a final value")
+
+        index = last.index(self._tail_separator)
+        self._body.append(slice(last_slice.start, last_slice.start + index))
+        self._value_idx = slice(last_slice.start+index+1, last_slice.stop)
+
 
     def __init__(self, *, value:None|type=None, check:None|type=None):
         super().__init__()
         self._value = value
+        self._value_idx = None
 
     def __repr__(self) -> str:
         code_path = str(self)
@@ -61,11 +98,11 @@ class CodeReference(Strang):
 
     @ftz.cached_property
     def module(self):
-        return self[0:]
+        return self[1::-1]
 
     @ftz.cached_property
     def value(self) -> str:
-        return self[1:]
+        return str.__getitem__(self, self._value_idx)
 
     def __call__(self, *, check:type=Any) -> type|ImportError:
         """ Tries to import and retrieve the reference,
@@ -75,20 +112,20 @@ class CodeReference(Strang):
             case None:
                 try:
                     mod = importlib.import_module(self.module)
-                    curr = mod
-                    for name in self.body():
-                        curr = getattr(curr, name)
+                    curr = getattr(mod, self.value)
                 except ImportError as err:
                     return err
                 except AttributeError as err:
-                    return ImportError("Attempted import failed, attribute not found", str(self), name)
+                    return ImportError("Attempted import failed, attribute not found", str(self), self.value)
                 else:
                     self._value = curr
             case _:
                 curr = self._value
 
-        if not callable(self._value):
-            return ImportError("Imported value was not a callable or type", self._value, self)
+        if self.gmark_e.fn in self and not callable(self._value):
+            return ImportError("Imported value was not a callable", self._value, self)
+        if self.gmark_e.cls in self and not isinstance(self._value, type):
+            return ImportError("Imported value was not a class", self._value, self)
 
         match self._typevar:
             case None:
