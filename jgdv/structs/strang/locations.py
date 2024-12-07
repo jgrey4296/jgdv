@@ -32,7 +32,7 @@ import os
 import re
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.strang.errors import DirAbsent, LocationExpansionError, LocationError
-from jgdv.structs.strang.location import Location, LocationMeta_f
+from jgdv.structs.strang.location import Location, LocationMeta_e
 from jgdv.structs.dkey import MultiDKey, NonDKey, SingleDKey, DKey, DKeyFormatter
 from jgdv.mixins.path_manip import PathManip_m
 
@@ -97,7 +97,7 @@ class JGDVLocations(PathManip_m):
       locs['{temp}/somewhere']
       will expand 'temp' (if it is a registered location)
       """
-    locmeta = LocationMeta_f
+    mark_e = LocationMeta_e
     Current : ClassVar[_LocationsGlobal] = _LocationsGlobal()
 
     def __init__(self, root:pl.Path):
@@ -224,7 +224,7 @@ class JGDVLocations(PathManip_m):
           resolves symlinks unless symlinks=True
         """
         match path:
-            case Location() if Location.mark_e.earlycwd in path.flags:
+            case Location() if Location.mark_e.earlycwd in path:
                 the_path = path.path
                 return self._normalize(the_path, root=_LocationsGlobal._startup_cwd)
             case Location():
@@ -235,8 +235,8 @@ class JGDVLocations(PathManip_m):
             case _:
                 raise TypeError("Bad type to normalize", path)
 
-    def metacheck(self, key:str|DKey, meta:LocationMeta_f) -> bool:
-        """ return True if key provided has the applicable meta flags """
+    def metacheck(self, key:str|DKey, meta:LocationMeta_e) -> bool:
+        """ return True if key provided has the applicable metadata"""
         match key:
             case NonDKey():
                 return False

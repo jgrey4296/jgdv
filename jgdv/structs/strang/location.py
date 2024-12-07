@@ -52,25 +52,27 @@ class WildCard_e(enum.StrEnum):
     rec_glob   = "**"
     select     = "?"
 
-class LocationMeta_f(FlagsBuilder_m, enum.Flag):
+class LocationMeta_e(enum.StrEnum):
     """ Available metadata attachable to a location """
 
-    abstract     = enum.auto()
-    artifact     = enum.auto()
-    directory    = enum.auto()
-    clean        = enum.auto()
-    earlycwd     = enum.auto()
-    protect      = enum.auto()
-    expand       = enum.auto()
-    remote       = enum.auto()
-    partial      = enum.auto()
+    location     = "location"
+    directory    = "directory"
+    file         = "file"
+
+    abstract     = "abstract"
+    artifact     = "artifact"
+    clean        = "clean"
+    earlycwd     = "earlcwd"
+    protect      = "protect"
+    expand       = "expand"
+    remote       = "remote"
+    partial      = "partial"
 
     # Aliases
-    file         = artifact
     dir          = directory
-    location     = directory
+    loc          = location
 
-    default      = directory
+    default      = loc
 
 class Location(Strang, PathManip_m):
     """ A Location is an abstraction higher than a path.
@@ -96,13 +98,12 @@ class Location(Strang, PathManip_m):
     """
     _subseparator       : ClassVar[str]        = "/"
     _body_types         : ClassVar[Any]        = str|WildCard_e
-    mark_e              : ClassVar[enum.Enum]  = LocationMeta_f
+    mark_e              : ClassVar[enum.Enum]  = LocationMeta_e
     wild_e              : ClassVar[enum.Enum]  = WildCard_e
 
     def __init__(self):
         super().__init__()
-        self.flags               : LocationMeta_f  = LocationMeta_f.default
-
+        self._group_objs = None
 
     @classmethod
     def pre_process(cls, data):
@@ -114,39 +115,42 @@ class Location(Strang, PathManip_m):
         return super().pre_process(data)
 
     def _post_process(self):
-        max_body        = len(self._body)
-        self._body_objs = [None for x in range(max_body)]
-        self.flags      = LocationMeta_f.build(self.group)
+        max_body         = len(self._body)
+        self._body_objs  = [None for x in range(max_body)]
+        self._group_objs = []
 
-        parent_bound    = max(len(self._body) - 0, 0)
+        parent_bound     = max(len(self._body) - 0, 0)
+
+        for elem in self.group:
+            self._group_objs.append(self.mark_e[elem])
 
         for i, elem in enumerate(self.body()):
             match elem:
                 case WildCard_e.glob:
-                    self.flags |= LocationMeta_f.abstract
+                    self._group_objs.append(LocationMeta_e.abstract)
                     self._body_objs[i] = WildCard_e.glob
                 case WildCard_e.rec_glob:
-                    self.flags |= LocationMeta_f.abstract
+                    self._group_objs.append(LocationMeta_e.abstract)
                     self._body_objs[i] = WildCard_e.rec_glob
                 case WildCard_e.select:
-                    self.flags |= LocationMeta_f.abstract
+                    self._group_objs.append(LocationMeta_e.abstract)
                     self._body_objs[i] = WildCard_e.select
         else:
             match self.stem:
                 case (WildCard_e(), _):
-                    self.flags |= LocationMeta_f.abstract
+                    self._group_objs.append(LocationMeta_e.abstract)
                 case _:
                     pass
 
             match self.ext:
                 case (WildCard_e(), _):
-                    self.flags |= LocationMeta_f.abstract
+                    self._group_objs.append(LocationMeta_e.abstract)
                 case _:
                     pass
 
         return self
 
-    def __contains__(self, other:LocationMeta_f|Location|pl.Path) -> bool:
+    def __contains__(self, other:LocationMeta_e|Location|pl.Path) -> bool:
         """ TODO whether a definite artifact is matched by self, an abstract artifact
           a/b/c.py ∈ a/b/*.py
           ________ ∈ a/*/c.py
@@ -156,7 +160,7 @@ class Location(Strang, PathManip_m):
 
         """
         match other:
-            case LocationMeta_f():
+            case self.mark_e():
                 return self.check(other)
             case Location():
                 path = other.path
@@ -165,7 +169,7 @@ class Location(Strang, PathManip_m):
             case _:
                 return False
 
-        if not self.check(LocationMeta_f.abstract):
+        if not self.check(LocationMeta_e.abstract):
             return False
 
         for x,y in zip(self.path.parent.parts, path.parent.parts):
@@ -182,11 +186,11 @@ class Location(Strang, PathManip_m):
         return  suffix and stem
 
     def is_concrete(self) -> bool:
-        return LocationMeta_f.abstract not in self.flags
+        return LocationMeta_e.abstract not in self
 
     def check(self, meta:Location.mark_e) -> bool:
         """ return True if this location has any of the test flags """
-        return bool(self.meta & meta)
+        return meta in self._group_objs
 
     @ftz.cached_property
     def path(self) -> pl.Path:

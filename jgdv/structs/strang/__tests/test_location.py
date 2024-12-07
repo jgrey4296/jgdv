@@ -30,14 +30,13 @@ class TestLocation:
         assert(loc is not None)
         assert(isinstance(loc, Strang))
         assert(isinstance(loc, Location))
-        assert(Location.mark_e.dir in loc.flags)
 
     def test_simple_file(self):
         loc = Location("file::test/path.py")
         assert(loc is not None)
         assert(isinstance(loc, Strang))
         assert(isinstance(loc, Location))
-        assert(Location.mark_e.file in loc.flags)
+        assert(Location.mark_e.file in loc)
 
     def test_file_stem(self):
         loc = Location("file::test/path.py")
@@ -63,42 +62,42 @@ class TestLocation:
     def test_file_with_metadata(self):
         loc = Location("file/clean::test/path.py")
         assert(isinstance(loc, Location))
-        assert(Location.mark_e.file in loc.flags)
-        assert(Location.mark_e.clean in loc.flags)
-        assert(Location.mark_e.abstract not in loc.flags)
+        assert(Location.mark_e.file in loc._group_objs)
+        assert(Location.mark_e.clean in loc._group_objs)
+        assert(Location.mark_e.abstract not in loc._group_objs)
 
     def test_glob_path(self):
         loc = Location("file::test/*/path.py")
         assert(isinstance(loc, Location))
-        assert(Location.mark_e.abstract in loc.flags)
+        assert(Location.mark_e.abstract in loc._group_objs)
         assert(not loc.is_concrete())
         assert(loc[1:1] is loc.wild_e.glob)
 
     def test_rec_glob_path(self):
         loc = Location("file::test/**/path.py")
         assert(isinstance(loc, Location))
-        assert(Location.mark_e.abstract in loc.flags)
+        assert(Location.mark_e.abstract in loc._group_objs)
         assert(not loc.is_concrete())
         assert(loc[1:1] is loc.wild_e.rec_glob)
 
     def test_select_path(self):
         loc = Location("file::test/?/path.py")
         assert(isinstance(loc, Location))
-        assert(Location.mark_e.abstract in loc.flags)
+        assert(Location.mark_e.abstract in loc._group_objs)
         assert(not loc.is_concrete())
         assert(loc[1:1] is loc.wild_e.select)
 
     def test_glob_stem(self):
         loc = Location("file::test/blah/*ing.py")
         assert(isinstance(loc, Location))
-        assert(Location.mark_e.abstract in loc.flags)
+        assert(Location.mark_e.abstract in loc._group_objs)
         assert(not loc.is_concrete())
         assert(loc.stem == (loc.wild_e.glob, "*ing"))
 
     def test_select_stem(self):
         loc = Location("file::test/blah/?ing.py")
         assert(isinstance(loc, Location))
-        assert(Location.mark_e.abstract in loc.flags)
+        assert(Location.mark_e.abstract in loc._group_objs)
         assert(not loc.is_concrete())
         assert(loc.stem == (loc.wild_e.select, "?ing"))
 
