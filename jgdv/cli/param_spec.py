@@ -23,7 +23,7 @@ import weakref
 from dataclasses import InitVar, dataclass, field
 from types import GenericAlias
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
+                    Generic, Iterable, Iterator, Mapping, Match, Self,
                     MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
                     TypeGuard, TypeVar, cast, final, overload,
                     runtime_checkable)
@@ -40,6 +40,7 @@ from pydantic import (BaseModel, Field, InstanceOf,
 # ##-- 1st party imports
 from jgdv.structs.chainguard import ChainGuard
 from jgdv._abstract.protocols import ParamStruct_p, ProtocolModelMeta, Buildable_p
+from jgdv.mixins.annotate import AnnotateSubclass_m
 
 # ##-- end 1st party imports
 
@@ -102,7 +103,7 @@ class _ConsumerArg_m:
           ["-arg"],    (if type=bool)
           ["-no-arg"], (if type=bool)
           """
-        consumed, remaining, values = 0, args[offset:], []
+        consumed, remaining = 0, args[offset:]
         try:
             match remaining:
                 case []:
@@ -169,7 +170,7 @@ class _ConsumerArg_m:
                 return True
             case str(), False if val in self.key_strs:
                 return True
-            case str(), False if (pre:=self.prefix == ASSIGN_PREFIX) and (starts:=val.startswith(self.prefix)) and (sep:=self.separator in val):
+            case str(), False if self.prefix == ASSIGN_PREFIX and val.startswith(self.prefix) and self.separator in val:
                 key, _ = self._split_assignment(val)
                 return key in self.key_strs
             case _, _:
@@ -226,7 +227,7 @@ class _ConsumerArg_m:
         """ get the value for a -key val """
         logging.debug("Getting Key/Value: %s : %s", self.name, args)
         match args:
-            case [x, y, *rest] if self._match_on_head(x):
+            case [x, y, *_] if self._match_on_head(x):
                 return [y], 2
             case _:
                 raise ArgParseError("Failed to parse key")
@@ -238,7 +239,7 @@ class _ConsumerArg_m:
         key,val = self._split_assignment(arg)
         return [val], 1
 
-class ParamSpec(BaseModel, _ConsumerArg_m, _DefaultsBuilder_m, ParamStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
+class ParamSpec(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_m, ParamStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """ Declarative CLI Parameter Spec.
 
     Declared the param name (turns into {prefix}{name})
@@ -334,6 +335,12 @@ class ParamSpec(BaseModel, _ConsumerArg_m, _DefaultsBuilder_m, ParamStruct_p, Bu
             case set():
                 self.default = self.default or set
 
+        match getattr(self, "_typevar", None):
+            case None:
+                pass
+            case type() as target:
+                # TODO handle annotation
+                pass
         return self
 
     @ftz.cached_property
@@ -426,5 +433,5 @@ class ParamSpec(BaseModel, _ConsumerArg_m, _DefaultsBuilder_m, ParamStruct_p, Bu
 
     def __repr__(self):
         if self.positional:
-            return f"<ParamSpec: {self.name}>"
-        return f"<ParamSpec: {self.prefix}{self.name}>"
+            return f"<{self.__class__.__name__}: {self.name}>"
+        return f"<{self.__class__.__name__}: {self.prefix}{self.name}>"

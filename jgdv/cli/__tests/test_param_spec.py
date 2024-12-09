@@ -23,6 +23,10 @@ bad_names  = ("-test", "blah=bloo")
 
 class TestParamSpec:
 
+    def test_sanity(self):
+        assert(True is not False)
+        test = ParamSpec[bool].build({"name":"Aweg"})
+
     def test_paramspec(self):
         obj = ParamSpec.build({
             "name" : "test"

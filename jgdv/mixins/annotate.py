@@ -28,6 +28,7 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+AnnotationTarget : Final[str] = "_typevar"
 
 class AnnotateSubclass_m:
     """
@@ -39,6 +40,8 @@ class AnnotateSubclass_m:
     TODO add a standard lookup method for whatever _typevar is
     """
 
+    AnnotateTo: ClassVar[str] = AnnotationTarget
+
     @classmethod
     @ftz.cache
     def __class_getitem__(cls, *params) -> Self:
@@ -49,5 +52,5 @@ class AnnotateSubclass_m:
             case str() as param:
                 p_str = param
 
-        sub = type(f"{cls.__name__}[{p_str}]", (cls,), {"_typevar":param})
+        sub = type(f"{cls.__qualname__}[{p_str}]", (cls,), {cls.AnnotateTo:param, "__module__":cls.__module__})
         return sub
