@@ -37,6 +37,7 @@ from jgdv.structs.strang import strang_mixins as mixins
 
 ##-- logging
 logging = logmod.getLogger(__name__)
+logging.disabled = True
 ##-- end logging
 
 FMT_PATTERN    : Final[re.Pattern]         = re.compile("^(h?)(t?)(p?)")
@@ -140,10 +141,10 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
                     mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
                 case "_" if i < 2: # _ and + coexist
                     self._body_meta[i] = self.bmark_e.hide
-                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
+                    mark_idx = (mark_idx[0], max(mark_idx[1], i))
                 case "+" if i < 2: # _ and + coexist
                     self._body_meta[i] = self.bmark_e.extend
-                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
+                    mark_idx = (mark_idx[0], max(mark_idx[1], i))
                 case "":
                     self._body_meta[i] = self.bmark_e.mark
                     mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))

@@ -52,6 +52,7 @@ from jgdv.mixins.annotate import AnnotateSubclass_m
 
 ##-- logging
 logging = logmod.getLogger(__name__)
+logging.disabled = True
 ##-- end logging
 
 INST_K         : Final[str]                = "instanced"
@@ -164,7 +165,7 @@ class _Strang_subgen_m:
     def canon(self) -> Self:
         """ canonical name. no UUIDs"""
         group = self[0:]
-        canon_body = self._subjoin(self.body(reject=lambda x: isinstance(x, UUID)))
+        canon_body = self._subjoin(self.body(reject=lambda x: isinstance(x, UUID) or x == self.bmark_e.gen))
 
         return self.__class__(f"{group}{self._separator}{canon_body}")
 
@@ -284,6 +285,8 @@ class _Strang_format_m:
                 return self[0:]
             case "b":
                 return self[1:]
+            case _:
+                return super().__format__(spec)
 
 class Strang_m(_Strang_validation_m,
                _Strang_cmp_m,

@@ -152,12 +152,10 @@ class TestStrangCmp:
         other = Strang("head::tail.a.b.c")
         assert(obj == other)
 
-
     def test_not_eq_to_strang(self):
         obj = Strang("head::tail.a.b.c")
         other = Strang("head::tail.a.b.c.d")
         assert(obj != other)
-
 
     def test_not_eq_to_strang_group(self):
         obj = Strang("head::tail.a.b.c")
@@ -293,6 +291,11 @@ class TestStrangSubGen:
         assert(isinstance((result:=obj.pop(top=True)), Strang))
         assert(result == "group::body.a.b.c")
         assert(obj == "group::body.a.b.c..d..e")
+
+    def test_pop_to_top_with_markers(self):
+        obj = Strang(f"group::+.body.a.b.c").with_head().to_uniq()
+        assert(isinstance((result:=obj.pop(top=True)), Strang))
+        assert(result == "group::+.body.a.b.c")
 
     def test_push(self):
         obj = Strang(f"group::body.a.b.c")

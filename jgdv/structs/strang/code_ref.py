@@ -63,6 +63,10 @@ class CodeReference(Strang):
     gmark_e           : ClassVar[Enum]                   = CodeRefMeta_e
 
     @classmethod
+    def from_value(cls, value):
+        return cls(value.__qualname__, value=value)
+
+    @classmethod
     def pre_process(cls, data, strict=False):
         match data:
              case Strang():
