@@ -26,16 +26,13 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from tomlguard import TomlGuard
 from collections import ChainMap
 import jgdv
+from jgdv.structs.chainguard import ChainGuard
+from .param_spec import ASSIGN_PREFIX, END_SEP, ParamSpec, ArgParseError
 
-SEP : Final[str]          = "--"
-PARAM_ASSIGN_PREFIX       = doot.constants.patterns.PARAM_ASSIGN_PREFIX
-NON_DEFAULT_KEY           = doot.constants.misc.NON_DEFAULT_KEY
-
-default_task : Final[str] = doot.config.on_fail((None,)).general.settings.default_task()
-default_cmd  : Final[str] = doot.config.on_fail("run", str).general.settings.default_cmd()
+NON_DEFAULT_KEY : Finl[str]           = "_extra_"
+DEFAULT_KEY     : Final[str]          = "_default_"
 
 class ArgParser_i:
     """
@@ -50,8 +47,7 @@ class ArgParser_i:
     def add_param_specs(self, specs:list):
         self.specs += specs
 
-    @abstractmethod
-    def parse(self, args:list[str], doot_arg_specs:list[JGDVParamSpec], cmds:TomlGuard, tasks:TomlGuard) -> TomlGuard:
+    def parse(self, args:list[str], doot_arg_specs:list[ParamSpec], cmds:ChainGuard, tasks:ChainGuard) -> ChainGuard:
         raise NotImplementedError()
 
 @jgdv.check_protocol
@@ -75,7 +71,7 @@ class JGDVCLIParser(ArgParser_i):
         self.head_arg_specs   = None
         self.registered_cmds  = None
         self.registered_tasks = None
-        self.default_help     = JGDVParamSpec(name="help", default=False, prefix="--")
+        self.default_help     = ParamSpec(name="help", default=False, prefix="--")
 
         ## -- results
         self.head_call                          = None
@@ -93,7 +89,7 @@ class JGDVCLIParser(ArgParser_i):
     def _build_defaults_dict(self, param_specs:list) -> dict:
         return { x.name : x.default for x in param_specs }
 
-    def parse(self, args:list, *, doot_specs:list[JGDVParamSpec], cmds:TomlGuard, tasks:TomlGuard) -> None|TomlGuard:
+    def parse(self, args:list, *, doot_specs:list[ParamSpec], cmds:ChainGuard, tasks:ChainGuard) -> None|ChainGuard:
         """
           Parses the list of arguments against available registered parameter specs, cmds, and tasks.
         """
@@ -135,7 +131,7 @@ class JGDVCLIParser(ArgParser_i):
             "tasks"  : { name : args for name,args in self.tasks_args  },
             "extras" : self.extras
             }
-        return TomlGuard(data)
+        return ChainGuard(data)
 
     def process_head(self, args) -> list[str]:
         """ consume arguments for doot actual """
@@ -159,18 +155,18 @@ class JGDVCLIParser(ArgParser_i):
         cmd                      = self.registered_cmds.get(head, None)
         self.cmd_name            = head
         if cmd is None:
-            cmd                      = self.registered_cmds[default_cmd]
-            self.cmd_name            = default_cmd
-            current_specs            = list(sorted(cmd.param_specs, key=JGDVParamSpec.key_func))
+            cmd                      = self.registered_cmds[DEFAULT_KEY]
+            self.cmd_name            = DEFAULT_KEY
+            current_specs            = list(sorted(cmd.param_specs, key=ParamSpec.key_func))
             self.cmd_args            = self._build_defaults_dict(current_specs)
             return args
 
-        current_specs            = list(sorted(cmd.param_specs, key=JGDVParamSpec.key_func))
+        current_specs            = list(sorted(cmd.param_specs, key=ParamSpec.key_func))
         self.cmd_args            = self._build_defaults_dict(current_specs)
 
         args.pop(0)
         while bool(args) and args[0] not in self.registered_tasks:
-            if args[0] == SEP: # hit SEP, the forced separator
+            if args[0] == END_SEP: # hit END_SEP, the forced separator
                 # eg: doot list a b c -- something else
                 args.pop(0)
                 break
@@ -191,12 +187,12 @@ class JGDVCLIParser(ArgParser_i):
         """ consume arguments for tasks """
         logging.debug("Task Parsing: %s", args)
         if args[0] not in self.registered_tasks:
-            task                     = self.registered_tasks[default_task]
+            task                     = self.registered_tasks[DEFAULT_KEY]
             assert(isinstance(task, DootTaskSpec))
-            task_name                 = default_task
-            spec_params               = [JGDVParamSpec.from_dict(x) for x in task.extra.on_fail([], list).cli()]
+            task_name                 = DEFAULT_KEY
+            spec_params               = [ParamSpec.from_dict(x) for x in task.extra.on_fail([], list).cli()]
             ctor_params               = task.ctor.try_import().param_specs
-            current_specs             = list(sorted(spec_params + ctor_params, key=JGDVParamSpec.key_func))
+            current_specs             = list(sorted(spec_params + ctor_params, key=ParamSpec.key_func))
             task_args                 = self._build_defaults_dict(current_specs)
             task_args[NON_DEFAULT_KEY] = []
             self.tasks_args.append((task_name, task_args))
@@ -207,20 +203,20 @@ class JGDVCLIParser(ArgParser_i):
             task_name                 = args.pop(0)
             task                      = self.registered_tasks[task_name]
             assert(isinstance(task, DootTaskSpec))
-            spec_params               = [JGDVParamSpec.from_dict(x) for x in task.extra.on_fail([], list).cli()]
+            spec_params               = [ParamSpec.from_dict(x) for x in task.extra.on_fail([], list).cli()]
             ctor_params               = task.ctor.try_import().param_specs
-            current_specs             = list(sorted(spec_params + ctor_params, key=JGDVParamSpec.key_func))
+            current_specs             = list(sorted(spec_params + ctor_params, key=ParamSpec.key_func))
             task_args                 = self._build_defaults_dict(current_specs)
             default_args              = task_args.copy()
             logging.debug("Parsing Task args for: %s: Available: %s", task_name, task_args.keys())
 
             while bool(args) and args[0] not in self.registered_tasks:
-                if args[0] == SEP:
+                if args[0] == END_SEP:
                     args.pop(0)
                     break
 
                 match [x for x in current_specs if x == args[0]]:
-                    case [] if args[0].startswith(PARAM_ASSIGN_PREFIX):
+                    case [] if args[0].startswith(ASSIGN_PREFIX):
                         # No matches, its a free cli arg.
                         try:
                             key, *values     = args[0].split("=")

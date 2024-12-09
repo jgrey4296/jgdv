@@ -15,8 +15,8 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 logging = logmod.root
 
 import pytest
-from jgdv.cli.arg_parser import JGDVCLIParser
-from jgdv.structs.param-spec import JGDVParamSpec
+from jgdv.cli.arg_parser import JGDVCLIParser, ArgParser_i
+from jgdv.cli.param_spec import ParamSpec, ArgParseError
 
 @pytest.mark.parametrize("ctor", [JGDVCLIParser])
 class TestArgParser:
@@ -24,6 +24,9 @@ class TestArgParser:
     def test_initial(self, ctor):
         parser = ctor()
         assert(isinstance(parser, ArgParser_i))
+
+@pytest.mark.parametrize("ctor", [JGDVCLIParser])
+class TestParseCommands:
 
     def test_cmd(self, ctor, mocker):
         cmd_mock                   = mock_parse_cmd(name="list")
@@ -37,7 +40,7 @@ class TestArgParser:
         assert(result.on_fail(False).cmd.name()  == "list")
 
     def test_cmd_args(self, ctor, mocker):
-        cmd_mock  = mock_parse_cmd(params=[JGDVParamSpec(name="all")])
+        cmd_mock  = mock_parse_cmd(params=[ParamSpec(name="all")])
         parser    = ctor()
         result    = parser.parse([
             "doot", "list", "-all"
@@ -49,7 +52,7 @@ class TestArgParser:
         assert(result.on_fail(False).cmd.args.all() == True)
 
     def test_cmd_arg_fail(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(params=[JGDVParamSpec(name="all")])
+        cmd_mock                   = mock_parse_cmd(params=[ParamSpec(name="all")])
 
         parser = ctor()
         with pytest.raises(Exception):
@@ -60,7 +63,7 @@ class TestArgParser:
         )
 
     def test_cmd_then_task(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(params=[JGDVParamSpec(name="all")])
+        cmd_mock                   = mock_parse_cmd(params=[ParamSpec(name="all")])
         task_mock                  = mock_parse_task(params=[{"name":"all"}])
 
         parser = ctor()
@@ -74,7 +77,7 @@ class TestArgParser:
         assert("blah" in result.tasks)
 
     def test_cmd_then_complex_task(self, ctor, mocker):
-        cmd_mock  = mock_parse_cmd(params=[JGDVParamSpec(name="all")])
+        cmd_mock  = mock_parse_cmd(params=[ParamSpec(name="all")])
         task_mock = mock_parse_task(params=[{"name":"all"}])
 
         parser    = ctor()
@@ -86,6 +89,73 @@ class TestArgParser:
         assert(result.on_fail(False).head.name() == "doot")
         assert(result.on_fail(False).cmd.name() == "list")
         assert( "blah::bloo.blee" in result.tasks)
+
+    def test_simple_cmd(self, ctor, mocker):
+        cmd_mock = mock_parse_cmd(params=[ParamSpec(name="key")])
+        parser   = ctor()
+        result   = parser.parse(["doot", "list"],
+            doot_specs=[], cmds={"list" : cmd_mock}, tasks={}
+            )
+
+        assert(result.cmd.name == "list")
+        assert(result.cmd.args.key is False)
+
+    def test_simple_cmd_arg(self, ctor, mocker):
+        cmd_mock            = mocker.MagicMock()
+        type(cmd_mock).param_specs = mocker.PropertyMock(return_value=[
+            ParamSpec(name="key")
+            ])
+        param = ParamSpec("key", bool)
+        parser   = ctor()
+        result   = parser.parse(["doot", "list", '-key'],
+            doot_specs=[], cmds={"list" : cmd_mock}, tasks={}
+            )
+
+        assert(result.cmd.name == "list")
+        assert(result.cmd.args.key is True)
+
+    def test_cmd_default(self, ctor, mocker):
+        cmd_mock                   = mock_parse_cmd()
+        task_mock                  = mock_parse_task(params=[{"name":"key"}])
+
+        parser   = ctor()
+        result   = parser.parse(["doot" , "val"],
+            doot_specs=[], cmds={"run": cmd_mock }, tasks={"val": task_mock}
+            )
+
+        assert(result.cmd.name == "run")
+
+    def test_positional_cmd_arg(self, ctor, mocker):
+        cmd_mock                   = mock_parse_cmd(params=[ParamSpec("test", type=str, positional=True)])
+        task_mock                  = mock_parse_task(params=[{"name":"key"}])
+
+        parser = ctor()
+        result = parser.parse([
+            "doot", "example", "blah"
+                        ],
+            doot_specs=[], cmds={"example": cmd_mock}, tasks={"other": task_mock},
+            )
+        assert(result.cmd.name == "example")
+        assert(result.cmd.args.test == "blah")
+
+    def test_positional_cmd_arg_seq(self, ctor, mocker):
+        cmd_mock                   = mock_parse_cmd(params=[
+            ParamSpec(name="first", type=str, positional=True),
+            ParamSpec(name="second", type=str, positional=True)
+            ])
+        task_mock                  = mock_parse_task(params=[{"name":"key"}])
+
+        parser = ctor()
+        result = parser.parse([
+            "doot", "example", "blah", "bloo"
+                        ],
+            doot_specs=[], cmds={"example": cmd_mock}, tasks={}
+            )
+        assert(result.cmd.args.first == "blah")
+        assert(result.cmd.args.second == "bloo")
+
+@pytest.mark.parametrize("ctor", [JGDVCLIParser])
+class TestParseTasks:
 
     def test_task_args(self, ctor, mocker):
         """ check tasks can recieve args """
@@ -144,35 +214,6 @@ class TestArgParser:
                 doot_specs=[], cmds={"run": cmd_mock}, tasks={"list": task_mock}
             )
 
-    def test_positional_cmd_arg(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(params=[JGDVParamSpec("test", type=str, positional=True)])
-        task_mock                  = mock_parse_task(params=[{"name":"key"}])
-
-        parser = ctor()
-        result = parser.parse([
-            "doot", "example", "blah"
-                        ],
-            doot_specs=[], cmds={"example": cmd_mock}, tasks={"other": task_mock},
-            )
-        assert(result.cmd.name == "example")
-        assert(result.cmd.args.test == "blah")
-
-    def test_positional_cmd_arg_seq(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(params=[
-            JGDVParamSpec(name="first", type=str, positional=True),
-            JGDVParamSpec(name="second", type=str, positional=True)
-            ])
-        task_mock                  = mock_parse_task(params=[{"name":"key"}])
-
-        parser = ctor()
-        result = parser.parse([
-            "doot", "example", "blah", "bloo"
-                        ],
-            doot_specs=[], cmds={"example": cmd_mock}, tasks={}
-            )
-        assert(result.cmd.args.first == "blah")
-        assert(result.cmd.args.second == "bloo")
-
     def test_positional_task_arg(self, ctor, mocker):
         cmd_mock                   = mock_parse_cmd()
         task_mock                  = mock_parse_task(params=[{"name":"test", "type":str, "positional":True, "default":""}])
@@ -202,133 +243,6 @@ class TestArgParser:
         assert(result.tasks.example.first == "blah")
         assert(result.tasks.example.second == "bloo")
 
-    def test_simple_head_arg(self, ctor, mocker):
-        param = JGDVParamSpec("key", bool)
-        parser   = ctor()
-        result   = parser.parse(["doot", "-key"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key is True)
-
-    def test_simple_short_arg(self, ctor, mocker):
-        param = JGDVParamSpec("key", bool)
-        parser   = ctor()
-        result   = parser.parse(["doot", "-k"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key is True)
-
-    def test_simple_invert(self, ctor, mocker):
-        param = JGDVParamSpec("key", bool)
-        parser   = ctor()
-        result   = parser.parse(["doot", "-no-key"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key is False)
-
-    def test_simple_multi(self, ctor, mocker):
-        param    = JGDVParamSpec("key", bool)
-        param2   = JGDVParamSpec("other", bool)
-        parser   = ctor()
-        result   = parser.parse(["doot", "-no-key", "-other"],
-            doot_specs=[param, param2], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key is False)
-        assert(result.head.args.other is True)
-
-    def test_simple_default(self, ctor, mocker):
-        param    = JGDVParamSpec("key", bool)
-        parser   = ctor()
-        result   = parser.parse(["doot"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key is False)
-
-    def test_simple_assign(self, ctor, mocker):
-        param    = JGDVParamSpec("key", str, prefix="--")
-        parser   = ctor()
-        result   = parser.parse(["doot", "--key=blah"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key == "blah")
-
-    def test_assign_fail_with_wrong_prefix(self, ctor, mocker):
-        param    = JGDVParamSpec("key", str, prefix="-")
-        parser   = ctor()
-
-        with pytest.raises(doot.errors.DootParseError):
-            parser.parse(["doot", "--key=blah"],
-                doot_specs=[param], cmds={}, tasks={}
-                )
-
-    def test_simple_follow_assign(self, ctor, mocker):
-        param    = JGDVParamSpec("key", str)
-        parser   = ctor()
-        result   = parser.parse(["doot", "-key", "blah"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key == "blah")
-
-    def test_simple_prefix_change(self, ctor, mocker):
-        param    = JGDVParamSpec("key", str, prefix="--")
-        parser   = ctor()
-        result   = parser.parse(["doot", "--key", "blah"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key == "blah")
-
-    def test_simple_separator_change(self, ctor, mocker):
-        param    = JGDVParamSpec("key", str, separator="%%", prefix="--")
-        parser   = ctor()
-        result   = parser.parse(["doot", "--key%%blah"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key == "blah")
-
-    def test_simple_cmd(self, ctor, mocker):
-        cmd_mock = mock_parse_cmd(params=[JGDVParamSpec(name="key")])
-        parser   = ctor()
-        result   = parser.parse(["doot", "list"],
-            doot_specs=[], cmds={"list" : cmd_mock}, tasks={}
-            )
-
-        assert(result.cmd.name == "list")
-        assert(result.cmd.args.key is False)
-
-    def test_simple_cmd_arg(self, ctor, mocker):
-        cmd_mock            = mocker.MagicMock()
-        type(cmd_mock).param_specs = mocker.PropertyMock(return_value=[
-            JGDVParamSpec(name="key")
-            ])
-        param = JGDVParamSpec("key", bool)
-        parser   = ctor()
-        result   = parser.parse(["doot", "list", '-key'],
-            doot_specs=[], cmds={"list" : cmd_mock}, tasks={}
-            )
-
-        assert(result.cmd.name == "list")
-        assert(result.cmd.args.key is True)
-
-    def test_cmd_default(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd()
-        task_mock                  = mock_parse_task(params=[{"name":"key"}])
-
-        parser   = ctor()
-        result   = parser.parse(["doot" , "val"],
-            doot_specs=[], cmds={"run": cmd_mock }, tasks={"val": task_mock}
-            )
-
-        assert(result.cmd.name == "run")
-
     def test_simple_task(self, ctor, mocker):
         cmd_mock             = mock_parse_cmd()
         task_mock            = mock_parse_task(params=[{"name":"key"}])
@@ -357,3 +271,98 @@ class TestArgParser:
         assert(result.tasks.list.key is True)
         assert("blah" in result.tasks)
         assert(result.tasks.blah.other is True)
+
+@pytest.mark.parametrize("ctor", [JGDVCLIParser])
+class TestParseMisc:
+
+    def test_simple_head_arg(self, ctor, mocker):
+        param = ParamSpec("key", bool)
+        parser   = ctor()
+        result   = parser.parse(["doot", "-key"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key is True)
+
+    def test_simple_short_arg(self, ctor, mocker):
+        param = ParamSpec("key", bool)
+        parser   = ctor()
+        result   = parser.parse(["doot", "-k"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key is True)
+
+    def test_simple_invert(self, ctor, mocker):
+        param = ParamSpec("key", bool)
+        parser   = ctor()
+        result   = parser.parse(["doot", "-no-key"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key is False)
+
+    def test_simple_multi(self, ctor, mocker):
+        param    = ParamSpec("key", bool)
+        param2   = ParamSpec("other", bool)
+        parser   = ctor()
+        result   = parser.parse(["doot", "-no-key", "-other"],
+            doot_specs=[param, param2], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key is False)
+        assert(result.head.args.other is True)
+
+    def test_simple_default(self, ctor, mocker):
+        param    = ParamSpec("key", bool)
+        parser   = ctor()
+        result   = parser.parse(["doot"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key is False)
+
+    def test_simple_assign(self, ctor, mocker):
+        param    = ParamSpec("key", str, prefix="--")
+        parser   = ctor()
+        result   = parser.parse(["doot", "--key=blah"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key == "blah")
+
+    def test_assign_fail_with_wrong_prefix(self, ctor, mocker):
+        param    = ParamSpec("key", str, prefix="-")
+        parser   = ctor()
+
+        with pytest.raises(doot.errors.DootParseError):
+            parser.parse(["doot", "--key=blah"],
+                doot_specs=[param], cmds={}, tasks={}
+                )
+
+    def test_simple_follow_assign(self, ctor, mocker):
+        param    = ParamSpec("key", str)
+        parser   = ctor()
+        result   = parser.parse(["doot", "-key", "blah"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key == "blah")
+
+    def test_simple_prefix_change(self, ctor, mocker):
+        param    = ParamSpec("key", str, prefix="--")
+        parser   = ctor()
+        result   = parser.parse(["doot", "--key", "blah"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key == "blah")
+
+    def test_simple_separator_change(self, ctor, mocker):
+        param    = ParamSpec("key", str, separator="%%", prefix="--")
+        parser   = ctor()
+        result   = parser.parse(["doot", "--key%%blah"],
+            doot_specs=[param], cmds={}, tasks={}
+            )
+
+        assert(result.head.args.key == "blah")
