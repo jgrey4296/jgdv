@@ -17,6 +17,7 @@ logging = logmod.root
 
 import pytest
 from jgdv.cli.param_spec import ParamSpec, ArgParseError
+import jgdv.cli.param_spec as Specs
 
 good_names = ("test", "blah", "bloo")
 bad_names  = ("-test", "blah=bloo")
@@ -311,3 +312,23 @@ class TestParamSpecDefaults:
             ParamSpec.check_insists(params, {"other":[1,2,3]})
 
         assert(ctx.value.args[-1] == ["next"])
+
+class TestParamSpecialisations:
+    
+    def test_sanity(self):
+        assert(True is not False)
+
+
+    def test_literal(self):
+        obj = Specs.LiteralParam(name="blah")
+        match obj.consume(["blah"]):
+            case {"blah":True}, 1:
+                assert(True)
+            case None:
+                assert(False)
+
+        match obj.consume(["notblah"]):
+            case None:
+                assert(True)
+            case _:
+                assert(False)

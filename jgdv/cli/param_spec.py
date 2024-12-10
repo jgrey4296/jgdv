@@ -58,9 +58,12 @@ class ArgParseError(Exception):
 class _DefaultsBuilder_m:
 
     @staticmethod
-    def build_defaults(params:list[Self]) -> dict:
+    def build_defaults(params:list[ParamStruct_p]) -> dict:
         result = {}
         for p in params:
+            assert(isinstance(p, ParamStruct_p))
+            if p.name in result:
+                raise KeyError("Duplicate default key found", p, params)
             result.setdefault(*p.default_tuple())
 
         return result
@@ -252,7 +255,7 @@ class ParamSpec(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_
 
     Can have a {desc} to help usage.
     Can be set using a short version of the name ({prefix}{name[0]}).
-    If {invisible}, will not be listed when printing a param spec collection.
+    If {implicit}, will not be listed when printing a param spec collection.
 
     """
 
@@ -262,8 +265,6 @@ class ParamSpec(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_
     insist               : bool                      = False
     default              : Any|Callable              = None
     desc                 : str                       = "An undescribed parameter"
-    constraints          : list                      = []
-    invisible            : bool                      = False
     positional           : bool|int                  = False
     prefix               : str                       = NON_ASSIGN_PREFIX
     separator            : str                       = "="
@@ -275,8 +276,11 @@ class ParamSpec(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_
 
     @classmethod
     def build(cls:BaseModel, data:ChainGuard|dict) -> ParamSpec:
-        param =  cls.model_validate(data)
-        return param
+        match data:
+            case {"implicit":True}:
+                return ImplicitParam.model_validate(data)
+            case _:
+                return cls.model_validate(data)
 
     @staticmethod
     def key_func(x):
@@ -304,6 +308,9 @@ class ParamSpec(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_
                 return str
             case "list":
                 return list
+            case type() if val is bool and (typevar:=cls.__dict__.get("_typevar", None)):
+                # Handle annotation like ParamSpec[str]
+                return typevar
             case type():
                 return val
             case _:
@@ -319,9 +326,9 @@ class ParamSpec(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_
 
     @model_validator(mode="after")
     def validate_model (self) -> Self:
-        if self.prefix in self.name:
+        if bool(self.prefix) and self.prefix in self.name:
             raise TypeError("Prefix was found in the base name", self)
-        if self.separator in self.name:
+        if bool(self.separator) and self.separator in self.name:
             raise TypeError("Separator was found in the base name", self)
         match self.type_():
             case bool():
@@ -335,12 +342,6 @@ class ParamSpec(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_
             case set():
                 self.default = self.default or set
 
-        match getattr(self, "_typevar", None):
-            case None:
-                pass
-            case type() as target:
-                # TODO handle annotation
-                pass
         return self
 
     @ftz.cached_property
@@ -367,14 +368,13 @@ class ParamSpec(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_
         eg: -test or --test
 
         """
-        if self.invisible or self.positional:
+        if self.positional:
             return None
-
         return f"{self.prefix}{self.name}"
 
     @ftz.cached_property
     def short_key_str(self) -> None|str:
-        if self.invisible or self.positional:
+        if self.positional:
             return None
 
         match self.short:
@@ -397,9 +397,6 @@ class ParamSpec(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_
          return self.type_ is bool
 
     def __str__(self):
-        if self.invisible:
-            return ""
-
         match self.key_str:
             case None:
                 parts = [f"[{self.name}]"]
@@ -427,11 +424,143 @@ class ParamSpec(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_
             case _:
                 parts.append(f"{pad}: Defaults to: {self.default}")
 
-        if self.constraints:
-            parts.append(": Constrained to: {self.constraints}")
         return " ".join(parts)
 
     def __repr__(self):
         if self.positional:
             return f"<{self.__class__.__name__}: {self.name}>"
         return f"<{self.__class__.__name__}: {self.prefix}{self.name}>"
+
+class BoolSpec(ParamSpec[bool]):
+    pass
+
+class LiteralParam(BoolSpec):
+    """
+    Match on a Literal Parameter.
+    For command/subcmd names etc
+    """
+    prefix : str = ""
+
+    def _match_on_head(self, val) -> bool:
+        """ test to see if a cli argument matches this param
+
+        Will match anything if self.positional
+        Matchs {self.prefix}{self.name} if not an assignment
+        Matches {self.prefix}{self.name}{separator} if an assignment
+        """
+        match val:
+            case x if x == self.name:
+                return True
+            case _:
+                return False
+
+class EntryParam(LiteralParam):
+    """ TODO a parameter that if it matches,
+    returns list of more params to parse
+    """
+    pass
+
+class ImplicitParam(ParamSpec):
+    """
+    A Parameter that is implicit, so doesn't give a help description unless forced to
+    """
+
+    def __str__(self):
+        return ""
+
+class ConstrainedParam(ParamSpec):
+    """
+    TODO a type of parameter which is constrained in the values it can take, beyond just type.
+
+    eg: {name:amount, constraints={min=0, max=10}}
+    """
+    constraints : list[Any] = []
+
+class PositionalParam(ParamSpec):
+    """ TODO a param that is specified by its position in the arg list """
+
+    def _get_next_value(self, args:list) -> tuple[list, int]:
+        return [args[0]], 1
+
+class KeyParam(ParamSpec):
+    """ TODO a param that is specified by a prefix key """
+
+    def _match_on_head(self, val) -> bool:
+        return val in self.key_strs
+
+    def get_next_value(self, args:list) -> tuple[list, int]:
+        """ get the value for a -key val """
+        logging.debug("Getting Key/Value: %s : %s", self.name, args)
+        match args:
+            case [x, y, *_] if self._match_on_head(x):
+                return [y], 2
+            case _:
+                raise ArgParseError("Failed to parse key")
+
+class RepeatableParam(KeyParam):
+    """ TODO a repeatable key param """
+
+    def _get_next_value(self, args) -> tuple[list, int]:
+        """ Get as many values as match
+        eg: args[-test, 2, -test, 3, -test, 5, -nottest, 6]
+        ->  [2,3,5], [-nottest, 6]
+        """
+        logging.debug("Getting until no more matches: %s : %s", self.name, args)
+        assert(self.repeatable)
+        result, consumed, remaining  = [], 0, args[:]
+        while bool(remaining):
+            head, val, *rest = remaining
+            if not self._match_on_head(head):
+                break
+            else:
+                result.append(val)
+                remaining = rest
+                consumed += 2
+
+        return result, consumed
+
+
+class AssignParam(ParamSpec):
+    """ TODO a joined --key=val param """
+
+    def _get_next_value(self, arg) -> tuple[list, int]:
+        """ get the value for a --key=val """
+        logging.debug("Getting Key Assingment: %s : %s", self.name, arg)
+        assert(self.separator in arg), (self.separator, arg)
+        key,val = self._split_assignment(arg)
+        return [val], 1
+
+class HelpParam(ImplicitParam[bool]):
+    """ The --help flag that is always available """
+
+    def __init__(self):
+        super().__init__(name="help", default=False, prefix="--")
+
+class VerboseParam(ImplicitParam[int]):
+    """ The implicit -verbose flag """
+
+    def __init__(self):
+        super().__init__(name="verbose", default=0, prefix="-")
+
+class SeparatorParam(LiteralParam):
+    """ A Parameter to separate subcmds """
+
+    def __init__(self):
+        super().__init__(name=END_SEP)
+
+class ChoiceParam(LiteralParam[str]):
+    """ TODO A param that must be from a choice of literals """
+
+    def __init__(self, name, choices:list[str], **kwargs):
+        super().__init__(name=name, **kwargs)
+        self._choices = choices
+
+
+    def _match_on_head(self, val) -> bool:
+        """ test to see if a cli argument matches this param
+
+        Will match anything if self.positional
+        Matchs {self.prefix}{self.name} if not an assignment
+        Matches {self.prefix}{self.name}{separator} if an assignment
+        """
+        return val in self._choices
