@@ -55,46 +55,21 @@ class ParamSource_p(Protocol):
     def param_specs(self) -> list[ParamStruct_p]:
         raise NotImplementedError()
 
-class ArgParser_i:
+@runtime_checkable
+class ArgParser_p(Protocol):
     """
     A Single standard process point for turning the list of passed in args,
     into a dict, into a tomlguard,
     along the way it determines the cmds and tasks that have been chosne
     """
 
-    def __init__(self):
-        self.head_specs = []
-
     def _parse_fail_cond(self) -> bool:
-        return False
+        raise NotImplementedError()
 
     def _has_no_more_args_cond(self) -> bool:
-        return False
-
-    def _setup(self, args:list):
-        """
-          Parses the list of arguments against available registered parameter head_specs, cmds, and tasks.
-        """
         raise NotImplementedError()
 
-    def _parse_head(self, args):
-        """ consume arguments for doot actual """
-        raise NotImplementedError()
-
-    def _parse_cmd(self, args) -> list[str]:
-        """ consume arguments for the command being run """
-        raise NotImplementedError()
-
-    def _parse_subcmd(self, args) -> list[str]:
-        """ consume arguments for tasks """
-        raise NotImplementedError()
-
-    def _parse_extra(self, args) -> None:
-        raise NotImplementedError()
-
-    def _cleanup(self):
-        raise NotImplementedError()
-
+    
 class ParseMachine(StateMachine):
     """ FSM for running a CLI arg parse.
 
@@ -145,7 +120,7 @@ class ParseMachine(StateMachine):
                | Failed.to(Cleanup, after="finish")
                )
 
-    def __init__(self, *, parser:ArgParser_i=None):
+    def __init__(self, *, parser:ArgParser_p=None):
         super().__init__(parser or CLIParser())
         self.count = 0
         self.max_attempts = 20
@@ -163,7 +138,7 @@ class ParseMachine(StateMachine):
         self.finish()
         return self.model.report()
 
-class CLIParser(ArgParser_i):
+class CLIParser(ArgParser_p):
     """
     convert argv to tomlguard by:
     parsing each arg as toml,

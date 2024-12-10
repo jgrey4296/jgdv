@@ -16,7 +16,7 @@ from dataclasses import dataclass, field, InitVar
 ##-- end imports
 
 import pytest
-from jgdv.cli.arg_parser import ParseMachine, ArgParser_i, CLIParser
+from jgdv.cli.arg_parser import ParseMachine, CLIParser
 from jgdv.cli.param_spec import ParamSpec, ArgParseError
 import jgdv.cli.param_spec as Specs
 
