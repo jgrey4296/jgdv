@@ -11,358 +11,165 @@ import pathlib as pl
 from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
                     TypeVar, cast)
+from dataclasses import dataclass, field, InitVar
+
 ##-- end imports
-logging = logmod.root
 
 import pytest
-from jgdv.cli.arg_parser import JGDVCLIParser, ArgParser_i
+from jgdv.cli.arg_parser import ParseMachine, ArgParser_i, CLIParser
 from jgdv.cli.param_spec import ParamSpec, ArgParseError
-
-@pytest.mark.parametrize("ctor", [JGDVCLIParser])
-class TestArgParser:
-
-    def test_initial(self, ctor):
-        parser = ctor()
-        assert(isinstance(parser, ArgParser_i))
-
-@pytest.mark.parametrize("ctor", [JGDVCLIParser])
-class TestParseCommands:
-
-    def test_cmd(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(name="list")
-        parser                     = ctor()
-
-        result                     = parser.parse(["doot", "list"],
-            doot_specs=[], cmds={"list": cmd_mock}, tasks={}
-            )
-
-        assert(result.on_fail(False).head.name() == "doot")
-        assert(result.on_fail(False).cmd.name()  == "list")
-
-    def test_cmd_args(self, ctor, mocker):
-        cmd_mock  = mock_parse_cmd(params=[ParamSpec(name="all")])
-        parser    = ctor()
-        result    = parser.parse([
-            "doot", "list", "-all"
-                               ],
-            doot_specs=[], cmds={"list": cmd_mock}, tasks={}
-            )
-        assert(result.on_fail(False).head.name() == "doot")
-        assert(result.on_fail(False).cmd.name() == "list")
-        assert(result.on_fail(False).cmd.args.all() == True)
-
-    def test_cmd_arg_fail(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(params=[ParamSpec(name="all")])
-
-        parser = ctor()
-        with pytest.raises(Exception):
-            parser.parse([
-                "doot", "list", "-all", "-bloo"
-            ],
-            doot_specs=[], cmds={"list": cmd_mock}, tasks={}
-        )
-
-    def test_cmd_then_task(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(params=[ParamSpec(name="all")])
-        task_mock                  = mock_parse_task(params=[{"name":"all"}])
-
-        parser = ctor()
-        result = parser.parse([
-            "doot", "list", "blah"
-                               ],
-            doot_specs=[], cmds={"list": cmd_mock}, tasks={"blah": task_mock},
-            )
-        assert(result.on_fail(False).head.name() == "doot")
-        assert(result.on_fail(False).cmd.name() == "list")
-        assert("blah" in result.tasks)
-
-    def test_cmd_then_complex_task(self, ctor, mocker):
-        cmd_mock  = mock_parse_cmd(params=[ParamSpec(name="all")])
-        task_mock = mock_parse_task(params=[{"name":"all"}])
-
-        parser    = ctor()
-        result    = parser.parse([
-            "doot", "list", "blah::bloo.blee"
-                               ],
-            doot_specs=[], cmds={"list": cmd_mock}, tasks={"blah::bloo.blee": task_mock},
-            )
-        assert(result.on_fail(False).head.name() == "doot")
-        assert(result.on_fail(False).cmd.name() == "list")
-        assert( "blah::bloo.blee" in result.tasks)
-
-    def test_simple_cmd(self, ctor, mocker):
-        cmd_mock = mock_parse_cmd(params=[ParamSpec(name="key")])
-        parser   = ctor()
-        result   = parser.parse(["doot", "list"],
-            doot_specs=[], cmds={"list" : cmd_mock}, tasks={}
-            )
-
-        assert(result.cmd.name == "list")
-        assert(result.cmd.args.key is False)
-
-    def test_simple_cmd_arg(self, ctor, mocker):
-        cmd_mock            = mocker.MagicMock()
-        type(cmd_mock).param_specs = mocker.PropertyMock(return_value=[
-            ParamSpec(name="key")
-            ])
-        param = ParamSpec("key", bool)
-        parser   = ctor()
-        result   = parser.parse(["doot", "list", '-key'],
-            doot_specs=[], cmds={"list" : cmd_mock}, tasks={}
-            )
-
-        assert(result.cmd.name == "list")
-        assert(result.cmd.args.key is True)
-
-    def test_cmd_default(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd()
-        task_mock                  = mock_parse_task(params=[{"name":"key"}])
-
-        parser   = ctor()
-        result   = parser.parse(["doot" , "val"],
-            doot_specs=[], cmds={"run": cmd_mock }, tasks={"val": task_mock}
-            )
-
-        assert(result.cmd.name == "run")
-
-    def test_positional_cmd_arg(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(params=[ParamSpec("test", type=str, positional=True)])
-        task_mock                  = mock_parse_task(params=[{"name":"key"}])
-
-        parser = ctor()
-        result = parser.parse([
-            "doot", "example", "blah"
-                        ],
-            doot_specs=[], cmds={"example": cmd_mock}, tasks={"other": task_mock},
-            )
-        assert(result.cmd.name == "example")
-        assert(result.cmd.args.test == "blah")
-
-    def test_positional_cmd_arg_seq(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd(params=[
-            ParamSpec(name="first", type=str, positional=True),
-            ParamSpec(name="second", type=str, positional=True)
-            ])
-        task_mock                  = mock_parse_task(params=[{"name":"key"}])
-
-        parser = ctor()
-        result = parser.parse([
-            "doot", "example", "blah", "bloo"
-                        ],
-            doot_specs=[], cmds={"example": cmd_mock}, tasks={}
-            )
-        assert(result.cmd.args.first == "blah")
-        assert(result.cmd.args.second == "bloo")
-
-@pytest.mark.parametrize("ctor", [JGDVCLIParser])
-class TestParseTasks:
-
-    def test_task_args(self, ctor, mocker):
-        """ check tasks can recieve args """
-        cmd_mock                                    = mock_parse_cmd()
-        task_mock                                   = mock_parse_task(params=[{"name":"all"}])
-
-        parser                                      = ctor()
-        result                                      = parser.parse([
-            "doot", "basic::list", "-all"
-                               ],
-            doot_specs=[], cmds={"run": cmd_mock}, tasks={"basic::list": task_mock},
-            )
-        assert(result.on_fail(False).head.name() == "doot")
-        assert(result.on_fail(False).cmd.name() == "run")
-        assert(bool(result.on_fail(False).tasks["basic::list"]()))
-        assert(result.on_fail(False).tasks["basic::list"].all() == True)
-
-    def test_task_with_name_spaces(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd()
-        task_mock                  = mock_parse_task(params=[{"name":"all"}])
-
-        parser = ctor()
-        result = parser.parse([
-            "doot", "simple task", "-all"
-                               ],
-            doot_specs=[], cmds={"run": cmd_mock}, tasks={"simple task": task_mock},
-            )
-        assert(result.on_fail(False).head.name() == "doot")
-        assert(result.on_fail(False).cmd.name() == "run")
-        assert(bool(result.on_fail(False).tasks['simple task']()))
-        assert(result.on_fail(False).tasks['simple task'].all() == True)
-
-    def test_task_args_default(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd()
-        task_mock                  = mock_parse_task(params=[{"name":"all"}])
-
-        parser = ctor()
-        result = parser.parse([
-            "doot", "list", # no "-all"
-                               ],
-            doot_specs=[], cmds={"run": cmd_mock}, tasks={"list": task_mock},
-            )
-        assert(result.on_fail(False).head.name() == "doot")
-        assert(bool(result.on_fail(False).tasks.list()))
-        assert(result.on_fail(False).tasks.list.all() == False)
-
-    def test_tasks_dup_fail(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd()
-        task_mock                  = mock_parse_task(params=[{"name":"all"}])
-
-        parser = ctor()
-        with pytest.raises(doot.errors.DootParseError):
-            parser.parse([
-                "doot", "list", "-all", "list"
-                         ],
-                doot_specs=[], cmds={"run": cmd_mock}, tasks={"list": task_mock}
-            )
-
-    def test_positional_task_arg(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd()
-        task_mock                  = mock_parse_task(params=[{"name":"test", "type":str, "positional":True, "default":""}])
-
-        parser = ctor()
-        result = parser.parse([
-            "doot", "example", "blah"
-                        ],
-            doot_specs=[], cmds={"run": cmd_mock}, tasks={"example": task_mock},
-            )
-        assert("example" in result.tasks)
-        assert(result.tasks.example.test == "blah")
-
-    def test_positional_taskarg_seq(self, ctor, mocker):
-        cmd_mock                   = mock_parse_cmd()
-        task_mock                  = mock_parse_task(params=[
-            {"name":"first", "type":str, "positional":True},
-            {"name":"second", "type":str, "positional":True}
-            ])
-
-        parser = ctor()
-        result = parser.parse([
-            "doot", "example", "blah", "bloo"
-                        ],
-            doot_specs=[], cmds={"run": cmd_mock}, tasks={"example": task_mock},
-            )
-        assert(result.tasks.example.first == "blah")
-        assert(result.tasks.example.second == "bloo")
-
-    def test_simple_task(self, ctor, mocker):
-        cmd_mock             = mock_parse_cmd()
-        task_mock            = mock_parse_task(params=[{"name":"key"}])
-
-        parser               = ctor()
-        result               = parser.parse(["doot", "list", '-key'],
-            doot_specs=[], cmds={"run": cmd_mock }, tasks={"list" : task_mock}
-            )
-
-        assert(result.cmd.name == "run")
-        assert("list" in result.tasks)
-        assert(result.tasks.list.key is True)
-
-    def test_simple_task_sequence(self, ctor, mocker):
-        cmd_mock   = mock_parse_cmd()
-        task_mock  = mock_parse_task(params=[{"name":"key", "type":bool}])
-        task_mock2 = mock_parse_task(params=[{"name":"other", "type":bool}])
-
-        parser     = ctor()
-        result     = parser.parse(["doot", "list", "-key", "blah", "-other"],
-            doot_specs=[], cmds={"run": cmd_mock }, tasks={"list" : task_mock, "blah": task_mock2}
-            )
-
-        assert(result.cmd.name == "run")
-        assert("list" in result.tasks)
-        assert(result.tasks.list.key is True)
-        assert("blah" in result.tasks)
-        assert(result.tasks.blah.other is True)
-
-@pytest.mark.parametrize("ctor", [JGDVCLIParser])
-class TestParseMisc:
-
-    def test_simple_head_arg(self, ctor, mocker):
-        param = ParamSpec("key", bool)
-        parser   = ctor()
-        result   = parser.parse(["doot", "-key"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key is True)
-
-    def test_simple_short_arg(self, ctor, mocker):
-        param = ParamSpec("key", bool)
-        parser   = ctor()
-        result   = parser.parse(["doot", "-k"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key is True)
-
-    def test_simple_invert(self, ctor, mocker):
-        param = ParamSpec("key", bool)
-        parser   = ctor()
-        result   = parser.parse(["doot", "-no-key"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key is False)
-
-    def test_simple_multi(self, ctor, mocker):
-        param    = ParamSpec("key", bool)
-        param2   = ParamSpec("other", bool)
-        parser   = ctor()
-        result   = parser.parse(["doot", "-no-key", "-other"],
-            doot_specs=[param, param2], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key is False)
-        assert(result.head.args.other is True)
-
-    def test_simple_default(self, ctor, mocker):
-        param    = ParamSpec("key", bool)
-        parser   = ctor()
-        result   = parser.parse(["doot"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key is False)
-
-    def test_simple_assign(self, ctor, mocker):
-        param    = ParamSpec("key", str, prefix="--")
-        parser   = ctor()
-        result   = parser.parse(["doot", "--key=blah"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key == "blah")
-
-    def test_assign_fail_with_wrong_prefix(self, ctor, mocker):
-        param    = ParamSpec("key", str, prefix="-")
-        parser   = ctor()
-
-        with pytest.raises(doot.errors.DootParseError):
-            parser.parse(["doot", "--key=blah"],
-                doot_specs=[param], cmds={}, tasks={}
-                )
-
-    def test_simple_follow_assign(self, ctor, mocker):
-        param    = ParamSpec("key", str)
-        parser   = ctor()
-        result   = parser.parse(["doot", "-key", "blah"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key == "blah")
-
-    def test_simple_prefix_change(self, ctor, mocker):
-        param    = ParamSpec("key", str, prefix="--")
-        parser   = ctor()
-        result   = parser.parse(["doot", "--key", "blah"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key == "blah")
-
-    def test_simple_separator_change(self, ctor, mocker):
-        param    = ParamSpec("key", str, separator="%%", prefix="--")
-        parser   = ctor()
-        result   = parser.parse(["doot", "--key%%blah"],
-            doot_specs=[param], cmds={}, tasks={}
-            )
-
-        assert(result.head.args.key == "blah")
+import jgdv.cli.param_spec as Specs
+
+logging = logmod.root
+
+@dataclass
+class _ParamSource:
+    name : str
+    param_specs : list[ParamSpec]
+
+class TestMachine:
+
+    def test_sanity(self):
+        assert(True is not False)
+
+    def test_creation(self):
+        machine = ParseMachine()
+        assert(machine is not None)
+        assert(isinstance(machine.model, CLIParser))
+
+    def test_with_custom_model(self):
+
+        class SubParser(CLIParser):
+            pass
+
+        machine = ParseMachine(parser=SubParser())
+        assert(machine is not None)
+        assert(isinstance(machine.model, SubParser))
+
+    def test_setup_ransition(self):
+        machine = ParseMachine()
+        assert(machine.current_state.id == "Start")
+        machine.setup(["a","b","c","d"], None, None, None)
+        assert(machine.current_state.id == "Head")
+
+    def test_setup_ith_no_more_args(self):
+        machine = ParseMachine()
+        assert(machine.current_state.id == "Start")
+        machine.setup([], None, None, None)
+        assert(machine.current_state.id == "ReadyToReport")
+
+    def test_parse_transition(self):
+        machine = ParseMachine()
+        machine.current_state = machine.Head
+        assert(machine.current_state.id == "Head")
+        machine.parse()
+        assert(machine.current_state.id == "ReadyToReport")
+
+    def test_finish_transition(self):
+        machine = ParseMachine()
+        machine.current_state = machine.ReadyToReport
+        assert(machine.current_state.id == "ReadyToReport")
+        machine.finish()
+        assert(machine.current_state.id == "End")
+
+    def test_setup_too_many_attempts(self):
+        machine = ParseMachine()
+        machine.max_attempts = 1
+        with pytest.raises(StopIteration):
+            machine.setup(["doot", "test"], [], [], [])
+
+    def test_parse_too_many_attempts(self):
+        machine = ParseMachine()
+        machine.current_state = machine.Head
+        machine.model._remaining_args = [1,2,3,4]
+        machine.max_attempts = 1
+        with pytest.raises(StopIteration):
+            machine.parse(["doot", "test"], [], [], [])
+
+    def test_finish_too_many_attempts(self):
+        machine = ParseMachine()
+        machine.current_state = machine.ReadyToReport
+        machine.max_attempts = 1
+        with pytest.raises(StopIteration):
+            machine.finish()
+
+class TestParser:
+
+    @pytest.fixture(scope="function")
+    def a_source(self) -> _ParamSource:
+        obj = _ParamSource(name="testcmd",
+                           param_specs=[
+                               ParamSpec(name="on", type=bool),
+                               ParamSpec(name="val", type=str)
+                           ]
+                           )
+        return obj
+
+    @pytest.fixture(scope="function")
+    def b_source(self) -> _ParamSource:
+        obj = _ParamSource(name="blah",
+                           param_specs=[
+                               ParamSpec(name="on", type=bool),
+                               ParamSpec(name="val", type=str)
+                           ]
+                           )
+        return obj
+
+    def test_sanity(self):
+        assert(True is not False)
+
+    def test_setup(self, a_source):
+        obj = CLIParser()
+        obj._setup(["a","b","c"], [ParamSpec(name="blah")], [a_source], [])
+        assert(obj._initial_args == ["a","b","c"])
+        assert(obj._remaining_args == ["a","b","c"])
+        assert(len(obj._head_specs) == 1)
+        assert(obj._head_specs[0].name == "blah")
+        assert("testcmd" in obj._cmd_specs)
+        assert(not bool(obj._subcmd_specs))
+
+    def test_check_for_help_flag(self):
+        obj = CLIParser()
+        obj._remaining_args = ["a","b","c", "--help"]
+        obj.help_flagged()
+        assert(obj._force_help)
+
+    def test_check_for_help_flag_fail(self):
+        obj = CLIParser()
+        obj._remaining_args = ["a","b","c"]
+        obj.help_flagged()
+        assert(not obj._force_help)
+
+    def test_parse_head(self, a_source):
+        obj = CLIParser()
+        obj._setup(["blah","b","c"], [Specs.LiteralParam(name="blah")], [a_source], [])
+        obj._parse_head()
+        assert(obj.head_result.name == "_head_")
+        assert(obj.head_result.args['blah'] == True)
+
+    def test_parse_cmd(self, a_source):
+        obj = CLIParser()
+        obj._setup(["testcmd","b","c"], [], [a_source], [])
+        assert(bool(obj._cmd_specs))
+        obj._parse_cmd()
+        assert(obj.cmd_result.name == "testcmd")
+
+    def test_parse_subcmd(self, a_source, b_source):
+        obj = CLIParser()
+        obj._setup(["testcmd", "blah"], [], [a_source], [(a_source.name, b_source)])
+        assert(obj._subcmd_specs['blah'] == ("testcmd", b_source.param_specs))
+        assert(not bool(obj.subcmd_results))
+        obj._parse_cmd()
+        obj._parse_subcmd()
+        assert(obj.cmd_result.name == "testcmd")
+        assert(len(obj.subcmd_results) == 1)
+        assert(obj.subcmd_results[0].name == "blah")
+
+    def test_parse_multi_subcmd(self):
+        pass
+
+    def test_parse_extra(self):
+        pass
+
+    def test_report(self):
+        pass

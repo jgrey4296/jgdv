@@ -12,7 +12,7 @@ import re
 import time
 import types
 # from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
+from dataclasses import InitVar, dataclass, field
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
                     Iterable, Iterator, Mapping, Match, MutableMapping,
                     Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
@@ -22,17 +22,38 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 
 ##-- end imports
 
+from statemachine import State, StateMachine
+from statemachine.states import States
+from collections import ChainMap
+import jgdv
+from jgdv.structs.chainguard import ChainGuard
+from jgdv._abstract.protocols import ParamStruct_p
+from .param_spec import ASSIGN_PREFIX, END_SEP, ParamSpec, ArgParseError, HelpParam, LiteralParam
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from collections import ChainMap
-import jgdv
-from jgdv.structs.chainguard import ChainGuard
-from .param_spec import ASSIGN_PREFIX, END_SEP, ParamSpec, ArgParseError
+EXTRA_KEY       : Final[str]           = "_extra_"
+NON_DEFAULT_KEY : Final[str]           = "_non_default_"
+DEFAULT_KEY     : Final[str]           = "_default_"
+HELP            : Final[ParamSpec]     = HelpParam()
 
-NON_DEFAULT_KEY : Finl[str]           = "_extra_"
-DEFAULT_KEY     : Final[str]          = "_default_"
+@dataclass
+class ParseResult:
+    name : str
+    args : dict = field(default_factory=dict)
+
+@runtime_checkable
+class ParamSource_p(Protocol):
+
+    @property
+    def name(self) -> str:
+        raise NotImplementedError()
+
+    @property
+    def param_specs(self) -> list[ParamStruct_p]:
+        raise NotImplementedError()
 
 class ArgParser_i:
     """
@@ -42,222 +63,273 @@ class ArgParser_i:
     """
 
     def __init__(self):
-        self.specs = []
+        self.head_specs = []
 
-    def add_param_specs(self, specs:list):
-        self.specs += specs
+    def _parse_fail_cond(self) -> bool:
+        return False
 
-    def parse(self, args:list[str], doot_arg_specs:list[ParamSpec], cmds:ChainGuard, tasks:ChainGuard) -> ChainGuard:
+    def _has_no_more_args_cond(self) -> bool:
+        return False
+
+    def _setup(self, args:list):
+        """
+          Parses the list of arguments against available registered parameter head_specs, cmds, and tasks.
+        """
         raise NotImplementedError()
 
-@jgdv.check_protocol
-class JGDVCLIParser(ArgParser_i):
+    def _parse_head(self, args):
+        """ consume arguments for doot actual """
+        raise NotImplementedError()
+
+    def _parse_cmd(self, args) -> list[str]:
+        """ consume arguments for the command being run """
+        raise NotImplementedError()
+
+    def _parse_subcmd(self, args) -> list[str]:
+        """ consume arguments for tasks """
+        raise NotImplementedError()
+
+    def _parse_extra(self, args) -> None:
+        raise NotImplementedError()
+
+    def _cleanup(self):
+        raise NotImplementedError()
+
+class ParseMachine(StateMachine):
+    """ FSM for running a CLI arg parse.
+
+    __call__ with:
+    args       : list[str]       -- the cli args to parse (ie: from sys.argv)
+    head_specs : list[ParamSpec] -- specs of the top level program
+    cmds       : list[ParamSource_p] -- commands that can provide their parameters
+    subcmds    : dict[str, list[ParamSource_p]] -- a mapping from commands -> subcommands that can provide parameters
+
+    A cli call will be of the form:
+    {proghead} {prog args} {cmd} {cmd args}* [{subcmd} {subcmdargs} [-- {subcmd} {subcmdargs}]* ]? (--help)?
+
+    eg:
+    doot -v list -by-group a b c --help
+    doot run basic::task -quick --value=2 --help
+    """
+
+    # States
+    Start         = State(initial=True)
+    Prepare       = State()
+    Head          = State()
+    CheckForHelp  = State()
+    Cmd           = State()
+    SubCmd        = State()
+    Extra         = State()
+    Cleanup       = State()
+    ReadyToReport = State()
+    Failed        = State()
+    End           = State(final=True)
+
+    # Event Transitions
+    setup = (Prepare.to(Failed,            cond="_parse_fail_cond")
+             | Prepare.to(ReadyToReport,   cond="_has_no_more_args_cond")
+             | Start.to(Prepare,           after="setup")
+             | Prepare.to(CheckForHelp,    after="setup")
+             | CheckForHelp.to(Head)
+             )
+
+    parse = (Failed.from_(Start, Prepare, CheckForHelp, Head, Cmd, SubCmd, cond="_parse_fail_cond")
+              | ReadyToReport.from_(Head, Cmd, SubCmd, Extra, cond="_has_no_more_args_cond")
+              | Head.to(Cmd,      after="parse")
+              | Cmd.to(SubCmd,    after="parse")
+              | SubCmd.to(Extra,  after="parse")
+              )
+
+    finish  = (End.from_(Cleanup)
+               | ReadyToReport.to(Cleanup, after="finish")
+               | Failed.to(Cleanup, after="finish")
+               )
+
+    def __init__(self, *, parser:ArgParser_i=None):
+        super().__init__(parser or CLIParser())
+        self.count = 0
+        self.max_attempts = 20
+
+    def on_exit_state(self):
+        self.count += 1
+        if self.max_attempts < self.count:
+            raise StopIteration
+
+    def __call__(self, args:list[str], *, head_specs:list[ParamSpec], cmds:list[ParamSource_p], subcmds:list[tuple[str, ParamSource_p]]) -> None|dict:
+        assert(self.current_state == self.Start)
+        self.setup(args, head_specs, cmds, subcmds)
+        if self.current_state not in [self.ReadyToReport, self.Failed, self.End]:
+            self.parse()
+        self.finish()
+        return self.model.report()
+
+class CLIParser(ArgParser_i):
     """
     convert argv to tomlguard by:
     parsing each arg as toml,
 
-    # doot {args} {cmd} {cmd_args}
-    # doot {args} [{task} {tasks_args}] - implicit do cmd
-    """
+    # {prog} {args} {cmd} {cmd_args}
+    # {prog} {args} [{task} {tasks_args}] - implicit do cmd
 
-    class _ParseState(enum.Enum):
-        HEAD  = enum.auto()
-        CMD   = enum.auto()
-        TASK  = enum.auto()
-        EXTRA = enum.auto()
+    """
+    _initial_args     : list[str]                              = []
+    _remaining_args   : list[str]                              = []
+    _head_specs       : list[ParamSpec]                        = []
+    _cmd_specs        : dict[str, list[ParamSpec]]             = {}
+    _subcmd_specs     : dict[str, tuple[str, list[ParamSpec]]] = {}
+    head_result       : None|ParseResult                       = None
+    cmd_result        : None|ParseResult                       = None
+    subcmd_results    : list[ParseResult]                      = []
+    extra_results     : ParseResult                            = ParseResult(EXTRA_KEY)
+    non_default_args  : ParseResult                            = ParseResult(NON_DEFAULT_KEY)
+    force_help        : bool                                   = False
 
     def __init__(self):
-        self.PS               = JGDVCLIParser._ParseState
-        self.head_arg_specs   = None
-        self.registered_cmds  = None
-        self.registered_tasks = None
-        self.default_help     = ParamSpec(name="help", default=False, prefix="--")
+        self._remaining_args = []
 
-        ## -- results
-        self.head_call                          = None
-        self.head_args                          = None
-        self.cmd_name                           = None
-        self.cmd_args                           = {}
-        self.non_default_cmd_args               = []
-        self.tasks_args                         = []
-        self.extras                             = {}
-        self.force_help                         = False
+    def _parse_fail_cond(self) -> bool:
+        logging.warning("Failed to Parse")
+        return False
 
-        ## -- loop state
-        self.focus                             = self.PS.HEAD
+    def _has_no_more_args_cond(self):
+        return not bool(self._remaining_args)
 
-    def _build_defaults_dict(self, param_specs:list) -> dict:
-        return { x.name : x.default for x in param_specs }
+    @ParseMachine.finish._transitions.before
+    def all_args_consumed_val(self):
+        if bool(self._remaining_args):
+            raise ValueError("Not All Args Were Consumed", self._remaining_args)
 
-    def parse(self, args:list, *, doot_specs:list[ParamSpec], cmds:ChainGuard, tasks:ChainGuard) -> None|ChainGuard:
+    @ParseMachine.Prepare.enter
+    def _setup(self, args:list[str], head_specs:list, cmds:list, subcmds:list):
         """
-          Parses the list of arguments against available registered parameter specs, cmds, and tasks.
+          Parses the list of arguments against available registered parameter head_specs, cmds, and tasks.
         """
-        logging.debug("Parsing args: %s", args)
-        self.head_call                  = args[0]
-        self.head_args                  = self._build_defaults_dict(doot_specs)
-        self.head_arg_specs             = doot_specs
-        self.registered_cmds            = cmds
-        self.registered_tasks           = tasks
-        self.focus                      = self.PS.HEAD
+        logging.debug("Setting up Parsing : %s", args)
+        self._initial_args                     = args[:]
+        self._remaining_args                   = args[:]
+        self._head_specs : list[ParamSpec]          = head_specs
+        match cmds:
+            case [*xs]:
+                self._cmd_specs = {x.name:x.param_specs for x in cmds}
+            case _:
+                logging.info("No Cmd Specs provided for parsing")
+                self._cmd_specs = {}
 
-        remaining                      = args[1:]
-        while bool(remaining):
-            match self.focus:
-                case self.PS.HEAD:
-                    remaining = self.process_head(remaining)
-                    self.focus = self.PS.CMD
-                case self.PS.CMD:
-                    remaining = self.process_cmd(remaining)
-                    self.focus = self.PS.TASK
-                case self.PS.TASK:
-                    remaining = self.process_task(remaining)
-                    self.focus = self.PS.EXTRA
-                case self.PS.EXTRA:
-                    remaining = self.process_extra(remaining)
+        match subcmds:
+            case [*xs]:
+                self._subcmd_specs = {y.name:(x, y.param_specs) for x,y in subcmds}
+            case _:
+                logging.info("No Subcmd Specs provided for parsing")
+                self._subcmd_specs = {}
 
+        self.head_result       : None|ParseResult                      = None
+        self.cmd_result        : None|ParseResult                      = None
+        self.subcmd_results    : list[ParseResult]                     = []
+        self.extra_results     : ParseResult                           = ParseResult(EXTRA_KEY)
+        self.non_default_args  : ParseResult                           = ParseResult(NON_DEFAULT_KEY)
+        self._force_help       : bool                                  = False
 
-        if self.cmd_args.get('help', False) is True:
-            self.cmd_args['target']      = self.cmd_name
-            self.cmd_name                = "help"
-        elif any(x[1].get('help', False) is True for x in self.tasks_args if (target:=x[0])):
-            self.cmd_args['target'] = target
-            self.cmd_name = "help"
+    @ParseMachine.Cleanup.enter
+    def _cleanup(self) -> None:
+        logging.debug("Cleaning up")
+        self._initial_args      = []
+        self._remaining_args    = []
+        self._specs             = {}
+        self._cmd_specs         = {}
+        self._subcmd_specs      = {}
 
-        # TODO ensure duplicated tasks have different args
-        data = {
-            "head"   : {"name": self.head_call, "args": self.head_args },
-            "cmd"    : {"name" : self.cmd_name, "args" : self.cmd_args, NON_DEFAULT_KEY: self.non_default_cmd_args },
-            "tasks"  : { name : args for name,args in self.tasks_args  },
-            "extras" : self.extras
-            }
-        return ChainGuard(data)
+    @ParseMachine.CheckForHelp.enter
+    def help_flagged(self):
+        logging.debug("Checking for Help Flag")
+        match HELP.consume(self._remaining_args[-1:]):
+            case None:
+                self._force_help = False
+            case _:
+                self._force_help = True
 
-    def process_head(self, args) -> list[str]:
+    @ParseMachine.Head.enter
+    def _parse_head(self):
         """ consume arguments for doot actual """
-        logging.debug("Head Parsing: %s", args)
-        head = args[0]
-        while bool(args) and args[0] not in self.registered_cmds and args[0] not in self.registered_tasks:
-            match [x for x in self.head_arg_specs if x == args[0]]:
-                case []:
-                    raise doot.errors.DootParseError("Unrecognized head arg", args[0])
-                case [x]:
-                    x.maybe_consume(args, self.head_args)
-                case [*xs]:
-                    raise doot.errors.DootParseError("Multiple possible head args", args[0])
+        logging.debug("Head Parsing: %s", self._remaining_args)
+        if not bool(self._head_specs):
+            self.head_result = ParseResult("_head_", {})
+            return
+        head_specs       = sorted(self._head_specs, key=ParamSpec.key_func)
+        defaults : dict  = ParamSpec.build_defaults(head_specs)
+        self.head_result = ParseResult("_head_", defaults)
+        self._parse_params(self.head_result, head_specs)
 
-        return args
-
-    def process_cmd(self, args) -> list[str]:
+    @ParseMachine.Cmd.enter
+    def _parse_cmd(self):
         """ consume arguments for the command being run """
-        logging.debug("Cmd Parsing: %s", args)
-        head                     = args[0]
-        cmd                      = self.registered_cmds.get(head, None)
-        self.cmd_name            = head
-        if cmd is None:
-            cmd                      = self.registered_cmds[DEFAULT_KEY]
-            self.cmd_name            = DEFAULT_KEY
-            current_specs            = list(sorted(cmd.param_specs, key=ParamSpec.key_func))
-            self.cmd_args            = self._build_defaults_dict(current_specs)
-            return args
+        logging.debug("Cmd Parsing: %s", self._remaining_args)
+        if not bool(self._cmd_specs):
+            self.cmd_result = ParseResult("_cmd_", {})
+            return
 
-        current_specs            = list(sorted(cmd.param_specs, key=ParamSpec.key_func))
-        self.cmd_args            = self._build_defaults_dict(current_specs)
+        # Determine cmd
+        cmd_name = self._remaining_args[0]
+        logging.info("Determined Cmd to be: %s", cmd_name)
+        if cmd_name not in self._cmd_specs:
+            raise KeyError("Unrecognised command name", cmd_name)
+        self._remaining_args = self._remaining_args[1:]
+        # get its specs
+        cmd_specs        = sorted(self._cmd_specs[cmd_name], key=ParamSpec.key_func)
+        defaults : dict  = ParamSpec.build_defaults(cmd_specs)
+        self.cmd_result  = ParseResult(cmd_name, defaults)
+        self._parse_params(self.cmd_result, cmd_specs)
 
-        args.pop(0)
-        while bool(args) and args[0] not in self.registered_tasks:
-            if args[0] == END_SEP: # hit END_SEP, the forced separator
-                # eg: doot list a b c -- something else
-                args.pop(0)
-                break
-            match [x for x in current_specs if x == args[0]]:
-                case []:
-                    raise doot.errors.DootParseError("Unrecognized cmd arg", head, args[0])
-                case [x]:
-                    x.maybe_consume(args, self.cmd_args)
-                case [*xs] if all(y.positional for y in xs):
-                    self._consume_next_positional(args, self.cmd_args, xs)
-                case [*xs] if len(y for y in xs if not y.positional):
-                    raise doot.errors.DootParseError("Multiple possible cmd args", head, args[0])
-
-        self.non_default_cmd_args = self._calc_non_default(self._build_defaults_dict(current_specs), self.cmd_args)
-        return args
-
-    def process_task(self, args) -> list[str]:
+    @ParseMachine.SubCmd.enter
+    def _parse_subcmd(self):
         """ consume arguments for tasks """
-        logging.debug("Task Parsing: %s", args)
-        if args[0] not in self.registered_tasks:
-            task                     = self.registered_tasks[DEFAULT_KEY]
-            assert(isinstance(task, DootTaskSpec))
-            task_name                 = DEFAULT_KEY
-            spec_params               = [ParamSpec.from_dict(x) for x in task.extra.on_fail([], list).cli()]
-            ctor_params               = task.ctor.try_import().param_specs
-            current_specs             = list(sorted(spec_params + ctor_params, key=ParamSpec.key_func))
-            task_args                 = self._build_defaults_dict(current_specs)
-            task_args[NON_DEFAULT_KEY] = []
-            self.tasks_args.append((task_name, task_args))
-            return args
+        if not bool(self._subcmd_specs):
+            return
+        logging.debug("SubCmd Parsing: %s", self._remaining_args)
+        cmd_name = self.cmd_result.name
+        last = None
+        # Determine subcmd
+        while (bool(self._remaining_args)
+               and (sub_name:=self._remaining_args[0]) != END_SEP
+               and last != sub_name
+               ):
+            last = sub_name
+            match self._subcmd_specs.get(sub_name, None):
+                case cmd_constraint, params if cmd_constraint == cmd_name:
+                    sub_specs        = sorted(params, key=ParamSpec.key_func)
+                    defaults : dict  = ParamSpec.build_defaults(sub_specs)
+                    sub_result       = ParseResult(sub_name, defaults)
+                    self._parse_params(sub_result, sub_specs)
+                    self.subcmd_results.append(sub_result)
+                case _, _:
+                    pass
+                case _:
+                    raise ValueError("Unrecognised SubCmd", sub_name)
 
+    @ParseMachine.Extra.enter
+    def _parse_extra(self):
+        logging.debug("Extra Parsing: %s", self._remaining_args)
 
-        while bool(args) and args[0] in self.registered_tasks:
-            task_name                 = args.pop(0)
-            task                      = self.registered_tasks[task_name]
-            assert(isinstance(task, DootTaskSpec))
-            spec_params               = [ParamSpec.from_dict(x) for x in task.extra.on_fail([], list).cli()]
-            ctor_params               = task.ctor.try_import().param_specs
-            current_specs             = list(sorted(spec_params + ctor_params, key=ParamSpec.key_func))
-            task_args                 = self._build_defaults_dict(current_specs)
-            default_args              = task_args.copy()
-            logging.debug("Parsing Task args for: %s: Available: %s", task_name, task_args.keys())
-
-            while bool(args) and args[0] not in self.registered_tasks:
-                if args[0] == END_SEP:
-                    args.pop(0)
-                    break
-
-                match [x for x in current_specs if x == args[0]]:
-                    case [] if args[0].startswith(ASSIGN_PREFIX):
-                        # No matches, its a free cli arg.
-                        try:
-                            key, *values     = args[0].split("=")
-                            task_args[key.removeprefix("--")] = values
-                            args.pop(0)
-                        except ValueError:
-                            raise doot.errors.DootParseError("Arg failed to split into key=value", args[0])
-                    case [x] if not x.positional:
-                        x.maybe_consume(args, task_args)
-                    case [*xs] if all(y.positional for y in xs):
-                        self._consume_next_positional(args, task_args, xs)
-                    case [*xs]:
-                        raise doot.errors.DootParseError("Multiple possible task args", task_name, args[0])
-
-
-            if task_name in [x[0] for x in self.tasks_args]:
-                raise doot.errors.DootParseError("a single task was specified twice")
-
-            task_args[NON_DEFAULT_KEY] = self._calc_non_default(default_args, task_args)
-            logging.debug("Resulting Arg Assignments for %s : %s", task_name, task_args)
-            self.tasks_args.append((task_name, task_args))
-
-        return args
-
-    def process_extra(self, args) -> None:
-        logging.debug("Extra Parsing: %s", args)
-        return None
-
-
-    def _consume_next_positional(self, args, arg_dict, params:list):
-        """
-          try each positional param until success
-        """
+        
+    def _parse_params(self, res:ParseResult, params:list[ParamSpec]):
         for param in params:
-            try:
-                if 1 <= param.maybe_consume(args, arg_dict):
-                    return
-            except doot.errors.DootParseResetError:
-                continue
+            logging.debug("Consuming Parameter: %s", param)
+            match param.consume(self._remaining_args):
+                case None:
+                    pass
+                case data, count:
+                    self._remaining_args = self._remaining_args[count:]
+                    res.args.update(data)
+                    self.non_default_args.args.update(data)
+        else:
+            pass
+    def report(self) -> None|dict:
+        """ Take the parsed results and return a nested dict """
+        result = {
+            "head"  : {"name": "", "args":{}},
+            "cmd"   : {"name": "", "args":{}},
+            "sub"   : [],
+            "extra" : {},
+        }
 
-        raise doot.errors.DootParseError("No positional argument succeeded", args)
+        return result
 
-    def _calc_non_default(self, defaults, actual) -> list:
-        return [x for x,y in actual.items() if x not in defaults or defaults[x] != y]
