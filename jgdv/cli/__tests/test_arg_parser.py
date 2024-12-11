@@ -16,7 +16,7 @@ from dataclasses import dataclass, field, InitVar
 ##-- end imports
 
 import pytest
-from jgdv.cli.arg_parser import ParseMachine, CLIParser
+from jgdv.cli.arg_parser import ParseMachine, CLIParser, ParseResult
 from jgdv.cli.param_spec import ParamSpec, ArgParseError
 import jgdv.cli.param_spec as Specs
 
@@ -115,6 +115,16 @@ class TestParser:
                            )
         return obj
 
+    @pytest.fixture(scope="function")
+    def c_source(self) -> _ParamSource:
+        obj = _ParamSource(name="bloo",
+                           param_specs=[
+                               ParamSpec(name="on", type=bool),
+                               ParamSpec(name="val", type=str)
+                           ]
+                           )
+        return obj
+
     def test_sanity(self):
         assert(True is not False)
 
@@ -149,10 +159,29 @@ class TestParser:
 
     def test_parse_cmd(self, a_source):
         obj = CLIParser()
-        obj._setup(["testcmd","b","c"], [], [a_source], [])
+        obj._setup(["testcmd", "-val", "aweg", "b","c"], [], [a_source], [])
         assert(bool(obj._cmd_specs))
         obj._parse_cmd()
         assert(obj.cmd_result.name == "testcmd")
+        match obj.cmd_result.args:
+            case {"val": "aweg"}:
+                assert(True)
+            case _:
+                assert(False)
+
+
+    def test_parse_cmd_arg_same_as_subcmd(self, a_source):
+        obj = CLIParser()
+        obj._setup(["testcmd", "-val", "blah", "b","c"], [], [a_source], [])
+        assert(bool(obj._cmd_specs))
+        obj._parse_cmd()
+        assert(obj.cmd_result.name == "testcmd")
+        match obj.cmd_result.args:
+            case {"val": "blah"}:
+                assert(True)
+            case _:
+                assert(False)
+        assert(not bool(obj.subcmd_results))
 
     def test_parse_subcmd(self, a_source, b_source):
         obj = CLIParser()
@@ -165,11 +194,46 @@ class TestParser:
         assert(len(obj.subcmd_results) == 1)
         assert(obj.subcmd_results[0].name == "blah")
 
-    def test_parse_multi_subcmd(self):
+    def test_parse_multi_subcmd(self, a_source, b_source, c_source):
+        obj = CLIParser()
+        obj._setup(["testcmd", "blah", "-on", "--", "bloo", "-val", "lastval"],
+                   [], [a_source], [(a_source.name, b_source), (a_source.name, c_source)])
+        assert(obj._subcmd_specs['blah'] == ("testcmd", b_source.param_specs))
+        assert(not bool(obj.subcmd_results))
+        obj._parse_cmd()
+        obj._parse_subcmd()
+        assert(obj.cmd_result.name == "testcmd")
+        assert(len(obj.subcmd_results) == 2)
+        assert(obj.subcmd_results[0].name == "blah")
+        match obj.subcmd_results[0].args:
+            case {"on": True}:
+                assert(True)
+            case _:
+                assert(False)
+
+        match obj.subcmd_results[1].args:
+            case {"on": False, "val": "lastval"}:
+                assert(True)
+            case _:
+                assert(False)
+
+
+    @pytest.mark.skip
+    def test_parse_extra(self, a_source, b_source, c_source):
         pass
 
-    def test_parse_extra(self):
-        pass
+class TestParseResultReport:
+
+    def test_sanity(self):
+        assert(True is not False)
 
     def test_report(self):
-        pass
+        obj = CLIParser()
+        obj.head_result = ParseResult(name="blah")
+        obj.cmd_result = ParseResult(name="bloo")
+        obj.subcmd_results = []
+        match obj.report():
+            case {"head": {"name":"blah"}, "cmd": {"name":"bloo"}}:
+                assert(True)
+            case _:
+                assert(False)

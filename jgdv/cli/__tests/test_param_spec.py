@@ -29,10 +29,8 @@ class TestParamSpec:
         test = ParamSpec[bool].build({"name":"Aweg"})
 
     def test_paramspec(self):
-        obj = ParamSpec.build({
-            "name" : "test"
-          })
-        assert(isinstance(obj, ParamSpec))
+        obj = ParamSpec.build({"name" : "test"})
+        assert(isinstance(obj, Specs.ParamSpecBase))
 
     @pytest.mark.parametrize("key", [*bad_names])
     def test_key_validation_fail(self, key):
@@ -42,24 +40,24 @@ class TestParamSpec:
     @pytest.mark.parametrize("key", [*good_names])
     def test_match_on_head(self, key):
         obj = ParamSpec.build({"name" : key})
-        assert(obj._match_on_head(f"-{key}"))
-        assert(obj._match_on_head(f"-{key[0]}"))
-        assert(obj._match_on_head(f"-no-{key}"))
+        assert(obj.matches_head(f"-{key}"))
+        assert(obj.matches_head(f"-{key[0]}"))
+        assert(obj.matches_head(f"-no-{key}"))
 
     @pytest.mark.parametrize("key", [*good_names])
     def test_match_on_head_assignments(self, key):
         obj = ParamSpec.build({"name" : key, "prefix":"--"})
         assert(not obj.positional)
-        assert(obj._match_on_head(f"--{key}=val"))
-        assert(obj._match_on_head(f"--{key[0]}=val"))
+        assert(obj.matches_head(f"--{key}=val"))
+        assert(obj.matches_head(f"--{key[0]}=val"))
 
     @pytest.mark.parametrize("key", [*good_names])
     def test_match_on_head_fail(self, key):
-        obj = ParamSpec.build({"name" : key})
-        assert(not obj._match_on_head(key))
-        assert(not obj._match_on_head(f"{key}=blah"))
-        assert(not obj._match_on_head(f"-{key}=blah"))
-        assert(not obj._match_on_head(f"-{key[0]}=blah"))
+        obj = ParamSpec.build({"name" : key, "prefix":"--"})
+        assert(not obj.matches_head(key))
+        assert(not obj.matches_head(f"{key}=blah"))
+        assert(not obj.matches_head(f"-{key}=val"))
+        assert(not obj.matches_head(f"-{key[0]}=val"))
 
     def test_positional(self):
         obj = ParamSpec.build({
@@ -79,14 +77,6 @@ class TestParamSpec:
                 assert(obj.short_key_str == f"{prefix}{key[0]}")
             case "-":
                 assert(obj.short_key_str == f"{prefix}{key[0]}")
-
-    def test_is_toggle(self):
-        obj = ParamSpec.build({"name" : "test", "type": bool})
-        assert(obj.is_toggle)
-
-    def test_is_not_toggle(self):
-        obj = ParamSpec.build({"name" : "test", "type": int})
-        assert(not obj.is_toggle)
 
     def test_sorting(self):
         target_sort = ["another", "diff", "other", "next", "test"]
@@ -113,8 +103,7 @@ class TestParamSpecConsumption:
                 assert(False)
 
     def test_consume_toggle(self):
-        obj = ParamSpec.build({"name" : "test", "type": bool})
-        assert(obj.is_toggle)
+        obj = Specs.ToggleParam.build({"name" : "test"})
         match obj.consume(["-test"]):
             case {"test": True,}, 1:
                 assert(True)
@@ -122,8 +111,8 @@ class TestParamSpecConsumption:
                 assert(False), x
 
     def test_consume_inverse_toggle(self):
-        obj = ParamSpec.build({"name" : "test", "type": bool})
-        assert(obj.is_toggle)
+        obj = Specs.ToggleParam.build({"name" : "test"})
+        assert(obj.default_value is False)
         match obj.consume(["-no-test"]):
             case {"test": False,}, 1:
                 assert(True)
@@ -131,24 +120,33 @@ class TestParamSpecConsumption:
                 assert(False), x
 
     def test_consume_short_toggle(self):
-        obj = ParamSpec.build({"name" : "test", "type": bool})
-        assert(obj.is_toggle)
+        obj = Specs.ToggleParam.build({"name" : "test"})
         match obj.consume(["-t"]):
             case {"test": True,}, 1:
                 assert(True)
             case x:
                 assert(False), x
 
-    def test_consume_key_value(self):
-        obj = ParamSpec.build({"name" : "test", "type":str, "default":""})
+    def test_consume_key_value_str(self):
+        obj = Specs.KeyParam[str].build({"name" : "test"})
+        assert(obj.type_ is str)
         match obj.consume(["-test", "blah"]):
             case {"test":"blah"}, 2:
                 assert(True)
             case x:
                 assert(False), x
 
+    def test_consume_key_value_int(self):
+        obj = Specs.KeyParam[int].build({"name" : "test"})
+        assert(obj.type_ is int)
+        match obj.consume(["-test", "20"]):
+            case {"test":20}, 2:
+                assert(True)
+            case x:
+                assert(False), x
+
     def test_consume_key_value_fail(self):
-        obj = ParamSpec.build({"name" : "test", "type":"str", "default":""})
+        obj = Specs.KeyParam[str].build({"name" : "test"})
         match obj.consume(["-nottest", "blah"]):
             case None:
                 assert(True)
@@ -156,7 +154,7 @@ class TestParamSpecConsumption:
                 assert(False)
 
     def test_consume_list_single_value(self):
-        obj = ParamSpec.build({"name" : "test", "type" : list})
+        obj = Specs.RepeatableParam.build({"name" : "test", "type" : list})
         match obj.consume(["-test", "bloo"]):
             case {"test": ["bloo"]}, 2:
                 assert(True)
@@ -164,12 +162,8 @@ class TestParamSpecConsumption:
                 assert(False), x
 
     def test_consume_list_multi_key_val(self):
-        obj = ParamSpec.build({
-            "name" : "test",
-            "type" : list,
-            "default" : list,
-          })
-        in_args             = ["-test", "bloo", "-test", "blah", "-test", "bloo", "-not", "this"]
+        obj     = Specs.RepeatableParam.build({"name":"test"})
+        in_args = ["-test", "bloo", "-test", "blah", "-test", "bloo", "-not", "this"]
         match obj.consume(in_args):
             case {"test": ["bloo", "blah", "bloo"]}, 6:
                 assert(True)
@@ -177,7 +171,7 @@ class TestParamSpecConsumption:
                 assert(False), x
 
     def test_consume_set_multi(self):
-        obj = ParamSpec.build({
+        obj = Specs.RepeatableParam[set].build({
             "name"    : "test",
             "type"    : set,
             "default" : set,
@@ -190,7 +184,7 @@ class TestParamSpecConsumption:
                 assert(False), x
 
     def test_consume_str_multi_set_fail(self):
-        obj = ParamSpec.build({
+        obj = Specs.RepeatableParam[set].build({
             "name" : "test",
             "type" : str,
             "default" : "",
@@ -203,7 +197,7 @@ class TestParamSpecConsumption:
                 assert(False), x
 
     def test_consume_assignment(self):
-        obj = ParamSpec.build({"name" : "test", "type" : str, "prefix":"--"})
+        obj = Specs.AssignParam.build({"name" : "test", "type" : str, "prefix":"--"})
         in_args             = ["--test=blah", "other"]
         match obj.consume(in_args):
             case {"test":"blah"}, 1:
@@ -211,35 +205,22 @@ class TestParamSpecConsumption:
             case x:
                 assert(False), x
 
-    def test_consume_multi_assignment(self):
-        obj = ParamSpec.build({"name" : "test", "type" : list, "prefix":"--"})
-        in_args             = ["--test=blah", "--test=bloo"]
+    def test_consume_multi_assignment_fail(self):
+        obj     = Specs.RepeatableParam.build({"name":"test", "type":list, "default":list, "prefix":"--"})
+        in_args = ["--test=blah", "--test=bloo"]
         match obj.consume(in_args):
-            case {"test":["blah", "bloo"]}, 2:
-                assert(True)
-            case x:
-                assert(False), x
-
-    def test_consume_custom_default(self):
-        obj = ParamSpec.build({
-            "name" : "test",
-            "type" : int,
-            "default" : lambda: 5,
-          })
-        assert(obj.repeatable)
-        match obj.consume(["-test", "2"]):
-            case {"test": 2}, 2:
-                assert(True)
-            case x:
-                assert(False), x
-
-    def test_consume_assignment_wrong_prefix(self):
-        obj = ParamSpec.build({"name" : "test"})
-        match obj.consume(["-t=blah"]):
             case None:
                 assert(True)
             case _:
-                assert(False)
+                assert(False), x
+
+    def test_consume_assignment_wrong_prefix(self):
+        obj = Specs.AssignParam.build({"name" : "test"})
+        match obj.consume(["-t=blah"]):
+            case None:
+                assert(True)
+            case x:
+                assert(False), x
 
     def test_consume_with_offset(self):
         obj = ParamSpec.build({"name" : "test", "type":"str"})
@@ -250,7 +231,7 @@ class TestParamSpecConsumption:
                 assert(False), x
 
     def test_consume_positional(self):
-        obj = ParamSpec.build({"name":"test", "positional":True, "type":str})
+        obj = Specs.PositionalParam.build({"name":"test", "positional":True, "type":str})
         match obj.consume(["aweg", "blah"]):
             case {"test": "aweg"}, 1:
                 assert(True)
@@ -258,18 +239,44 @@ class TestParamSpecConsumption:
                 assert(False), x
 
     def test_consume_positional_list(self):
-        obj = ParamSpec.build({
+        obj = Specs.PositionalParam.build({
             "name"       : "test",
             "type"       : list,
             "default"    : [],
-            "positional" : True
+            "positional" : 2
           })
         match obj.consume(["bloo", "blah", "aweg"]):
-            case {"test": ["bloo", "blah", "aweg"]}, 3:
+            case {"test": ["bloo", "blah"]}, 2:
                 assert(True)
             case x:
                 assert(False), x
 
+    def test_literal(self):
+        obj = Specs.LiteralParam(name="blah")
+        match obj.consume(["blah"]):
+            case {"blah":True}, 1:
+                assert(True)
+            case None:
+                assert(False)
+
+    def test_literal_fail(self):
+        obj = Specs.LiteralParam(name="blah")
+        match obj.consume(["notblah"]):
+            case None:
+                assert(True)
+            case _:
+                assert(False)
+
+
+    def test_wildcard_assign(self):
+        obj = Specs.WildcardParam()
+        match obj.consume(["--blah=other"]):
+            case {"blah":"other"}, 1:
+                assert(True)
+            case x:
+                assert(False), x
+
+                
 class TestParamSpecDefaults:
 
     def test_sanity(self):
@@ -313,22 +320,8 @@ class TestParamSpecDefaults:
 
         assert(ctx.value.args[-1] == ["next"])
 
-class TestParamSpecialisations:
-    
+        
+class TestParamReactiveBuild:
+
     def test_sanity(self):
         assert(True is not False)
-
-
-    def test_literal(self):
-        obj = Specs.LiteralParam(name="blah")
-        match obj.consume(["blah"]):
-            case {"blah":True}, 1:
-                assert(True)
-            case None:
-                assert(False)
-
-        match obj.consume(["notblah"]):
-            case None:
-                assert(True)
-            case _:
-                assert(False)

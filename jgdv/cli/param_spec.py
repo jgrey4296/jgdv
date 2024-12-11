@@ -111,138 +111,64 @@ class _ConsumerArg_m:
             match remaining:
                 case []:
                     return None
-                case [x, *xs] if not self._match_on_head(x):
+                case [x, *xs] if not self.matches_head(x):
                     return None
-                case [*xs] if self.repeatable:
-                    value, consumed = self._get_while_matching(xs)
-                case [x, *xs] if self.is_toggle and self.inverse in x:
-                    value, consumed = self.default_value, 1
-                case [x, *xs] if self.is_toggle:
-                    value, consumed = not self.default_value, 1
-                case [*xs] if bool(self.positional):
-                    value, consumed = self._get_next_value(xs)
-                case [x, *xs] if self.is_assignment_param and self.separator in x:
-                    value, consumed = self._get_matching_assignment(x)
                 case [*xs]:
-                    value, consumed = self._get_matching_key_value(xs)
+                    key, value, consumed = self.next_value(xs)
+                    return self.coerce_types(key, value), consumed
                 case _:
                     raise ArgParseError("Tried to consume a bad type", remaining)
         except ArgParseError as err:
             logging.debug("Parsing Failed: %s : %s (%s)", self.name, args, err)
             return None
 
-        return self._process_types(value), consumed
-
-    def _process_types(self, value) -> dict:
-        """ process the parsed values """
-        result = {}
-        match self.type_(), value:
-            case _, None | []:
-                pass
-            case int(), [*xs]:
-                result[self.name] = ftz.reduce(lambda x, y: x+int(y), xs, 0)
-            case list(), list():
-                result[self.name] = value
-            case set(), list():
-                result[self.name] = set(value)
-            case _, [x]:
-                result[self.name] = x
-            case _, val:
-                result[self.name] = val
-
-        return result
-
-    def _split_assignment(self, val) -> tuple[str, str]:
-        assert(not self.positional)
-        assert(val.startswith(self.prefix))
-        assert(self.separator in val)
-        key, val = val.split(self.separator)
-        return key, val
-
-    def _match_on_head(self, val) -> bool:
+    def matches_head(self, val) -> bool:
         """ test to see if a cli argument matches this param
 
         Will match anything if self.positional
         Matchs {self.prefix}{self.name} if not an assignment
         Matches {self.prefix}{self.name}{separator} if an assignment
         """
-        match val, self.positional:
-            case _, True:
-                return True
-            case _, int() as x if bool(x):
-                return True
-            case str(), False if val in self.key_strs:
-                return True
-            case str(), False if self.prefix == ASSIGN_PREFIX and val.startswith(self.prefix) and self.separator in val:
-                key, _ = self._split_assignment(val)
-                return key in self.key_strs
-            case _, _:
-                return False
+        key, *_ = self._split_assignment(val)
+        return key in self.key_strs and key.startswith(self.prefix)
+
+    def next_value(self, args:list) -> tuple[str, list, int]:
+        if self.positional or self.type_ is bool:
+            return self.name, [args[0]], 1
+        if self.separator not in args[0]:
+            return self.name, [args[1]], 2
+
+        key, *vals = self._split_assignment(args[0])
+        return self.name, [vals[0]], 1
+
+    def coerce_types(self, key, value) -> dict:
+        """ process the parsed values """
+        result = {}
+        match self.type_(), value:
+            case _, None | []:
+                pass
+            case bool(), [x]:
+                result[key] = bool(x)
+            case int(), [*xs]:
+                result[key] = ftz.reduce(lambda x, y: x+int(y), xs, 0)
+            case list(), list():
+                result[key] = value
+            case set(), list():
+                result[key] = set(value)
+            case _, [x]:
+                result[key] = x
+            case _, val:
+                result[key] = val
+
+        return result
+
+    def _split_assignment(self, val) -> list[str]:
+        return val.split(self.separator)
 
     def _match_on_end(self, val) -> bool:
         return val == END_SEP
 
-    def _get_while_matching(self, args:list) -> tuple[list, int]:
-        """ Get as many values as match
-        eg: args[-test, 2, -test, 3, -test, 5, -nottest, 6]
-        ->  [2,3,5], [-nottest, 6]
-        """
-        logging.debug("Getting until no more matches: %s : %s", self.name, args)
-        assert(self.repeatable)
-        result, consumed, remaining  = [], 0, args[:]
-        while bool(remaining):
-            if self.is_assignment_param and self._match_on_head(remaining[0]):
-                vals, count = self._get_matching_assignment(remaining[0])
-                result   += vals
-                consumed += count
-                remaining = remaining[1:]
-                continue
-            elif self.is_assignment_param:
-                break
-
-            match self.positional:
-                case _, _, if self._match_on_end(remaining[0]):
-                    break
-                case True:
-                    vals, count = self._get_next_value(remaining)
-                    result   += vals
-                    consumed += count
-                    remaining = remaining[count:]
-                case False:
-                    head, val, *rest = remaining
-                    if not self._match_on_head(head):
-                        break
-                    else:
-                        result.append(val)
-                        remaining = rest
-                        consumed += 2
-                case int() as x if x <= len(remaining):
-                    vals, rest = remaining[:x], remaining[x+1:]
-                    result += vals
-                    consumed += x
-
-        return result, consumed
-
-    def _get_next_value(self, args:list) -> tuple[list, int]:
-        return [args[0]], 1
-
-    def _get_matching_key_value(self, args:list) -> tuple[list, int]:
-        """ get the value for a -key val """
-        logging.debug("Getting Key/Value: %s : %s", self.name, args)
-        match args:
-            case [x, y, *_] if self._match_on_head(x):
-                return [y], 2
-            case _:
-                raise ArgParseError("Failed to parse key")
-
-    def _get_matching_assignment(self, arg) -> tuple[list, int]:
-        """ get the value for a --key=val """
-        logging.debug("Getting Key Assingment: %s : %s", self.name, arg)
-        assert(self.separator in arg), (self.separator, arg)
-        key,val = self._split_assignment(arg)
-        return [val], 1
-
-class ParamSpec(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_m, ParamStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
+class ParamSpecBase(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_m, ParamStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """ Declarative CLI Parameter Spec.
 
     Declared the param name (turns into {prefix}{name})
@@ -270,17 +196,15 @@ class ParamSpec(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_
     separator            : str                       = "="
 
     _short               : None|str                  = None
-    _consumed            : int                       = 0
     _accumulation_types  : ClassVar[list[Any]]       = [int, list, set]
     _pad                 : ClassVar[int]             = 15
 
+    _subtypes            : dict[type, type]          = {}
+
+
     @classmethod
-    def build(cls:BaseModel, data:ChainGuard|dict) -> ParamSpec:
-        match data:
-            case {"implicit":True}:
-                return ImplicitParam.model_validate(data)
-            case _:
-                return cls.model_validate(data)
+    def build(cls:BaseModel, data:dict) -> ParamSpecBase:
+        return cls.model_validate(data)
 
     @staticmethod
     def key_func(x):
@@ -309,7 +233,7 @@ class ParamSpec(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_
             case "list":
                 return list
             case type() if val is bool and (typevar:=cls.__dict__.get("_typevar", None)):
-                # Handle annotation like ParamSpec[str]
+                # Handle annotation like ParamSpecBase[str]
                 return typevar
             case type():
                 return val
@@ -330,6 +254,15 @@ class ParamSpec(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_
             raise TypeError("Prefix was found in the base name", self)
         if bool(self.separator) and self.separator in self.name:
             raise TypeError("Separator was found in the base name", self)
+
+        match getattr(self, "_typevar", None):
+            case None:
+                pass
+            case type() as x if x is self.type_:
+                pass
+            case type() as x if self.type_ is bool:
+                self.type_ = x
+
         match self.type_():
             case bool():
                 self.default = self.default or False
@@ -345,58 +278,33 @@ class ParamSpec(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_
         return self
 
     @ftz.cached_property
-    def short(self) -> None|str:
-        if self.positional:
-            return None
-
+    def short(self) -> str:
         return self._short or self.name[0]
 
     @ftz.cached_property
     def inverse(self) -> None:
-        if not self.is_toggle:
-            return None
-
         return f"no-{self.name}"
 
     @ftz.cached_property
     def repeatable(self):
-        return self.type_ in ParamSpec._accumulation_types
+        return self.type_ in ParamSpecBase._accumulation_types
 
     @ftz.cached_property
-    def key_str(self) -> None|str:
+    def key_str(self) -> str:
         """ Get how the param needs to be written in the cli.
         eg: -test or --test
-
         """
-        if self.positional:
-            return None
         return f"{self.prefix}{self.name}"
 
     @ftz.cached_property
     def short_key_str(self) -> None|str:
-        if self.positional:
-            return None
-
-        match self.short:
-            case None:
-                return None
-            case x:
-                return f"{self.prefix}{x}"
+        return f"{self.prefix}{self.short}"
 
     @ftz.cached_property
     def key_strs(self) -> list[str]:
-        return [x for x in [self.key_str, self.short_key_str, f"{self.prefix}{self.inverse}"] if x is not None]
+        return [self.key_str, self.short_key_str, f"{self.prefix}{self.inverse}"]
 
-    @property
-    def is_assignment_param(self) -> bool:
-        """ return True if param is of form --key=val """
-        return self.prefix == ASSIGN_PREFIX
-
-    @property
-    def is_toggle(self) -> bool:
-         return self.type_ is bool
-
-    def __str__(self):
+    def help_str(self):
         match self.key_str:
             case None:
                 parts = [f"[{self.name}]"]
@@ -431,17 +339,25 @@ class ParamSpec(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_
             return f"<{self.__class__.__name__}: {self.name}>"
         return f"<{self.__class__.__name__}: {self.prefix}{self.name}>"
 
-class BoolSpec(ParamSpec[bool]):
-    pass
+class ToggleParam(ParamSpecBase[bool]):
 
-class LiteralParam(BoolSpec):
+    def next_value(self, args:list) -> tuple[str, list, int]:
+        head, *_ = args
+        if self.inverse in head:
+            value = self.default_value
+        else:
+            value = not self.default_value
+
+        return self.name, [value], 1
+
+class LiteralParam(ToggleParam):
     """
     Match on a Literal Parameter.
     For command/subcmd names etc
     """
     prefix : str = ""
 
-    def _match_on_head(self, val) -> bool:
+    def matches_head(self, val) -> bool:
         """ test to see if a cli argument matches this param
 
         Will match anything if self.positional
@@ -454,53 +370,53 @@ class LiteralParam(BoolSpec):
             case _:
                 return False
 
-class EntryParam(LiteralParam):
-    """ TODO a parameter that if it matches,
-    returns list of more params to parse
-    """
-    pass
-
-class ImplicitParam(ParamSpec):
+class ImplicitParam(ParamSpecBase):
     """
     A Parameter that is implicit, so doesn't give a help description unless forced to
     """
 
-    def __str__(self):
+    def help_str(self):
         return ""
 
-class ConstrainedParam(ParamSpec):
-    """
-    TODO a type of parameter which is constrained in the values it can take, beyond just type.
-
-    eg: {name:amount, constraints={min=0, max=10}}
-    """
-    constraints : list[Any] = []
-
-class PositionalParam(ParamSpec):
+class PositionalParam(ParamSpecBase):
     """ TODO a param that is specified by its position in the arg list """
 
-    def _get_next_value(self, args:list) -> tuple[list, int]:
-        return [args[0]], 1
+    def matches_head(self, val) -> bool:
+        return True
 
-class KeyParam(ParamSpec):
+    def next_value(self, args:list) -> tuple[str, list, int]:
+        match self.positional:
+            case True:
+                return self.name, [args[0]], 1
+            case -1:
+                idx     = args.index(END_SEP)
+                claimed = args[max(idx, len(args))]
+                return self.name, claimed, len(claimed)
+            case int() as x if x < len(args):
+                return self.name, args[:x], x
+
+
+class KeyParam(ParamSpecBase):
     """ TODO a param that is specified by a prefix key """
 
-    def _match_on_head(self, val) -> bool:
+    def matches_head(self, val) -> bool:
         return val in self.key_strs
 
     def get_next_value(self, args:list) -> tuple[list, int]:
         """ get the value for a -key val """
         logging.debug("Getting Key/Value: %s : %s", self.name, args)
         match args:
-            case [x, y, *_] if self._match_on_head(x):
-                return [y], 2
+            case [x, y, *_] if self.matches_head(x):
+                return str, [y], 2
             case _:
                 raise ArgParseError("Failed to parse key")
 
 class RepeatableParam(KeyParam):
     """ TODO a repeatable key param """
 
-    def _get_next_value(self, args) -> tuple[list, int]:
+    type_ : InstanceOf[type] = Field(default=list, alias="type")
+
+    def next_value(self, args:list) -> tuple[str, list, int]:
         """ Get as many values as match
         eg: args[-test, 2, -test, 3, -test, 5, -nottest, 6]
         ->  [2,3,5], [-nottest, 6]
@@ -510,25 +426,47 @@ class RepeatableParam(KeyParam):
         result, consumed, remaining  = [], 0, args[:]
         while bool(remaining):
             head, val, *rest = remaining
-            if not self._match_on_head(head):
+            if not self.matches_head(head):
                 break
             else:
                 result.append(val)
                 remaining = rest
                 consumed += 2
 
-        return result, consumed
+        return self.name, result, consumed
 
-
-class AssignParam(ParamSpec):
+class AssignParam(ParamSpecBase):
     """ TODO a joined --key=val param """
 
-    def _get_next_value(self, arg) -> tuple[list, int]:
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("prefix", "--")
+        super().__init__(*args, **kwargs)
+
+    def next_value(self, args:list) -> tuple[str, list, int]:
         """ get the value for a --key=val """
-        logging.debug("Getting Key Assingment: %s : %s", self.name, arg)
-        assert(self.separator in arg), (self.separator, arg)
-        key,val = self._split_assignment(arg)
-        return [val], 1
+        logging.debug("Getting Key Assingment: %s : %s", self.name, args)
+        assert(self.separator in args[0]), (self.separator, args)
+        key,val = self._split_assignment(args[0])
+        return self.name, [val], 1
+
+class WildcardParam(AssignParam):
+    """ TODO a wildcard param that matches any --{key}={val} """
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("type", str)
+        kwargs['name'] = "*"
+        super().__init__(**kwargs)
+
+    def matches_head(self, val) -> bool:
+        return (self.prefix == ASSIGN_PREFIX
+                and val.startswith(self.prefix)
+                and self.separator in val)
+
+    def next_value(self, args:list) -> tuple[str, list, int]:
+        logging.debug("Getting Wildcard Key Assingment: %s", args)
+        assert(self.separator in args[0]), (self.separator, args[0])
+        key,val = self._split_assignment(args[0])
+        return key.removeprefix(self.prefix), [val], 1
 
 class HelpParam(ImplicitParam[bool]):
     """ The --help flag that is always available """
@@ -555,8 +493,7 @@ class ChoiceParam(LiteralParam[str]):
         super().__init__(name=name, **kwargs)
         self._choices = choices
 
-
-    def _match_on_head(self, val) -> bool:
+    def matches_head(self, val) -> bool:
         """ test to see if a cli argument matches this param
 
         Will match anything if self.positional
@@ -564,3 +501,38 @@ class ChoiceParam(LiteralParam[str]):
         Matches {self.prefix}{self.name}{separator} if an assignment
         """
         return val in self._choices
+
+class EntryParam(LiteralParam):
+    """ TODO a parameter that if it matches,
+    returns list of more params to parse
+    """
+    pass
+
+
+class ConstrainedParam(ParamSpecBase):
+    """
+    TODO a type of parameter which is constrained in the values it can take, beyond just type.
+
+    eg: {name:amount, constraints={min=0, max=10}}
+    """
+    constraints : list[Any] = []
+
+
+class ParamSpec(ParamSpecBase):
+    """ A Top Level Access point for building param specs """
+
+    @classmethod
+    def build(cls:BaseModel, data:dict) -> ParamSpecBase:
+        match data:
+            case {"implicit":True}:
+                return ImplicitParam.model_validate(data)
+            case {"positional":True|int()}:
+                return PositionalParam.model_validate(data)
+            case {"prefix":x} if x == ASSIGN_PREFIX:
+                return AssignParam.model_validate(data)
+            case {"type":"list"|"set"}:
+                return RepeatableParam.model_validate(data)
+            case {"type":"bool"}:
+                return ToggleParam.model_validate(data)
+            case _:
+                return KeyParam.model_validate(data)

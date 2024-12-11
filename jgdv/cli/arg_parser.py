@@ -28,7 +28,7 @@ from collections import ChainMap
 import jgdv
 from jgdv.structs.chainguard import ChainGuard
 from jgdv._abstract.protocols import ParamStruct_p
-from .param_spec import ASSIGN_PREFIX, END_SEP, ParamSpec, ArgParseError, HelpParam, LiteralParam
+from .param_spec import ParamSpec, ArgParseError, HelpParam, LiteralParam, SeparatorParam
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -38,11 +38,15 @@ EXTRA_KEY       : Final[str]           = "_extra_"
 NON_DEFAULT_KEY : Final[str]           = "_non_default_"
 DEFAULT_KEY     : Final[str]           = "_default_"
 HELP            : Final[ParamSpec]     = HelpParam()
+SEPERATOR       : Final[ParamSpec]     = SeparatorParam()
 
 @dataclass
 class ParseResult:
     name : str
     args : dict = field(default_factory=dict)
+    
+    def to_dict(self) -> dict:
+        return {"name":self.name, "args":self.args}
 
 @runtime_checkable
 class ParamSource_p(Protocol):
@@ -69,7 +73,6 @@ class ArgParser_p(Protocol):
     def _has_no_more_args_cond(self) -> bool:
         raise NotImplementedError()
 
-    
 class ParseMachine(StateMachine):
     """ FSM for running a CLI arg parse.
 
@@ -163,7 +166,6 @@ class CLIParser(ArgParser_p):
         self._remaining_args = []
 
     def _parse_fail_cond(self) -> bool:
-        logging.warning("Failed to Parse")
         return False
 
     def _has_no_more_args_cond(self):
@@ -244,10 +246,11 @@ class CLIParser(ArgParser_p):
 
         # Determine cmd
         cmd_name = self._remaining_args[0]
-        logging.info("Determined Cmd to be: %s", cmd_name)
+        logging.info("Cmd matches: %s", cmd_name)
         if cmd_name not in self._cmd_specs:
             raise KeyError("Unrecognised command name", cmd_name)
-        self._remaining_args = self._remaining_args[1:]
+        else:
+            self._remaining_args.pop(0)
         # get its specs
         cmd_specs        = sorted(self._cmd_specs[cmd_name], key=ParamSpec.key_func)
         defaults : dict  = ParamSpec.build_defaults(cmd_specs)
@@ -264,9 +267,14 @@ class CLIParser(ArgParser_p):
         last = None
         # Determine subcmd
         while (bool(self._remaining_args)
-               and (sub_name:=self._remaining_args[0]) != END_SEP
-               and last != sub_name
+               and last != (sub_name:=self._remaining_args[0])
                ):
+            if self._parse_separator():
+                continue
+            else:
+                self._remaining_args.pop(0)
+                
+            logging.debug("Sub Cmd: %s", sub_name)
             last = sub_name
             match self._subcmd_specs.get(sub_name, None):
                 case cmd_constraint, params if cmd_constraint == cmd_name:
@@ -284,27 +292,33 @@ class CLIParser(ArgParser_p):
     def _parse_extra(self):
         logging.debug("Extra Parsing: %s", self._remaining_args)
 
-        
     def _parse_params(self, res:ParseResult, params:list[ParamSpec]):
         for param in params:
-            logging.debug("Consuming Parameter: %s", param)
             match param.consume(self._remaining_args):
                 case None:
-                    pass
+                    logging.debug("Skipping Parameter: %s", param.name)
                 case data, count:
+                    logging.debug("Consuming Parameter: %s", param.name)
                     self._remaining_args = self._remaining_args[count:]
                     res.args.update(data)
                     self.non_default_args.args.update(data)
-        else:
-            pass
+        
+    def _parse_separator(self) -> bool:
+        match SEPERATOR.consume(self._remaining_args):
+            case None:
+                return False
+            case _:
+                logging.debug("----")
+                self._remaining_args.pop(0)
+                return True
+
+
     def report(self) -> None|dict:
         """ Take the parsed results and return a nested dict """
         result = {
-            "head"  : {"name": "", "args":{}},
-            "cmd"   : {"name": "", "args":{}},
-            "sub"   : [],
-            "extra" : {},
+            "head"  : self.head_result.to_dict(),
+            "cmd"   : self.cmd_result.to_dict(),
+            "sub"   : [x.to_dict() for x in self.subcmd_results],
+            "extra" : self.extra_results.to_dict(),
         }
-
         return result
-
