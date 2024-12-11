@@ -274,6 +274,12 @@ class TestStrangSubGen:
         assert(result == "group::body.a.b.c")
         assert(obj == f"group::body.a.b.c..<uuid:{UUID_STR}>")
 
+    def test_canon_extended(self):
+        obj = Strang(f"group::body.a.b.c..$gen$.<uuid:{UUID_STR}>.e.f.g")
+        assert(isinstance((result:=obj.canon()), Strang))
+        assert(result == "group::body.a.b.c..e.f.g")
+        assert(obj == f"group::body.a.b.c..$gen$.<uuid:{UUID_STR}>.e.f.g")
+
     def test_pop_no_marks(self):
         obj = Strang(f"group::body.a.b.c")
         assert(isinstance((result:=obj.pop()), Strang))

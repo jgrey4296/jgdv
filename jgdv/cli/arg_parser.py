@@ -229,7 +229,7 @@ class CLIParser(ArgParser_p):
         """ consume arguments for doot actual """
         logging.debug("Head Parsing: %s", self._remaining_args)
         if not bool(self._head_specs):
-            self.head_result = ParseResult("_head_", {})
+            self.head_result = ParseResult(name=self._remaining_args.pop(0))
             return
         head_specs       = sorted(self._head_specs, key=ParamSpec.key_func)
         defaults : dict  = ParamSpec.build_defaults(head_specs)
@@ -318,7 +318,7 @@ class CLIParser(ArgParser_p):
         result = {
             "head"  : self.head_result.to_dict(),
             "cmd"   : self.cmd_result.to_dict(),
-            "sub"   : [x.to_dict() for x in self.subcmd_results],
+            "sub"   : {y['name']:y['args'] for x in self.subcmd_results if (y:=x.to_dict()) is not None},
             "extra" : self.extra_results.to_dict(),
         }
         return result
