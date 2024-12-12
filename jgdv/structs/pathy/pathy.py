@@ -165,13 +165,20 @@ class Pathy(SubRegistry_m, pl.Path, AnnotateTo="pathy_type", metaclass=PathyMeta
         formatted = as_str.format(*args, **kwargs)
         return type(self)(formatted)
 
+    def with_suffix(self, suffix):
+        return Pathy['file'](super().with_suffix(suffix))
+
 class PathyFile(Pathy['file']):
     """ a location of a file """
-    pass
+
+    def glob(self, *args, **kwargs):
+        raise NotImplementedError()
+
+    def walk(self, *args, **kwargs):
+        raise NotImplementedError()
 
 class PathyDir(Pathy['dir']):
     """ A location of a directory """
-    pass
 
 class WildPathy(Pathy['*']):
     """ A Path that can handle ?wildcards, *globs, and {keys} in it.
@@ -180,3 +187,57 @@ class WildPathy(Pathy['*']):
 
     def keys(self) -> set[str]:
         raise NotImplementedError()
+
+    def normalize(self, *, root=None, symlinks:bool=False) -> pl.Path:
+        pass
+
+
+    def glob(self, pattern, *, case_sensitive=None, recurse_symlinks=True):
+        pass
+
+    def rglob(self, pattern, *, case_sensitive=None, recurse_symlinks=True):
+        """Recursively yield all existing files (of any kind, including
+        directories) matching the given relative pattern, anywhere in
+        this subtree.
+        """
+        if not isinstance(pattern, PurePathBase):
+            pattern = self.with_segments(pattern)
+        pattern = '**' / pattern
+        return self.glob(pattern, case_sensitive=case_sensitive, recurse_symlinks=recurse_symlinks)
+
+    def walk(self, top_down=True, on_error=None, follow_symlinks=False):
+        """Walk the directory tree from this directory, similar to os.walk()."""
+        paths = [self]
+        while paths:
+            path = paths.pop()
+            if isinstance(path, tuple):
+                yield path
+                continue
+            dirnames = []
+            filenames = []
+            if not top_down:
+                paths.append((path, dirnames, filenames))
+            try:
+                for child in path.iterdir():
+                    try:
+                        if child.is_dir(follow_symlinks=follow_symlinks):
+                            if not top_down:
+                                paths.append(child)
+                            dirnames.append(child.name)
+                        else:
+                            filenames.append(child.name)
+                    except OSError:
+                        filenames.append(child.name)
+            except OSError as error:
+                if on_error is not None:
+                    on_error(error)
+                if not top_down:
+                    while not isinstance(paths.pop(), tuple):
+                        pass
+                continue
+            if top_down:
+                yield path, dirnames, filenames
+                paths += [path.joinpath(d) for d in reversed(dirnames)]
+
+    def with_segments(self, *segments) -> Self:
+        return Pathy['*'](*segments)
