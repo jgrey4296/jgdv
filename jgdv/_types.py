@@ -15,15 +15,19 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     runtime_checkable)
 from uuid import UUID, uuid1
 
-type Stack[T]                = NewType("Stack", list[T])
-type Queue[T]                = NewType("Queue", list[T])
-type Vector[T]               = NewType("Vector", list[float])
+__all__                       = ["Stack", "Queue", "Vector", "Ident", "Depth", "Seconds", "Maybe", "Result", "Either"]
 
-type Ident                   = NewType("Identifier", str)
+type _T                       = Any
 
-type Depth                   = NewType("Depth", int)
-type Seconds                 = NewType("Seconds", int)
+type Stack[T]                 = list[T]
+type Queue[T]                 = list[T]
+type Vector[T]                = list[T]
+type Ident                    = str
 
-type Maybe[T]                = T | None
-type Result[T, E:Exception]  = T | E
-type Either[L, R]            = L | R
+type Maybe[_T]                = _T | None
+type Result[_T, E:Exception]  = _T | E
+type Either[L, R]             = L | R
+
+# TODO : Make These subtypes of int that are 0<=x
+type Depth              = int
+type Seconds            = int
