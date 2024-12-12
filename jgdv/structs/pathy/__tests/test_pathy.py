@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import logging as logmod
+import datetime
 import pathlib as pl
 from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
@@ -77,7 +78,20 @@ class TestPathy:
         assert(isinstance(normed, pl.Path))
         assert(normed.is_absolute())
 
+    def test_get_time_modified(self):
+        obj = Pathy.cwd()
+        assert(isinstance(obj.time_modified(), datetime.datetime))
+
+    def test_get_time_created(self):
+        obj = Pathy.cwd()
+        assert(isinstance(obj.time_created(), datetime.datetime))
+
     def test_lt(self):
+        obj  = Pathy("a/b/c")
+        obj2 = Pathy("a/b/c/d/e")
+        assert(obj < obj2)
+
+    def test_lt_datetime(self):
         obj  = Pathy("a/b/c")
         obj2 = Pathy("a/b/c/d/e")
         assert(obj < obj2)
@@ -97,9 +111,62 @@ class TestPathy:
         assert(isinstance(res, Pathy))
         assert(res == "a/blah/c")
 
-
     def test_format_keep_filetype(self):
         obj  = Pathy['file']("a/{b}/c.txt")
         res  = obj.format(b="blah")
         assert(isinstance(res, Pathy['file']))
         assert(res == "a/blah/c.txt")
+
+    def test_newer_than(self):
+        obj        = Pathy['file']("a/b/c.txt")
+        obj.exists = lambda: True
+        a_time     = datetime.datetime.fromtimestamp(pl.Path.cwd().stat().st_mtime)
+        newer_time = a_time + datetime.timedelta(minutes=1)
+        older_time = a_time - datetime.timedelta(minutes=1)
+        assert(a_time < newer_time)
+        obj.time_modified = lambda: a_time
+        assert(obj.time_modified() is a_time)
+        assert(not obj._newer_than(newer_time))
+
+    def test_older_than(self):
+        obj        = Pathy['file']("a/b/c.txt")
+        obj.exists = lambda: True
+        a_time     = datetime.datetime.fromtimestamp(pl.Path.cwd().stat().st_mtime)
+        older_time = a_time - datetime.timedelta(minutes=1)
+        assert(older_time < a_time)
+        obj.time_modified = lambda: a_time
+        assert(obj.time_modified() is a_time)
+        assert(obj._newer_than(older_time))
+
+    def test_newer_than_tolerance_fail(self):
+        obj        = Pathy['file']("a/b/c.txt")
+        obj.exists = lambda: True
+        a_time     = datetime.datetime.fromtimestamp(pl.Path.cwd().stat().st_mtime)
+        older_time = a_time - datetime.timedelta(minutes=1)
+        tolerance = datetime.timedelta(days=1)
+        assert(older_time < a_time)
+        obj.time_modified = lambda: a_time
+        assert(obj.time_modified() is a_time)
+        assert(not obj._newer_than(older_time, tolerance=tolerance))
+
+    def test_newer_than_tolerance_fail2(self):
+        obj        = Pathy['file']("a/b/c.txt")
+        obj.exists = lambda: True
+        a_time     = datetime.datetime.fromtimestamp(pl.Path.cwd().stat().st_mtime)
+        newer_time = a_time + datetime.timedelta(minutes=1)
+        tolerance = datetime.timedelta(days=1)
+        assert(a_time < newer_time)
+        obj.time_modified = lambda: a_time
+        assert(obj.time_modified() is a_time)
+        assert(not obj._newer_than(newer_time, tolerance=tolerance))
+
+    def test_newer_than_tolerance(self):
+        obj        = Pathy['file']("a/b/c.txt")
+        obj.exists = lambda: True
+        a_time     = datetime.datetime.fromtimestamp(pl.Path.cwd().stat().st_mtime)
+        older_time = a_time - datetime.timedelta(days=3)
+        tolerance = datetime.timedelta(days=1)
+        assert(older_time < a_time)
+        obj.time_modified = lambda: a_time
+        assert(obj.time_modified() is a_time)
+        assert(obj._newer_than(older_time, tolerance=tolerance))

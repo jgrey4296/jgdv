@@ -55,6 +55,9 @@ from jgdv.mixins.annotate import SubRegistry_m
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+type DateTime  = datetime.datetime
+type TimeDelta = datetime.timedelta
+
 if sys.version_info.minor < 12:
     raise RuntimeError("Path Path needs 3.12+")
 
@@ -89,8 +92,8 @@ class Pathy(SubRegistry_m, pl.Path, AnnotateTo="pathy_type", metaclass=PathyMeta
         param = cls.mark_e(param)
         return super().__class_getitem__(param)
 
-    def __init__(self, path:str|pl.Path, *paths, key=None, **kwargs):
-        super().__init__(path, *paths)
+    def __init__(self, *paths:str|pl.Path, key=None, **kwargs):
+        super().__init__(*paths)
         self._meta        = {}
         self._key         = key
 
@@ -127,6 +130,16 @@ class Pathy(SubRegistry_m, pl.Path, AnnotateTo="pathy_type", metaclass=PathyMeta
                 return Pathy(other, self)
             case Pathy():
                 return other / self
+
+    def __lt__(self, other:Pathy|DateTime) -> bool:
+        """ do self<other for paths,
+        and compare against modification time if given a datetime
+        """
+        match other:
+            case datetime.datetime():
+                return self._newer_than(other)
+            case Pathy() | pl.Path():
+                return super().__lt__(other)
 
     def with_segments(self, *segments) -> Self:
         if self._get_annotation() is self.mark_e.File:
@@ -168,6 +181,28 @@ class Pathy(SubRegistry_m, pl.Path, AnnotateTo="pathy_type", metaclass=PathyMeta
     def with_suffix(self, suffix):
         return Pathy['file'](super().with_suffix(suffix))
 
+    def time_created(self) -> DateTime:
+        stat = self.stat()
+        try:
+            return datetime.datetime.fromtimestamp(stat.st_birthtime)
+        except AttributeError:
+            return datetime.datetime.fromtimestamp(stat.st_ctime)
+
+    def time_modified(self) -> DateTime:
+        return datetime.datetime.fromtimestamp(self.stat().st_mtime)
+
+    def _newer_than(self, time:DateTime, *, tolerance:TimeDelta=None) -> bool:
+        if not self.exists():
+            return False
+
+        match tolerance:
+            case datetime.timedelta():
+                mod_time = self.time_modified()
+                diff = mod_time - time
+                return tolerance < diff
+            case None:
+                return time < self.time_modified()
+
 class PathyFile(Pathy['file']):
     """ a location of a file """
 
@@ -176,6 +211,9 @@ class PathyFile(Pathy['file']):
 
     def walk(self, *args, **kwargs):
         raise NotImplementedError()
+
+    def mkdir(self, *args):
+        return self.parent.mkdir(*args)
 
 class PathyDir(Pathy['dir']):
     """ A location of a directory """
@@ -190,7 +228,6 @@ class WildPathy(Pathy['*']):
 
     def normalize(self, *, root=None, symlinks:bool=False) -> pl.Path:
         pass
-
 
     def glob(self, pattern, *, case_sensitive=None, recurse_symlinks=True):
         pass
