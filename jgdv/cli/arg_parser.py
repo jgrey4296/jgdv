@@ -29,6 +29,7 @@ import jgdv
 from jgdv.structs.chainguard import ChainGuard
 from jgdv._abstract.protocols import ParamStruct_p
 from .param_spec import ParamSpec, ArgParseError, HelpParam, LiteralParam, SeparatorParam
+from .parse_machine_base import ParseMachineBase, ArgParser_p
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -59,22 +60,11 @@ class ParamSource_p(Protocol):
     def param_specs(self) -> list[ParamStruct_p]:
         raise NotImplementedError()
 
-@runtime_checkable
-class ArgParser_p(Protocol):
-    """
-    A Single standard process point for turning the list of passed in args,
-    into a dict, into a tomlguard,
-    along the way it determines the cmds and tasks that have been chosne
-    """
 
-    def _parse_fail_cond(self) -> bool:
-        raise NotImplementedError()
 
-    def _has_no_more_args_cond(self) -> bool:
-        raise NotImplementedError()
+class ParseMachine(ParseMachineBase):
+    """ Implemented Parse State Machine
 
-class ParseMachine(StateMachine):
-    """ FSM for running a CLI arg parse.
 
     __call__ with:
     args       : list[str]       -- the cli args to parse (ie: from sys.argv)
@@ -90,48 +80,11 @@ class ParseMachine(StateMachine):
     doot run basic::task -quick --value=2 --help
     """
 
-    # States
-    Start         = State(initial=True)
-    Prepare       = State()
-    Head          = State()
-    CheckForHelp  = State()
-    Cmd           = State()
-    SubCmd        = State()
-    Extra         = State()
-    Cleanup       = State()
-    ReadyToReport = State()
-    Failed        = State()
-    End           = State(final=True)
-
-    # Event Transitions
-    setup = (Prepare.to(Failed,            cond="_parse_fail_cond")
-             | Prepare.to(ReadyToReport,   cond="_has_no_more_args_cond")
-             | Start.to(Prepare,           after="setup")
-             | Prepare.to(CheckForHelp,    after="setup")
-             | CheckForHelp.to(Head)
-             )
-
-    parse = (Failed.from_(Start, Prepare, CheckForHelp, Head, Cmd, SubCmd, cond="_parse_fail_cond")
-              | ReadyToReport.from_(Head, Cmd, SubCmd, Extra, cond="_has_no_more_args_cond")
-              | Head.to(Cmd,      after="parse")
-              | Cmd.to(SubCmd,    after="parse")
-              | SubCmd.to(Extra,  after="parse")
-              )
-
-    finish  = (End.from_(Cleanup)
-               | ReadyToReport.to(Cleanup, after="finish")
-               | Failed.to(Cleanup, after="finish")
-               )
-
-    def __init__(self, *, parser:ArgParser_p=None):
-        super().__init__(parser or CLIParser())
+    def __init__(self, **kwargs):
+        kwargs.setdefault("parser", CLIParser())
+        super().__init__(**kwargs)
         self.count = 0
         self.max_attempts = 20
-
-    def on_exit_state(self):
-        self.count += 1
-        if self.max_attempts < self.count:
-            raise StopIteration
 
     def __call__(self, args:list[str], *, head_specs:list[ParamSpec], cmds:list[ParamSource_p], subcmds:list[tuple[str, ParamSource_p]]) -> None|dict:
         assert(self.current_state == self.Start)
