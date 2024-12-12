@@ -12,7 +12,7 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 import warnings
 
 import pytest
-from jgdv.structs.location.location_path import Location
+from jgdv.structs.strang.location_path import Location
 
 logging = logmod.root
 

@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
-
 """
 
 # Imports:
@@ -47,11 +45,12 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
+import sys
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-import sys
 if sys.version_info.minor < 12:
     raise RuntimeError("Location Path needs 3.12+")
 
@@ -82,12 +81,10 @@ class VarPath(pl.Path, metaclass=LocationMeta):
     def keys(self) -> set[str]:
         pass
 
-
 class Location(VarPath):
 
     def __init__subclass__(cls):
         super().__init__subclass__()
-
 
     def __init__(self, path:str|pl.Path, key=None, **kwargs):
         super().__init__(path)
@@ -104,8 +101,6 @@ class Location(VarPath):
     def __call__(self) -> pl.Path:
         """ fully expand and resolve the path """
         pass
-
-
 
 class FileLocation(Location):
     """ a location of a file """
