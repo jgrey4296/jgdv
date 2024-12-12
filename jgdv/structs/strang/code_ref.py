@@ -50,7 +50,7 @@ class CodeReference(Strang):
       A reference to a class or function. can be created from a string (so can be used from toml),
       or from the actual object (from in python)
 
-    has the form module.a.b.c:ClassName
+    has the form [cls::]module.a.b.c:ClassName
 
     Can be built with an imported value directly, and a type to check against
     __call__ imports the reference

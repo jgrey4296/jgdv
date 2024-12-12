@@ -163,7 +163,10 @@ class _Strang_subgen_m:
         return cls._subseparator.join(lst)
 
     def canon(self) -> Self:
-        """ canonical name. no UUIDs"""
+        """ canonical name. no UUIDs
+        eg: group::a.b.c.$gen$.<uuid>.c.d.e
+        ->  group::a.b.c..c.d.e
+        """
         group = self[0:]
         canon_body = self._subjoin(self.body(reject=lambda x: isinstance(x, UUID) or x == self.bmark_e.gen))
 
@@ -212,11 +215,10 @@ class _Strang_subgen_m:
         eg: (abstract) group::simple.task. -> group::simple.task..$group$
 
         """
-        match self[1:-1]:
-            case self.bmark_e.head:
-                return self
-            case _:
-                return self.push(self.bmark_e.head)
+        if self.is_head:
+            return self
+
+        return self.push(self.bmark_e.head)
 
     def root(self) -> Self:
         return self.pop(top=True)
@@ -227,6 +229,10 @@ class _Strang_test_m:
     def is_uniq(self) -> bool:
         """ utility method to test if this name refers to a name with a UUID """
         return INST_K in self.metadata
+
+    @property
+    def is_head(self) -> bool:
+        return self.bmark_e.head in self
 
     def __contains__(self, other) -> bool:
         """ test for conceptual containment of names

@@ -155,6 +155,8 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
             match mark_idx:
                 case (x, -1):
                     mark_idx = (x, x)
+                case (x, 0):
+                    mark_idx = (x, x)
                 case (_, _):
                     pass
 
