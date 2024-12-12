@@ -58,8 +58,6 @@ logging = logmod.getLogger(__name__)
 if sys.version_info.minor < 12:
     raise RuntimeError("Path Path needs 3.12+")
 
-FILE_PREFIX : Final[str] = "file::"
-
 class PathyTypes_e(enum.StrEnum):
     """ An Enum of available Path+ types"""
     Dir      = "dir"
@@ -100,11 +98,35 @@ class Pathy(SubRegistry_m, pl.Path, AnnotateTo="pathy_type", metaclass=PathyMeta
 
     def __contains__(self, other) -> bool:
         """ a/b/c.py ∈ a/*/?.py  """
-        return False
+        match other:
+            case str():
+                return other in str(self)
+            case pl.Path() if not other.is_absolute():
+                return str(other) in str(self)
+            case Pathy():
+                pass
+            case _:
+                raise NotImplementedError()
 
-    def __call__(self) -> pl.Path:
+    def __call__(self, **kwargs) -> pl.Path:
         """ fully expand and resolve the path """
-        pass
+        return self.normalize(**kwargs)
+
+    def __eq__(self, other) -> bool:
+        match other:
+            case pl.Path() | Pathy():
+                return self == other
+            case str():
+                return str(self) == other
+            case _:
+                raise NotImplementedError()
+
+    def __rtruediv__(self, other):
+        match other:
+            case str():
+                return Pathy(other, self)
+            case Pathy():
+                return other / self
 
     def with_segments(self, *segments) -> Self:
         if self._get_annotation() is self.mark_e.File:
@@ -116,6 +138,32 @@ class Pathy(SubRegistry_m, pl.Path, AnnotateTo="pathy_type", metaclass=PathyMeta
                 return Pathy['file'](*segments)
             case _:
                 return Pathy['dir'](*segments)
+
+    def normalize(self, *, root=None, symlinks:bool=False) -> pl.Path:
+        """
+          a basic path normalization
+          expands user, and resolves the location to be absolute
+        """
+        result = pl.Path(self)
+        if symlinks and path.is_symlink():
+            raise NotImplementedError("symlink normalization", path)
+
+        match result.parts:
+            case ["~", *xs]:
+                result = result.expanduser().resolve()
+            case ["/", *xs]:
+                result = result
+            case _ if root:
+                result = (root / path).expanduser().resolve()
+            case _:
+                result = result.expanduser().resolve()
+
+        return result
+
+    def format(self, *args, **kwargs) -> Self:
+        as_str = str(self)
+        formatted = as_str.format(*args, **kwargs)
+        return type(self)(formatted)
 
 class PathyFile(Pathy['file']):
     """ a location of a file """

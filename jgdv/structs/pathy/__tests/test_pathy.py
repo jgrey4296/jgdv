@@ -46,25 +46,60 @@ class TestPathy:
         assert(hasattr(val, "_meta"))
         assert(val._meta['val'] == 'blah')
 
-
     def test_bad_annotation(self):
         with pytest.raises(ValueError):
             Pathy['blah']
-
 
     def test_join_file(self):
         obj = Pathy['dir']("a/b/c")
         obj2 = obj / Pathy['file']("test.txt")
         assert(isinstance(obj2, Pathy['file']))
 
-
     def test_join_file_str(self):
         obj = Pathy['dir']("a/b/c")
         obj2 = obj / "test.txt"
         assert(isinstance(obj2, Pathy['file']))
 
-
     def test_join_fail_on_file(self):
         obj = Pathy['file']("a/b/c/test.txt")
         with pytest.raises(ValueError):
             obj / "test.txt"
+
+    def test_rjoin_for_str(self):
+        obj = "a/b/c"
+        obj2 = obj / Pathy("test")
+        assert(isinstance(obj2, Pathy))
+        assert(obj2 == "a/b/c/test")
+
+    def test_call_expansion(self):
+        obj    = Pathy("a/b/c")
+        normed = obj()
+        assert(isinstance(normed, pl.Path))
+        assert(normed.is_absolute())
+
+    def test_lt(self):
+        obj  = Pathy("a/b/c")
+        obj2 = Pathy("a/b/c/d/e")
+        assert(obj < obj2)
+
+    def test_contains_str(self):
+        obj  = Pathy("a/b/c")
+        assert("b" in obj)
+
+    def test_contains_path(self):
+        obj  = Pathy("a/b/c")
+        sub  = pl.Path("b/c")
+        assert(sub in obj)
+
+    def test_format(self):
+        obj  = Pathy("a/{b}/c")
+        res  = obj.format(b="blah")
+        assert(isinstance(res, Pathy))
+        assert(res == "a/blah/c")
+
+
+    def test_format_keep_filetype(self):
+        obj  = Pathy['file']("a/{b}/c.txt")
+        res  = obj.format(b="blah")
+        assert(isinstance(res, Pathy['file']))
+        assert(res == "a/blah/c.txt")
