@@ -40,7 +40,7 @@ from pydantic import (BaseModel, Field, InstanceOf,
 # ##-- 1st party imports
 from jgdv.structs.chainguard import ChainGuard
 from jgdv._abstract.protocols import ParamStruct_p, ProtocolModelMeta, Buildable_p
-from jgdv.mixins.annotate import AnnotateSubclass_m
+from jgdv.mixins.annotate import SubAnnotate_m
 
 # ##-- end 1st party imports
 
@@ -168,7 +168,7 @@ class _ConsumerArg_m:
     def _match_on_end(self, val) -> bool:
         return val == END_SEP
 
-class ParamSpecBase(AnnotateSubclass_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_m, ParamStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
+class ParamSpecBase(SubAnnotate_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_m, ParamStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
     """ Declarative CLI Parameter Spec.
 
     Declared the param name (turns into {prefix}{name})

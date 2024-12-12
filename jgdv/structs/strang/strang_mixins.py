@@ -48,7 +48,7 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-from jgdv.mixins.annotate import AnnotateSubclass_m
+from jgdv.mixins.annotate import SubAnnotate_m
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -299,5 +299,5 @@ class Strang_m(_Strang_validation_m,
                _Strang_subgen_m,
                _Strang_test_m,
                _Strang_format_m,
-               AnnotateSubclass_m):
+               SubAnnotate_m):
     pass

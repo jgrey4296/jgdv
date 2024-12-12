@@ -31,7 +31,7 @@ from uuid import UUID, uuid1
 # ##-- 1st party imports
 from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
 from jgdv._abstract.protocols import Key_p
-from jgdv.mixins.annotate import AnnotateSubclass_m
+from jgdv.mixins.annotate import SubAnnotate_m
 # ##-- end 1st party imports
 
 ##-- logging
@@ -83,7 +83,7 @@ class DKeyMeta(type(str)):
         candidates = {Key_p}
         return any(x in candidates for x in sub.mro())
 
-class DKey(AnnotateSubclass_m, metaclass=DKeyMeta):
+class DKey(SubAnnotate_m, metaclass=DKeyMeta):
     """ A facade for DKeys and variants.
       Implements __new__ to create the correct key type, from a string, dynamically.
 

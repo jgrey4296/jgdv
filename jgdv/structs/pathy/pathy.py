@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
-
+Subclasses of pathlib.Path for working with typesafe:
+- Directories,
+- Files, and
+- Abstract paths that will be expanded
 """
 
 # Imports:
@@ -46,51 +49,52 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 import sys
+from jgdv.mixins.annotate import SubRegistry_m
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
 if sys.version_info.minor < 12:
-    raise RuntimeError("Location Path needs 3.12+")
+    raise RuntimeError("Path Path needs 3.12+")
 
-FILE_PREFIX : Final[str] = "file:>"
+FILE_PREFIX : Final[str] = "file::"
 
-class LocationMeta_e(enum.Enum):
-    Dir  = enum.auto()
-    File = enum.auto()
-    Path = enum.auto()
-    Loc  = enum.auto()
+class PathyTypes_e(enum.StrEnum):
+    """ An Enum of available Path+ types"""
+    Dir      = "dir"
+    File     = "file"
+    Path     = "path"
+    Loc      = "loc"
+    Wildcard = "*"
 
-class LocationMeta(type(pl.Path)):
+    default  = Loc
+
+class PathyMeta(type(pl.Path)):
     """ Meta class for building the right type of location """
 
-    _registry : dict[LocationMeta_e, pl.Path] = {LocationMeta_e.Path: pl.Path}
+    _registry : dict[PathyTypes_e, pl.Path] = {PathyTypes_e.Path: pl.Path}
 
-    def __call__(cls, *args, _form_:LocationMeta_e=LocationMeta_e.Loc, **kwargs):
-        cls = LocationMeta._registry.get(_form_, cls)
+    def __call__(cls, *args, **kwargs):
+        logging.debug("PathyMeta Call: %s : %s : %s", cls, args, kwargs)
+        cls = cls._get_subclass_form()
         obj = cls.__new__(cls, *args, **kwargs)
         obj.__init__(*args, **kwargs)
         return obj
 
-class VarPath(pl.Path, metaclass=LocationMeta):
-    """ A Path that can handle ?wildcards, *globs, and {keys} in it.
-    eg: a/path/*/?.txt
-    """
+class Pathy(SubRegistry_m, pl.Path, AnnotateTo="pathy_type", metaclass=PathyMeta):
 
-    def keys(self) -> set[str]:
-        pass
+    mark_e : ClassVar[enum.Enum] = PathyTypes_e
 
-class Location(VarPath):
-
-    def __init__subclass__(cls):
-        super().__init__subclass__()
+    @classmethod
+    def __class_getitem__(cls, param) -> Self:
+        param = cls.mark_e(param)
+        return super().__class_getitem__(param)
 
     def __init__(self, path:str|pl.Path, key=None, **kwargs):
         super().__init__(path)
         self._meta        = {}
         self._key         = key
-        self._toml_prefix = FILE_PREFIX
 
         self._meta.update(kwargs)
 
@@ -102,10 +106,18 @@ class Location(VarPath):
         """ fully expand and resolve the path """
         pass
 
-class FileLocation(Location):
+class PathyFile(Pathy['file']):
     """ a location of a file """
     pass
 
-class DirLocation(Location):
+class PathyDir(Pathy['dir']):
     """ A location of a directory """
     pass
+
+class WildPathy(Pathy['*']):
+    """ A Path that can handle ?wildcards, *globs, and {keys} in it.
+    eg: a/path/*/?.txt
+    """
+
+    def keys(self) -> set[str]:
+        raise NotImplementedError()
