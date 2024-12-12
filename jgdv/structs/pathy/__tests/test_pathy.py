@@ -50,3 +50,21 @@ class TestPathy:
     def test_bad_annotation(self):
         with pytest.raises(ValueError):
             Pathy['blah']
+
+
+    def test_join_file(self):
+        obj = Pathy['dir']("a/b/c")
+        obj2 = obj / Pathy['file']("test.txt")
+        assert(isinstance(obj2, Pathy['file']))
+
+
+    def test_join_file_str(self):
+        obj = Pathy['dir']("a/b/c")
+        obj2 = obj / "test.txt"
+        assert(isinstance(obj2, Pathy['file']))
+
+
+    def test_join_fail_on_file(self):
+        obj = Pathy['file']("a/b/c/test.txt")
+        with pytest.raises(ValueError):
+            obj / "test.txt"

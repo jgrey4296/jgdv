@@ -91,8 +91,8 @@ class Pathy(SubRegistry_m, pl.Path, AnnotateTo="pathy_type", metaclass=PathyMeta
         param = cls.mark_e(param)
         return super().__class_getitem__(param)
 
-    def __init__(self, path:str|pl.Path, key=None, **kwargs):
-        super().__init__(path)
+    def __init__(self, path:str|pl.Path, *paths, key=None, **kwargs):
+        super().__init__(path, *paths)
         self._meta        = {}
         self._key         = key
 
@@ -105,6 +105,17 @@ class Pathy(SubRegistry_m, pl.Path, AnnotateTo="pathy_type", metaclass=PathyMeta
     def __call__(self) -> pl.Path:
         """ fully expand and resolve the path """
         pass
+
+    def with_segments(self, *segments) -> Self:
+        if self._get_annotation() is self.mark_e.File:
+            raise ValueError("Can't subpath a file")
+        match segments:
+            case [*_, PathyFile()]:
+                return Pathy['file'](*segments)
+            case [*_, pl.Path()|str() as x] if pl.Path(x).suffix != "":
+                return Pathy['file'](*segments)
+            case _:
+                return Pathy['dir'](*segments)
 
 class PathyFile(Pathy['file']):
     """ a location of a file """
