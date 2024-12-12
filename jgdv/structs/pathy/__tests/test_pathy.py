@@ -170,3 +170,25 @@ class TestPathy:
         obj.time_modified = lambda: a_time
         assert(obj.time_modified() is a_time)
         assert(obj._newer_than(older_time, tolerance=tolerance))
+
+
+    @pytest.mark.skip
+    def test_walk_dirs(self):
+        def filter_fn(x):
+            return x.startswith(".")
+
+        obj = Pathy['*'].cwd()
+        dirs = list(obj.walk_dirs(d_skip=filter_fn))
+
+
+    @pytest.mark.skip
+    def test_walk_files(self):
+        def filter_fn(x):
+            return x.startswith(".") or x in ["docs", "__data", "_pycache_"]
+
+        def file_filter_fn(x):
+            return x.suffix in [".py", ".pyc"]
+
+
+        obj = Pathy['*'].cwd()
+        files = list(obj.walk_files(d_skip=filter_fn, f_skip=file_filter_fn))

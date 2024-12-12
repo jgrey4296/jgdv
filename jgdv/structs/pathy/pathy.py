@@ -242,39 +242,37 @@ class WildPathy(Pathy['*']):
         pattern = '**' / pattern
         return self.glob(pattern, case_sensitive=case_sensitive, recurse_symlinks=recurse_symlinks)
 
-    def walk(self, top_down=True, on_error=None, follow_symlinks=False):
-        """Walk the directory tree from this directory, similar to os.walk()."""
-        paths = [self]
-        while paths:
-            path = paths.pop()
-            if isinstance(path, tuple):
-                yield path
-                continue
-            dirnames = []
-            filenames = []
-            if not top_down:
-                paths.append((path, dirnames, filenames))
-            try:
-                for child in path.iterdir():
-                    try:
-                        if child.is_dir(follow_symlinks=follow_symlinks):
-                            if not top_down:
-                                paths.append(child)
-                            dirnames.append(child.name)
-                        else:
-                            filenames.append(child.name)
-                    except OSError:
-                        filenames.append(child.name)
-            except OSError as error:
-                if on_error is not None:
-                    on_error(error)
-                if not top_down:
-                    while not isinstance(paths.pop(), tuple):
-                        pass
-                continue
-            if top_down:
-                yield path, dirnames, filenames
-                paths += [path.joinpath(d) for d in reversed(dirnames)]
+    def walk_files(self, *, d_skip=None, f_skip=None, depth=None) -> iter[Pathy['file']]:
+        """
+        Walk a Path, returning applicable files
+        filters directories using fn. lambda x -> bool. True skips
+        filters file using f_skip(lambda x: bool), True ignores
+        """
+        d_skip = d_skip or (lambda x: [])
+        f_skip = f_skip or (lambda x: False)
+        for root, dirs, files in self.walk():
+            for i in sorted((i for i,x in enumerate(dirs) if d_skip(x)), reverse=True):
+                logging.debug("Removing: %s : %s", i, dirs[i])
+                del dirs[i]
+
+            for fpath in [root / f for f in files]:
+                if f_skip(fpath):
+                    continue
+                yield Pathy['file'](fpath)
+
+    def walk_dirs(self, *, d_skip=None, depth=None) -> iter[Pathy['dir']]:
+        """
+        Walk the directory tree, to a certain depth.
+        d_skip: lambda x: -> bool. True skip
+
+        returns an iterator of the available paths
+        """
+        d_skip = s_skip or (lambda x: False)
+        for root, dirs, files in self.walk():
+            for i in sorted((i for i,x in enumerate(dirs) if d_skip(x)), reverse=True):
+                logging.debug("Removing: %s : %s", i, dirs[i])
+                del dirs[i]
+            yield from [x for x in dirs]
 
     def with_segments(self, *segments) -> Self:
         return Pathy['*'](*segments)
