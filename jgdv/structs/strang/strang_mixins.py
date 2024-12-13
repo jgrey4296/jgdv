@@ -207,15 +207,17 @@ class _Strang_subgen_m:
 
         eg: 'group.a::q.w.e.<uuid>.t.<uuid>.y'.de_uniq() -> 'group.a::q.w.e'
         """
+        if GEN_K not in self.metadata:
+            return self
         return self[2:self.metadata.get(INST_K, None)].pop()
 
     def with_head(self) -> Self:
         """ generate a canonical group/completion task name for this name
         eg: (concrete) group::simple.task..$gen$.<UUID> ->  group::simple.task..$gen$.<UUID>..$group$
-        eg: (abstract) group::simple.task. -> group::simple.task..$group$
+        eg: (abstract) group::simple.task. -> group::simple.task..$head$
 
         """
-        if self.is_head:
+        if self.is_head():
             return self
 
         return self.push(self.bmark_e.head)
@@ -225,12 +227,10 @@ class _Strang_subgen_m:
 
 class _Strang_test_m:
 
-    @property
     def is_uniq(self) -> bool:
         """ utility method to test if this name refers to a name with a UUID """
         return INST_K in self.metadata
 
-    @property
     def is_head(self) -> bool:
         return self.bmark_e.head in self
 

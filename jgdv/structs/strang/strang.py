@@ -127,13 +127,13 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
                 case x if (match:=UUID_RE.match(x)):
                     self.metadata[INST_K] = min(i, self.metadata.get(INST_K, max_body))
                     hex, *_ = match.groups()
+                    self.metadata[GEN_K] = True
                     if hex is not None:
                         logging.debug("(%s) Found UUID", i)
                         self._body_meta[i] = UUID(match[1])
                     else:
                         logging.debug("(%s) Generating UUID", i)
                         self._body_meta[i] = uuid1()
-                        self.metadata[GEN_K] = True
                 case x if (match:=MARK_RE.match(x)) and (x_l:=match[1].lower()) in self.bmark_e.__members__:
                     # Get explicit mark,
                     logging.debug("(%s) Found Named Marker: %s", i, x_l)

@@ -86,7 +86,7 @@ class CodeReference(Strang):
         last_slice = self._body.pop()
         last       = str.__getitem__(self, last_slice)
         if self._tail_separator not in last:
-            raise ValueError("CodeRef didn't have a final value")
+            raise ValueError("CodeRef didn't have a final value", str.__str__(self))
 
         index = last.index(self._tail_separator)
         self._body.append(slice(last_slice.start, last_slice.start + index))

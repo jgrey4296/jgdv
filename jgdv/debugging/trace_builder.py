@@ -50,7 +50,6 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
 class TraceBuilder:
     """ A Helper to simplify access to tracebacks
 

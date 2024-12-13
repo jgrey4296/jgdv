@@ -244,6 +244,7 @@ class CLIParser(ArgParser_p):
     @ParseMachine.Extra.enter
     def _parse_extra(self):
         logging.debug("Extra Parsing: %s", self._remaining_args)
+        # self._remaining_args = []
 
     def _parse_params(self, res:ParseResult, params:list[ParamSpec]):
         for param in params:
@@ -270,7 +271,7 @@ class CLIParser(ArgParser_p):
         """ Take the parsed results and return a nested dict """
         result = {
             "head"  : self.head_result.to_dict(),
-            "cmd"   : self.cmd_result.to_dict(),
+            "cmd"   : self.cmd_result.to_dict() if self.cmd_result else {},
             "sub"   : {y['name']:y['args'] for x in self.subcmd_results if (y:=x.to_dict()) is not None},
             "extra" : self.extra_results.to_dict(),
         }
