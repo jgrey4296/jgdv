@@ -28,6 +28,8 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
+from jgdv import Maybe
+from jgdv.enums import LoopControl_e
 from jgdv.structs.dkey import DKey
 # ##-- end 1st party imports
 
@@ -39,30 +41,6 @@ MARKER       : Final[str]  = ".marker"
 walk_ignores : Final[list] = ['.git', '.DS_Store', "__pycache__"] # TODO use a .ignore file
 walk_halts   : Final[str]  = [".doot_ignore"]
 
-class LoopControl_e(enum.StrEnum):
-    """
-      Describes how to continue an accumulating loop.
-      (like walking a a tree)
-
-    yesAnd     : is a result, and try others.
-    yes        : is a result, don't try others, Finish.
-    noBut      : not a result, try others.
-    no         : not a result, don't try others, Finish.
-    """
-    yesAnd  = "yesAnd"
-    yes     = "yes"
-    noBut   = "noBut"
-    no      = "no"
-
-    @classmethod
-    @property
-    def loop_yes_set(cls):
-        return  {cls.yesAnd, cls.yes, True}
-
-    @classmethod
-    @property
-    def loop_no_set(cls):
-        return  {cls.no, cls.noBut, False, None}
 
 class PathManip_m:
     """
@@ -90,7 +68,7 @@ class PathManip_m:
             'pstem'   : fpath.parent.stem,
             }
 
-    def _build_roots(self, spec, state, roots:None|list[str|DKey]) -> list[pl.Path]:
+    def _build_roots(self, spec, state, roots:Maybe[list[str|DKey]]) -> list[pl.Path]:
         """
         convert roots from keys to paths
         """
@@ -102,7 +80,7 @@ class PathManip_m:
 
         return results
 
-    def _get_relative(self, fpath, roots:None|list[pl.Path]=None) -> pl.Path:
+    def _get_relative(self, fpath, roots:Maybe[list[pl.Path]]=None) -> pl.Path:
         """ Get relative path of fpath.
           if no roots are provided, default to using cwd
         """
@@ -122,15 +100,9 @@ class PathManip_m:
 
     def _shadow_path(self, rpath:pl.Path, shadow_root:pl.Path) -> pl.Path:
         """ take a relative path, apply it onto a root to create a shadowed location """
-        assert(isinstance(rpath, pl.Path))
-        assert(not rpath.is_absolute())
-        result      = shadow_root / rpath
-        if result == doot.locs[rpath]:
-            raise doot.errors.DootLocationError("Shadowed Path is same as original", fpath)
+        raise NotImplementedError()
 
-        return result.parent
-
-    def _find_parent_marker(self, fpath, marker=None) -> None|pl.Path:
+    def _find_parent_marker(self, fpath, marker=None) -> Maybe[pl.Path]:
         """ Go up the parent list to find a marker file, return the dir its in """
         marker = marker or MARKER
         for p in fpath.parents:
@@ -149,9 +121,9 @@ class PathManip_m:
             raise NotImplementedError("symlink normalization", path)
 
         match result.parts:
-            case ["~", *xs]:
+            case ["~", *_]:
                 result = result.expanduser().resolve()
-            case ["/", *xs]:
+            case ["/", *_]:
                 result = result
             case _ if root:
                 result = (root / path).expanduser().resolve()
@@ -221,7 +193,7 @@ class Walker_m:
         if target.is_file():
             fn_fail = fn(target) in [None, False, self.control_e.no, self.control_e.noBut]
             ignore  = target.name in walk_ignores
-            bad_ext = (bool(exts) and (x.is_file() and x.suffix in exts))
+            bad_ext = (bool(exts) and target.suffix in exts)
             if not (fn_fail or ignore or bad_ext):
                 yield target
             return None

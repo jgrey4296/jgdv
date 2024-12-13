@@ -17,7 +17,8 @@ import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
-import time
+import sys
+import time as time_
 import types
 import weakref
 from typing import (
@@ -38,6 +39,7 @@ from typing import (
     Tuple,
     TypeAlias,
     TypeGuard,
+    Self,
     TypeVar,
     cast,
     final,
@@ -48,15 +50,15 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-import sys
+# ##-- 1st party imports
+from jgdv import Maybe, DateTime, TimeDelta
 from jgdv.mixins.annotate import SubRegistry_m
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-type DateTime  = datetime.datetime
-type TimeDelta = datetime.timedelta
 
 if sys.version_info.minor < 12:
     raise RuntimeError("Path Path needs 3.12+")
@@ -158,16 +160,16 @@ class Pathy(SubRegistry_m, pl.Path, AnnotateTo="pathy_type", metaclass=PathyMeta
           expands user, and resolves the location to be absolute
         """
         result = pl.Path(self)
-        if symlinks and path.is_symlink():
-            raise NotImplementedError("symlink normalization", path)
+        if symlinks and result.is_symlink():
+            raise NotImplementedError("symlink normalization", result)
 
         match result.parts:
-            case ["~", *xs]:
+            case ["~", *_]:
                 result = result.expanduser().resolve()
-            case ["/", *xs]:
+            case ["/", *_]:
                 result = result
             case _ if root:
-                result = (root / path).expanduser().resolve()
+                result = (root / result).expanduser().resolve()
             case _:
                 result = result.expanduser().resolve()
 
@@ -237,12 +239,12 @@ class WildPathy(Pathy['*']):
         directories) matching the given relative pattern, anywhere in
         this subtree.
         """
-        if not isinstance(pattern, PurePathBase):
+        if not isinstance(pattern, pl.Path):
             pattern = self.with_segments(pattern)
         pattern = '**' / pattern
         return self.glob(pattern, case_sensitive=case_sensitive, recurse_symlinks=recurse_symlinks)
 
-    def walk_files(self, *, d_skip=None, f_skip=None, depth=None) -> iter[Pathy['file']]:
+    def walk_files(self, *, d_skip=None, f_skip=None, depth=None) -> iter[PathyFile]:
         """
         Walk a Path, returning applicable files
         filters directories using fn. lambda x -> bool. True skips
@@ -267,7 +269,7 @@ class WildPathy(Pathy['*']):
 
         returns an iterator of the available paths
         """
-        d_skip = s_skip or (lambda x: False)
+        d_skip = d_skip or (lambda x: False)
         for root, dirs, files in self.walk():
             for i in sorted((i for i,x in enumerate(dirs) if d_skip(x)), reverse=True):
                 logging.debug("Removing: %s : %s", i, dirs[i])

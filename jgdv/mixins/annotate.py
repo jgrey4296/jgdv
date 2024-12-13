@@ -49,6 +49,8 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
+from jgdv import Maybe
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
@@ -83,7 +85,7 @@ class SubAnnotate_m:
 
 
     @classmethod
-    def _get_annotation(cls) -> None|str:
+    def _get_annotation(cls) -> Maybe[str]:
         return getattr(cls, cls._AnnotateTo)
 
     @classmethod

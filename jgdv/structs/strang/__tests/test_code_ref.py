@@ -16,10 +16,10 @@ logging = logmod.root
 
 from jgdv.structs.strang import Strang
 from jgdv.structs.strang.code_ref import CodeReference
-from jgdv.util.slice import build_slice
+from jgdv.decorators.check_protocol import check_protocol
 
-EX_STR    : Final[str] = "fn::jgdv.util.slice:build_slice"
-NO_PREFIX : Final[str] = "jgdv.util.slice:build_slice"
+EX_STR    : Final[str] = "fn::jgdv.decorators.check_protocol:check_protocol"
+NO_PREFIX : Final[str] = "jgdv.decorators.check_protocol:check_protocol"
 
 class TestCodeReference:
 
@@ -51,11 +51,11 @@ class TestCodeReference:
 
     def test_module(self):
         ref = CodeReference(EX_STR)
-        assert(ref.module == "jgdv.util.slice")
+        assert(ref.module == "jgdv.decorators.check_protocol")
 
     def test_value(self):
         ref = CodeReference(EX_STR)
-        assert(ref.value == "build_slice")
+        assert(ref.value == "check_protocol")
 
     def test_import(self):
         ref      = CodeReference(EX_STR)
@@ -64,7 +64,7 @@ class TestCodeReference:
                 assert(False)
             case x:
                 assert(callable(x))
-                assert(x == build_slice)
+                assert(x == check_protocol)
 
     def test_import_module_fail(self):
         ref = CodeReference("cls::jgdv.taskSSSSS.base_task:DootTask")

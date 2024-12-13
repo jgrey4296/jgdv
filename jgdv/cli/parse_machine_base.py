@@ -53,7 +53,7 @@ from statemachine.states import States
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-import jgdv
+from jgdv import Maybe
 from jgdv._abstract.protocols import ParamStruct_p
 from jgdv.structs.chainguard import ChainGuard
 
@@ -134,5 +134,5 @@ class ParseMachineBase(StateMachine):
         if self.max_attempts < self.count:
             raise StopIteration
 
-    def __call__(self, args:list[str], *, head_specs:list[ParamSpec], cmds:list[ParamSource_p], subcmds:list[tuple[str, ParamSource_p]]) -> None|dict:
+    def __call__(self, args:list[str], *, head_specs:list[ParamSpec], cmds:list[ParamSource_p], subcmds:list[tuple[str, ParamSource_p]]) -> Maybe[dict]:
         raise NotImplementedError()

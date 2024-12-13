@@ -33,15 +33,17 @@ from pydantic import BaseModel
 
 # ##-- end 3rd party imports
 
-from jgdv.structs.chainguard import ChainGuard
-
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-T = TypeVar("T")
+type ChainGuard = Any
+type Maybe[T]   = None|T
+type Ctor[T]    = type(T) | Callable[[*Any], T]
+ProtoMeta       = type(Protocol)
+PydanticMeta    = type(BaseModel)
 
-class ProtocolModelMeta(type(Protocol), type(BaseModel)):
+class ProtocolModelMeta(ProtoMeta, PydanticMeta):
     """ Use as the metaclass for pydantic models which are explicit Protocol implementers
 
       eg:
@@ -141,7 +143,7 @@ class CLIParamProvider_p(Protocol):
 class ActionGrouper_p(Protocol):
     """ For things have multiple named groups of actions """
 
-    def get_group(self, name:str) -> None|list:
+    def get_group(self, name:str) -> Maybe[list]:
         pass
 
 @runtime_checkable
@@ -167,13 +169,13 @@ class Buildable_p(Protocol):
         pass
 
 @runtime_checkable
-class Factory_p(Protocol):
+class Factory_p[T](Protocol):
     """
       Factory protocol: {type}.build
     """
 
     @classmethod
-    def build(cls:type[T], *args, **kwargs) -> T:
+    def build(cls:Ctor[T], *args, **kwargs) -> T:
         pass
 
 @runtime_checkable
@@ -207,13 +209,13 @@ class Key_p(Protocol):
     def redirect(self, spec=None) -> Key_p:
         pass
 
-    def to_path(self, spec=None, state=None, *, chain:list[Key_p]=None, locs:"Locations"=None, on_fail:None|str|pl.Path|Key_p=Any, symlinks:bool=False) -> pl.Path:
+    def to_path(self, spec=None, state=None, *, chain:list[Key_p]=None, locs:Mapping=None, on_fail:Maybe[str|pl.Path|Key_p]=Any, symlinks:bool=False) -> pl.Path:
         pass
 
     def within(self, other:str|dict|ChainGuard) -> bool:
         pass
 
-    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[Key_p]=None, on_fail=Any, locs:"Locations"=None, **kwargs) -> str:
+    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[Key_p]=None, on_fail=Any, locs:Mapping=None, **kwargs) -> str:
         pass
 
     def to_type(self, spec, state, type_=Any, **kwargs) -> str:
@@ -224,7 +226,7 @@ class Location_p(Protocol):
     """ Something which describes a file system location,
     with a possible identifier, and metadata
     """
-    key                 : None|str|Key_p
+    key                 : Maybe[str|Key_p]
     path                : pl.Path
     meta                : enum.EnumMeta
 
@@ -241,7 +243,7 @@ class Location_p(Protocol):
 class InstantiableSpecification_p(Protocol):
     """ A Specification that can be instantiated further """
 
-    def instantiate_onto(self, data:None|Self) -> Self:
+    def instantiate_onto(self, data:Maybe[Self]) -> Self:
         pass
 
     def make(self):
@@ -257,7 +259,7 @@ class ExecutableTask(Protocol):
         """ """
         pass
 
-    def expand(self) -> list[Task_i|"TaskSpec"]:
+    def expand(self) -> list:
         """ For expanding a job into tasks """
         pass
 
@@ -273,7 +275,7 @@ class ExecutableTask(Protocol):
         """ For signifiying whether to expand/execute this object """
         pass
 
-    def execute_action_group(self, group_name:str) -> "ActRE"|list:
+    def execute_action_group(self, group_name:str) -> enum.Enum|list:
         """ Optional but recommended """
         pass
 
@@ -281,10 +283,10 @@ class ExecutableTask(Protocol):
         """ For executing a single action """
         pass
 
-    def current_status(self) -> TaskStatus_e:
+    def current_status(self) -> enum.Enum:
         pass
 
-    def force_status(self, status:TaskStatus_e):
+    def force_status(self, status:enum.Enum):
         pass
 
     def current_priority(self) -> int:
@@ -332,9 +334,8 @@ class Persistent_p(Protocol):
 @runtime_checkable
 class FailHandler_p(Protocol):
 
-    def handle_failure(self, err:Exception, *args, **kwargs) -> None|Any:
+    def handle_failure(self, err:Exception, *args, **kwargs) -> Maybe[Any]:
         pass
-
 
 @runtime_checkable
 class PreProcessed_p(Protocol):

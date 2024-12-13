@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -18,16 +18,41 @@ import re
 import time
 import types
 import weakref
+
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
+# ##-- 1st party imports
+from jgdv import Maybe
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -44,11 +69,11 @@ class JGDVLogContext:
         self._level_stack     = [self._original_level]
         self._temp_level      = level or self._original_level
 
-    def __call__(self, level):
+    def __call__(self, level) -> Self:
         self._temp_level = level
         return self
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         match self._temp_level:
             case int() | str():
                 self._level_stack.append(self._logger.level)
@@ -60,7 +85,6 @@ class JGDVLogContext:
             self._logger.setLevel(self._level_stack.pop())
         else:
             self._logger.setLevel(self._original_level)
-
 
     def __getattr__(self, key):
         return getattr(self._logger, key)

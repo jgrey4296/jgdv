@@ -9,7 +9,6 @@ from __future__ import annotations
 
 # ##-- stdlib imports
 import abc
-import sys
 import datetime
 import enum
 import functools as ftz
@@ -18,6 +17,7 @@ import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
+import sys
 import time
 import types
 import weakref
@@ -25,7 +25,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
-
     ClassVar,
     Final,
     Generator,
@@ -53,9 +52,14 @@ from uuid import UUID, uuid1
 
 # ##-- 3rd party imports
 import decorator
-from jgdv._abstract.protocols import Decorator_p
 
 # ##-- end 3rd party imports
+
+# ##-- 1st party imports
+from jgdv import Maybe, Ident
+from jgdv._abstract.protocols import Decorator_p
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -65,6 +69,8 @@ WRAPPED             : Final[str]       = "__wrapped__"
 ANNOTATIONS_PREFIX  : Final[str]       = "__JGDV__"
 MARK_SUFFIX         : Final[str]       = "_mark"
 DATA_SUFFIX         : Final[str]       = "_data"
+
+type Signature = inpec.Signature
 
 class _TargetType_e(enum.Enum):
 
@@ -88,7 +94,7 @@ class DecoratorBase(Decorator_p):
     so no need for ftz.wraps in _wrap_method or _wrap_fn
     """
 
-    def __init__(self, *, prefix:None|str=None, mark:None|str=None, data:None|str=None):
+    def __init__(self, *, prefix:Maybe[str]=None, mark:Maybe[str]=None, data:Maybe[str]=None):
         self._annotation_prefix   : str              = prefix  or ANNOTATIONS_PREFIX
         self._mark_suffix         : str              = mark    or MARK_SUFFIX
         self._data_suffix         : str              = data    or DATA_SUFFIX
@@ -120,7 +126,7 @@ class DecoratorBase(Decorator_p):
 
         return depth
 
-    def _signature(self, fn) -> inspect.Signature:
+    def _signature(self, fn) -> Signature:
         return inspect.signature(fn, follow_wrapped=False)
 
     def _target_type(self, fn) -> _TargetType_e:
@@ -207,17 +213,14 @@ class DecoratorBase(Decorator_p):
         assert(self._unwrapped_depth(bottom) == 0)
         bottom.__dict__[self._mark_key]      = True
         if top is not None:
-            top.__dict__[self._mark_key]         = True
-        # setattr(fn, self._mark_key, True)
+            top.__dict__[self._mark_key]     = True
 
     def _is_marked(self, fn) -> bool:
         match self._target_type(fn):
             case _TargetType_e.CLASS:
                 return self._mark_key in fn.__call__.__dict__
-                # return hasattr(fn.__call__, self._mark_key)
             case _:
                 return self._mark_key in fn.__dict__
-                # return hasattr(fn, self._mark_key)
 
     def _verify_target(self, fn, ttype:_TargetType_e, args) -> None:
         """ Abstract class for specialization.
@@ -298,11 +301,11 @@ class DecoratorAccessor_m:
     _decoration_builder : ClassVar[type] = DataDecorator
 
     @classmethod
-    def _build_decorator(cls, keys) -> JGDVDecorator:
+    def _build_decorator(cls, keys) -> Decorator_p:
         return cls._decoration_builder(keys)
 
     @classmethod
-    def get_keys(cls, fn) -> list:
+    def get_keys(cls, fn) -> list[Ident]:
         """ Retrieve key annotations from a decorated function """
         dec = cls._build_decorator([])
         return dec.get_annotations(fn)

@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -18,25 +18,50 @@ import re
 import time
 import types
 import weakref
+from collections import defaultdict
+
 # from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
+# ##-- 1st party imports
+from jgdv import Maybe
+
+# ##-- end 1st party imports
+
+from .tag_file import SEP, TagFile
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from collections import defaultdict
-from .tag_file import TagFile, SEP
-
-EXT = ".sub"
+EXT : Final[str] = ".sub"
 
 class SubstitutionFile(TagFile):
     """ SubstitutionFiles add a replacement tag for some tags
@@ -96,13 +121,13 @@ class SubstitutionFile(TagFile):
 
         return result
 
-    def has_sub(self, value):
+    def has_sub(self, value) -> bool:
         normed = self.norm_tag(value)
         if normed != value:
             return True
         return bool(self.substitutions.get(normed, None))
 
-    def update(self, *values:str|Tuple|dict|SubstitutionFile|TagFile|set):
+    def update(self, *values:str|Tuple|dict|SubstitutionFile|TagFile|set) -> Self:
         """
         Overrides TagFile.update to handle tuples of (tag, count, replacements*)
         """

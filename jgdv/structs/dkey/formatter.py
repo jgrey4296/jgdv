@@ -35,11 +35,11 @@ import sh
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
+from jgdv import Maybe, Ident, FmtStr, Rx, RxStr, Func
 from jgdv.structs.dkey.meta import DKey, DKeyMark_e
 from jgdv._abstract.protocols import Key_p, SpecStruct_p
 from jgdv.util.chain_get import ChainedKeyGetter
 from jgdv.structs.chainguard import ChainGuard
-
 
 # ##-- end 1st party imports
 
@@ -47,29 +47,29 @@ from jgdv.structs.chainguard import ChainGuard
 logging = logmod.getLogger(__file__)
 ##-- end logging
 
-KEY_PATTERN                                     = "{(.+?)}"
-MAX_KEY_EXPANSIONS                              = 200
+KEY_PATTERN         : Final[RxStr]                 = "{(.+?)}"
+MAX_KEY_EXPANSIONS  : Final[int]                   = 200
 
-FMT_PATTERN         : Final[re.Pattern]         = re.compile("[wdi]+")
-PATTERN             : Final[re.Pattern]         = re.compile(KEY_PATTERN)
-FAIL_PATTERN        : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
-EXPANSION_HINT      : Final[str]                = "_doot_expansion_hint"
-HELP_HINT           : Final[str]                = "_doot_help_hint"
-MAX_DEPTH           : Final[int]                = 10
+FMT_PATTERN         : Final[Rx]                    = re.compile("[wdi]+")
+PATTERN             : Final[Rx]                    = re.compile(KEY_PATTERN)
+FAIL_PATTERN        : Final[Rx]                    = re.compile("[^a-zA-Z_{}/0-9-]")
+EXPANSION_HINT      : Final[Ident]                 = "_doot_expansion_hint"
+HELP_HINT           : Final[Ident]                 = "_doot_help_hint"
+MAX_DEPTH           : Final[int]                   = 10
 
-DEFAULT_COUNT       : Final[int]                = 1
-RECURSE_GUARD_COUNT : Final[int]                = 2
-PAUSE_COUNT         : Final[int]                = 0
+DEFAULT_COUNT       : Final[int]                   = 1
+RECURSE_GUARD_COUNT : Final[int]                   = 2
+PAUSE_COUNT         : Final[int]                   = 0
 
-chained_get = ChainedKeyGetter.chained_get
+chained_get         : Func                         = ChainedKeyGetter.chained_get
 
 class _DKeyParams(BaseModel):
     """ Utility class for parsed string parameters """
 
-    prefix : None|str = ""
-    key    : None|str = ""
-    format : None|str = ""
-    conv   : None|str = ""
+    prefix : Maybe[str] = ""
+    key    : Maybe[str] = ""
+    format : Maybe[str] = ""
+    conv   : Maybe[str] = ""
 
     def __getitem__(self, i):
         match i:
@@ -103,7 +103,7 @@ class DKeyFormatterEntry_m:
     rec_remaining : int                 = MAX_KEY_EXPANSIONS
 
     _entered      : bool                = False
-    _original_key : str | Key_p         = None
+    _original_key : str|Key_p           = None
 
     @classmethod
     def Parse(cls, key:Key_p|pl.Path) -> tuple(bool, list[_DKeyParams]):
@@ -134,7 +134,7 @@ class DKeyFormatterEntry_m:
             return True, []
 
     @classmethod
-    def expand(cls, key:Key_p, *, sources=None, max=None, **kwargs) -> None|Any:
+    def expand(cls, key:Key_p, *, sources=None, max=None, **kwargs) -> Maybe[Any]:
         """ static method to a singleton key formatter """
         if not cls._instance:
             cls._instance = cls()
@@ -191,7 +191,7 @@ class DKeyFormatterEntry_m:
         self._depth            = depth or 1
         return self
 
-    def __enter__(self) -> Any:
+    def __enter__(self) -> Self:
         logging.debug("--> (%s) Context for: %s", self._intent, self._original_key)
         logging.debug("Using Sources: %s", self.sources)
         if self._depth > MAX_DEPTH:
@@ -210,7 +210,7 @@ class DKeyFormatterEntry_m:
 
 class DKeyFormatter_Expansion_m:
 
-    def _expand(self, key:Key_p, *, fallback=None, count=DEFAULT_COUNT) -> None|Any:
+    def _expand(self, key:Key_p, *, fallback=None, count=DEFAULT_COUNT) -> Maybe[Any]:
         """
           Expand the key, returning fallback if it fails,
           counting each loop as `count` attempts
@@ -295,7 +295,7 @@ class DKeyFormatter_Expansion_m:
             case _:
                 raise TypeError("Reached an unknown response path for redirection", key)
 
-    def _single_expand(self, key:Key_p, fallback=None) -> None|Any:
+    def _single_expand(self, key:Key_p, fallback=None) -> Maybe[Any]:
         """
           Expand a single key up to {rec_remaining} times
         """

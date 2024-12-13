@@ -29,7 +29,8 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv.enums.util import EnumBuilder_m, FlagsBuilder_m
+from jgdv import Maybe, Ident
+from jgdv.mixins.enum_builders import EnumBuilder_m
 from jgdv._abstract.protocols import Key_p
 from jgdv.mixins.annotate import SubAnnotate_m
 # ##-- end 1st party imports
@@ -38,8 +39,8 @@ from jgdv.mixins.annotate import SubAnnotate_m
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-CONV_SEP        : Final[str]                = "!"
-REDIRECT_SUFFIX : Final[str]                = "_"
+CONV_SEP        : Final[Ident]                = "!"
+REDIRECT_SUFFIX : Final[Ident]                = "_"
 
 class DKeyMark_e(EnumBuilder_m, enum.Enum):
     """
@@ -110,9 +111,9 @@ class DKey(SubAnnotate_m, metaclass=DKeyMeta):
     _single_registry : dict[DKeyMark_e,type] = {}
     _multi_registry  : dict[DKeyMark_e,type] = {}
     _conv_registry   : dict[str, DKeyMark_e] = {}
-    _parser          : None|type           = None
+    _parser          : Maybe[type]           = None
 
-    def __new__(cls, data:str|DKey|pl.Path|dict, *, fmt=None, conv=None, implicit=False, mark:None|DKeyMark_e=None, **kwargs) -> DKey:
+    def __new__(cls, data:str|DKey|pl.Path|dict, *, fmt=None, conv=None, implicit=False, mark:Maybe[DKeyMark_e]=None, **kwargs) -> DKey:
         """
           fmt : Format parameters. used from multi key subkey construction
           conv : Conversion parameters. used from multi key subkey construction.
@@ -169,7 +170,7 @@ class DKey(SubAnnotate_m, metaclass=DKeyMeta):
         return result
 
     @classmethod
-    def _parse_single_key_params_to_mark(cls, data, conv, fallback=None) -> tuple(str, None|DKeyMark_e):
+    def _parse_single_key_params_to_mark(cls, data, conv, fallback=None) -> tuple[str, Maybe[DKeyMark_e]]:
         """ Handle single, implicit key's and their parameters.
           Explicitly passed in conv take precedence
 
@@ -200,7 +201,7 @@ class DKey(SubAnnotate_m, metaclass=DKeyMeta):
 
 
     @staticmethod
-    def register_key(ctor:type, mark:DKeyMark_e, tparam:None|str=None, multi=False):
+    def register_key(ctor:type, mark:DKeyMark_e, tparam:Maybe[str]=None, multi=False):
         """ Register a DKeyBase implementation to a mark """
         match mark:
             case None:

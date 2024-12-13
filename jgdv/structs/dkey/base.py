@@ -49,6 +49,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
+from jgdv import Maybe, Ident, Rx, CHECKTYPE, FmtStr, Ctor
 from jgdv._abstract.protocols import Buildable_p, Key_p, SpecStruct_p
 from jgdv.structs.dkey.meta import CONV_SEP, REDIRECT_SUFFIX, DKey, DKeyMark_e
 from jgdv.structs.dkey.formatter import DKeyFormatter
@@ -61,17 +62,16 @@ from jgdv.mixins.annotate import SubAnnotate_m
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-KEY_PATTERN                                 = "{(.+?)}"
-MAX_KEY_EXPANSIONS                          = 10
+KEY_PATTERN        : Final[FmtStr]                = "{(.+?)}"
+MAX_KEY_EXPANSIONS : Final[int]                   = 10
 
-PATTERN         : Final[re.Pattern]         = re.compile(KEY_PATTERN)
-FAIL_PATTERN    : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
-FMT_PATTERN     : Final[re.Pattern]         = re.compile("[wdi]+")
-EXPANSION_HINT  : Final[str]                = "_doot_expansion_hint"
-HELP_HINT       : Final[str]                = "_doot_help_hint"
-FORMAT_SEP      : Final[str]                = ":"
-CHECKTYPE       : TypeAlias                 = None|type|types.GenericAlias|types.UnionType
-CWD_MARKER      : Final[str]                = "__cwd"
+PATTERN            : Final[Rx]                    = re.compile(KEY_PATTERN)
+FAIL_PATTERN       : Final[Rx]                    = re.compile("[^a-zA-Z_{}/0-9-]")
+FMT_PATTERN        : Final[Rx]                    = re.compile("[wdi]+")
+EXPANSION_HINT     : Final[Ident]                 = "_doot_expansion_hint"
+HELP_HINT          : Final[Ident]                 = "_doot_help_hint"
+CWD_MARKER         : Final[Ident]                 = "__cwd"
+
 
 class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, SubAnnotate_m, str):
     """
@@ -85,16 +85,16 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, SubAnnotate_m, str):
 
     """
 
-    _mark               : DKeyMark_e                  = DKey.mark.default
-    _expansion_type     : type|callable               = str
-    _typecheck          : CHECKTYPE                   = Any
-    _fallback           : Any                         = None
-    _fmt_params         : None|str                    = None
-    _help               : None|str                    = None
+    _mark               : DKeyMark_e                    = DKey.mark.default
+    _expansion_type     : Ctor                          = str
+    _typecheck          : CHECKTYPE                     = Any
+    _fallback           : Any                           = None
+    _fmt_params         : Maybe[FmtStr]                 = None
+    _help               : Maybe[str]                    = None
 
-    __hash__                                          = str.__hash__
+    __hash__                                            = str.__hash__
 
-    def __init_subclass__(cls, *, mark:None|DKeyMark_e=None, tparam:None|str=None, multi=False):
+    def __init_subclass__(cls, *, mark:Maybe[DKeyMark_e]=None, tparam:Maybe[str]=None, multi=False):
         """ Registered the subclass as a DKey and sets the Mark enum this class associates with """
         super().__init_subclass__()
         cls._mark = mark
@@ -112,7 +112,7 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, SubAnnotate_m, str):
         obj.__init__(*args, **kwargs)
         return obj
 
-    def __init__(self, data, fmt:None|str=None, mark:DKeyMark_e=None, check:CHECKTYPE=None, ctor:None|type|callable=None, help:None|str=None, fallback=None, max_exp=None, **kwargs):
+    def __init__(self, data, fmt:Maybe[str]=None, mark:Maybe[DKeyMark_e]=None, check:CHECKTYPE=None, ctor:Maybe[type|callable]=None, help:Maybe[str]=None, fallback=None, max_exp=None, **kwargs):
         super().__init__(data)
         self._expansion_type       = ctor or identity
         self._typecheck            = check or Any
@@ -142,11 +142,11 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, SubAnnotate_m, str):
     def __eq__(self, other):
         match other:
             case DKey() | str():
-                return str(self) == str(other)
+                return str.__eq__(self, other)
             case _:
                 return False
 
-    def set_help(self, help:None|str) -> Self:
+    def set_help(self, help:Maybe[str]) -> Self:
         match help:
             case None:
                 pass

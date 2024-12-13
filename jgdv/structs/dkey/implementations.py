@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 """
 
-
 """
 
 # Imports:
@@ -35,6 +34,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
+from jgdv import Maybe, Ident, RxStr, Rx
 from jgdv._abstract.protocols import Key_p, SpecStruct_p, Buildable_p
 from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey.meta import DKey, REDIRECT_SUFFIX, CONV_SEP, DKeyMark_e
@@ -49,18 +49,16 @@ from jgdv.structs.dkey.core import SingleDKey, MultiDKey, NonDKey
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-KEY_PATTERN                                 = "{(.+?)}"
-MAX_KEY_EXPANSIONS                          = 10
+KEY_PATTERN        : Final[RxStr]                = "{(.+?)}"
+MAX_KEY_EXPANSIONS : Final[int]                  = 10
 
-PATTERN         : Final[re.Pattern]         = re.compile(KEY_PATTERN)
-FAIL_PATTERN    : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
-FMT_PATTERN     : Final[re.Pattern]         = re.compile("[wdi]+")
-EXPANSION_HINT  : Final[str]                = "_doot_expansion_hint"
-HELP_HINT       : Final[str]                = "_doot_help_hint"
-FORMAT_SEP      : Final[str]                = ":"
-CHECKTYPE       : TypeAlias                 = None|type|types.GenericAlias|types.UnionType
-CWD_MARKER      : Final[str]                = "__cwd"
-
+PATTERN            : Final[Rx]                   = re.compile(KEY_PATTERN)
+FAIL_PATTERN       : Final[Rx]                   = re.compile("[^a-zA-Z_{}/0-9-]")
+FMT_PATTERN        : Final[Rx]                   = re.compile("[wdi]+")
+EXPANSION_HINT     : Final[Ident]                = "_doot_expansion_hint"
+HELP_HINT          : Final[Ident]                = "_doot_help_hint"
+FORMAT_SEP         : Final[Ident]                = ":"
+CWD_MARKER         : Final[Ident]                = "__cwd"
 
 class StrDKey(SingleDKey, mark=DKeyMark_e.STR, tparam="s"):
     """
@@ -88,7 +86,7 @@ class RedirectionDKey(SingleDKey, mark=DKeyMark_e.REDIRECT, tparam="R"):
         self._expansion_type  = DKey
         self._typecheck       = DKey | list[DKey]
 
-    def expand(self, *sources, max=None, full:bool=False, **kwargs) -> None|DKey:
+    def expand(self, *sources, max=None, full:bool=False, **kwargs) -> Maybe[DKey]:
         match super().redirect(*sources, multi=self.multi_redir, re_mark=self.re_mark, **kwargs):
             case list() as xs if self.multi_redir and full:
                 return [x.expand(*sources) for x in xs]
@@ -155,4 +153,3 @@ class ImportDKey(SingleDKey, mark=DKeyMark_e.CODE, tparam="c"):
         super().__init__(*args, **kwargs)
         self._expansion_type  = CodeReference
         self._typecheck = CodeReference
-

@@ -101,9 +101,9 @@ class JGDVLocations(PathManip_m):
     Current : ClassVar[_LocationsGlobal] = _LocationsGlobal()
 
     def __init__(self, root:pl.Path):
-        self._root    : pl.Path()               = root.expanduser().resolve()
-        self._data    : dict[str, Location]     = dict()
-        self._loc_ctx : None|JGDVLocations      = None
+        self._root    : pl.Path()                 = root.expanduser().resolve()
+        self._data    : dict[str, Location]       = dict()
+        self._loc_ctx : Maybe[JGDVLocations]      = None
         match self.Current:
             case None:
                 _LocationsGlobal.push(self)
@@ -196,7 +196,7 @@ class JGDVLocations(PathManip_m):
         os.chdir(self.Current._root)
         return False
 
-    def get(self, key:None|DKey|str, fallback:None|False|str|pl.Path=Any) -> None|pl.Path:
+    def get(self, key:Maybe[DKey|str], fallback:Maybe[False|str|pl.Path]=Any) -> Maybe[pl.Path]:
         """
           convert a *simple* str name of *one* toml location to a path.
           does *not* recursively expand returned paths

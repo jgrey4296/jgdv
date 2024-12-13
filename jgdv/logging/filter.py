@@ -5,9 +5,10 @@
 
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -19,16 +20,41 @@ import re
 import time
 import types
 import weakref
+
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
+# ##-- 1st party imports
+from jgdv import Maybe
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -44,7 +70,7 @@ class JGDVAnyFilter:
         self.rejections = reject or []
         self.name_re    = re.compile("^({})".format("|".join(self.names)))
 
-    def __call__(self, record):
+    def __call__(self, record) -> bool:
         return (record.name not in self.rejections) and (record.name == "root"
                                                          or not bool(self.names)
-                                                        or self.name_re.match(record.name))
+                                                         or self.name_re.match(record.name))

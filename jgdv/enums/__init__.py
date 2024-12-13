@@ -1,0 +1,57 @@
+"""
+
+"""
+import enum
+
+class LoopControl_e(enum.Enum):
+    """
+      Describes how to continue an accumulating loop.
+      (like walking a a tree)
+
+    yesAnd     : is a result, and try others.
+    yes        : is a result, don't try others, Finish.
+    noBut      : not a result, try others.
+    no         : not a result, don't try others, Finish.
+    """
+    yesAnd  = enum.auto()
+    yes     = enum.auto()
+    noBut   = enum.auto()
+    no      = enum.auto()
+
+    @classmethod
+    @property
+    def loop_yes_set(cls):
+        return  {cls.yesAnd, cls.yes, True}
+
+    @classmethod
+    @property
+    def loop_no_set(cls):
+        return  {cls.no, cls.noBut, False, None}
+
+
+class CurrentState_e(enum.Enum):
+    """
+      Enumeration of the different states a task can be in.
+    """
+    TEARDOWN        = enum.auto()
+    SUCCESS         = enum.auto()
+    FAILED          = enum.auto()
+    HALTED          = enum.auto()
+    WAIT            = enum.auto()
+    READY           = enum.auto()
+    RUNNING         = enum.auto()
+    EXISTS          = enum.auto()
+    INIT            = enum.auto()
+
+    DEFINED         = enum.auto()
+    DECLARED        = enum.auto()
+    ARTIFACT        = enum.auto()
+
+class ActionResult_e(enum.Enum):
+    """
+      Enums for how a task can describe its response
+    """
+    SUCCEED  = enum.auto()
+    FAIL     = enum.auto()
+    SKIP     = enum.auto()
+    HALT     = enum.auto()

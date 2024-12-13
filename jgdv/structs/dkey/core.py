@@ -47,6 +47,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
+from jgdv import Maybe
 from jgdv._abstract.protocols import Buildable_p, Key_p, SpecStruct_p
 from jgdv.structs.dkey.meta import CONV_SEP, REDIRECT_SUFFIX, DKey, DKeyMark_e
 from jgdv.structs.dkey.base import DKeyBase
@@ -109,7 +110,7 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
         self._subkeys    = s_keys
         self._anon    = self.format("", state={key.key : "{}" for key in s_keys})
 
-    def __format__(self, spec:str):
+    def __format__(self, spec:str) -> Str:
         """
           Multi keys have no special formatting
 

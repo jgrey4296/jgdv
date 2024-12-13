@@ -56,11 +56,11 @@ class CodeReference(Strang):
     __call__ imports the reference
     """
 
-    _separator        : ClassVar[str]                    = "::"
-    _tail_separator   : ClassVar[str]                    = ":"
-    _value            : None|type                        = None
-    _body_types       : ClassVar[Any]                    = str
-    gmark_e           : ClassVar[Enum]                   = CodeRefMeta_e
+    _value            : Maybe[type]                        = None
+    _separator        : ClassVar[str]                      = "::"
+    _tail_separator   : ClassVar[str]                      = ":"
+    _body_types       : ClassVar[Any]                      = str
+    gmark_e           : ClassVar[Enum]                     = CodeRefMeta_e
 
     @classmethod
     def from_value(cls, value):
@@ -93,7 +93,7 @@ class CodeReference(Strang):
         self._value_idx = slice(last_slice.start+index+1, last_slice.stop)
 
 
-    def __init__(self, *, value:None|type=None, check:None|type=None, **kwargs):
+    def __init__(self, *, value:Maybe[type]=None, check:Maybe[type]=None, **kwargs):
         super().__init__(**kwargs)
         self._value = value
         self._value_idx = None

@@ -27,7 +27,6 @@ from uuid import UUID, uuid1
 
 ##-- end builtin imports
 
-
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging

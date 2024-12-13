@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 # Imports:
@@ -34,10 +33,10 @@ from uuid import UUID, uuid1
 from pydantic import (BaseModel, Field, ValidationError, field_validator,
                       model_validator)
 
-
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
+from jgdv import Maybe, RxStr
 from jgdv.logging.log_colour import JGDVColourFormatter, JGDVColourStripFormatter
 from jgdv._abstract.protocols import Buildable_p, ProtocolModelMeta
 from jgdv.structs.chainguard import ChainGuard
@@ -48,11 +47,15 @@ from jgdv.structs.chainguard import ChainGuard
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+type Logger                      = logmod.Logger
+type Formatter                   = logmod.Formatter
+type Handler                     = logmod.Handler
+
 env           : dict             = os.environ
 IS_PRE_COMMIT : Final[bool]      = "PRE_COMMIT" in env
-Regexp        : TypeAlias        = str
 MAX_FILES     : Final[int]       = 5
 TARGETS       : Final[list[str]] = ["file", "stdout", "stderr", "rotate", "pass"]
+
 class _AnyFilter:
     """
       A Simple filter to reject based on:
@@ -61,14 +64,14 @@ class _AnyFilter:
 
     """
 
-    def __init__(self, allow:None|list[Regexp]=None, reject:None|list[str]=None):
+    def __init__(self, allow:Maybe[list[RxStr]]=None, reject:Maybe[list[str]]=None):
         self.allowed    = allow or []
         self.rejections = reject or []
         self.allowed_re    = re.compile("^({})".format("|".join(self.allowed)))
         if bool(self.allowed):
             raise NotImplementedError("Logging Allows are not implemented yet")
 
-    def __call__(self, record):
+    def __call__(self, record) -> bool:
         if record.name in ["root", "__main__"]:
             return True
         if not (bool(self.allowed) or bool(self.rejections)):
@@ -84,21 +87,21 @@ class HandlerBuilder_m:
     Loggerspec Mixin for building handlers
     """
 
-    def _build_streamhandler(self) -> logmod.Handler:
+    def _build_streamhandler(self) -> Handler:
         return logmod.StreamHandler(stdout)
 
-    def _build_errorhandler(self) -> logmod.Handler:
+    def _build_errorhandler(self) -> Handler:
         return logmod.StreamHandler(stderr)
 
-    def _build_filehandler(self, path:pl.Path) -> logmod.Handler:
+    def _build_filehandler(self, path:pl.Path) -> Handler:
         return logmod.FileHandler(path, mode='w')
 
-    def _build_rotatinghandler(self, path:pl.Path) -> logmod.Handler:
+    def _build_rotatinghandler(self, path:pl.Path) -> Handler:
         handler = l_handlers.RotatingFileHandler(path, backupCount=MAX_FILES)
         handler.doRollover()
         return handler
 
-    def _discriminate_handler(self, target:None|str|pl.Path) -> tuple[None|logmod.Handler, None|logmod.Formatter]:
+    def _discriminate_handler(self, target:Maybe[str|pl.Path]) -> tuple[Maybe[Handler], Maybe[Formatter]]:
         handler, formatter = None, None
 
         match target:
@@ -142,16 +145,16 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
 
     name                       : str
     disabled                   : bool                        = False
-    base                       : None|str                    = None
+    base                       : Maybe[str]                  = None
     level                      : str|int                     = logmod._nameToLevel.get("WARNING", 0)
     format                     : str                         = "{levelname:<8} : {message}"
     filter                     : list[str]                   = []
     allow                      : list[str]                   = []
     colour                     : bool|str                    = False
     verbosity                  : int                         = 1
-    target                     : None|str|list[str|pl.Path]  = None # stdout | stderr | file
-    filename_fmt               : None|str                    = "%Y-%m-%d::%H:%M.log"
-    propagate                  : None|bool                   = False
+    target                     : Maybe[str|list[str|pl.Path]]= None # stdout | stderr | file
+    filename_fmt               : Maybe[str]                  = "%Y-%m-%d::%H:%M.log"
+    propagate                  : Maybe[bool]                 = False
     clear_handlers             : bool                        = False
     nested                     : list[LoggerSpec]            = []
 
@@ -205,7 +208,7 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
             return self.name
         return "{}.{}".format(self.base, self.name)
 
-    def apply(self, *, onto:None|logmod.Logger=None):
+    def apply(self, *, onto:Maybe[Logger]=None) -> Logger:
         """ Apply this spec (and nested specs) to the relevant logger """
         handler_pairs : list[tuple[logmod.Handler, logmod.Formatter]] = []
         logger = self.get()
@@ -256,7 +259,7 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
                 logger.propagate = True
             return logger
 
-    def get(self) -> logmod.Logger:
+    def get(self) -> Logger:
         return logmod.getLogger(self.fullname)
 
     def clear(self):

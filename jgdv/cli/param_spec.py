@@ -38,6 +38,7 @@ from pydantic import (BaseModel, Field, InstanceOf,
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
+from jgdv import Maybe
 from jgdv.structs.chainguard import ChainGuard
 from jgdv._abstract.protocols import ParamStruct_p, ProtocolModelMeta, Buildable_p
 from jgdv.mixins.annotate import SubAnnotate_m
@@ -93,7 +94,7 @@ class _DefaultsBuilder_m:
 
 class _ConsumerArg_m:
 
-    def consume(self, args:list[str], *, offset:int=0) -> None|tuple[dict, int]:
+    def consume(self, args:list[str], *, offset:int=0) -> Maybe[tuple[dict, int]]:
         """
           Given a list of args, possibly add a value to the data.
           operates on both the args list
@@ -195,7 +196,7 @@ class ParamSpecBase(SubAnnotate_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_m
     prefix               : str                       = NON_ASSIGN_PREFIX
     separator            : str                       = "="
 
-    _short               : None|str                  = None
+    _short               : Maybe[str]                = None
     _accumulation_types  : ClassVar[list[Any]]       = [int, list, set]
     _pad                 : ClassVar[int]             = 15
 
@@ -297,7 +298,7 @@ class ParamSpecBase(SubAnnotate_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_m
         return f"{self.prefix}{self.name}"
 
     @ftz.cached_property
-    def short_key_str(self) -> None|str:
+    def short_key_str(self) -> Maybe[str]:
         return f"{self.prefix}{self.short}"
 
     @ftz.cached_property
@@ -313,7 +314,7 @@ class ParamSpecBase(SubAnnotate_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_m
 
         parts.append(" " * (self._pad - len(parts[0])))
         match self.type_:
-            case type() if self.type_ == bool:
+            case type() if self.type_ is bool:
                 parts.append(f"{'(bool)': <10}:")
             case str() if bool(self.default):
                 parts.append(f"{'(str)': <10}:")

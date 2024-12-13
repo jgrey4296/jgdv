@@ -4,9 +4,10 @@
 
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -17,35 +18,53 @@ import pathlib as pl
 import re
 import time
 import types
-import weakref
+
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
 import typing
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeVar,
-                    cast, final, overload, runtime_checkable)
+import weakref
+from collections import ChainMap
+from collections.abc import ItemsView, KeysView, ValuesView
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 
-try:
-    # for py 3.10 onwards:
-    from typing import TypeAlias
-except ImportError:
-    TypeAlias = Any
+# ##-- end stdlib imports
 
-##-- end builtin imports
-
-from collections import ChainMap
-from collections.abc import Mapping, ItemsView, KeysView, ValuesView
+# ##-- 1st party imports
+from jgdv import Maybe
 from jgdv.structs.chainguard import TomlTypes
+
+# ##-- end 1st party imports
+
 from .error import GuardedAccessError
 from .mixins.access_m import super_get, super_set
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-dict_items = type({}.items())
 
 class GuardBase(Mapping[str, TomlTypes]):
     """
@@ -60,7 +79,7 @@ class GuardBase(Mapping[str, TomlTypes]):
     data.report_defaulted() -> ['a.path.that.may.exist.<str|int>']
     """
 
-    def __init__(self, data:dict[str,TomlTypes]=None, *, index:None|list[str]=None, mutable:bool=False):
+    def __init__(self, data:dict[str,TomlTypes]=None, *, index:Maybe[list[str]]=None, mutable:bool=False):
         super().__init__()
         super_set(self, "__table", data or {})
         super_set(self, "__index"   , (index or ["<root>"])[:])
@@ -75,7 +94,7 @@ class GuardBase(Mapping[str, TomlTypes]):
     def __call__(self) -> TomlTypes:
         raise GuardedAccessError("Don't call a ChainGuard, call a GuardProxy using methods like .on_fail")
 
-    def __iter__(self):
+    def __iter__(self) -> iter:
         return iter(getattr(self, "__table").items())
 
     def __contains__(self, _key: object) -> bool:

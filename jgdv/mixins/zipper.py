@@ -2,35 +2,63 @@
 """
 
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
-import types
+# ##-- stdlib imports
 import abc
+import sys
 import datetime
 import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
 import pathlib as pl
+from random import randint
 import re
 import time
+import types
+import zipfile
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 from weakref import ref
 
-##-- end imports
+# ##-- end stdlib imports
+
+# ##-- 1st party imports
+from jgdv import Maybe
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-import zipfile
 
 zip_name_default         : Final[str]                   = "default"
 zip_overwrite_default    : Final[bool]                  = False
@@ -51,7 +79,7 @@ class Zipper_m:
     """
     zip_name            : str                   = zip_name_default
     zip_overwrite       : bool                  = zip_overwrite_default
-    zip_root            : None|pl.Path          = None
+    zip_root            : Maybe[pl.Path]        = None
     _zip_compression    : str                   = zip_compression_default
     _zip_compress_level : int                   = zip_level_default
 
@@ -125,7 +153,7 @@ class Zipper_m:
         """
         Add files chosen by globs to the zip, relative to the cwd
         """
-        logging.debug(f"Zip Globbing: %s : %s", fpath, globs)
+        logging.debug("Zip Globbing: %s : %s", fpath, globs)
         assert(fpath.suffix == ".zip")
         self.zip_create(fpath)
 
@@ -209,9 +237,13 @@ class Zipper_m:
                     logging.warning("Issue with %s : %s", zipf, targ)
 
 
-    def zip_contains(self, fpath:pl.Path, *zips:pl.Path) -> bool:
-        """ test that multiple zip files contain a specified filename """
-        with zipfile.ZipFile(fpath, "r") as zipf:
+    def zip_contains(self, zip:pl.Path, *names:str|pl.Path) -> bool:
+        """ test that a zip file contains multiple filenames"""
+        with zipfile.ZipFile(zip, "r") as zipf:
             contents = zipf.namelist()
 
-        return all([x in contents for x in args])
+        missing = [x for x in names if x not in contents]
+        if bool(missing):
+            logging.info("Zip file %s is missing : %s", zip, missing)
+
+        return bool(missing)

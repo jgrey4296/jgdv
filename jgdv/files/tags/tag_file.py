@@ -1,12 +1,12 @@
  #!/usr/bin/env python3
 """
 
-
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -18,25 +18,54 @@ import re
 import time
 import types
 import weakref
+from collections import defaultdict
+
 # from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Self,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-
-from collections import defaultdict
+# ##-- 3rd party imports
 from pydantic import BaseModel, field_validator, model_validator
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+from jgdv import Maybe, Rx
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-TAG_NORM     : Final[re.Pattern] = re.compile(" +")
+TAG_NORM     : Final[Rx]         = re.compile(" +")
 SEP          : Final[str]        = " : "
 EXT          : Final[str]        = ".tags"
 NORM_REPLACE : Final[str]        = "_"
@@ -55,7 +84,7 @@ class TagFile(BaseModel):
     sep          : str                   = SEP
     ext          : str                   = EXT
     norm_replace : str                   = NORM_REPLACE
-    norm_regex   : re.Pattern            = TAG_NORM
+    norm_regex   : Rx                    = TAG_NORM
     comment      : str                   = COMMENT
 
     @classmethod
@@ -122,14 +151,14 @@ class TagFile(BaseModel):
     def __contains__(self, value):
         return self.norm_tag(value) in self.counts
 
-    def _inc(self, key, *, amnt=1) -> None|str:
+    def _inc(self, key, *, amnt=1) -> Maybe[str]:
         norm_key = self.norm_tag(key)
         if not bool(norm_key):
             return None
         self.counts[norm_key] += amnt
         return norm_key
 
-    def update(self, *values:str|TagFile|set|dict):
+    def update(self, *values:str|TagFile|set|dict) -> Self:
         for val in values:
             match val:
                 case None | "":
@@ -153,8 +182,8 @@ class TagFile(BaseModel):
     def to_set(self) -> set[str]:
         return set(self.counts.keys())
 
-    def get_count(self, tag):
+    def get_count(self, tag) -> int:
         return self.counts[self.norm_tag(tag)]
 
-    def norm_tag(self, tag):
+    def norm_tag(self, tag) -> str:
         return self.norm_regex.sub(self.norm_replace, tag).strip()

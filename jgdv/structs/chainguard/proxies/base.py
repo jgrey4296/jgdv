@@ -25,29 +25,51 @@ import weakref
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from time import sleep
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match, NoReturn,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 from weakref import ref
 
 # ##-- end stdlib imports
 
+# ##-- 1st party imports
+from jgdv import Maybe, Never
+from jgdv.structs.chainguard import TomlTypes
 from jgdv.structs.chainguard._base import GuardBase
 from jgdv.structs.chainguard.mixins.reporter_m import DefaultedReporter_m
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-NullFallback = NoReturn
-
 class GuardProxy:
     """ A Base Class for Proxies """
 
-    def __init__(self, data:GuardBase, types:Any=None, index:list[str]|None=None, fallback:TomlTypes|NullFallback=NullFallback):
+    def __init__(self, data:GuardBase, types:Any=None, index:Maybe[list[str]]=None, fallback:TomlTypes|Never=Never):
         super().__init__()
         self._types                         = types or Any
         self._data                          = data
@@ -65,25 +87,24 @@ class GuardProxy:
         return 0
 
     def __bool__(self) -> bool:
-        return self._data is not None and self._data is not NullFallback
+        return self._data is not None and self._data is not Never
 
-    def __call__(self, *, wrapper:callable[[TomlTypes], Any]|None=None, **kwargs) -> Any:
+    def __call__(self, *, wrapper:Maybe[callable[[TomlTypes], Any]]=None, **kwargs) -> Any:
         return None
 
-
-    def _inject(self, val:tuple[Any]=NullFallback, attr:str|None=None, clear:bool=False) -> GuardProxy:
+    def _inject(self, val:tuple[Any]=Never, attr:Maybe[str]=None, clear:bool=False) -> GuardProxy:
         match val:
             case _ if clear:
-                val = NullFallback
-            case x if x is NullFallback:
+                val = Never
+            case x if x is Never:
                 val = self._data
             case _:
                 pass
 
         return GuardProxy(val,
-                              types=self._types,
-                              index=self._index(attr),
-                              fallback=self._fallback)
+                          types=self._types,
+                          index=self._index(attr),
+                          fallback=self._fallback)
 
     def _notify(self) -> None:
         types_str = self._types_str()
@@ -92,7 +113,7 @@ class GuardProxy:
                 pass
             case _, _, []:
                 pass
-            case x , val, [*index] if x is NullFallback:
+            case x , val, [*index] if x is Never:
                 DefaultedReporter_m.add_defaulted(".".join(index), val, types_str)
             case val, _, [*index]:
                 DefaultedReporter_m.add_defaulted(".".join(index), val, types_str)

@@ -32,9 +32,7 @@ logging = logmod.getLogger(__name__)
 
 import tracemalloc
 import datetime
-
-Seconds  : TypeAlias = int
-DateTime : TypeAlias = datetime.datetime
+from jgdv import Maybe, DateTime, Seconds
 
 class Human_m:
     """

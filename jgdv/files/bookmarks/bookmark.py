@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -17,30 +17,62 @@ import pathlib as pl
 import re
 import time
 import types
+import urllib
 import weakref
+
 # from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator, Self)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Self,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
+# ##-- 3rd party imports
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+from jgdv import Maybe, Rx
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+type UrlParseResult = urllib.parse.ParseResult
 
 class Bookmark(BaseModel):
     url              : str
     tags             : set[str]              = set()
     name             : str                   = "No Name"
     _tag_sep         : ClassVar[str]         = " : "
-    _tag_norm_re     : ClassVar[re.Pattern]  = re.compile(" +")
+    _tag_norm_re     : ClassVar[Rx]          = re.compile(" +")
 
     @staticmethod
     def build(line:str, sep=None):
@@ -51,7 +83,7 @@ class Bookmark(BaseModel):
         tags = []
         match [x.strip() for x in line.split(sep)]:
             case []:
-                raise TypeException("Bad line passed to Bookmark")
+                raise TypeError("Bad line passed to Bookmark")
             case [url]:
                 logging.warning("No Tags for: %s", url)
             case [url, *tags]:
@@ -67,7 +99,7 @@ class Bookmark(BaseModel):
             case list()|set():
                 return { Bookmark._tag_norm_re.sub("_", x.strip()) for x in val }
             case str():
-                return { Bookmark._tag_norm_re.sub("_", x.strip()) for x in val.split(Boomark._tag_sep) }
+                return { Bookmark._tag_norm_re.sub("_", x.strip()) for x in val.split(Bookmark._tag_sep) }
             case _:
                 raise ValueError("Unrecognized tags base", val)
 
@@ -83,8 +115,8 @@ class Bookmark(BaseModel):
         return f"{self.url}{sep}{tags}"
 
     @property
-    def url_comps(self) -> url_parse.ParseResult:
-        return url_parse.urlparse(self.url)
+    def url_comps(self) -> UrlParseResult:
+        return urllib.parse.urlparse(self.url)
 
     def merge(self, other) -> Self:
         """ Merge two bookmarks' tags together,

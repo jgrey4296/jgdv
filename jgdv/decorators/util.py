@@ -1,25 +1,63 @@
 """
 Utility decorators
 """
+# Imports:
 #pylint: disable=invalid-sequence-index
-##-- imports
 from __future__ import annotations
 
+# ##-- stdlib imports
+import datetime
+import enum
+import functools as ftz
+import itertools as itz
 import logging as logmod
+import inspect
+import pathlib as pl
 from enum import Enum
 from functools import wraps
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Dict, Generic,
-                    Iterable, Iterator, List, Mapping, Match, MutableMapping,
-                    Optional, ParamSpec, Sequence, Set, Tuple, TypeAlias,
-                    TypeVar, Union, cast)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    Match,
+    MutableMapping,
+    Optional,
+    ParamSpec,
+    Protocol,
+    Sequence,
+    Set,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    Union,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
+from uuid import UUID, uuid1
 
-##-- end imports
+# ##-- end stdlib imports
+
+import keyword
+from jgdv import Maybe
+from jgdv._abstract.protocols import Key_p
 
 ##-- logging
 logging                                      = logmod.getLogger(__name__)
 ##-- end logging
 
-import inspect
+type Signature = inspect.Signature
 
 JGDV_ANNOTATIONS : Final[str]                = "__JGDV_ANNOTATIONS__"
 KEYS_HANDLED     : Final[str]                = "_jgdv_keys_handler"
@@ -144,7 +182,7 @@ class DecorationUtils:
         return fn
 
     @staticmethod
-    def _update_key_annotations(fn, keys:list[JGDVKey]) -> True:
+    def _update_key_annotations(fn, keys:list[Key_p]) -> True:
         """ update the declared expansion keys on the wrapped action """
         sig = inspect.signature(fn)
 
@@ -159,7 +197,7 @@ class DecorationUtils:
         return True
 
     @staticmethod
-    def prepare_expansion(keys:list[JGDVKey], fn):
+    def prepare_expansion(keys:list[Key_p], fn):
         """ used as a partial fn. adds declared keys to a function,
           and idempotently adds the expansion decorator
         """
@@ -189,7 +227,7 @@ class DecorationUtils:
             try:
                 expansions = [x(spec, state) for x in getattr(fn, KEY_ANNOTS)]
             except KeyError as err:
-                printer.warning("Action State Expansion Failure: %s", err)
+                logging.warning("Action State Expansion Failure: %s", err)
                 return False
             all_args = (*call_args, *expansions)
             return fn(self, spec, state, *all_args, **kwargs)
@@ -205,7 +243,7 @@ class DecorationUtils:
             try:
                 expansions = [x(spec, state) for x in getattr(fn, KEY_ANNOTS)]
             except KeyError as err:
-                printer.warning("Action State Expansion Failure: %s", err)
+                logging.warning("Action State Expansion Failure: %s", err)
                 return False
             all_args = (*call_args, *expansions)
             return fn(spec, state, *all_args, **kwargs)
@@ -360,7 +398,7 @@ class _DecorationUtils_b:
             setattr(fn, DecorationUtils._keys, new_annotations)
 
         if not DecorationUtils.verify_action_signature(sig, new_annotations):
-            raise doot.errors.DootKeyError("Annotations do not match signature", sig)
+            raise ValueError("Annotations do not match signature", sig)
 
         return True
 
@@ -372,7 +410,7 @@ class _DecorationUtils_b:
             try:
                 expansions = [x(spec, state) for x in getattr(fn, DecorationUtils._keys)]
             except KeyError as err:
-                printer.warning("Action State Expansion Failure: %s", err)
+                logging.warning("Action State Expansion Failure: %s", err)
                 return False
             all_args = (*call_args, *expansions)
             return fn(self, spec, state, *all_args, **kwargs)
@@ -388,7 +426,7 @@ class _DecorationUtils_b:
             try:
                 expansions = [x(spec, state) for x in getattr(fn, DecorationUtils._keys)]
             except KeyError as err:
-                printer.warning("Action State Expansion Failure: %s", err)
+                logging.warning("Action State Expansion Failure: %s", err)
                 return False
             all_args = (*call_args, *expansions)
             return fn(spec, state, *all_args, **kwargs)

@@ -36,7 +36,7 @@ from pydantic import BaseModel, field_validator, model_validator
 from jgdv._abstract.protocols import Buildable_p, Location_p, ProtocolModelMeta
 from jgdv.structs.dkey import DKey, DKeyFormatter
 from jgdv.mixins.path_manip import PathManip_m
-from jgdv.enums.util import FlagsBuilder_m
+from jgdv.mixins.enum_builders import FlagsBuilder_m
 
 # ##-- end 1st party imports
 
@@ -256,7 +256,7 @@ class Location(Strang, PathManip_m):
         return self.body()
 
     @ftz.cached_property
-    def stem(self) -> None|str|tuple[Location.bmark_e, str]:
+    def stem(self) -> Maybe[str|tuple[Location.bmark_e, str]]:
         """ Return the stem, or a tuple describing how it is a wildcard """
         if self.gmark_e.file not in self._group_meta:
             return None
@@ -274,7 +274,7 @@ class Location(Strang, PathManip_m):
         return elem
 
     @ftz.cache
-    def ext(self, *, last=False) -> None|str|tuple[Location.bmark_e, str]:
+    def ext(self, *, last=False) -> Maybe[str|tuple[Location.bmark_e, str]]:
         """ return the ext, or a tuple of how it is a wildcard.
         returns nothing if theres no extension,
         returns all suffixes if there are multiple, or just the last if last=True

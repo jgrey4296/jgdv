@@ -44,6 +44,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
+from jgdv import Maybe
 from jgdv.util.time_ctx import TimeCtx
 from jgdv.decorators.base import MetaDecorator
 
@@ -53,20 +54,22 @@ from jgdv.decorators.base import MetaDecorator
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+type Logger = logmod.Logger
 
 class TrackTime(MetaDecorator):
     """ Decorate a callable to track its timing """
 
-    def __init__(self, logger:None|logmod.Logger=None, level:None|int|str=None, entry:str=None, exit:str=None, **kwargs):
+    def __init__(self, logger:Maybe[Logger]=None, level:Maybe[int|str]=None, entry:Maybe[str]=None, exit:Maybe[str]=None, **kwargs):
         kwargs.setdefault("mark", "_timetrack_mark")
         kwargs.setdefault("data", "_timetrack_data")
-        super().__init__([], **kargs)
+        super().__init__([], **kwargs)
         self._logger = logger
         self._level  =  level
         self._entry  = entry
         self._exit   = exit
     
-    def wrap_fn(self, fn):
+    def wrap_fn[T](self, fn:T) -> T:
+        logger, enter, exit, level = self._logger, self._entry, self.exit, self.level
 
         def track_time_wrapper(*args, **kwargs):
             with TimeCtx(logger, enter, exit, level):

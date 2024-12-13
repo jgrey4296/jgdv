@@ -31,12 +31,11 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
+import types as types_
 import weakref
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from time import sleep
-from types import UnionType
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
                     MutableMapping, NoReturn, Protocol, Sequence, Tuple,
@@ -48,10 +47,11 @@ from weakref import ref
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
+from jgdv import Maybe, Never
 from jgdv.structs.chainguard import TomlTypes
 from jgdv.structs.chainguard._base import GuardBase
 from jgdv.structs.chainguard.error import GuardedAccessError
-from jgdv.structs.chainguard.proxies.base import NullFallback, GuardProxy
+from jgdv.structs.chainguard.proxies.base import GuardProxy
 
 # ##-- end 1st party imports
 
@@ -68,7 +68,7 @@ class GuardFailureProxy(GuardProxy):
     It also can type check its value and the value retrieved from the toml data
     """
 
-    def __init__(self, data:GuardBase, types:Any=None, index:list[str]|None=None, fallback:TomlTypes|NullFallback=NullFallback):
+    def __init__(self, data:GuardBase, types:Any=None, index:Maybe[list[str]]=None, fallback:TomlTypes|Never=Never):
         super().__init__(data, types=types, index=index)
         if fallback == (None,):
             self._fallback = None
@@ -78,7 +78,7 @@ class GuardFailureProxy(GuardProxy):
         if fallback:
             self._match_type(self._fallback)
 
-    def __call__(self, wrapper:callable[[TomlTypes], Any]|None=None, fallback_wrapper:callable[[TomlTypes], Any]|None=None) -> Any:
+    def __call__(self, wrapper:Maybe[callable[[TomlTypes], Any]]=None, fallback_wrapper:Maybe[callable[[TomlTypes], Any]]=None) -> Any:
         """
         Reify a proxy into an actual value, or its fallback.
         Optionally call a wrapper function on the actual value,
@@ -88,11 +88,11 @@ class GuardFailureProxy(GuardProxy):
         wrapper : callable[[TomlTypes], TomlTypes] = wrapper or (lambda x: x)
         fallback_wrapper                           = fallback_wrapper or (lambda x: x)
         match self._data, self._fallback:
-            case x, y if x is NullFallback and y is NullFallback:
+            case x, y if x is Never and y is Never:
                 raise ValueError("No Value, and no fallback")
-            case x, None if x is NullFallback or x is None:
+            case x, None if x is Never or x is None:
                 val = None
-            case x, data if x is NullFallback or x is None:
+            case x, data if x is Never or x is None:
                 val = fallback_wrapper(data)
             case GuardBase() as data, _:
                 val = wrapper(dict(data))
@@ -104,7 +104,7 @@ class GuardFailureProxy(GuardProxy):
     def __getattr__(self, attr:str) -> GuardProxy:
         try:
             match self._data:
-                case x if x is NullFallback:
+                case x if x is Never:
                     raise GuardedAccessError()
                 case GuardBase():
                     return self._inject(self._data[attr], attr=attr)
@@ -124,16 +124,16 @@ class GuardFailureProxy(GuardProxy):
 
         return curr
 
-    def _inject(self, val:tuple[Any]=NullFallback, attr:str|None=None, clear:bool=False) -> GuardProxy:
+    def _inject(self, val:tuple[Any]=Never, attr:Maybe[str]=None, clear:bool=False) -> GuardProxy:
         match val:
             case _ if clear:
-                val = NullFallback
-            case x if x is NullFallback:
+                val = Never
+            case x if x is Never:
                 val = self._data
             case _:
                 pass
 
         return GuardFailureProxy(val,
-                                     types=self._types,
-                                     index=self._index(attr),
-                                     fallback=self._fallback)
+                                 types=self._types,
+                                 index=self._index(attr),
+                                 fallback=self._fallback)

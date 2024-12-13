@@ -25,7 +25,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 from statemachine import State, StateMachine
 from statemachine.states import States
 from collections import ChainMap
-import jgdv
+from jgdv import Maybe
 from jgdv.structs.chainguard import ChainGuard
 from jgdv._abstract.protocols import ParamStruct_p
 from .param_spec import ParamSpec, ArgParseError, HelpParam, LiteralParam, SeparatorParam
@@ -86,7 +86,7 @@ class ParseMachine(ParseMachineBase):
         self.count = 0
         self.max_attempts = 20
 
-    def __call__(self, args:list[str], *, head_specs:list[ParamSpec], cmds:list[ParamSource_p], subcmds:list[tuple[str, ParamSource_p]]) -> None|dict:
+    def __call__(self, args:list[str], *, head_specs:list[ParamSpec], cmds:list[ParamSource_p], subcmds:list[tuple[str, ParamSource_p]]) -> Maybe[dict]:
         assert(self.current_state == self.Start)
         self.setup(args, head_specs, cmds, subcmds)
         if self.current_state not in [self.ReadyToReport, self.Failed, self.End]:
@@ -108,8 +108,8 @@ class CLIParser(ArgParser_p):
     _head_specs       : list[ParamSpec]                        = []
     _cmd_specs        : dict[str, list[ParamSpec]]             = {}
     _subcmd_specs     : dict[str, tuple[str, list[ParamSpec]]] = {}
-    head_result       : None|ParseResult                       = None
-    cmd_result        : None|ParseResult                       = None
+    head_result       : Maybe[ParseResult]                     = None
+    cmd_result        : Maybe[ParseResult]                     = None
     subcmd_results    : list[ParseResult]                      = []
     extra_results     : ParseResult                            = ParseResult(EXTRA_KEY)
     non_default_args  : ParseResult                            = ParseResult(NON_DEFAULT_KEY)
@@ -147,13 +147,13 @@ class CLIParser(ArgParser_p):
 
         match subcmds:
             case [*xs]:
-                self._subcmd_specs = {y.name:(x, y.param_specs) for x,y in subcmds}
+                self._subcmd_specs = {y.name:(x, y.param_specs) for x,y in xs}
             case _:
                 logging.info("No Subcmd Specs provided for parsing")
                 self._subcmd_specs = {}
 
-        self.head_result       : None|ParseResult                      = None
-        self.cmd_result        : None|ParseResult                      = None
+        self.head_result       : Maybe[ParseResult]                      = None
+        self.cmd_result        : Maybe[ParseResult]                      = None
         self.subcmd_results    : list[ParseResult]                     = []
         self.extra_results     : ParseResult                           = ParseResult(EXTRA_KEY)
         self.non_default_args  : ParseResult                           = ParseResult(NON_DEFAULT_KEY)
@@ -267,7 +267,7 @@ class CLIParser(ArgParser_p):
                 return True
 
 
-    def report(self) -> None|dict:
+    def report(self) -> Maybe[dict]:
         """ Take the parsed results and return a nested dict """
         result = {
             "head"  : self.head_result.to_dict(),

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 # Imports:
@@ -55,12 +54,11 @@ from uuid import UUID, uuid1
 
 ##-- end builtin imports
 
+from jgdv import Maybe, DateTime, Seconds
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-Seconds  : TypeAlias = int
-DateTime : TypeAlias = datetime.datetime
 
 class HumanNum:
     """

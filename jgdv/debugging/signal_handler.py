@@ -3,36 +3,62 @@
 
 """
 
+# Imports:
 ##-- builtin imports
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
+import os
 import pathlib as pl
 import re
+import signal
 import time
 import types
 import weakref
+
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
+# ##-- 3rd party imports
 ##-- lib imports
 import more_itertools as mitz
-##-- end lib imports
 
-import os
-import signal
+# ##-- end 3rd party imports
+
+##-- end builtin imports
 
 ##-- logging
 logging    = logmod.getLogger(__name__)

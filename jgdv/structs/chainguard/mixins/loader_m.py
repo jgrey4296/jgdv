@@ -3,9 +3,11 @@
 
 """
 
+# Imports:
 ##-- builtin imports
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -17,34 +19,49 @@ import re
 import time
 import types
 import weakref
+import tomllib
 # from copy import deepcopy
 # from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeVar,
-                    cast, final, overload, runtime_checkable)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    Self,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 
+# ##-- end stdlib imports
+
 ##-- end builtin imports
+
+# ##-- 1st party imports
+from jgdv import Maybe
+from jgdv.structs.chainguard import GuardedAccessError, TomlTypes
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-try:
-    # for py 3.11 onwards:
-    from typing import Self
-except ImportError:
-    Self = Any
-
-from jgdv.structs.chainguard import TomlTypes, GuardedAccessError
-
-try:
-    # For py 3.11 onwards:
-    import tomllib as toml
-except ImportError:
-    # Fallback to external package
-    import toml
 
 class TomlLoader_m:
 
@@ -52,7 +69,7 @@ class TomlLoader_m:
     def read(cls, text:str) -> Self:
         logging.debug("Reading ChainGuard for text")
         try:
-            return cls(toml.loads(text))
+            return cls(tomllib.loads(text))
         except Exception as err:
             raise IOError("ChainGuard Failed to Load: ", text, err.args) from err
 
@@ -72,7 +89,7 @@ class TomlLoader_m:
             for path in paths:
                 texts.append(pl.Path(path).read_text())
 
-            return cls(toml.loads("\n".join(texts)))
+            return cls(tomllib.loads("\n".join(texts)))
         except Exception as err:
             raise IOError("ChainGuard Failed to Load: ", paths, err.args) from err
 
@@ -84,6 +101,6 @@ class TomlLoader_m:
             for path in pl.Path(dirp).glob("*.toml"):
                 texts.append(path.read_text())
 
-            return cls(toml.loads("\n".join(texts)))
+            return cls(tomllib.loads("\n".join(texts)))
         except Exception as err:
             raise IOError("ChainGuard Failed to Directory: ", dirp, err.args) from err

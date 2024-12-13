@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
-
 """
 
 # Imports:
@@ -48,6 +46,7 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
+from jgdv import Maybe, Rx, Ident
 from jgdv._abstract.protocols import Buildable_p
 from jgdv.structs.dkey.meta import DKey, REDIRECT_SUFFIX, CONV_SEP, DKeyMark_e
 from jgdv.structs.dkey.formatter import DKeyFormatter
@@ -56,9 +55,7 @@ from jgdv.structs.dkey.formatter import DKeyFormatter
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
-FMT_PATTERN     : Final[re.Pattern]         = re.compile("[wdi]+")
-
+FMT_PATTERN     : Final[Rx]         = re.compile("[wdi]+")
 
 def identity(x):
     return x
@@ -98,9 +95,9 @@ class DKeyFormatting_m:
 
         return format(result, rem)
 
-    def _consume_format_params(self, spec:str) -> tuple(str, bool, bool, bool):
+    def _consume_format_params(self, spec:str) -> tuple(str, bool, bool):
         """
-          return (consumed, wrap, direct)
+          return (remaining, wrap, direct)
         """
         wrap     = 'w' in spec
         indirect = 'i' in spec
@@ -139,7 +136,7 @@ class DKeyExpansion_m:
             case x:
                 raise TypeError("bad redirection type", x, self)
 
-    def expand(self, *sources, fallback=None, max=None, check=None, **kwargs) -> None|Any:
+    def expand(self, *sources, fallback=None, max=None, check=None, **kwargs) -> Maybe[Any]:
         logging.debug("DKey expansion for: %s", self)
         match DKeyFormatter.expand(self, sources=sources, fallback=fallback or self._fallback, max=max or self._max_expansions):
             case None:

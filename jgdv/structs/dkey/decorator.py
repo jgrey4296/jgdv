@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 # Imports:
@@ -16,7 +15,7 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
+import types as types_
 import weakref
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match,
@@ -38,8 +37,8 @@ from jgdv.structs.strang import CodeReference
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
+from jgdv import Maybe, FmtStr, Ident, Rx, Method, Func, Decorator
 from jgdv.structs.dkey import errors as dkey_errs
-from jgdv._abstract.protocols import Key_p, SpecStruct_p, Decorator_p
 from jgdv.structs.dkey.meta import DKey
 from jgdv.decorators.base import MetaDecorator, DataDecorator, DecoratorAccessor_m, _TargetType_e
 
@@ -49,16 +48,17 @@ from jgdv.decorators.base import MetaDecorator, DataDecorator, DecoratorAccessor
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-KEY_PATTERN                                     =  "{(.+?)}"
-MAX_KEY_EXPANSIONS                              = 10
-ARGS_K              : Final[str]                = "args"
-KWARGS_K            : Final[str]                = "kwargs"
+type Signature = inspect.Signature
 
-PATTERN             : Final[re.Pattern]         = re.compile(KEY_PATTERN)
-FAIL_PATTERN        : Final[re.Pattern]         = re.compile("[^a-zA-Z_{}/0-9-]")
-EXPANSION_HINT      : Final[str]                = "_doot_expansion_hint"
-HELP_HINT           : Final[str]                = "_doot_help_hint"
-PARAM_IGNORES       : Final[list[str]]          = ["_", "_ex"]
+KEY_PATTERN         : Final[FmtStr]               =  "{(.+?)}"
+MAX_KEY_EXPANSIONS  : Final[int]                  = 10
+ARGS_K              : Final[Ident]                = "args"
+KWARGS_K            : Final[Ident]                = "kwargs"
+PATTERN             : Final[Rx]                   = re.compile(KEY_PATTERN)
+FAIL_PATTERN        : Final[Rx]                   = re.compile("[^a-zA-Z_{}/1-9-]")
+EXPANSION_HINT      : Final[Ident]                = "_doot_expansion_hint"
+HELP_HINT           : Final[Ident]                = "_doot_help_hint"
+PARAM_IGNORES       : Final[list[str]]            = ["_", "_ex"]
 
 class DKeyMetaDecorator(MetaDecorator):
     """ A Meta decorator that registers keys for input and output verification"""
@@ -74,13 +74,13 @@ class DKeyExpansionDecorator(DataDecorator):
 
     """
 
-    def __init__(self, keys:list[DKey], ignores:None|list[str]=None, **kwargs):
+    def __init__(self, keys:list[DKey], ignores:Maybe[list[str]]=None, **kwargs):
         kwargs.setdefault("mark", "_dkey_marked")
         kwargs.setdefault("data", "_dkey_vals")
         super().__init__(keys, **kwargs)
         self._param_ignores     : tuple[str, str] = ignores or PARAM_IGNORES
 
-    def _wrap_method(self, fn) -> Callable:
+    def _wrap_method(self, fn:Method) -> Method:
         data_key = self._data_key
 
         def method_action_expansions(_self, spec, state, *call_args, **kwargs):
@@ -96,7 +96,7 @@ class DKeyExpansionDecorator(DataDecorator):
         # -
         return method_action_expansions
 
-    def _wrap_fn(self, fn) -> Callable:
+    def _wrap_fn(self, fn:Func) -> Func:
         data_key = self._data_key
 
         def fn_action_expansions(spec, state, *call_args, **kwargs):
@@ -112,7 +112,7 @@ class DKeyExpansionDecorator(DataDecorator):
         # -
         return fn_action_expansions
 
-    def _verify_signature(self, sig:inspect.Signature, ttype:_TargetType_e, args:list[DKey]) -> None:
+    def _verify_signature(self, sig:Signature, ttype:_TargetType_e, args:list[DKey]) -> None:
         # Get the head args
         match ttype:
             case _TargetType_e.FUNC:
@@ -151,13 +151,13 @@ class _DKeyedMeta_m:
     """
 
     @staticmethod
-    def requires(*args, **kwargs):
+    def requires(*args, **kwargs) -> DKeyMetaDecorator:
         """ mark an action as requiring certain keys to in the state, but aren't expanded """
         keys = [DKey(x, implicit=True, mark=DKey.mark.NULL, **kwargs) for x in args]
         return DKeyMetaDecorator(keys)
 
     @staticmethod
-    def returns(*args, **kwargs):
+    def returns(*args, **kwargs) -> DKeyMetaDecorator:
         """ mark an action as needing to return certain keys """
         keys = [DKey(x, implicit=True, mark=DKey.mark.NULL, **kwargs) for x in args]
         return DKeyMetaDecorator(keys)
@@ -170,55 +170,55 @@ class _DKeyedRetrieval_m(DecoratorAccessor_m):
     _decoration_builder : ClassVar[type] = DKeyExpansionDecorator
 
     @staticmethod
-    def formats(*args, **kwargs):
+    def formats(*args, **kwargs) -> Decorator:
         keys     = [DKey(x, implicit=True, mark=DKey.mark.STR, **kwargs) for x in args]
         return DKeyed._build_decorator(keys)
 
     @staticmethod
-    def expands(*args, **kwargs):
+    def expands(*args, **kwargs) -> Decorator:
         """ mark an action as using expanded string keys """
         return DKeyed.formats(*args, **kwargs)
 
     @staticmethod
-    def paths(*args, **kwargs):
+    def paths(*args, **kwargs) -> Decorator:
         """ mark an action as using expanded path keys """
         kwargs.setdefault("implicit", True)
         keys = [DKey(x, mark=DKey.mark.PATH, **kwargs) for x in args]
         return DKeyed._build_decorator(keys)
 
     @staticmethod
-    def types(*args, **kwargs):
+    def types(*args, **kwargs) -> Decorator:
         """ mark an action as using raw type keys """
         kwargs.setdefault("max_exp", 1)
         keys = [DKey(x, implicit=True, mark=DKey.mark.FREE, **kwargs) for x in args]
         return DKeyed._build_decorator(keys)
 
     @staticmethod
-    def args(fn):
+    def args(fn) -> Decorator:
         """ mark an action as using spec.args """
         keys = [DKey(ARGS_K, implicit=True, mark=DKey.mark.ARGS)]
         return DKeyed._build_decorator(keys)(fn)
 
     @staticmethod
-    def kwargs(fn):
+    def kwargs(fn) -> Decorator:
         """ mark an action as using all kwargs"""
         keys = [DKey(KWARGS_K, implicit=True, mark=DKey.mark.KWARGS)]
         return DKeyed._build_decorator(keys)(fn)
 
     @staticmethod
-    def redirects(*args, **kwargs):
+    def redirects(*args, **kwargs) -> Decorator:
         """ mark an action as using redirection keys """
         keys = [DKey(x, implicit=True, mark=DKey.mark.REDIRECT, ctor=DKey, **kwargs) for x in args]
         return DKeyed._build_decorator(keys)
 
     @staticmethod
-    def references(*args, **kwargs):
+    def references(*args, **kwargs) -> Decorator:
         """ mark keys to use as to_coderef imports """
         keys = [DKey(x, implicit=True, mark=DKey.mark.CODE, **kwargs) for x in args]
         return DKeyed._build_decorator(keys)
 
     @staticmethod
-    def postbox(*args, **kwargs):
+    def postbox(*args, **kwargs) -> Decorator:
         keys = [DKey(x, implicit=True, mark=DKey.mark.POSTBOX, **kwargs) for x in args]
         return DKeyed._build_decorator(keys)
 

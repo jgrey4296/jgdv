@@ -1,25 +1,56 @@
 #!/usr/bin/env python3
 # from https://alexandra-zaharia.github.io/posts/make-your-own-custom-color-formatter-with-python-logging/
-##-- imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
+import datetime
+import enum
+import functools as ftz
+import itertools as itz
 import logging
-import warnings
+import logging as logmod
+import pathlib as pl
 import re
+import warnings
 from collections import defaultdict
 from string import Formatter
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
+from uuid import UUID, uuid1
 
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
 import _string
-##-- end imports
 
-##-- colours import attempt
 try:
     # If `sty` is installed, use that
+    # ##-- 3rd party imports
     from sty import bg, ef, fg, rs
+
     LEVEL_MAP    = defaultdict(lambda: rs.all)
     COLOUR_RESET = rs.all
     LEVEL_MAP.update({
@@ -49,7 +80,10 @@ except ImportError:
     # Otherwise don't add colours
     LEVEL_MAP    = defaultdict(lambda: "")
     COLOUR_RESET = ""
-##-- end colours import attempt
+
+# ##-- end 3rd party imports
+
+from jgdv import Maybe
 
 class SimpleLogColour:
     """ Utility class for wrapping strings with specific colours """
@@ -102,7 +136,7 @@ class JGDVColourFormatter(logging.Formatter):
                          style=self._default_style)
         self.colours = LEVEL_MAP
 
-    def format(self, record):
+    def format(self, record) -> str:
         log_colour = self.colours[record.levelno]
         if hasattr(record, "colour"):
             log_colour = self.colours[record.colour]
@@ -130,7 +164,7 @@ class JGDVColourStripFormatter(logging.Formatter):
                          datefmt=self._default_date_fmt,
                          style=self._default_style)
 
-    def format(self, record):
+    def format(self, record) -> str:
         result    = super().format(record)
         no_colour = self._colour_strip_re.sub("", result)
         return no_colour

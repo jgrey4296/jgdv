@@ -33,23 +33,24 @@ from uuid import UUID, uuid1
 
 # ##-- end 3rd party imports
 
-from jgdv.structs.strang import strang_mixins as mixins
+from jgdv import *
+from . import strang_mixins as s_mix
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 logging.disabled = True
 ##-- end logging
 
-FMT_PATTERN    : Final[re.Pattern]         = re.compile("^(h?)(t?)(p?)")
+FMT_PATTERN    : Final[Rx]                 = re.compile("^(h?)(t?)(p?)")
+UUID_RE        : Final[Rx]                 = re.compile(r"<uuid(?::(.+?))?>")
+MARK_RE        : Final[Rx]                 = re.compile(r"\$(.+?)\$")
 SEP_DEFAULT    : Final[str]                = "::"
 SUBSEP_DEFAULT : Final[str]                = "."
-GEN_K          : Final[str]                = mixins.GEN_K
-INST_K                                     = mixins.INST_K
-UUID_RE        : Final[re.Pattern]         = re.compile(r"<uuid(?::(.+?))?>")
-MARK_RE        : Final[re.Pattern]         = re.compile(r"\$(.+?)\$")
+GEN_K          : Final[str]                = s_mix.GEN_K
+INST_K         : Final[str]                = s_mix.INST_K
 
 STRGET                                     = str.__getitem__
-StrangMarker_e                             = mixins.StrangMarker_e
+StrangMarker_e                             = s_mix.StrangMarker_e
 
 class _StrangMeta(type(str)):
 
@@ -72,7 +73,7 @@ class _StrangMeta(type(str)):
         obj._post_process()
         return obj
 
-class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
+class Strang(s_mix.Strang_m, str, metaclass=_StrangMeta):
     """
       A Structured String Baseclass.
       A Normal str, but is parsed on construction to extract and validate
@@ -170,7 +171,7 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
         self._mark_idx    : tuple[int, int]                     = (None,None)
         self._group       : list[slice]                         = []
         self._body        : list[slice]                         = []
-        self._body_meta   : list[None|Strang._body_types]       = []
+        self._body_meta   : list[Maybe[Strang._body_types]]     = []
         self._group_meta  : set[enum.member]                    = set()
 
     def __str__(self):
@@ -225,7 +226,7 @@ class Strang(mixins.Strang_m, str, metaclass=_StrangMeta):
     def group(self) -> list[str]:
         return [STRGET(self, x) for x in self._group]
 
-    def body(self, *, reject:None|callable=None, no_expansion:bool=False) -> list[str]:
+    def body(self, *, reject:Maybe[callable]=None, no_expansion:bool=False) -> list[str]:
         """ Get the body, as a list of str's,
         with values filtered out if a rejection fn is used
         """

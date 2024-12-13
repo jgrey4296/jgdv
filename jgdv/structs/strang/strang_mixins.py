@@ -98,7 +98,7 @@ class _Strang_validation_m:
         self._base_slices = (slice(self._group[0].start, self._group[-1].stop),
                              slice(self._body[0].start, self._body[-1].stop))
 
-    def _get_slices(self, start:int=0, max:None|int=None, add_offset:bool=False):
+    def _get_slices(self, start:int=0, max:Maybe[int]=None, add_offset:bool=False):
         index, end, offset = start, max or len(self), len(self._subseparator)
         slices    = []
         if add_offset:
@@ -264,7 +264,7 @@ class _Strang_format_m:
             case _:
                 raise TypeError("Unknown body type", val)
 
-    def _expanded_str(self, *, stop:None|int=None):
+    def _expanded_str(self, *, stop:Maybe[int]=None):
         """ Create a str of the Strang with gen uuid's replaced with actual uuids """
         group = self[0:]
         body = []

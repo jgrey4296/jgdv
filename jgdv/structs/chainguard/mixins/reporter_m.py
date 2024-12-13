@@ -21,7 +21,7 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
+import types as types_
 import weakref
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
@@ -35,6 +35,9 @@ from uuid import UUID, uuid1
 from weakref import ref
 
 # ##-- end stdlib imports
+
+from jgdv import Maybe
+from jgdv.structs.chainguard import TomlTypes
 
 ##-- logging
 logging = logmod.getLogger(__name__)

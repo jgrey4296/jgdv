@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 # import abc
 import datetime
 import enum
@@ -18,23 +18,52 @@ import re
 import time
 import types
 import weakref
+
 # from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Self,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
+# ##-- 3rd party imports
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+from jgdv import Maybe
+from jgdv.files.bookmarks.bookmark import Bookmark
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
-from jgdv.files.bookmarks.bookmark import Bookmark
 
 class BookmarkCollection(BaseModel):
 
@@ -64,7 +93,7 @@ class BookmarkCollection(BaseModel):
     def __iter__(self):
         return iter(self.entries)
 
-    def __contains__(self, value:Bookmark):
+    def __contains__(self, value:Bookmark) -> bool:
         return value in self.entries
 
     def __len__(self):
@@ -73,7 +102,7 @@ class BookmarkCollection(BaseModel):
     def __hash__(self):
         return id(self)
 
-    def update(self, *values):
+    def update(self, *values) -> Self:
         for val in values:
             match val:
                 case Bookmark():
@@ -86,7 +115,7 @@ class BookmarkCollection(BaseModel):
                     raise TypeError(type(val))
         return self
 
-    def difference(self, other:BookmarkCollection):
+    def difference(self, other:Self) -> Self:
         result = BookmarkCollection()
         for bkmk in other:
             if bkmk not in self:

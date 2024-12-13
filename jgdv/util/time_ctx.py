@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -28,6 +27,7 @@ from uuid import UUID, uuid1
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+type Logger = logmod.Logger
 
 class TimeCtx:
     """
@@ -37,19 +37,17 @@ class TimeCtx:
 
     """
 
-    def __init__(self, logger=None, entry_msg=None, exit_msg=None, level:None|int|str=None):
+    def __init__(self, logger:Logger=None, entry_msg:Maybe[str]=None, exit_msg:Maybe[str]=None, level:Maybe[int|str]=None):
         self._start_time = None
         self._logger     = logger or logging
         self._level      = level or 10
         self._entry_msg  = entry_msg or "Starting Timer"
         self._exit_msg   = exit_msg  or "Time Elapsed"
 
-
     def __enter__(self) -> Any:
         self._logger.log(self._level, self._entry_msg)
         self._start_time = time.perf_counter()
         return
-
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
         end = time.perf_counter()

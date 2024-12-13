@@ -23,22 +23,45 @@ import re
 import time
 import types
 import weakref
+from collections import ChainMap
+from collections.abc import ItemsView, KeysView, Mapping, ValuesView
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
 from time import sleep
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 from weakref import ref
 
 # ##-- end stdlib imports
 
-from collections import ChainMap
-from collections.abc import Mapping, ItemsView, KeysView, ValuesView
+# ##-- 1st party imports
+from jgdv import Maybe
 from jgdv.structs.chainguard import GuardedAccessError
+
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -87,7 +110,7 @@ class TomlAccess_m:
         return curr
 
 
-    def get(self, key:str, default:TomlTypes|None=None) -> TomlTypes|None:
+    def get(self, key:str, default:Maybe[TomlTypes]=None) -> Maybe[TomlTypes]:
         if key in self:
             return self[key]
 

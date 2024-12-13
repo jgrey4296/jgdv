@@ -8,6 +8,7 @@ from __future__ import annotations
 
 # ##-- stdlib imports
 import datetime
+import builtins
 import enum
 import functools as ftz
 import itertools as itz
@@ -19,24 +20,48 @@ import time
 import types
 import weakref
 from sys import stderr, stdout
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
+import warnings
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-from jgdv.logging.log_colour import (JGDVColourFormatter,
-                                     JGDVColourStripFormatter)
+# ##-- 1st party imports
+from jgdv import Maybe
+from jgdv.logging.log_colour import JGDVColourFormatter, JGDVColourStripFormatter
+from jgdv.logging.logger_spec import LoggerSpec
 from jgdv.structs.chainguard import ChainGuard
 
-from jgdv.logging.logger_spec import LoggerSpec
+# ##-- end 1st party imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+
+type Logger = logmod.Logger
 
 PRINTER_NAME : Final[str] = "_printer_"
 env          : dict       = os.environ
@@ -88,7 +113,7 @@ class JGDVLogConfig:
         self.printer_initial_spec.apply()
         logging.debug("Post Log Setup")
 
-    def _setup_print_children(self, config):
+    def _setup_print_children(self, config:ChainGuard):
         logging.info("Setting up print children")
         basename            = PRINTER_NAME
         subprint_data       = config.on_fail({}).logging.subprinters()
@@ -116,7 +141,7 @@ class JGDVLogConfig:
                         case LoggerSpec() as spec:
                             spec.apply()
 
-    def _setup_logging_extra(self, config):
+    def _setup_logging_extra(self, config:ChainGuard):
         """ read the doot config logging section
           setting up each entry other than stream, file, printer, and subprinters
         """
@@ -124,7 +149,7 @@ class JGDVLogConfig:
         for key,data in extras.items():
             match LoggerSpec.build(data, name=key):
                 case None:
-                    print("Could not build LoggerSpec for {}".format(name))
+                    print("Could not build LoggerSpec for {}".format(key))
                 case LoggerSpec() as spec:
                     spec.apply()
 
@@ -158,21 +183,20 @@ class JGDVLogConfig:
         printed strings are logged at DEBUG level
         """
         if not disable_warning:
-            import warnings
             warnings.warn("Modifying builtins.print", RuntimeWarning)
 
-        import builtins
+
         oldprint = builtins.print
         file_handler = logmod.FileHandler(path, mode='w')
         file_handler.setLevel(logmod.DEBUG)
-        file_handler.setFormatter(ColourStripPrintCapture())
+        file_handler.setFormatter(JGDVColourStripFormatter())
 
-        print_logger = logmod.getLogger(f"{PRINT_NAME}.intercept")
+        print_logger = logmod.getLogger(f"{PRINTER_NAME}.intercept")
         print_logger.setLevel(logmod.NOTSET)
         print_logger.addHandler(file_handler)
         print_logger.propagate = False
 
-        @wraps(oldprint)
+        @ftz.wraps(oldprint)
         def intercepted(*args, **kwargs):
             """ Wraps `print` to also log to a separate file """
             oldprint(*args, **kwargs)
@@ -186,15 +210,21 @@ class JGDVLogConfig:
           logged at DEBUG level
         """
         if not disable_warning:
+            # ##-- stdlib imports
             import warnings
+
+            # ##-- end stdlib imports
             warnings.warn("Modifying builtins.print", RuntimeWarning)
 
+        # ##-- stdlib imports
         import builtins
+
+        # ##-- end stdlib imports
         oldprint     = builtins.print
-        print_logger = logmod.getLogger(f"{PRINT_NAME}.intercept")
+        print_logger = logmod.getLogger(f"{PRINTER_NAME}.intercept")
         print_logger.setLevel(logmod.DEBUG)
 
-        @wraps(oldprint)
+        @ftz.wraps(oldprint)
         def intercepted(*args, **kwargs):
             """ Wraps `print` to also log to a separate file """
             oldprint(*args, **kwargs)
@@ -203,7 +233,7 @@ class JGDVLogConfig:
 
         builtins.print = intercepted
 
-    def subprinter(self, *names) -> logmod.Logger:
+    def subprinter(self, *names) -> Logger:
         """ Get a subprinter of the printer logger.
           The First name needs to be a registered subprinter.
           Additional names are unconstrained
