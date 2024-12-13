@@ -3,7 +3,7 @@ name            = "jgdv"
 version         = "0.3.2"
 description     = ""
 readme          = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 license         = {file = "LICENSE"}
 keywords        = []
 authors         = [

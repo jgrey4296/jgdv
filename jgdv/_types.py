@@ -8,63 +8,26 @@ Types that help add clarity
 # Imports:
 from __future__ import annotations
 
-# ##-- stdlib imports
-# import abc
-import datetime
-import enum
-import functools as ftz
-import itertools as itz
-import logging as logmod
-import pathlib as pl
-import re
-import time
-import types
-import weakref
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    NewType,
-    Optional,
-    Protocol,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
+from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
+                    Generic, Iterable, Iterator, Mapping, Match, NewType,
+                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
+                    TypeGuard, TypeVar, cast, final, overload, Optional,
+                    runtime_checkable)
 from uuid import UUID, uuid1
 
-# ##-- end stdlib imports
+__all__                       = ["Stack", "Queue", "Vector", "Ident", "Depth", "Seconds", "Maybe", "Result", "Either"]
 
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
+type _T                       = Any
 
-# TODO when in py3.12 use 'type' kw
+type Stack[T]                 = list[T]
+type Queue[T]                 = list[T]
+type Vector[T]                = list[T]
+type Ident                    = str
 
-T                       = TypeVar("T")
+type Maybe[_T]                = _T | None
+type Result[_T, E:Exception]  = _T | E
+type Either[L, R]             = L | R
 
-Stack                   = NewType("Stack", list[T])
-Queue                   = NewType("Queue", list[T])
-Vector                  = NewType("Vector", list[float])
-
-Identifier              = NewType("Identifier", str)
-
-Depth                   = NewType("Depth", int)
-Seconds                 = NewType("Seconds", int)
-
-Maybe         TypeAlias = Optional
+# TODO : Make These subtypes of int that are 0<=x
+type Depth              = int
+type Seconds            = int

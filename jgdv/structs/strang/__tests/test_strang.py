@@ -450,17 +450,17 @@ class TestStrangTests:
 
     def test_is_uniq(self):
         obj = Strang("head::tail.a.b.c.<uuid>")
-        assert(obj.is_uniq)
+        assert(obj.is_uniq())
 
     def test_not_is_uniq(self):
         obj = Strang("head::tail.a.b.c")
-        assert(not obj.is_uniq)
+        assert(not obj.is_uniq())
 
     def test_popped_uniq_is_not_uniq(self):
         obj = Strang("head::tail.a.b.c..<uuid>")
-        assert(obj.is_uniq)
+        assert(obj.is_uniq())
         popped = obj.pop()
-        assert(not popped.is_uniq)
+        assert(not popped.is_uniq())
 
 class TestStrangFormatting:
 

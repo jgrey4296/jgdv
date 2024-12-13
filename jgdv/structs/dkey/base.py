@@ -53,7 +53,7 @@ from jgdv._abstract.protocols import Buildable_p, Key_p, SpecStruct_p
 from jgdv.structs.dkey.meta import CONV_SEP, REDIRECT_SUFFIX, DKey, DKeyMark_e
 from jgdv.structs.dkey.formatter import DKeyFormatter
 from jgdv.structs.dkey.mixins import DKeyExpansion_m, DKeyFormatting_m, identity
-from jgdv.mixins.annotate import AnnotateSubclass_m
+from jgdv.mixins.annotate import SubAnnotate_m
 
 # ##-- end 1st party imports
 
@@ -73,7 +73,7 @@ FORMAT_SEP      : Final[str]                = ":"
 CHECKTYPE       : TypeAlias                 = None|type|types.GenericAlias|types.UnionType
 CWD_MARKER      : Final[str]                = "__cwd"
 
-class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, AnnotateSubclass_m, str):
+class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, SubAnnotate_m, str):
     """
       Base class characteristics of DKeys.
       adds:
