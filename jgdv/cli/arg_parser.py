@@ -83,8 +83,6 @@ class ParseMachine(ParseMachineBase):
     def __init__(self, **kwargs):
         kwargs.setdefault("parser", CLIParser())
         super().__init__(**kwargs)
-        self.count = 0
-        self.max_attempts = 20
 
     def __call__(self, args:list[str], *, head_specs:list[ParamSpec], cmds:list[ParamSource_p], subcmds:list[tuple[str, ParamSource_p]]) -> Maybe[dict]:
         assert(self.current_state == self.Start)
