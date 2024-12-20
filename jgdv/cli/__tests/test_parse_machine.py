@@ -50,7 +50,7 @@ class TestMachine:
         machine.setup(["a","b","c","d"], None, None, None)
         assert(machine.current_state.id == "Head")
 
-    def test_setup_ith_no_more_args(self):
+    def test_setup_with_no_more_args(self):
         machine = ParseMachine()
         assert(machine.current_state.id == "Start")
         machine.setup([], None, None, None)

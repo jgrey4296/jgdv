@@ -28,6 +28,29 @@ class _ParamSource:
     param_specs : list[ParamSpec]
 
 
+class TestParseMachine:
+
+    def test_sanity(self):
+        assert(True is not False)
+
+
+    def test_parse_empty(self):
+        obj = ParseMachine()
+        match obj([], head_specs=[], cmds=[], subcmds=[]):
+            case {"head": {}, "cmd": {}, "sub":{}, "extra":{"args":{}, "name": "_extra_"}}:
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_parse_no_specs(self):
+        obj = ParseMachine()
+        match obj(["test", "blah"], head_specs=[], cmds=[], subcmds=[]):
+            case {"head": {}, "cmd": {}, "sub":{}, "extra":{"args":{}, "name": "_extra_"}}:
+                assert(True)
+            case x:
+                assert(False), x
+
 class TestParser:
 
     @pytest.fixture(scope="function")
@@ -85,6 +108,13 @@ class TestParser:
         obj.help_flagged()
         assert(not obj._force_help)
 
+
+    def test_parse_empty(self, a_source):
+        obj = CLIParser()
+        obj._setup([], [Specs.LiteralParam(name="blah")], [a_source], [])
+        obj._parse_head()
+
+
     def test_parse_head(self, a_source):
         obj = CLIParser()
         obj._setup(["blah","b","c"], [Specs.LiteralParam(name="blah")], [a_source], [])
@@ -103,7 +133,6 @@ class TestParser:
                 assert(True)
             case _:
                 assert(False)
-
 
     def test_parse_cmd_arg_same_as_subcmd(self, a_source):
         obj = CLIParser()
@@ -151,7 +180,6 @@ class TestParser:
                 assert(True)
             case _:
                 assert(False)
-
 
     @pytest.mark.skip
     def test_parse_extra(self, a_source, b_source, c_source):

@@ -42,6 +42,7 @@ from jgdv import Maybe
 from jgdv.structs.chainguard import ChainGuard
 from jgdv._abstract.protocols import ParamStruct_p, ProtocolModelMeta, Buildable_p
 from jgdv.mixins.annotate import SubAnnotate_m
+from .errors import ParseError
 
 # ##-- end 1st party imports
 
@@ -52,9 +53,6 @@ logging = logmod.getLogger(__name__)
 NON_ASSIGN_PREFIX : Final[str] = "-"
 ASSIGN_PREFIX     : Final[str] = "--"
 END_SEP           : Final[str] = "--"
-
-class ArgParseError(Exception):
-    pass
 
 class _DefaultsBuilder_m:
 
@@ -90,7 +88,7 @@ class _DefaultsBuilder_m:
                 missing.append(p.name)
         else:
             if bool(missing):
-                raise ArgParseError("Missing Required Params", missing)
+                raise ParseError("Missing Required Params", missing)
 
 class _ConsumerArg_m:
 
@@ -118,8 +116,8 @@ class _ConsumerArg_m:
                     key, value, consumed = self.next_value(xs)
                     return self.coerce_types(key, value), consumed
                 case _:
-                    raise ArgParseError("Tried to consume a bad type", remaining)
-        except ArgParseError as err:
+                    raise ParseError("Tried to consume a bad type", remaining)
+        except ParseError as err:
             logging.debug("Parsing Failed: %s : %s (%s)", self.name, args, err)
             return None
 
@@ -410,7 +408,7 @@ class KeyParam(ParamSpecBase):
             case [x, y, *_] if self.matches_head(x):
                 return str, [y], 2
             case _:
-                raise ArgParseError("Failed to parse key")
+                raise ParseError("Failed to parse key")
 
 class RepeatableParam(KeyParam):
     """ TODO a repeatable key param """

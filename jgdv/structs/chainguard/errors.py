@@ -27,9 +27,10 @@ from uuid import UUID, uuid1
 
 ##-- end builtin imports
 
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
+from jgdv import JGDVError
 
-class GuardedAccessError(AttributeError):
+class ChainGuardError(JGDVError):
+    pass
+
+class GuardedAccessError(AttributeError, ChainGuardError):
     pass

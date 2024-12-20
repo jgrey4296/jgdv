@@ -5,5 +5,7 @@
 
 from __future__ import annotations
 
-class DKeyError(Exception):
+from jgdv import JGDVError
+
+class DKeyError(JGDVError):
     pass

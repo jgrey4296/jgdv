@@ -112,11 +112,12 @@ class ParseMachineBase(StateMachine):
              )
 
     parse = (Failed.from_(Start, Prepare, CheckForHelp, Head, Cmd, SubCmd, cond="_parse_fail_cond")
-              | ReadyToReport.from_(Head, Cmd, SubCmd, Extra, cond="_has_no_more_args_cond")
-              | Head.to(Cmd,      after="parse")
-              | Cmd.to(SubCmd,    after="parse")
-              | SubCmd.to(Extra,  after="parse")
-              )
+             | ReadyToReport.from_(Head, Cmd, SubCmd, Extra, cond="_has_no_more_args_cond")
+             | Head.to(Cmd,      after="parse")
+             | Cmd.to(SubCmd,    after="parse")
+             | SubCmd.to(Extra,  after="parse")
+             | Extra.to(Failed)
+             )
 
     finish  = (End.from_(Cleanup)
                | ReadyToReport.to(Cleanup, after="finish")

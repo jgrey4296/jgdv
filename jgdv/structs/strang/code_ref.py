@@ -64,7 +64,7 @@ class CodeReference(Strang):
 
     @classmethod
     def from_value(cls, value):
-        return cls(value.__qualname__, value=value)
+        return cls(f"{value.__module__}:{value.__qualname__}", value=value)
 
     @classmethod
     def pre_process(cls, data, strict=False):

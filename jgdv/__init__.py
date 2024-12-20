@@ -4,3 +4,4 @@ __version__ = "0.3.2"
 
 from jgdv.decorators.check_protocol import check_protocol
 from ._types import *
+from .util.errors import JGDVError

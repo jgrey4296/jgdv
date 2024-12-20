@@ -23,13 +23,15 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
 ##-- end imports
 
 from statemachine import State, StateMachine
+from statemachine.exceptions import TransitionNotAllowed
 from statemachine.states import States
 from collections import ChainMap
 from jgdv import Maybe
 from jgdv.structs.chainguard import ChainGuard
 from jgdv._abstract.protocols import ParamStruct_p
-from .param_spec import ParamSpec, ArgParseError, HelpParam, LiteralParam, SeparatorParam
+from .param_spec import ParamSpec, ParseError, HelpParam, LiteralParam, SeparatorParam
 from .parse_machine_base import ParseMachineBase, ArgParser_p
+from .errors import ParseError
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -78,6 +80,8 @@ class ParseMachine(ParseMachineBase):
     eg:
     doot -v list -by-group a b c --help
     doot run basic::task -quick --value=2 --help
+
+    Will raise a jgdv.cli.errors.ParseError on failure
     """
 
     def __init__(self, **kwargs):
@@ -86,11 +90,15 @@ class ParseMachine(ParseMachineBase):
 
     def __call__(self, args:list[str], *, head_specs:list[ParamSpec], cmds:list[ParamSource_p], subcmds:list[tuple[str, ParamSource_p]]) -> Maybe[dict]:
         assert(self.current_state == self.Start)
-        self.setup(args, head_specs, cmds, subcmds)
-        if self.current_state not in [self.ReadyToReport, self.Failed, self.End]:
-            self.parse()
-        self.finish()
-        return self.model.report()
+        try:
+            self.setup(args, head_specs, cmds, subcmds)
+            if self.current_state not in [self.ReadyToReport, self.Failed, self.End]:
+                self.parse()
+            self.finish()
+        except TransitionNotAllowed as err:
+            raise ParseError("Transition failure", err) from err
+        else:
+            return self.model.report()
 
 class CLIParser(ArgParser_p):
     """
@@ -242,7 +250,7 @@ class CLIParser(ArgParser_p):
     @ParseMachine.Extra.enter
     def _parse_extra(self):
         logging.debug("Extra Parsing: %s", self._remaining_args)
-        # self._remaining_args = []
+        self._remaining_args = []
 
     def _parse_params(self, res:ParseResult, params:list[ParamSpec]):
         for param in params:
@@ -268,7 +276,7 @@ class CLIParser(ArgParser_p):
     def report(self) -> Maybe[dict]:
         """ Take the parsed results and return a nested dict """
         result = {
-            "head"  : self.head_result.to_dict(),
+            "head"  : self.head_result.to_dict() if self.head_result else {},
             "cmd"   : self.cmd_result.to_dict() if self.cmd_result else {},
             "sub"   : {y['name']:y['args'] for x in self.subcmd_results if (y:=x.to_dict()) is not None},
             "extra" : self.extra_results.to_dict(),
