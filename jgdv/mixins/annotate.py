@@ -86,7 +86,7 @@ class SubAnnotate_m:
 
     @classmethod
     def _get_annotation(cls) -> Maybe[str]:
-        return getattr(cls, cls._AnnotateTo)
+        return getattr(cls, cls._AnnotateTo, None)
 
     @classmethod
     @ftz.cache

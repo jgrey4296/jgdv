@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 # ##-- stdlib imports
-# import abc
+import builtins
 import datetime
 import enum
 import functools as ftz
@@ -19,9 +19,10 @@ import re
 import time
 import types
 import weakref
-# from copy import deepcopy
 from dataclasses import InitVar, dataclass, field
+import types
 from types import GenericAlias
+import typing
 from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
                     Generic, Iterable, Iterator, Mapping, Match, Self,
                     MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
@@ -91,6 +92,7 @@ class _DefaultsBuilder_m:
                 raise ParseError("Missing Required Params", missing)
 
 class _ConsumerArg_m:
+    "Mixin for CLI arg consumption"
 
     def consume(self, args:list[str], *, offset:int=0) -> Maybe[tuple[dict, int]]:
         """
@@ -231,13 +233,14 @@ class ParamSpecBase(SubAnnotate_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_m
                 return str
             case "list":
                 return list
-            case type() if val is bool and (typevar:=cls.__dict__.get("_typevar", None)):
-                # Handle annotation like ParamSpecBase[str]
-                return typevar
-            case type():
-                return val
-            case _:
+            case x if x in [bool, str, list, set, float, int]:
+                return x
+            case types.GenericAlias():
+                return val.__origin__
+            case typing.Any:
                 return Any
+            case _:
+                raise TypeError("Bad Type for ParamSpec", val)
 
     @field_validator("default")
     def validate_default(cls, val):
@@ -249,30 +252,30 @@ class ParamSpecBase(SubAnnotate_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_m
 
     @model_validator(mode="after")
     def validate_model (self) -> Self:
-        if bool(self.prefix) and self.prefix in self.name:
-            raise TypeError("Prefix was found in the base name", self)
+        if bool(self.prefix) and self.name.startswith(self.prefix):
+            raise TypeError("Prefix was found in the base name", self, self.prefix)
         if bool(self.separator) and self.separator in self.name:
             raise TypeError("Separator was found in the base name", self)
 
-        match getattr(self, "_typevar", None):
+        match self._get_annotation():
             case None:
                 pass
-            case type() as x if x is self.type_:
-                pass
-            case type() as x if self.type_ is bool:
-                self.type_ = x
+            case x:
+                self.type_ = self.validate_type(x)
 
-        match self.type_():
-            case bool():
+        match self.type_:
+            case builtins.bool:
                 self.default = self.default or False
-            case int():
+            case builtins.int:
                 self.default = self.default or 0
-            case str():
+            case builtins.str:
                 self.default = self.default or ""
-            case list():
+            case builtins.list:
                 self.default = self.default or list
-            case set():
+            case builtins.set:
                 self.default = self.default or set
+            case _:
+                self.default = None
 
         return self
 

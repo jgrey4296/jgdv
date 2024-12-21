@@ -92,6 +92,7 @@ class TestParamSpec:
         for x,y in zip(s_params, target_sort):
             assert(x.name == y)
 
+
 class TestParamSpecConsumption:
 
     def test_consume_nothing(self):
@@ -325,3 +326,49 @@ class TestParamReactiveBuild:
 
     def test_sanity(self):
         assert(True is not False)
+
+
+class TestParamSpecTypes:
+
+    def test_sanity(self):
+        assert(True is not False)
+
+
+    def test_int(self):
+        obj = ParamSpec.build({"name":"blah", "type":int})
+        assert(obj.type_ is int)
+        assert(obj.default == 0)
+
+
+    def test_Any(self):
+        obj = ParamSpec.build({"name":"blah", "type":Any})
+        assert(obj.type_ is Any)
+        assert(obj.default is None)
+
+
+    def test_typed_list(self):
+        obj = ParamSpec.build({"name":"blah", "type":list[str]})
+        assert(obj.type_ is list)
+        assert(obj.default is list)
+
+
+    def test_annotated(self):
+        obj = ParamSpec[str](name="blah")
+        assert(obj.type_ is str)
+        assert(obj.default is '')
+
+
+    def test_annotated_list(self):
+        obj = ParamSpec[list[str]](name="blah")
+        assert(obj.type_ is list)
+        assert(obj.default is list)
+
+
+    def test_type_fail(self):
+        with pytest.raises(TypeError):
+            ParamSpec(name="blah", type=ParamSpec)
+
+
+    def test_type_build_fail(self):
+        with pytest.raises(TypeError):
+            ParamSpec.build({"name":"blah", "type":ParamSpec})
