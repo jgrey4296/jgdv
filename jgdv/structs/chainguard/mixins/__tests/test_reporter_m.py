@@ -41,7 +41,7 @@ import pytest
 
 # ##-- 1st party imports
 from jgdv.structs.chainguard._base import GuardBase
-from jgdv.structs.chainguard.error import GuardedAccessError
+from jgdv.structs.chainguard.errors import GuardedAccessError
 from jgdv.structs.chainguard.proxies.failure import GuardFailureProxy
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.chainguard.mixins.reporter_m import DefaultedReporter_m

@@ -16,7 +16,7 @@ import warnings
 
 import pytest
 from jgdv.cli.arg_parser import ParseMachine, CLIParser
-from jgdv.cli.param_spec import ParamSpec, ArgParseError
+from jgdv.cli.param_spec import ParamSpec
 import jgdv.cli.param_spec as Specs
 
 # Logging:

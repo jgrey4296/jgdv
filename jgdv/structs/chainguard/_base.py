@@ -59,7 +59,7 @@ from jgdv.structs.chainguard import TomlTypes
 
 # ##-- end 1st party imports
 
-from .error import GuardedAccessError
+from .errors import GuardedAccessError
 from .mixins.access_m import super_get, super_set
 
 ##-- logging

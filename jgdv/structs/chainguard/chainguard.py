@@ -51,7 +51,7 @@ from jgdv import Maybe
 # ##-- end 1st party imports
 
 from ._base import GuardBase
-from .error import GuardedAccessError
+from .errors import GuardedAccessError
 from .mixins.access_m import TomlAccess_m
 from .mixins.loader_m import TomlLoader_m
 from .mixins.proxy_m import GuardProxyEntry_m

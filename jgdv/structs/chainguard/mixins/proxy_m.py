@@ -30,7 +30,7 @@ from uuid import UUID, uuid1
 from jgdv import Maybe
 from jgdv.structs.chainguard.proxies.base import GuardProxy
 from jgdv.structs.chainguard.proxies.failure import GuardFailureProxy
-from jgdv.structs.chainguard.error import GuardedAccessError
+from jgdv.structs.chainguard.errors import GuardedAccessError
 
 ##-- logging
 logging = logmod.getLogger(__name__)

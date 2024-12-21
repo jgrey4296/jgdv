@@ -17,7 +17,7 @@ from dataclasses import dataclass, field, InitVar
 
 import pytest
 from jgdv.cli.arg_parser import ParseMachine, CLIParser, ParseResult
-from jgdv.cli.param_spec import ParamSpec, ArgParseError
+from jgdv.cli.param_spec import ParamSpec
 import jgdv.cli.param_spec as Specs
 
 logging = logmod.root

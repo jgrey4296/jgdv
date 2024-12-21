@@ -15,7 +15,7 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 logging = logmod.root
 
 import pytest
-from jgdv.structs.chainguard.error import GuardedAccessError
+from jgdv.structs.chainguard.errors import GuardedAccessError
 from jgdv.structs.chainguard import ChainGuard
 
 class TestBaseGuard:

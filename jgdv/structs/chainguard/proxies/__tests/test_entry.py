@@ -13,7 +13,7 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 ##-- end imports
 
 import pytest
-from jgdv.structs.chainguard.error import GuardedAccessError
+from jgdv.structs.chainguard.errors import GuardedAccessError
 from jgdv.structs.chainguard._base import GuardBase
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.chainguard.proxies.failure import GuardFailureProxy

@@ -60,7 +60,6 @@ from jgdv.structs.chainguard import ChainGuard
 # ##-- end 1st party imports
 
 from .param_spec import (
-    ArgParseError,
     HelpParam,
     LiteralParam,
     ParamSpec,

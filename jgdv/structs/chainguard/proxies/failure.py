@@ -50,7 +50,7 @@ from weakref import ref
 from jgdv import Maybe, Never
 from jgdv.structs.chainguard import TomlTypes
 from jgdv.structs.chainguard._base import GuardBase
-from jgdv.structs.chainguard.error import GuardedAccessError
+from jgdv.structs.chainguard.errors import GuardedAccessError
 from jgdv.structs.chainguard.proxies.base import GuardProxy
 
 # ##-- end 1st party imports

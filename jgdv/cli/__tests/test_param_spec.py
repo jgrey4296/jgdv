@@ -16,7 +16,7 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 logging = logmod.root
 
 import pytest
-from jgdv.cli.param_spec import ParamSpec, ArgParseError
+from jgdv.cli.param_spec import ParamSpec, ParseError
 import jgdv.cli.param_spec as Specs
 
 good_names = ("test", "blah", "bloo")
@@ -315,7 +315,7 @@ class TestParamSpecDefaults:
             {"name":"another", "default":lambda: [1,2,3,4], "insist":False},
         ]
         params = [ParamSpec.build(x) for x in param_dicts]
-        with pytest.raises(ArgParseError) as ctx:
+        with pytest.raises(ParseError) as ctx:
             ParamSpec.check_insists(params, {"other":[1,2,3]})
 
         assert(ctx.value.args[-1] == ["next"])

@@ -26,7 +26,7 @@ __all__     = ["GuardedAccessError", "ChainGuard", "load"]
 
 type TomlTypes = str | int | float | bool | list['TomlTypes'] | dict[str,'TomlTypes'] | datetime.datetime
 
-from .error import GuardedAccessError
+from .errors import GuardedAccessError
 from .chainguard import ChainGuard
 
 load        = ChainGuard.load
