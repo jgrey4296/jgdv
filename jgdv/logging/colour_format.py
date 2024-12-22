@@ -127,13 +127,13 @@ class JGDVColourFormatter(logging.Formatter):
     _default_date_fmt : str      =  "%H:%M:%S"
     _default_style               = '{'
 
-    def __init__(self, *, fmt=None):
+    def __init__(self, *, fmt=None, style=None):
         """
         Create the JGDVLogFormatter with a given *Brace* style log format
         """
         super().__init__(fmt or self._default_fmt,
                          datefmt=self._default_date_fmt,
-                         style=self._default_style)
+                         style=style or self._default_style)
         self.colours = LEVEL_MAP
 
     def format(self, record) -> str:
@@ -155,13 +155,13 @@ class JGDVColourStripFormatter(logging.Formatter):
     _default_style       = '{'
     _colour_strip_re     = re.compile(r'\x1b\[([\d;]+)m?')
 
-    def __init__(self, *, fmt=None):
+    def __init__(self, *, fmt=None, style=None):
         """
         Create the JGDVLogFormatter with a given *Brace* style log format
         `record` will install the JGDVLogRecord as the record factory if true
         """
         super().__init__(fmt or self._default_fmt,
-                         datefmt=self._default_date_fmt,
+                         datefmt=style or self._default_date_fmt,
                          style=self._default_style)
 
     def format(self, record) -> str:

@@ -76,12 +76,14 @@ stream_initial_spec  : Final[LoggerSpec] = LoggerSpec.build({
     "level"          : "WARNING",
     "target"         : "stdout",
     "format"         : "{levelname}  : INIT : {message}",
+    "style"          : "{"
     })
 printer_initial_spec : Final[LoggerSpec] = LoggerSpec.build({
     "name"           : PRINTER_NAME,
     "level"          : "NOTSET",
     "target"         : "stdout",
     "format"         : "{name}({levelname}) : {message}",
+    "style"          : "{"
     "propagate"      : False,
     })
 
@@ -102,7 +104,7 @@ class JGDVLogConfig:
 
     """
 
-    def __init__(self, subprinters=None):
+    def __init__(self, subprinters=None, style=None):
         # Root Logger for everything
         self.root                 = logmod.root
         self._printer_children    = (subprinters or SUBPRINTERS)[:]

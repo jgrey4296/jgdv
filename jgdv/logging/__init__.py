@@ -1,2 +1,2 @@
 
-from .log_config import JGDVLogConfig
+from .config import JGDVLogConfig

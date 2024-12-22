@@ -122,11 +122,11 @@ class HandlerBuilder_m:
 
         match self.colour or not IS_PRE_COMMIT:
             case _ if isinstance(handler, (logmod.FileHandler, l_handlers.RotatingFileHandler)):
-                formatter = JGDVColourStripFormatter(fmt=self.format)
+                formatter = JGDVColourStripFormatter(fmt=self.format, style=self.style)
             case False:
-                formatter = JGDVColourStripFormatter(fmt=self.format)
+                formatter = JGDVColourStripFormatter(fmt=self.format, style=self.style)
             case True:
-                formatter = JGDVColourFormatter(fmt=self.format)
+                formatter = JGDVColourFormatter(fmt=self.format, style=self.style)
 
         assert(handler is not None)
         assert(formatter is not None)
@@ -151,11 +151,12 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
     filter                     : list[str]                   = []
     allow                      : list[str]                   = []
     colour                     : bool|str                    = False
-    verbosity                  : int                         = 1
+    verbosity                  : int                         = 0
     target                     : Maybe[str|list[str|pl.Path]]= None # stdout | stderr | file
     filename_fmt               : Maybe[str]                  = "%Y-%m-%d::%H:%M.log"
     propagate                  : Maybe[bool]                 = False
     clear_handlers             : bool                        = False
+    style                      : str                         = "%"
     nested                     : list[LoggerSpec]            = []
 
     RootName                   : ClassVar[str]               = "root"
@@ -201,6 +202,14 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
                 return "stdout"
             case _:
                 raise ValueError("Unknown target value for LoggerSpec", val)
+
+    @field_validator("style")
+    def _validate_style(cls, val):
+        match val:
+            case "%" | "{" | "$":
+                return val
+            case _:
+                raise ValueError("Logger Style Needs to be in [{,%,$]", val)
 
     @ftz.cached_property
     def fullname(self) -> str:
