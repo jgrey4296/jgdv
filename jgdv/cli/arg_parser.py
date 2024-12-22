@@ -136,7 +136,7 @@ class CLIParser(ArgParser_p):
             raise ValueError("Not All Args Were Consumed", self._remaining_args)
 
     @ParseMachine.Prepare.enter
-    def _setup(self, args:list[str], head_specs:list, cmds:list, subcmds:list):
+    def _setup(self, args:list[str], head_specs:list, cmds:list[ParamSource_p], subcmds:list[tuple[str, ParamSource_p]]):
         """
           Parses the list of arguments against available registered parameter head_specs, cmds, and tasks.
         """

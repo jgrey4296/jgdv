@@ -37,7 +37,7 @@ from pydantic import (BaseModel, Field, ValidationError, field_validator,
 
 # ##-- 1st party imports
 from jgdv import Maybe, RxStr
-from jgdv.logging.log_colour import JGDVColourFormatter, JGDVColourStripFormatter
+from jgdv.logging.colour_format import JGDVColourFormatter, JGDVColourStripFormatter
 from jgdv._abstract.protocols import Buildable_p, ProtocolModelMeta
 from jgdv.structs.chainguard import ChainGuard
 
@@ -156,7 +156,7 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
     filename_fmt               : Maybe[str]                  = "%Y-%m-%d::%H:%M.log"
     propagate                  : Maybe[bool]                 = False
     clear_handlers             : bool                        = False
-    style                      : str                         = "%"
+    style                      : str                         = "{"
     nested                     : list[LoggerSpec]            = []
 
     RootName                   : ClassVar[str]               = "root"

@@ -12,17 +12,24 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple,
                     TypeVar, cast)
 ##-- end imports
-logging = logmod.root
 
+import typing
 import pytest
 from jgdv.structs.chainguard.errors import GuardedAccessError
 from jgdv.structs.chainguard import ChainGuard
+
+logging = logmod.root
 
 class TestBaseGuard:
 
     def test_initial(self):
         basic = ChainGuard({"test": "blah"})
         assert(basic is not None)
+
+
+    def test_is_mapping(self):
+        basic = ChainGuard({"test": "blah"})
+        assert(isinstance(basic, typing.Mapping))
 
     def test_basic_access(self):
         basic = ChainGuard({"test": "blah"})

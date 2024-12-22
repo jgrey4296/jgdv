@@ -64,9 +64,10 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 class TomlLoader_m:
+    """ Mixin for loading toml files """
 
     @classmethod
-    def read(cls, text:str) -> Self:
+    def read(cls:T, text:str) -> T:
         logging.debug("Reading ChainGuard for text")
         try:
             return cls(tomllib.loads(text))

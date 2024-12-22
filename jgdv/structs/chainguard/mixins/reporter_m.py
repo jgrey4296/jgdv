@@ -44,6 +44,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 class DefaultedReporter_m:
+    """ A Mixin for reporting values that a failure proxy defaulted on. """
 
     _defaulted : ClassVar[set[str]] = set()
 

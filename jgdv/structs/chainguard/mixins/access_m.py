@@ -71,7 +71,7 @@ super_get             = object.__getattribute__
 super_set             = object.__setattr__
 
 class TomlAccess_m:
-    """ """
+    """ Mixing for dynamic attribute access """
 
     def __setattr__(self, attr:str, value:TomlTypes) -> None:
         if not getattr(self, "__mutable"):

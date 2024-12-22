@@ -35,6 +35,7 @@ try:
     import tomli_w
 
     class TomlWriter_m:
+        """ A mixin for adding toml-writing functionality """
 
         def __str__(self) -> str:
             return tomli_w.dumps(self._table())
@@ -46,6 +47,7 @@ except ImportError:
     logging.debug("No Tomli-w found, ChainGuard will not write toml, only read it")
 
     class TomlWriter_m:
+        """ A fallback mixin for when toml-writing isnt available"""
 
         def to_file(self, path:pl.Path) -> None:
             raise NotImplementedError("Tomli-w isn't installed, so ChainGuard can't write, only read")

@@ -51,7 +51,7 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from jgdv import Maybe
-from jgdv.logging.log_colour import JGDVColourFormatter, JGDVColourStripFormatter
+from jgdv.logging.colour_format import JGDVColourFormatter, JGDVColourStripFormatter
 from jgdv.logging.logger_spec import LoggerSpec
 from jgdv.structs.chainguard import ChainGuard
 
@@ -83,7 +83,7 @@ printer_initial_spec : Final[LoggerSpec] = LoggerSpec.build({
     "level"          : "NOTSET",
     "target"         : "stdout",
     "format"         : "{name}({levelname}) : {message}",
-    "style"          : "{"
+    "style"          : "{",
     "propagate"      : False,
     })
 
@@ -185,7 +185,7 @@ class JGDVLogConfig:
         printed strings are logged at DEBUG level
         """
         if not disable_warning:
-            warnings.warn("Modifying builtins.print", RuntimeWarning)
+            warnings.warn("Modifying builtins.print", RuntimeWarning, 2)
 
 
         oldprint = builtins.print
@@ -216,7 +216,7 @@ class JGDVLogConfig:
             import warnings
 
             # ##-- end stdlib imports
-            warnings.warn("Modifying builtins.print", RuntimeWarning)
+            warnings.warn("Modifying builtins.print", RuntimeWarning, 2)
 
         # ##-- stdlib imports
         import builtins
