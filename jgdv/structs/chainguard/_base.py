@@ -95,7 +95,7 @@ class GuardBase(Mapping[str, TomlTypes]):
         raise GuardedAccessError("Don't call a ChainGuard, call a GuardProxy using methods like .on_fail")
 
     def __iter__(self) -> iter:
-        return iter(getattr(self, "__table").items())
+        return iter(getattr(self, "__table").keys())
 
     def __contains__(self, _key: object) -> bool:
         return _key in self.keys()

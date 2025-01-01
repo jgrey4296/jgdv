@@ -26,7 +26,6 @@ class TestBaseGuard:
         basic = ChainGuard({"test": "blah"})
         assert(basic is not None)
 
-
     def test_is_mapping(self):
         basic = ChainGuard({"test": "blah"})
         assert(isinstance(basic, typing.Mapping))
@@ -87,8 +86,8 @@ class TestBaseGuard:
 
     def test_iter(self):
         basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
-        pairs = list(basic)
-        assert(pairs == [("test", {"blah":2}), ("bloo", 2)])
+        vals = list(basic)
+        assert(vals == ["test", "bloo"])
 
     def test_contains(self):
         basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
@@ -147,7 +146,6 @@ class TestBaseGuard:
         basic = ChainGuard({"test": {"blah": [1,2,3]}, "bloo": ["a","b","c"]})
         assert("doesntexist" not in basic.test)
 
-
 class TestLoaderGuard:
 
     @pytest.mark.skip(reason="not implemented")
@@ -170,7 +168,6 @@ class TestGuardMerge:
         basic = ChainGuard.merge({"a":2}, {"a": 5, "b": 5}, shadow=True)
         assert(dict(basic) == {"a":2, "b": 5})
 
-
     def test_merge_guards(self):
         first  = ChainGuard({"a":2})
         second = ChainGuard({"a": 5, "b": 5})
@@ -178,6 +175,14 @@ class TestGuardMerge:
         merged = ChainGuard.merge(first ,second, shadow=True)
         assert(dict(merged) == {"a":2, "b": 5})
 
+    def test_dict_updated_with_chainguard(self):
+        the_dict = {}
+        cg = ChainGuard({"a": 2, "b": 3, "c": {"d": "test" }})
+        assert(not bool(the_dict))
+        the_dict.update(cg)
+        assert(bool(the_dict))
+        assert("a" in the_dict)
+        assert(the_dict["c"]["d"] == "test")
 
 class TestFailAccess:
 
@@ -190,18 +195,15 @@ class TestFailAccess:
         result = obj.on_fail(5).nothing()
         assert(result == 5)
 
-
     def test_fail_access_dict(self):
         obj = ChainGuard({"nothing": {}})
         result = obj.on_fail({}).nothing['blah']()
         assert(isinstance(result, dict))
 
-
     def test_fail_access_list(self):
         obj = ChainGuard({"nothing": []})
         result = obj.on_fail([]).nothing[1]()
         assert(isinstance(result, list))
-
 
     def test_fail_access_type_mismatch(self):
         obj = ChainGuard({"nothing": {}})
