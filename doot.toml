@@ -1,21 +1,20 @@
 # -*- mode:conf-toml; -*-
-[settings.general]
+
+[startup]
+
 loaders                  = { commands="default", task="default", parser="default"}
 location_check           = { make_missing = true, print_levels={action="WARN", execute="WARN"}}
-
-[settings.tasks]
-sources = [".tasks", "~/.config/.templates/doot/repo_chores"]
-code    = []
+sources = {tasks=[".tasks", "~/.config/.templates/doot/repo_chores"], code=[]}
 sleep   = { tasks=0.2, subtask=1, batch=1 }
 
-[settings.commands]
+[startup.plugins]
+# Allows for defining aliases
+command        = { tasks="doot.cmds.list_cmd:ListCmd", pl="doot.cmds.plugins_cmd:PluginsCmd" }
+
+[startup.commands]
 # Settings for commands, like telling the 'run' command what backends to use
 run  = { tracker = "default", runner = "default", reporter= "default", report-line = []}
 list = { hide=[] }
-
-[plugins]
-# Allows for defining aliases
-command        = { tasks="doot.cmds.list_cmd:ListCmd", pl="doot.cmds.plugins_cmd:PluginsCmd" }
 
 [logging]
 # Standard loggers. See LoggerSpec.
