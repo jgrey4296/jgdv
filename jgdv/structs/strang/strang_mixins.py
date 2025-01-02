@@ -223,6 +223,7 @@ class _Strang_subgen_m:
         return self.push(self.bmark_e.head)
 
     def root(self) -> Self:
+        """Pop off to the top marker """
         return self.pop(top=True)
 
 class _Strang_test_m:

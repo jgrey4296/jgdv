@@ -150,14 +150,14 @@ class _DKeyedMeta_m:
     but doesnt modify the behaviour
     """
 
-    @staticmethod
-    def requires(*args, **kwargs) -> DKeyMetaDecorator:
+    @classmethod
+    def requires(cls, *args, **kwargs) -> DKeyMetaDecorator:
         """ mark an action as requiring certain keys to in the state, but aren't expanded """
         keys = [DKey(x, implicit=True, mark=DKey.mark.NULL, **kwargs) for x in args]
         return DKeyMetaDecorator(keys)
 
-    @staticmethod
-    def returns(*args, **kwargs) -> DKeyMetaDecorator:
+    @classmethod
+    def returns(cls, *args, **kwargs) -> DKeyMetaDecorator:
         """ mark an action as needing to return certain keys """
         keys = [DKey(x, implicit=True, mark=DKey.mark.NULL, **kwargs) for x in args]
         return DKeyMetaDecorator(keys)
@@ -169,58 +169,58 @@ class _DKeyedRetrieval_m(DecoratorAccessor_m):
 
     _decoration_builder : ClassVar[type] = DKeyExpansionDecorator
 
-    @staticmethod
-    def formats(*args, **kwargs) -> Decorator:
+    @classmethod
+    def formats(cls, *args, **kwargs) -> Decorator:
         keys     = [DKey(x, implicit=True, mark=DKey.mark.STR, **kwargs) for x in args]
-        return DKeyed._build_decorator(keys)
+        return cls._build_decorator(keys)
 
-    @staticmethod
-    def expands(*args, **kwargs) -> Decorator:
+    @classmethod
+    def expands(cls, *args, **kwargs) -> Decorator:
         """ mark an action as using expanded string keys """
-        return DKeyed.formats(*args, **kwargs)
+        return cls.formats(*args, **kwargs)
 
-    @staticmethod
-    def paths(*args, **kwargs) -> Decorator:
+    @classmethod
+    def paths(cls, *args, **kwargs) -> Decorator:
         """ mark an action as using expanded path keys """
         kwargs.setdefault("implicit", True)
         keys = [DKey(x, mark=DKey.mark.PATH, **kwargs) for x in args]
-        return DKeyed._build_decorator(keys)
+        return cls._build_decorator(keys)
 
-    @staticmethod
-    def types(*args, **kwargs) -> Decorator:
+    @classmethod
+    def types(cls, *args, **kwargs) -> Decorator:
         """ mark an action as using raw type keys """
         kwargs.setdefault("max_exp", 1)
         keys = [DKey(x, implicit=True, mark=DKey.mark.FREE, **kwargs) for x in args]
-        return DKeyed._build_decorator(keys)
+        return cls._build_decorator(keys)
 
-    @staticmethod
-    def args(fn) -> Decorator:
+    @classmethod
+    def args(cls, fn) -> Decorator:
         """ mark an action as using spec.args """
         keys = [DKey(ARGS_K, implicit=True, mark=DKey.mark.ARGS)]
-        return DKeyed._build_decorator(keys)(fn)
+        return cls._build_decorator(keys)(fn)
 
-    @staticmethod
-    def kwargs(fn) -> Decorator:
+    @classmethod
+    def kwargs(cls, fn) -> Decorator:
         """ mark an action as using all kwargs"""
         keys = [DKey(KWARGS_K, implicit=True, mark=DKey.mark.KWARGS)]
-        return DKeyed._build_decorator(keys)(fn)
+        return cls._build_decorator(keys)(fn)
 
-    @staticmethod
-    def redirects(*args, **kwargs) -> Decorator:
+    @classmethod
+    def redirects(cls, *args, **kwargs) -> Decorator:
         """ mark an action as using redirection keys """
         keys = [DKey(x, implicit=True, mark=DKey.mark.REDIRECT, ctor=DKey, **kwargs) for x in args]
-        return DKeyed._build_decorator(keys)
+        return cls._build_decorator(keys)
 
-    @staticmethod
-    def references(*args, **kwargs) -> Decorator:
+    @classmethod
+    def references(cls, *args, **kwargs) -> Decorator:
         """ mark keys to use as to_coderef imports """
         keys = [DKey(x, implicit=True, mark=DKey.mark.CODE, **kwargs) for x in args]
-        return DKeyed._build_decorator(keys)
+        return cls._build_decorator(keys)
 
-    @staticmethod
-    def postbox(*args, **kwargs) -> Decorator:
+    @classmethod
+    def postbox(cls, *args, **kwargs) -> Decorator:
         keys = [DKey(x, implicit=True, mark=DKey.mark.POSTBOX, **kwargs) for x in args]
-        return DKeyed._build_decorator(keys)
+        return cls._build_decorator(keys)
 
 class DKeyed(_DKeyedRetrieval_m, _DKeyedMeta_m):
     """ Decorators for actions
