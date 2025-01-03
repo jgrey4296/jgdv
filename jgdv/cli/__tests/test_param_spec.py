@@ -79,13 +79,13 @@ class TestParamSpec:
                 assert(obj.short_key_str == f"{prefix}{key[0]}")
 
     def test_sorting(self):
-        target_sort = ["another", "diff", "other", "next", "test"]
+        target_sort = ["test", "next", "another", "diff", "other"]
         param_dicts = [
-            {"name":"test",    "prefix":"--"},
             {"name":"next",    "prefix":"-"},
+            {"name":"another", "positional": True},
+            {"name":"test",    "prefix":"--"},
             {"name":"other",   "positional": 2},
             {"name":"diff",    "positional": 1},
-            {"name":"another", "positional": True},
         ]
         params = [ParamSpec.build(x) for x in param_dicts]
         s_params = sorted(params, key=ParamSpec.key_func)

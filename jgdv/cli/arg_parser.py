@@ -45,11 +45,12 @@ SEPERATOR       : Final[ParamSpec]     = SeparatorParam()
 
 @dataclass
 class ParseResult:
-    name : str
-    args : dict = field(default_factory=dict)
+    name        : str
+    args        : dict     = field(default_factory=dict)
+    non_default : set[str] = field(default_factory=set)
     
     def to_dict(self) -> dict:
-        return {"name":self.name, "args":self.args}
+        return {"name":self.name, "args":self.args, NON_DEFAULT_KEY:self.non_default}
 
 @runtime_checkable
 class ParamSource_p(Protocol):
@@ -118,8 +119,7 @@ class CLIParser(ArgParser_p):
     cmd_result        : Maybe[ParseResult]                     = None
     subcmd_results    : list[ParseResult]                      = []
     extra_results     : ParseResult                            = ParseResult(EXTRA_KEY)
-    non_default_args  : ParseResult                            = ParseResult(NON_DEFAULT_KEY)
-    force_help        : bool                                   = False
+    _force_help        : bool                                   = False
 
     def __init__(self):
         self._remaining_args = []
@@ -162,7 +162,6 @@ class CLIParser(ArgParser_p):
         self.cmd_result        : Maybe[ParseResult]                      = None
         self.subcmd_results    : list[ParseResult]                     = []
         self.extra_results     : ParseResult                           = ParseResult(EXTRA_KEY)
-        self.non_default_args  : ParseResult                           = ParseResult(NON_DEFAULT_KEY)
         self._force_help       : bool                                  = False
 
     @ParseMachine.Cleanup.enter
@@ -182,6 +181,7 @@ class CLIParser(ArgParser_p):
                 self._force_help = False
             case _:
                 self._force_help = True
+                self._remaining_args.pop()
 
     @ParseMachine.Head.enter
     def _parse_head(self):
@@ -215,6 +215,10 @@ class CLIParser(ArgParser_p):
         defaults : dict  = ParamSpec.build_defaults(cmd_specs)
         self.cmd_result  = ParseResult(cmd_name, defaults)
         self._parse_params(self.cmd_result, cmd_specs)
+
+        if self._force_help:
+
+            self.cmd_result = ParseResult("help", {"target":cmd_name, "args": self.cmd_result.args}, self.cmd_result.non_default)
 
     @ParseMachine.SubCmd.enter
     def _parse_subcmd(self):
@@ -261,7 +265,7 @@ class CLIParser(ArgParser_p):
                     logging.debug("Consuming Parameter: %s", param.name)
                     self._remaining_args = self._remaining_args[count:]
                     res.args.update(data)
-                    self.non_default_args.args.update(data)
+                    res.non_default.add(param.name)
         
     def _parse_separator(self) -> bool:
         match SEPERATOR.consume(self._remaining_args):

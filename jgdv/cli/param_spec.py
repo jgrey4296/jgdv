@@ -18,34 +18,53 @@ import pathlib as pl
 import re
 import time
 import types
+import typing
 import weakref
 from dataclasses import InitVar, dataclass, field
-import types
 from types import GenericAlias
-import typing
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match, Self,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Self,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from pydantic import (BaseModel, Field, InstanceOf,
-                      field_validator, model_validator)
+from pydantic import BaseModel, Field, InstanceOf, field_validator, model_validator
 
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
 from jgdv import Maybe
-from jgdv.structs.chainguard import ChainGuard
-from jgdv._abstract.protocols import ParamStruct_p, ProtocolModelMeta, Buildable_p
+from jgdv._abstract.protocols import Buildable_p, ParamStruct_p, ProtocolModelMeta
 from jgdv.mixins.annotate import SubAnnotate_m
-from .errors import ParseError
+from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
+
+from .errors import ParseError
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -140,6 +159,8 @@ class _ConsumerArg_m:
             return self.name, [args[1]], 2
 
         key, *vals = self._split_assignment(args[0])
+        if key != self.name:
+            raise ParseError("Assignment doesn't match", key, self.name)
         return self.name, [vals[0]], 1
 
     def coerce_types(self, key, value) -> dict:
@@ -169,7 +190,11 @@ class _ConsumerArg_m:
     def _match_on_end(self, val) -> bool:
         return val == END_SEP
 
-class ParamSpecBase(SubAnnotate_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_m, ParamStruct_p, Buildable_p, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
+PSpecMixins = [SubAnnotate_m, _ConsumerArg_m, _DefaultsBuilder_m]
+PSpecProtocols = [ParamStruct_p, Buildable_p]
+
+class ParamSpecBase(*PSpecMixins, BaseModel, *PSpecProtocols, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
+
     """ Declarative CLI Parameter Spec.
 
     Declared the param name (turns into {prefix}{name})
@@ -202,23 +227,25 @@ class ParamSpecBase(SubAnnotate_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_m
 
     _subtypes            : dict[type, type]          = {}
 
-
     @classmethod
     def build(cls:BaseModel, data:dict) -> ParamSpecBase:
         return cls.model_validate(data)
 
     @staticmethod
     def key_func(x):
-        """ Sort Parameters by:
-        positional < int positional < len(prefix) < name
+        """ Sort Parameters so:
+        -{prefix len} < name < positional < int positional < --help
+
         """
         match x.positional:
+            case False if x.name == "help":
+                return (99, 99, x.name)
             case False:
-                return (1, 99, len(x.prefix), x.name)
+                return (0, -len(x.prefix), x.name)
             case True:
-                return (-1, 0, len(x.prefix), x.name)
+                return (10, 0, x.name)
             case int() as p:
-                return (-1, p, len(x.prefix), x.name)
+                return (10, p, x.name)
 
     @field_validator("type_", mode="before")
     def validate_type(cls, val):
@@ -304,6 +331,7 @@ class ParamSpecBase(SubAnnotate_m, BaseModel, _ConsumerArg_m, _DefaultsBuilder_m
 
     @ftz.cached_property
     def key_strs(self) -> list[str]:
+        """ all available key-str variations """
         return [self.key_str, self.short_key_str, f"{self.prefix}{self.inverse}"]
 
     def help_str(self):
@@ -383,6 +411,10 @@ class ImplicitParam(ParamSpecBase):
 class PositionalParam(ParamSpecBase):
     """ TODO a param that is specified by its position in the arg list """
 
+    @ftz.cached_property
+    def key_str(self) -> str:
+        return self.name
+
     def matches_head(self, val) -> bool:
         return True
 
@@ -396,7 +428,6 @@ class PositionalParam(ParamSpecBase):
                 return self.name, claimed, len(claimed)
             case int() as x if x < len(args):
                 return self.name, args[:x], x
-
 
 class KeyParam(ParamSpecBase):
     """ TODO a param that is specified by a prefix key """
@@ -446,8 +477,9 @@ class AssignParam(ParamSpecBase):
 
     def next_value(self, args:list) -> tuple[str, list, int]:
         """ get the value for a --key=val """
-        logging.debug("Getting Key Assingment: %s : %s", self.name, args)
-        assert(self.separator in args[0]), (self.separator, args)
+        logging.debug("Getting Key Assignment: %s : %s", self.name, args)
+        if not (self.separator in args[0]):
+            raise ParseError("Assignment param has no assignment", self.separator, args[0])
         key,val = self._split_assignment(args[0])
         return self.name, [val], 1
 
@@ -510,7 +542,6 @@ class EntryParam(LiteralParam):
     """
     pass
 
-
 class ConstrainedParam(ParamSpecBase):
     """
     TODO a type of parameter which is constrained in the values it can take, beyond just type.
@@ -518,7 +549,6 @@ class ConstrainedParam(ParamSpecBase):
     eg: {name:amount, constraints={min=0, max=10}}
     """
     constraints : list[Any] = []
-
 
 class ParamSpec(ParamSpecBase):
     """ A Top Level Access point for building param specs """
