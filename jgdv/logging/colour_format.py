@@ -84,6 +84,7 @@ except ImportError:
 # ##-- end 3rd party imports
 
 from jgdv import Maybe
+from .stack_format import StackFormatter_m
 
 class SimpleLogColour:
     """ Utility class for wrapping strings with specific colours """
@@ -107,7 +108,7 @@ class SimpleLogColour:
     def red(s):
         return LEVEL_MAP['red'] + str(s) + COLOUR_RESET
 
-class JGDVColourFormatter(logging.Formatter):
+class JGDVColourFormatter(StackFormatter_m, logging.Formatter):
     """
     Stream Formatter for logging, enables use of colour sent to console
 
@@ -143,7 +144,7 @@ class JGDVColourFormatter(logging.Formatter):
 
         return log_colour + super().format(record) + COLOUR_RESET
 
-class JGDVColourStripFormatter(logging.Formatter):
+class JGDVColourStripFormatter(StackFormatter_m, logging.Formatter):
     """
     Force Colour Command codes to be stripped out of a string.
     Useful for when you redirect printed strings with colour
