@@ -1,8 +1,9 @@
-##-- imports
+# Imports:
 from __future__ import annotations
 
-# import abc
-# import datetime
+# ##-- stdlib imports
+import datetime
+
 import enum
 import functools as ftz
 import itertools as itz
@@ -11,32 +12,60 @@ import pathlib as pl
 import re
 import time
 import types
-# from copy import deepcopy
+from collections import ChainMap
+
 from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
-# from uuid import UUID, uuid1
-# from weakref import ref
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
+from uuid import UUID, uuid1
 
-##-- end imports
+# ##-- end stdlib imports
 
+# ##-- 3rd party imports
 from statemachine import State, StateMachine
 from statemachine.exceptions import TransitionNotAllowed
 from statemachine.states import States
-from collections import ChainMap
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
 from jgdv import Maybe
-from jgdv.structs.chainguard import ChainGuard
 from jgdv._abstract.protocols import ParamStruct_p
-from .param_spec import ParamSpec, ParseError, HelpParam, LiteralParam, SeparatorParam
-from .parse_machine_base import ParseMachineBase, ArgParser_p
+from jgdv.structs.chainguard import ChainGuard
+
+# ##-- end 1st party imports
+
 from .errors import ParseError
+from .param_spec import HelpParam, LiteralParam, ParamSpec, ParseError, SeparatorParam
+from .parse_machine_base import ArgParser_p, ParseMachineBase
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+EMPTY_CMD       : Final[str] = "_cmd_"
 EXTRA_KEY       : Final[str]           = "_extra_"
 NON_DEFAULT_KEY : Final[str]           = "_non_default_"
 DEFAULT_KEY     : Final[str]           = "_default_"
@@ -200,25 +229,23 @@ class CLIParser(ArgParser_p):
         """ consume arguments for the command being run """
         logging.debug("Cmd Parsing: %s", self._remaining_args)
         if not bool(self._cmd_specs):
-            self.cmd_result = ParseResult("_cmd_", {})
+            self.cmd_result = ParseResult(EMPTY_CMD, {})
             return
 
         # Determine cmd
         cmd_name = self._remaining_args[0]
-        logging.info("Cmd matches: %s", cmd_name)
         if cmd_name not in self._cmd_specs:
-            raise KeyError("Unrecognised command name", cmd_name)
-        else:
-            self._remaining_args.pop(0)
+            self.cmd_result = ParseResult(EMPTY_CMD, {})
+            return
+
+        logging.info("Cmd matches: %s", cmd_name)
+        self._remaining_args.pop(0)
         # get its specs
         cmd_specs        = sorted(self._cmd_specs[cmd_name], key=ParamSpec.key_func)
         defaults : dict  = ParamSpec.build_defaults(cmd_specs)
         self.cmd_result  = ParseResult(cmd_name, defaults)
         self._parse_params(self.cmd_result, cmd_specs)
 
-        if self._force_help:
-
-            self.cmd_result = ParseResult("help", {"target":cmd_name, "args": self.cmd_result.args}, self.cmd_result.non_default)
 
     @ParseMachine.SubCmd.enter
     def _parse_subcmd(self):
@@ -226,7 +253,7 @@ class CLIParser(ArgParser_p):
         if not bool(self._subcmd_specs):
             return
         logging.debug("SubCmd Parsing: %s", self._remaining_args)
-        cmd_name = self.cmd_result.name
+        active_cmd = self.cmd_result.name
         last = None
         # Determine subcmd
         while (bool(self._remaining_args)
@@ -240,7 +267,7 @@ class CLIParser(ArgParser_p):
             logging.debug("Sub Cmd: %s", sub_name)
             last = sub_name
             match self._subcmd_specs.get(sub_name, None):
-                case cmd_constraint, params if cmd_constraint == cmd_name:
+                case cmd_constraint, params if active_cmd in [cmd_constraint, EMPTY_CMD]:
                     sub_specs        = sorted(params, key=ParamSpec.key_func)
                     defaults : dict  = ParamSpec.build_defaults(sub_specs)
                     sub_result       = ParseResult(sub_name, defaults)
@@ -279,9 +306,18 @@ class CLIParser(ArgParser_p):
 
     def report(self) -> Maybe[dict]:
         """ Take the parsed results and return a nested dict """
+
+        match self._force_help:
+            case False:
+                cmd_result = self.cmd_result
+            case True if self.cmd_result.name == EMPTY_CMD:
+                cmd_result = ParseResult("help", {"target":None, "args": self.cmd_result.args}, self.cmd_result.non_default)
+            case True:
+                cmd_result = ParseResult("help", {"target":self.cmd_result.name, "args": self.cmd_result.args}, self.cmd_result.non_default)
+
         result = {
             "head"  : self.head_result.to_dict() if self.head_result else {},
-            "cmd"   : self.cmd_result.to_dict() if self.cmd_result else {},
+            "cmd"   : cmd_result.to_dict() if cmd_result else {},
             "sub"   : {y['name']:y['args'] for x in self.subcmd_results if (y:=x.to_dict()) is not None},
             "extra" : self.extra_results.to_dict(),
         }
