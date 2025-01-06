@@ -35,6 +35,7 @@ import importlib
 from importlib.metadata import EntryPoint
 from jgdv.structs.chainguard import ChainGuard
 from . import Strang
+from jgdv import Result
 
 class CodeRefMeta_e(enum.StrEnum):
     module  = "module"
@@ -110,40 +111,49 @@ class CodeReference(Strang):
     def value(self) -> str:
         return str.__getitem__(self, self._value_idx)
 
-    def __call__(self, *, check:type=Any) -> type|ImportError:
+
+
+    def __call__(self, *, check:type=Any, raise_error=False) -> Result[type, ImportError]:
         """ Tries to import and retrieve the reference,
         and casts errors to ImportErrors
         """
+        try:
+            return self._do_import(check)
+        except ImportError as err:
+            if raise_error:
+                raise err
+            return err
+
+
+    def _do_import(self, check):
         match self._value:
             case None:
                 try:
                     mod = importlib.import_module(self.module)
                     curr = getattr(mod, self.value)
-                except ImportError as err:
-                    return err
                 except AttributeError as err:
-                    return ImportError("Attempted import failed, attribute not found", str(self), self.value)
+                    raise ImportError("Attempted import failed, attribute not found", str(self), self.value)
                 else:
                     self._value = curr
             case _:
                 curr = self._value
 
         if self.gmark_e.fn in self and not callable(self._value):
-            return ImportError("Imported value was not a callable", self._value, self)
-        if self.gmark_e.cls in self and not isinstance(self._value, type):
-            return ImportError("Imported value was not a class", self._value, self)
+            raise ImportError("Imported value was not a callable", self._value, self)
+        elif self.gmark_e.cls in self and not isinstance(self._value, type):
+            raise ImportError("Imported value was not a class", self._value, self)
 
         match self._typevar:
             case None:
                 pass
             case type() as the_type if not issubclass(self._value, the_type):
-                return ImportError("Imported Value does not match required type", the_type, self._value)
+                raise ImportError("Imported Value does not match required type", the_type, self._value)
 
         match check:
             case x if x is Any:
                 return curr
             case x if not (isinstance(curr, x) or issubclass(curr, check)):
-                return ImportError("Imported Code Reference is not of correct type", self, ensure)
+                raise ImportError("Imported Code Reference is not of correct type", self, ensure)
 
         Never()
 
