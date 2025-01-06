@@ -40,8 +40,11 @@ class StackFormatter_m(logmod.Formatter):
     use_stackprinter : bool                  = True
 
     def formatException(self, exc_info):
-        if not self.use_stackprinter:
-            return super().formatException(exc_info)
+        match exc_info:
+            case None | (None, None, None):
+                return ""
+            case _ if not self.use_stackprinter:
+                return super().formatException(exc_info)
 
         msg : str = stackprinter.format(exc_info,
                                         source_lines=self.source_lines,
