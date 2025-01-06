@@ -235,19 +235,21 @@ class JGDVLocations(PathManip_m):
             case _:
                 raise TypeError("Bad type to normalize", path)
 
-    def metacheck(self, key:str|DKey, meta:LocationMeta_e) -> bool:
+    def metacheck(self, key:str|DKey, *meta:LocationMeta_e) -> bool:
         """ return True if key provided has the applicable metadata"""
         match key:
             case NonDKey():
                 return False
             case DKey() if key in self._data:
-                return self._data[key].check(meta)
+                data = self._data[key]
+                return all(x in data for x in meta)
             case MultiDKey():
                  for k in key:
                      if k not in self._data:
                          continue
-                     if self._data[k].check(meta):
-                         return True
+                     data = self._data[key]
+                     if not all(x in data for x in meta):
+                         return False
             case str():
                 return self.metacheck(DKey(key, implicit=True), meta)
         return False
