@@ -71,8 +71,8 @@ class TestCodeReference:
         match ref():
             case ImportError():
                 assert(True)
-            case _:
-                assert(False)
+            case x:
+                assert(False), x
 
     def test_import_non_existent_class_fail(self):
         ref = CodeReference("cls::jgdv.structs.strang:DootTaskSSSSSS")
