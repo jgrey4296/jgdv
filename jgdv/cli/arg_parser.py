@@ -65,7 +65,7 @@ from .parse_machine_base import ArgParser_p, ParseMachineBase
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-EMPTY_CMD       : Final[str] = "_cmd_"
+EMPTY_CMD       : Final[str]           = "_cmd_"
 EXTRA_KEY       : Final[str]           = "_extra_"
 NON_DEFAULT_KEY : Final[str]           = "_non_default_"
 DEFAULT_KEY     : Final[str]           = "_default_"
@@ -77,7 +77,7 @@ class ParseResult:
     name        : str
     args        : dict     = field(default_factory=dict)
     non_default : set[str] = field(default_factory=set)
-    
+
     def to_dict(self) -> dict:
         return {"name":self.name, "args":self.args, NON_DEFAULT_KEY:self.non_default}
 
@@ -92,11 +92,8 @@ class ParamSource_p(Protocol):
     def param_specs(self) -> list[ParamStruct_p]:
         raise NotImplementedError()
 
-
-
 class ParseMachine(ParseMachineBase):
     """ Implemented Parse State Machine
-
 
     __call__ with:
     args       : list[str]       -- the cli args to parse (ie: from sys.argv)
@@ -246,7 +243,6 @@ class CLIParser(ArgParser_p):
         self.cmd_result  = ParseResult(cmd_name, defaults)
         self._parse_params(self.cmd_result, cmd_specs)
 
-
     @ParseMachine.SubCmd.enter
     def _parse_subcmd(self):
         """ consume arguments for tasks """
@@ -263,7 +259,7 @@ class CLIParser(ArgParser_p):
                 continue
             else:
                 self._remaining_args.pop(0)
-                
+
             logging.debug("Sub Cmd: %s", sub_name)
             last = sub_name
             match self._subcmd_specs.get(sub_name, None):
@@ -293,7 +289,7 @@ class CLIParser(ArgParser_p):
                     self._remaining_args = self._remaining_args[count:]
                     res.args.update(data)
                     res.non_default.add(param.name)
-        
+
     def _parse_separator(self) -> bool:
         match SEPERATOR.consume(self._remaining_args):
             case None:
@@ -303,13 +299,15 @@ class CLIParser(ArgParser_p):
                 self._remaining_args.pop(0)
                 return True
 
-
     def report(self) -> Maybe[dict]:
         """ Take the parsed results and return a nested dict """
 
         match self._force_help:
             case False:
                 cmd_result = self.cmd_result
+            case True if self.cmd_result is None:
+                self.head_result.args['help'] = True
+                cmd_result = ParseResult(EMPTY_CMD)
             case True if self.cmd_result.name == EMPTY_CMD:
                 cmd_result = ParseResult("help", {"target":None, "args": self.cmd_result.args}, self.cmd_result.non_default)
             case True:

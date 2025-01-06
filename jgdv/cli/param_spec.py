@@ -560,6 +560,8 @@ class ParamSpec(ParamSpecBase):
                 return ImplicitParam.model_validate(data)
             case {"positional":True|int()}:
                 return PositionalParam.model_validate(data)
+            case {"prefix":x, "type":y} if x == ASSIGN_PREFIX and y in [bool, "bool"]:
+                return ToggleParam.model_validate(data)
             case {"prefix":x} if x == ASSIGN_PREFIX:
                 return AssignParam.model_validate(data)
             case {"type":"list"|"set"}:
