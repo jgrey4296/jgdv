@@ -64,7 +64,7 @@ from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
 
-from .errors import ParseError
+from .errors import ArgParseError
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -108,7 +108,7 @@ class _DefaultsBuilder_m:
                 missing.append(p.name)
         else:
             if bool(missing):
-                raise ParseError("Missing Required Params", missing)
+                raise ArgParseError("Missing Required Params", missing)
 
 class _ConsumerArg_m:
     "Mixin for CLI arg consumption"
@@ -137,8 +137,8 @@ class _ConsumerArg_m:
                     key, value, consumed = self.next_value(xs)
                     return self.coerce_types(key, value), consumed
                 case _:
-                    raise ParseError("Tried to consume a bad type", remaining)
-        except ParseError as err:
+                    raise ArgParseError("Tried to consume a bad type", remaining)
+        except ArgParseError as err:
             logging.debug("Parsing Failed: %s : %s (%s)", self.name, args, err)
             return None
 
@@ -160,7 +160,7 @@ class _ConsumerArg_m:
 
         key, *vals = self._split_assignment(args[0])
         if key != self.name:
-            raise ParseError("Assignment doesn't match", key, self.name)
+            raise ArgParseError("Assignment doesn't match", key, self.name)
         return self.name, [vals[0]], 1
 
     def coerce_types(self, key, value) -> dict:
@@ -442,7 +442,7 @@ class KeyParam(ParamSpecBase):
             case [x, y, *_] if self.matches_head(x):
                 return str, [y], 2
             case _:
-                raise ParseError("Failed to parse key")
+                raise ArgParseError("Failed to parse key")
 
 class RepeatableParam(KeyParam):
     """ TODO a repeatable key param """
@@ -479,7 +479,7 @@ class AssignParam(ParamSpecBase):
         """ get the value for a --key=val """
         logging.debug("Getting Key Assignment: %s : %s", self.name, args)
         if not (self.separator in args[0]):
-            raise ParseError("Assignment param has no assignment", self.separator, args[0])
+            raise ArgParseError("Assignment param has no assignment", self.separator, args[0])
         key,val = self._split_assignment(args[0])
         return self.name, [val], 1
 

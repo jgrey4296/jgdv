@@ -16,7 +16,8 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 logging = logmod.root
 
 import pytest
-from jgdv.cli.param_spec import ParamSpec, ParseError
+from jgdv.cli import ParseError
+from jgdv.cli.param_spec import ParamSpec
 import jgdv.cli.param_spec as Specs
 
 good_names = ("test", "blah", "bloo")

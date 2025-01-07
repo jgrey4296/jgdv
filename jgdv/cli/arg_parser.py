@@ -57,8 +57,8 @@ from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
 
-from .errors import ParseError
-from .param_spec import HelpParam, LiteralParam, ParamSpec, ParseError, SeparatorParam
+from . import errors
+from .param_spec import HelpParam, LiteralParam, ParamSpec, SeparatorParam
 from .parse_machine_base import ArgParser_p, ParseMachineBase
 
 ##-- logging
@@ -123,7 +123,7 @@ class ParseMachine(ParseMachineBase):
                 self.parse()
             self.finish()
         except TransitionNotAllowed as err:
-            raise ParseError("Transition failure", err) from err
+            raise errors.ParseError("Transition failure", err) from err
         else:
             return self.model.report()
 
@@ -159,7 +159,7 @@ class CLIParser(ArgParser_p):
     @ParseMachine.finish._transitions.before
     def all_args_consumed_val(self):
         if bool(self._remaining_args):
-            raise ValueError("Not All Args Were Consumed", self._remaining_args)
+            raise errors.ArgParseError("Not All Args Were Consumed", self._remaining_args)
 
     @ParseMachine.Prepare.enter
     def _setup(self, args:list[str], head_specs:list, cmds:list[ParamSource_p], subcmds:list[tuple[str, ParamSource_p]]):
@@ -272,7 +272,7 @@ class CLIParser(ArgParser_p):
                 case _, _:
                     pass
                 case _:
-                    raise ValueError("Unrecognised SubCmd", sub_name)
+                    raise errors.SubCmdParseError("Unrecognised SubCmd", sub_name)
 
     @ParseMachine.Extra.enter
     def _parse_extra(self):

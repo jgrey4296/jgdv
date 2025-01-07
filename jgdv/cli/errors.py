@@ -38,3 +38,19 @@ logging = logmod.getLogger(__name__)
 class ParseError(JGDVError):
     """ A Base Error Class for JGDV CLI Arg Parsing"""
     pass
+
+class HeadParseError(ParseError):
+    """ For When an error occurs parsing the head """
+    pass
+
+class CmdParseError(ParseError):
+    """ For when parsing the command section fails """
+    pass
+
+class SubCmdParseError(ParseError):
+    """ For when the subcmd section fails """
+    pass
+
+class ArgParseError(ParseError):
+    """ For when a head/cmd/subcmds arguments are bad """
+    pass
