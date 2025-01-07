@@ -209,3 +209,14 @@ class TestFailAccess:
         obj = ChainGuard({"nothing": {}})
         result = obj.on_fail({}).nothing[1]()
         assert(isinstance(result, dict))
+
+    def test_fail_return_none(self):
+        obj = ChainGuard({"nothing": {}})
+        result = obj.on_fail(None).nothing.blah.bloo()
+        assert(result is None)
+
+
+    def test_success_return_val(self):
+        obj = ChainGuard({"nothing": {"blah": {"bloo": 10}}})
+        result = obj.on_fail(None).nothing.blah.bloo()
+        assert(result == 10)
