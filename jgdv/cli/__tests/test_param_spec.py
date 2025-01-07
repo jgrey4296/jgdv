@@ -65,7 +65,7 @@ class TestParamSpec:
             "name"       : "test",
             "type"       : list,
             "default"    : [1,2,3],
-            "positional" : True
+            "prefix"     : ""
             })
         assert(obj.positional is True)
 
@@ -83,10 +83,10 @@ class TestParamSpec:
         target_sort = ["test", "next", "another", "diff", "other"]
         param_dicts = [
             {"name":"next",    "prefix":"-"},
-            {"name":"another", "positional": True},
+            {"name":"another", "prefix": ""},
             {"name":"test",    "prefix":"--"},
-            {"name":"other",   "positional": 2},
-            {"name":"diff",    "positional": 1},
+            {"name":"other",   "prefix": 2},
+            {"name":"diff",    "prefix": 1},
         ]
         params = [ParamSpec.build(x) for x in param_dicts]
         s_params = sorted(params, key=ParamSpec.key_func)
@@ -245,7 +245,8 @@ class TestParamSpecConsumption:
             "name"       : "test",
             "type"       : list,
             "default"    : [],
-            "positional" : 2
+            "prefix"     : "",
+            "count" : 2
           })
         match obj.consume(["bloo", "blah", "aweg"]):
             case {"test": ["bloo", "blah"]}, 2:

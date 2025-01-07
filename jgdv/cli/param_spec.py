@@ -150,7 +150,7 @@ class _ConsumerArg_m:
         Matches {self.prefix}{self.name}{separator} if an assignment
         """
         key, *_ = self._split_assignment(val)
-        return key in self.key_strs and key.startswith(self.prefix)
+        return key in self.key_strs and key.startswith(str(self.prefix))
 
     def next_value(self, args:list) -> tuple[str, list, int]:
         if self.positional or self.type_ is bool:
@@ -217,8 +217,8 @@ class ParamSpecBase(*PSpecMixins, BaseModel, *PSpecProtocols, metaclass=Protocol
     insist               : bool                      = False
     default              : Any|Callable              = None
     desc                 : str                       = "An undescribed parameter"
-    positional           : bool|int                  = False
-    prefix               : str                       = NON_ASSIGN_PREFIX
+    count                : int                       = 1
+    prefix               : int|str                   = NON_ASSIGN_PREFIX
     separator            : str                       = "="
 
     _short               : Maybe[str]                = None
@@ -237,13 +237,11 @@ class ParamSpecBase(*PSpecMixins, BaseModel, *PSpecProtocols, metaclass=Protocol
         -{prefix len} < name < positional < int positional < --help
 
         """
-        match x.positional:
-            case False if x.name == "help":
+        match x.prefix:
+            case _ if x.name == "help":
                 return (99, 99, x.name)
-            case False:
+            case str():
                 return (0, -len(x.prefix), x.name)
-            case True:
-                return (10, 0, x.name)
             case int() as p:
                 return (10, p, x.name)
 
@@ -279,10 +277,11 @@ class ParamSpecBase(*PSpecMixins, BaseModel, *PSpecProtocols, metaclass=Protocol
 
     @model_validator(mode="after")
     def validate_model (self) -> Self:
-        if bool(self.prefix) and self.name.startswith(self.prefix):
-            raise TypeError("Prefix was found in the base name", self, self.prefix)
-        if bool(self.separator) and self.separator in self.name:
-            raise TypeError("Separator was found in the base name", self)
+        match self.prefix:
+            case str() if bool(self.prefix) and self.name.startswith(self.prefix):
+                raise TypeError("Prefix was found in the base name", self, self.prefix)
+            case str() if bool(self.prefix) and self.separator in self.name:
+                raise TypeError("Separator was found in the base name", self)
 
         match self._get_annotation():
             case None:
@@ -323,16 +322,37 @@ class ParamSpecBase(*PSpecMixins, BaseModel, *PSpecProtocols, metaclass=Protocol
         """ Get how the param needs to be written in the cli.
         eg: -test or --test
         """
-        return f"{self.prefix}{self.name}"
+        match self.prefix:
+            case str():
+                return f"{self.prefix}{self.name}"
+            case _:
+                return self.name
 
     @ftz.cached_property
     def short_key_str(self) -> Maybe[str]:
-        return f"{self.prefix}{self.short}"
+        match self.prefix:
+            case str():
+                return f"{self.prefix}{self.short}"
+            case _:
+                return None
 
     @ftz.cached_property
     def key_strs(self) -> list[str]:
         """ all available key-str variations """
-        return [self.key_str, self.short_key_str, f"{self.prefix}{self.inverse}"]
+        match self.prefix:
+            case str():
+                inv = f"{self.prefix}{self.inverse}"
+                return [self.key_str, self.short_key_str, inv]
+            case _:
+                return [self.key_str, self.short_key_str]
+
+    @ftz.cached_property
+    def positional(self) -> bool:
+        match self.prefix:
+            case str() if bool(self.prefix):
+                return False
+            case _:
+                return True
 
     def help_str(self):
         match self.key_str:
@@ -419,8 +439,8 @@ class PositionalParam(ParamSpecBase):
         return True
 
     def next_value(self, args:list) -> tuple[str, list, int]:
-        match self.positional:
-            case True:
+        match self.count:
+            case 1:
                 return self.name, [args[0]], 1
             case -1:
                 idx     = args.index(END_SEP)
@@ -428,6 +448,8 @@ class PositionalParam(ParamSpecBase):
                 return self.name, claimed, len(claimed)
             case int() as x if x < len(args):
                 return self.name, args[:x], x
+            case _:
+                raise ArgParseError()
 
 class KeyParam(ParamSpecBase):
     """ TODO a param that is specified by a prefix key """
@@ -558,7 +580,7 @@ class ParamSpec(ParamSpecBase):
         match data:
             case {"implicit":True}:
                 return ImplicitParam.model_validate(data)
-            case {"positional":True|int()}:
+            case {"prefix":int()|None|""}:
                 return PositionalParam.model_validate(data)
             case {"prefix":x, "type":y} if x == ASSIGN_PREFIX and y in [bool, "bool"]:
                 return ToggleParam.model_validate(data)
