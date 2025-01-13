@@ -52,7 +52,7 @@ from uuid import UUID, uuid1
 # ##-- 1st party imports
 from jgdv import Maybe
 from jgdv.logging.colour_format import JGDVColourFormatter, JGDVColourStripFormatter
-from jgdv.logging.logger_spec import LoggerSpec
+from jgdv.logging.logger_spec import LoggerSpec, LogLevel_e
 from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
@@ -73,19 +73,20 @@ SUBPRINTERS  : Final[list[str]]= [
 
 stream_initial_spec  : Final[LoggerSpec] = LoggerSpec.build({
     "name"           : logmod.root.name,
-    "level"          : "WARNING",
+    "level"          : "trace",
     "target"         : "stdout",
     "format"         : "{levelname}  : INIT : {message}",
     "style"          : "{"
     })
 printer_initial_spec : Final[LoggerSpec] = LoggerSpec.build({
     "name"           : PRINTER_NAME,
-    "level"          : "NOTSET",
+    "level"          : "trace",
     "target"         : "stdout",
     "format"         : "{name}({levelname}) : {message}",
     "style"          : "{",
     "propagate"      : False,
     })
+
 
 class JGDVLogConfig:
     """ Utility class to setup [stdout, stderr, file] logging.
@@ -104,6 +105,8 @@ class JGDVLogConfig:
 
     """
 
+    levels : ClassVar[enum.IntEnum] = LogLevel_e
+
     def __init__(self, subprinters=None, style=None):
         # Root Logger for everything
         self.root                 = logmod.root
@@ -113,7 +116,10 @@ class JGDVLogConfig:
 
         self.stream_initial_spec.apply()
         self.printer_initial_spec.apply()
-        logging.debug("Post Log Setup")
+        for name,lvl in self.levels.__members__.items():
+            logmod.addLevelName(lvl, name)
+
+        logging.log(self.levels.bootstrap, "Post Log Setup")
 
     def _setup_print_children(self, config:ChainGuard):
         logging.info("Setting up print children")
@@ -163,8 +169,8 @@ class JGDVLogConfig:
         self.stream_initial_spec.clear()
         self.printer_initial_spec.clear()
 
-        file_spec         = LoggerSpec.build(config.on_fail({}).logging.file(), name=LoggerSpec.RootName)
-        stream_spec       = LoggerSpec.build(config.on_fail({}).logging.stream(), name=LoggerSpec.RootName)
+        file_spec         = LoggerSpec.build(config.on_fail({}).logging.file(),    name=LoggerSpec.RootName)
+        stream_spec       = LoggerSpec.build(config.on_fail({}).logging.stream(),  name=LoggerSpec.RootName)
         print_spec        = LoggerSpec.build(config.on_fail({}).logging.printer(), name=PRINTER_NAME)
 
         file_spec.apply()
@@ -173,11 +179,22 @@ class JGDVLogConfig:
         self._setup_print_children(config)
         self._setup_logging_extra(config)
 
-    def set_level(self, level):
-        self.stream_initial_spec.set_level(level)
-        self.printer_initial_spec.set_level(level)
+    def set_level(self, level:int|str):
+        names = logmod.getLevelNamesMapping()
+        lvl   = None
+        match level:
+            case int():
+                lvl = level
+            case str() if (lvl:=names.get(level, None)) is not None:
+                pass
+            case _:
+                raise ValueError("Unknown level name", level)
 
-    def capture_printing_to_file(path:str|pl.Path="print.log", *, disable_warning=False):
+        assert(lvl is not None)
+        self.stream_initial_spec.set_level(lvl)
+        self.printer_initial_spec.set_level(lvl)
+
+    def capture_printing_to_file(self, path:str|pl.Path="print.log", *, disable_warning=False):
         """
         Setup a file handler for a separate logger,
         to keep a trace of anything printed.
@@ -194,7 +211,7 @@ class JGDVLogConfig:
         file_handler.setFormatter(JGDVColourStripFormatter())
 
         print_logger = logmod.getLogger(f"{PRINTER_NAME}.intercept")
-        print_logger.setLevel(logmod.NOTSET)
+        print_logger.setLevel()
         print_logger.addHandler(file_handler)
         print_logger.propagate = False
 
@@ -207,7 +224,7 @@ class JGDVLogConfig:
 
         builtins.print = intercepted
 
-    def redirect_printing_to_logging(*, disable_warning=False):
+    def redirect_printing_to_logging(self, *, disable_warning=False):
         """ redirect printing into logging the logging system to handle
           logged at DEBUG level
         """

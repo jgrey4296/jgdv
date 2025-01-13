@@ -56,6 +56,13 @@ IS_PRE_COMMIT : Final[bool]      = "PRE_COMMIT" in env
 MAX_FILES     : Final[int]       = 5
 TARGETS       : Final[list[str]] = ["file", "stdout", "stderr", "rotate", "pass"]
 
+class LogLevel_e(enum.IntEnum):
+    """ My Preferred Loglevel names """
+    error     = logmod.ERROR   # Total Failures
+    user      = logmod.WARNING # User Notification
+    trace     = logmod.INFO    # Program Landmarks
+    detail    = logmod.DEBUG   # Exact values
+    bootstrap = logmod.NOTSET  # Startup before configuration
 class _AnyFilter:
     """
       A Simple filter to reject based on:
@@ -161,6 +168,7 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
 
     RootName                   : ClassVar[str]               = "root"
 
+    levels                     : ClassVar[enum.IntEnum]      = LogLevel_e
     @staticmethod
     def build(data:list|dict, **kwargs) -> LoggerSpec:
         """
@@ -183,7 +191,17 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
 
     @field_validator("level")
     def _validate_level(cls, val):
-        return logmod._nameToLevel.get(val, 0)
+        match val:
+            case str() if (lvl:=logmod.getLevelNamesMapping().get(val, None)) is not None:
+                return lvl
+            case str() if val in LoggerSpec.levels.__members__:
+                return LoggerSpec.levels[val]
+            case int():
+                return val
+            case _:
+                breakpoint()
+                pass
+                raise ValueError(val)
 
     @field_validator("format")
     def _validate_format(cls, val):
@@ -220,8 +238,8 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
     def apply(self, *, onto:Maybe[Logger]=None) -> Logger:
         """ Apply this spec (and nested specs) to the relevant logger """
         handler_pairs : list[tuple[logmod.Handler, logmod.Formatter]] = []
-        logger = self.get()
-        logger.propagate                                              = self.propagate
+        logger           = self.get()
+        logger.propagate = self.propagate
         logger.setLevel(logmod._nameToLevel.get("NOTSET", 0))
         if self.disabled:
             logger.disabled = True

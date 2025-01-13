@@ -32,7 +32,10 @@ import stackprinter
 # Body:
 
 class StackFormatter_m(logmod.Formatter):
-    """ A Mixin Error formatter, adapted from stackprinter's docs """
+    """ A Mixin Error formatter, adapted from stackprinter's docs
+    Formats the error stack as just the lines, not with src
+
+    """
 
     indent_str       : ClassVar[str]         = "  |  "
     suppress         : ClassVar[list[RxStr]] = [r".*pydantic.*"]

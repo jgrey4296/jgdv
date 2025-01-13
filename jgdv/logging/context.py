@@ -58,9 +58,15 @@ from jgdv import Maybe
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class JGDVLogContext:
+class LogContext:
     """
       a really simple wrapper to set a logger's level, then roll it back
+
+    use as:
+    with LogContext(logger, level=logmod.INFO) as ctx:
+    ctx.log("blah")
+    # or
+    logger.info("blah")
     """
 
     def __init__(self, logger, level=None):
@@ -88,3 +94,31 @@ class JGDVLogContext:
 
     def __getattr__(self, key):
         return getattr(self._logger, key)
+
+    def log(self, msg, *args, **kwargs):
+        self._logger.log(self._temp_level, msg, *args, **kwargs)
+
+class TempLogger:
+    """ For using a specific type of logger in a context, or getting
+    a custom logger class without changing it globally
+
+    use as:
+    with TempLogger(MyLoggerClass) as ctx:
+    # Either:
+    ctx['name'].info(...)
+    # or:
+    logmod.getLogger('name').info(...)
+    """
+
+    def __init__(self, logger:type[logmod.Logger]):
+        self._target_cls                        = logger
+        self._original : Maybe[logmod.Logger]   = None
+
+    def __enter__(self) -> Self:
+        self._original = logmod.getLoggerClass()
+        logmod.setLoggerClass(self._target_cls)
+        return self
+
+    def __exit(self, *exc):
+        self.setLoggerClass(self._original)
+        return False
