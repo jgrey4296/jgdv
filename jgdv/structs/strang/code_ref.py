@@ -138,10 +138,15 @@ class CodeReference(Strang):
             case _:
                 curr = self._value
 
-        if self.gmark_e.fn in self and not callable(self._value):
-            raise ImportError("Imported value was not a callable", self._value, self)
+        has_mark     = any(x in self for x in [self.gmark_e.fn, self.gmark_e.cls])
+        is_callable  = callable(self._value)
+        is_type      = isinstance(self._value, type)
+        if not has_mark:
+            pass
+        elif self.gmark_e.fn in self and not is_callable:
+            raise ImportError("Imported 'Function' was not a callable", self._value, self)
         elif self.gmark_e.cls in self and not isinstance(self._value, type):
-            raise ImportError("Imported value was not a class", self._value, self)
+            raise ImportError("Imported 'Class' was not a type", self._value, self)
 
         match self._typevar:
             case None:
