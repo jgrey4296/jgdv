@@ -166,12 +166,12 @@ class JGDVLocations(PathManip_m):
     def __contains__(self, key:str|DKey|pl.Path|Location|Self):
         """ Test whether a key is a registered location """
         match key:
-            case JGDVLocations():
-                return False
             case Location():
                 return False
             case str() | pl.Path():
                 return key in self._data
+            case _:
+                return NotImplemented
 
     def __iter__(self) -> Generator[str]:
         """ Iterate over the registered location names """
