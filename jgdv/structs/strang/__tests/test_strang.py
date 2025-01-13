@@ -14,6 +14,7 @@ import warnings
 import pytest
 from random import randint
 
+from jgdv.structs.strang.errors import StrangError
 from jgdv.structs.strang import Strang
 logging = logmod.root
 
@@ -48,7 +49,7 @@ class TestStrangBase:
         assert(repr(obj) == f"<Strang: head::tail.<uuid>>")
 
     def test_needs_separator(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(StrangError):
             Strang("head|tail")
 
     def test_shape(self):
@@ -541,10 +542,26 @@ class TestStrangAnnotation:
     def test_subclass_annotate(self):
 
         class StrangSub(Strang):
-            _separator = ":|:"
+            _separator : ClassVar[str] = ":|:"
             pass
 
         ref = StrangSub[int]("group.a.b:|:body.c.d")
         assert(ref._typevar is int)
         assert(isinstance(ref, Strang))
         assert(isinstance(ref, StrangSub))
+
+
+    def test_subclass_annotate_independence(self):
+
+        class StrangSub(Strang):
+            _separator : ClassVar[str] = ":|:"
+            pass
+
+        ref = StrangSub[int]("group.a.b:|:body.c.d")
+        assert(ref._typevar is int)
+        assert(isinstance(ref, Strang))
+        assert(isinstance(ref, StrangSub))
+
+        obj = Strang.build("group::tail.a.b.c")
+        assert(isinstance(obj, Strang))
+        assert(not isinstance(obj, StrangSub))

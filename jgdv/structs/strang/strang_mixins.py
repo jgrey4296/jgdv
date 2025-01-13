@@ -95,6 +95,9 @@ class _Strang_validation_m:
 
         self._group += self._get_slices(0, sep_index)
         self._body  += self._get_slices(sep_index, add_offset=True)
+        if not (bool(self._group) and bool(self._body)):
+            raise ValueError("Strang doesn't have both a group and body")
+
         self._base_slices = (slice(self._group[0].start, self._group[-1].stop),
                              slice(self._body[0].start, self._body[-1].stop))
 

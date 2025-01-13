@@ -34,6 +34,7 @@ from uuid import UUID, uuid1
 # ##-- end 3rd party imports
 
 from jgdv import *
+from . import errors
 from . import strang_mixins as s_mix
 
 ##-- logging
@@ -64,13 +65,29 @@ class _StrangMeta(type(str)):
             case _:
                 pass
 
-        data = cls.pre_process(data, strict=kwargs.get("strict", False))
+        try:
+            data = cls.pre_process(data, strict=kwargs.get("strict", False))
+        except ValueError as err:
+            raise errors.StrangError("Pre-Strang Error", cls, err, data)
+
         obj  = str.__new__(cls, data)
-        obj.__init__(*args, **kwargs)
-        # TODO don't call process and post_process if given the metadata in kwargs
-        obj._process()
-        # TODO allow post-process to override and return a different object?
-        obj._post_process()
+        try:
+            obj.__init__(*args, **kwargs)
+        except ValueError as err:
+            raise errors.StrangError("Strang Init Error", cls, err, data)
+
+        try:
+            # TODO don't call process and post_process if given the metadata in kwargs
+            obj._process()
+        except ValueError as err:
+            raise errors.StrangError("Strang Process Error", cls, err, data)
+
+        try:
+            # TODO allow post-process to override and return a different object?
+            obj._post_process()
+        except ValueError as err:
+            raise errors.StrangError("Post-Strang Error:", cls, err)
+
         return obj
 
 class Strang(s_mix.Strang_m, str, metaclass=_StrangMeta):
@@ -105,7 +122,7 @@ class Strang(s_mix.Strang_m, str, metaclass=_StrangMeta):
                 continue
             try:
                 return sub(data, *args, strict=True, **kwargs)
-            except (ValueError, KeyError):
+            except (errors.StrangError, ValueError, KeyError):
                 pass
         else:
             return Strang(data, *args, **kwargs)
