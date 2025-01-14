@@ -99,6 +99,7 @@ class Location(Strang, PathManip_m):
         a_loc                                  = BackupTo('file::a/b/c.mp3')
         a_loc.path_pair() -> ('/vols/BackupSD/a/b/c.mp3', '~/a/b/c.mp3')
     """
+    _separator          : ClassVar[str]        = "::>"
     _subseparator       : ClassVar[str]        = "/"
     _body_types         : ClassVar[Any]        = str|WildCard_e
     gmark_e             : ClassVar[enum.Enum]  = LocationMeta_e
@@ -166,6 +167,11 @@ class Location(Strang, PathManip_m):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._group_meta = None
+
+    def __repr__(self):
+        body = self[1:]
+        cls = self.__class__.__name__
+        return f"<{cls}: {self[0:]}{self._separator}{body}>"
 
     def __contains__(self, other:Location.gmark_e|Location.bmark_e|Location|pl.Path) -> bool:
         """ whether a definite artifact is matched by self, an abstract artifact

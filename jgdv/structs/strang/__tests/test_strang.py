@@ -48,6 +48,11 @@ class TestStrangBase:
         obj = Strang(f"head::tail.<uuid:{UUID_STR}>")
         assert(repr(obj) == f"<Strang: head::tail.<uuid>>")
 
+
+    def test_repr_with_brace_val(self):
+        obj = Strang("head::tail.{aval}.blah")
+        assert(repr(obj) == "<Strang: head::tail.{aval}.blah>")
+
     def test_needs_separator(self):
         with pytest.raises(StrangError):
             Strang("head|tail")

@@ -36,7 +36,7 @@ class TestBuildApprorpriate:
 
 
     def test_simple_location(self):
-        obj = Strang.build("file::a/b/c.txt")
+        obj = Strang.build("file::>a/b/c.txt")
         assert(isinstance(obj, Strang))
         assert(isinstance(obj, Location))
         assert(not isinstance(obj, CodeReference))
