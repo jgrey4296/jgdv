@@ -51,7 +51,7 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from jgdv import Maybe
-from jgdv.logging.colour_format import JGDVColourFormatter, JGDVColourStripFormatter
+from jgdv.logging.colour_format import ColourFormatter, StripColourFormatter
 from jgdv.logging.logger_spec import LoggerSpec, LogLevel_e
 from jgdv.structs.chainguard import ChainGuard
 
@@ -208,7 +208,7 @@ class JGDVLogConfig:
         oldprint = builtins.print
         file_handler = logmod.FileHandler(path, mode='w')
         file_handler.setLevel(logmod.DEBUG)
-        file_handler.setFormatter(JGDVColourStripFormatter())
+        file_handler.setFormatter(StripColourFormatter())
 
         print_logger = logmod.getLogger(f"{PRINTER_NAME}.intercept")
         print_logger.setLevel()

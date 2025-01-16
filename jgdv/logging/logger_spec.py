@@ -37,9 +37,11 @@ from pydantic import (BaseModel, Field, ValidationError, field_validator,
 
 # ##-- 1st party imports
 from jgdv import Maybe, RxStr
-from jgdv.logging.colour_format import JGDVColourFormatter, JGDVColourStripFormatter
+from jgdv.logging.colour_format import ColourFormatter, StripColourFormatter
 from jgdv._abstract.protocols import Buildable_p, ProtocolModelMeta
 from jgdv.structs.chainguard import ChainGuard
+from .filter import BlacklistFilter, WhitelistFilter
+from .enums import LogLevel_e
 
 # ##-- end 1st party imports
 
@@ -55,39 +57,6 @@ env           : dict             = os.environ
 IS_PRE_COMMIT : Final[bool]      = "PRE_COMMIT" in env
 MAX_FILES     : Final[int]       = 5
 TARGETS       : Final[list[str]] = ["file", "stdout", "stderr", "rotate", "pass"]
-
-class LogLevel_e(enum.IntEnum):
-    """ My Preferred Loglevel names """
-    error     = logmod.ERROR   # Total Failures
-    user      = logmod.WARNING # User Notification
-    trace     = logmod.INFO    # Program Landmarks
-    detail    = logmod.DEBUG   # Exact values
-    bootstrap = logmod.NOTSET  # Startup before configuration
-class _AnyFilter:
-    """
-      A Simple filter to reject based on:
-      1) a whitelist of regexs,
-      2) a simple list of rejection names
-
-    """
-
-    def __init__(self, allow:Maybe[list[RxStr]]=None, reject:Maybe[list[str]]=None):
-        self.allowed    = allow or []
-        self.rejections = reject or []
-        self.allowed_re    = re.compile("^({})".format("|".join(self.allowed)))
-        if bool(self.allowed):
-            raise NotImplementedError("Logging Allows are not implemented yet")
-
-    def __call__(self, record) -> bool:
-        if record.name in ["root", "__main__"]:
-            return True
-        if not (bool(self.allowed) or bool(self.rejections)):
-            return True
-
-        rejected = False
-        rejected |= any(x in record.name for x in self.rejections)
-        # rejected |= not self.name_re.match(record.name)
-        return not rejected
 
 class HandlerBuilder_m:
     """
@@ -108,6 +77,30 @@ class HandlerBuilder_m:
         handler.doRollover()
         return handler
 
+    def _build_formatter(self, handler) -> Formatter:
+        match self.colour:
+            case _ if IS_PRE_COMMIT:
+                # Always strip colour when in pre-commit
+                formatter = StripColourFormatter(fmt=self.format, style=self.style)
+            case _ if isinstance(handler, (logmod.FileHandler, l_handlers.RotatingFileHandler)):
+                # Always strip colour when logging to a file
+                formatter = StripColourFormatter(fmt=self.format, style=self.style)
+            case False:
+                formatter = StripColourFormatter(fmt=self.format, style=self.style)
+            case str() | True:
+                formatter = ColourFormatter(fmt=self.format, style=self.style)
+
+        return formatter
+
+    def _build_filters(self) -> list[Callable]:
+        filters = []
+        if bool(self.allow):
+            filters.append(WhitelistFilter(self.allow))
+        if bool(self.filter):
+            filters.append(BlacklistFilter(self.filter))
+
+        return filters
+
     def _discriminate_handler(self, target:Maybe[str|pl.Path]) -> tuple[Maybe[Handler], Maybe[Formatter]]:
         handler, formatter = None, None
 
@@ -127,15 +120,9 @@ class HandlerBuilder_m:
             case _:
                 raise ValueError("Unknown logger spec target", target)
 
-        match self.colour or not IS_PRE_COMMIT:
-            case _ if isinstance(handler, (logmod.FileHandler, l_handlers.RotatingFileHandler)):
-                formatter = JGDVColourStripFormatter(fmt=self.format, style=self.style)
-            case False:
-                formatter = JGDVColourStripFormatter(fmt=self.format, style=self.style)
-            case True:
-                formatter = JGDVColourFormatter(fmt=self.format, style=self.style)
+        formatter = self._build_formatter(handler)
 
-        assert(handler is not None)
+        assert(handler   is not None)
         assert(formatter is not None)
         return handler, formatter
 
@@ -143,7 +130,7 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
     """
       A Spec for toml defined logging control.
       Allows user to name a logger, set its level, format,
-      filters, colour, and what verbosity it activates on,
+      filters, colour, and what (cli arg) verbosity it activates on,
       and what file it logs to.
 
       When 'apply' is called, it gets the logger,
@@ -259,24 +246,21 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
             case _:
                 raise ValueError("Unknown target value for LoggerSpec", self.target)
 
-        log_filter       = None
-        if bool(self.allow) or bool(self.filter):
-            log_filter = _AnyFilter(allow=self.allow, reject=self.filter)
-
+        log_filters = self._build_filters()
         for pair in handler_pairs:
             match pair:
                 case None, _:
                     pass
                 case hand, None:
                     hand.setLevel(self.level)
-                    if log_filter is not None:
-                        hand.addFilter(log_filter)
+                    for fltr in log_filters:
+                        hand.addFilter(fltr)
                     logger.addHandler(hand)
                 case hand, fmt:
                     hand.setLevel(self.level)
                     hand.setFormatter(fmt)
-                    if log_filter is not None:
-                        hand.addFilter(log_filter)
+                    for fltr in log_filters:
+                        hand.addFilter(fltr)
                     logger.addHandler(hand)
                 case _:
                     pass
@@ -287,7 +271,8 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
             return logger
 
     def get(self) -> Logger:
-        return logmod.getLogger(self.fullname)
+        logger = logmod.getLogger(self.fullname)
+        return logger
 
     def clear(self):
         """ Clear the handlers for the logger referenced """

@@ -108,7 +108,7 @@ class SimpleLogColour:
     def red(s):
         return LEVEL_MAP['red'] + str(s) + COLOUR_RESET
 
-class JGDVColourFormatter(StackFormatter_m, logging.Formatter):
+class ColourFormatter(StackFormatter_m, logging.Formatter):
     """
     Stream Formatter for logging, enables use of colour sent to console
 
@@ -120,7 +120,7 @@ class JGDVColourFormatter(StackFormatter_m, logging.Formatter):
     Usage reminder:
     # Create stdout handler for logging to the console (logs all five levels)
     stdout_handler = logging.StreamHandler()
-    stdout_handler.setFormatter(JGDVLogFormatter(fmt))
+    stdout_handler.setFormatter(ColourFormatter(fmt))
     logger.addHandler(stdout_handler)
     """
 
@@ -130,7 +130,7 @@ class JGDVColourFormatter(StackFormatter_m, logging.Formatter):
 
     def __init__(self, *, fmt=None, style=None):
         """
-        Create the JGDVLogFormatter with a given *Brace* style log format
+        Create the ColourFormatter with a given *Brace* style log format
         """
         super().__init__(fmt or self._default_fmt,
                          datefmt=self._default_date_fmt,
@@ -138,13 +138,14 @@ class JGDVColourFormatter(StackFormatter_m, logging.Formatter):
         self.colours = LEVEL_MAP
 
     def format(self, record) -> str:
-        log_colour = self.colours[record.levelno]
         if hasattr(record, "colour"):
             log_colour = self.colours[record.colour]
+        else:
+            log_colour = self.colours[record.levelno]
 
         return log_colour + super().format(record) + COLOUR_RESET
 
-class JGDVColourStripFormatter(StackFormatter_m, logging.Formatter):
+class StripColourFormatter(StackFormatter_m, logging.Formatter):
     """
     Force Colour Command codes to be stripped out of a string.
     Useful for when you redirect printed strings with colour
@@ -158,8 +159,7 @@ class JGDVColourStripFormatter(StackFormatter_m, logging.Formatter):
 
     def __init__(self, *, fmt=None, style=None):
         """
-        Create the JGDVLogFormatter with a given *Brace* style log format
-        `record` will install the JGDVLogRecord as the record factory if true
+        Create the StripColourFormatter with a given *Brace* style log format
         """
         super().__init__(fmt or self._default_fmt,
                          datefmt=style or self._default_date_fmt,
