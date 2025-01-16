@@ -152,10 +152,12 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
     clear_handlers             : bool                        = False
     style                      : str                         = "{"
     nested                     : list[LoggerSpec]            = []
+    prefix                     : Maybe[str]                  = None
 
     RootName                   : ClassVar[str]               = "root"
 
     levels                     : ClassVar[enum.IntEnum]      = LogLevel_e
+
     @staticmethod
     def build(data:list|dict, **kwargs) -> LoggerSpec:
         """
@@ -231,6 +233,18 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
         if self.disabled:
             logger.disabled = True
             return logger
+
+        match self.prefix:
+            case None:
+                pass
+            case str() if hasattr(logger, "set_prefixes"):
+                logger.set_prefixes(self.prefix)
+
+        match self.colour:
+            case str():
+                logger.set_colour(self.colour)
+            case _:
+                pass
 
         match self.target:
             case _ if bool(self.nested):

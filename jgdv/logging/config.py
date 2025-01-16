@@ -54,6 +54,7 @@ from jgdv import Maybe
 from jgdv.logging.colour_format import ColourFormatter, StripColourFormatter
 from jgdv.logging.logger_spec import LoggerSpec, LogLevel_e
 from jgdv.structs.chainguard import ChainGuard
+from .logger import JGDVLogger
 
 # ##-- end 1st party imports
 
@@ -113,6 +114,7 @@ class JGDVLogConfig:
         self._printer_children    = (subprinters or SUBPRINTERS)[:]
         self.stream_initial_spec  = stream_initial_spec
         self.printer_initial_spec = printer_initial_spec
+        JGDVLogger.install()
 
         self.stream_initial_spec.apply()
         self.printer_initial_spec.apply()
