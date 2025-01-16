@@ -159,11 +159,15 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
     levels                     : ClassVar[enum.IntEnum]      = LogLevel_e
 
     @staticmethod
-    def build(data:list|dict, **kwargs) -> LoggerSpec:
+    def build(data:bool|list|dict, **kwargs) -> LoggerSpec:
         """
           Build a single spec, or multiple logger specs targeting the same logger
         """
         match data:
+            case False:
+                return LoggerSpec(disabled=True, **kwargs)
+            case True:
+                return LoggerSpec(**kwargs)
             case list():
                 nested = []
                 for x in data:
@@ -177,6 +181,8 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
                 as_dict = data.copy()
                 as_dict.update(kwargs)
                 return LoggerSpec.model_validate(as_dict)
+            case _:
+                raise TypeError("Unknown data for logger spec", data)
 
     @field_validator("level")
     def _validate_level(cls, val):

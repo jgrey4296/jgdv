@@ -141,15 +141,14 @@ class JGDVLogConfig:
                 case (str() as name, _) if name not in acceptable_names:
                     print("Unknown Subprinter mentioned in config: ", name)
                     pass
-                case (str(), False|None):
-                    # disable the subprinter
-                    LoggerSpec.build({"disabled":True}, name=name, base=basename).apply()
-                case (str() as name, ChainGuard()|dict() as spec_data):
+                case (str() as name, bool()|ChainGuard()|dict() as spec_data):
                     match LoggerSpec.build(spec_data, name=name, base=basename):
                         case None:
                             print("Could not build LoggerSpec for {}".format(name))
                         case LoggerSpec() as spec:
                             spec.apply()
+                case _:
+                    raise TypeError("Unknown subprinter data", data)
 
     def _setup_logging_extra(self, config:ChainGuard):
         """ read the doot config logging section
