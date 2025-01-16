@@ -136,7 +136,7 @@ class JGDVLogConfig:
                                 print("Could not build LoggerSpec for {}".format(name))
                             case LoggerSpec() as spec:
                                 spec.apply()
-                case (str() as name, _) if name not in subprint_data:
+                case (str() as name, _) if name not in acceptable_names:
                     print("Unknown Subprinter mentioned in config: ", name)
                     pass
                 case (str(), False|None):
