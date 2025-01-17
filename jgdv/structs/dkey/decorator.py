@@ -10,45 +10,77 @@ from __future__ import annotations
 import datetime
 import enum
 import functools as ftz
+import inspect
 import itertools as itz
+import keyword
 import logging as logmod
 import pathlib as pl
 import re
 import time
 import types as types_
+import typing
 import weakref
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
 import decorator
-import keyword
-import inspect
 import more_itertools as mitz
 from pydantic import BaseModel, Field, field_validator, model_validator
-from jgdv.structs.strang import CodeReference
 
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from jgdv import Maybe, FmtStr, Ident, Rx, Method, Func, Decorator
+from jgdv import Decorator, FmtStr, Func, Ident, Maybe, Method, Rx
+from jgdv.decorators import (
+    DataDecorator,
+    DecoratorAccessor_m,
+    MetaDecorator,
+    _TargetType_e,
+)
 from jgdv.structs.dkey import errors as dkey_errs
 from jgdv.structs.dkey.meta import DKey
-from jgdv.decorators.base import MetaDecorator, DataDecorator, DecoratorAccessor_m, _TargetType_e
+from jgdv.structs.strang import CodeReference
 
 # ##-- end 1st party imports
+
+# ##-- types
+type Signature = inspect.Signature
+# isort: off
+if typing.TYPE_CHECKING:
+   from jgdv import Maybe
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-type Signature = inspect.Signature
 
 KEY_PATTERN         : Final[FmtStr]               =  "{(.+?)}"
 MAX_KEY_EXPANSIONS  : Final[int]                  = 10
@@ -80,26 +112,26 @@ class DKeyExpansionDecorator(DataDecorator):
         super().__init__(keys, **kwargs)
         self._param_ignores     : tuple[str, str] = ignores or PARAM_IGNORES
 
-    def _wrap_method(self, fn:Method) -> Method:
+    def _wrap_method(self, meth:Method) -> Method:
         data_key = self._data_key
 
-        def method_action_expansions(_self, spec, state, *call_args, **kwargs):
+        def _method_action_expansions(_self, spec, state, *call_args, **kwargs):
             try:
-                expansions = [x(spec, state) for x in getattr(fn, data_key)]
+                expansions = [x(spec, state) for x in getattr(meth, data_key)]
             except KeyError as err:
                 logging.warning("Action State Expansion Failure: %s", err)
                 return False
             else:
                 all_args = (*call_args, *expansions)
-                return fn(_self, spec, state, *all_args, **kwargs)
+                return meth(_self, spec, state, *all_args, **kwargs)
 
         # -
-        return method_action_expansions
+        return _method_action_expansions
 
     def _wrap_fn(self, fn:Func) -> Func:
         data_key = self._data_key
 
-        def fn_action_expansions(spec, state, *call_args, **kwargs):
+        def _fn_action_expansions(spec, state, *call_args, **kwargs):
             try:
                 expansions = [x(spec, state) for x in getattr(fn, data_key)]
             except KeyError as err:
@@ -110,7 +142,7 @@ class DKeyExpansionDecorator(DataDecorator):
                 return fn(spec, state, *all_args, **kwargs)
 
         # -
-        return fn_action_expansions
+        return _fn_action_expansions
 
     def _verify_signature(self, sig:Signature, ttype:_TargetType_e, args:list[DKey]) -> None:
         # Get the head args
@@ -124,13 +156,13 @@ class DKeyExpansionDecorator(DataDecorator):
         tail        = args or []
 
         # Check the head
-        for x,y in zip(params, head):
+        for x,y in zip(params, head, strict=False):
             if x != y:
-                raise TypeError("Mismatch in signature head", x, y)
+                raise TypeError("Mismatch in signature head", x, y, ttype)
 
         prefix_ig, suffix_ig = self._param_ignores
         # Then the tail, backwards, because the decorators are applied in reverse order
-        for x,y in zip(params[::-1], tail[::-1]):
+        for x,y in zip(params[::-1], tail[::-1], strict=False):
             key_str = str(y)
             if x.startswith(prefix_ig) or x.endswith(suffix_ig):
                 logging.debug("Skipping: %s", x)

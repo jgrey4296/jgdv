@@ -33,15 +33,23 @@ from pydantic import BaseModel
 
 # ##-- end 3rd party imports
 
+import typing
+
+# ##-- types
+# isort: off
+ProtoMeta       = type(Protocol)
+PydanticMeta    = type(BaseModel)
+if typing.TYPE_CHECKING:
+    type ChainGuard = Any
+    type Maybe[T]   = None|T
+    type Ctor[T]    = type(T) | Callable[[*Any], T]
+
+# isort: on
+# ##-- end types
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-type ChainGuard = Any
-type Maybe[T]   = None|T
-type Ctor[T]    = type(T) | Callable[[*Any], T]
-ProtoMeta       = type(Protocol)
-PydanticMeta    = type(BaseModel)
 
 class ProtocolModelMeta(ProtoMeta, PydanticMeta):
     """ Use as the metaclass for pydantic models which are explicit Protocol implementers
@@ -298,16 +306,16 @@ class ExecutableTask(Protocol):
 @runtime_checkable
 class Decorator_p(Protocol):
 
-    def __call__(self, fn):
+    def __call__(self, target):
         pass
 
-    def _target_method(self, fn) -> Callable:
+    def _wrap_method(self, meth) -> Callable:
         pass
 
-    def _target_fn(self, fn) -> Callable:
+    def _wrap_nf(self, fn) -> Callable:
         pass
 
-    def _target_class(self, fn:type) -> type:
+    def _wrap_class(self, cls:type) -> type:
         pass
 
     def _is_marked(self, fn) -> bool:

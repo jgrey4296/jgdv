@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
-
 """
 
 # Imports:
@@ -15,6 +13,7 @@ import functools as ftz
 import itertools as itz
 import logging as logmod
 import pathlib as pl
+import typing
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -46,15 +45,21 @@ from uuid import UUID, uuid1
 # ##-- 1st party imports
 from jgdv import Maybe
 from jgdv.util.time_ctx import TimeCtx
-from jgdv.decorators.base import MetaDecorator
+from jgdv.decorators.meta_decorator import MetaDecorator
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+if typing.TYPE_CHECKING:
+   from jgdv import Maybe
+   type Logger = logmod.Logger
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-type Logger = logmod.Logger
 
 class TrackTime(MetaDecorator):
     """ Decorate a callable to track its timing """
@@ -67,7 +72,7 @@ class TrackTime(MetaDecorator):
         self._level  =  level
         self._entry  = entry
         self._exit   = exit
-    
+
     def wrap_fn[T](self, fn:T) -> T:
         logger, enter, exit, level = self._logger, self._entry, self.exit, self.level
 

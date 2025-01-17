@@ -15,7 +15,7 @@ import pytest
 
 from jgdv.structs.dkey import DKey, DKeyed
 from jgdv.structs.dkey import DKeyExpansionDecorator as DKexd
-from jgdv.decorators.base import _TargetType_e
+from jgdv.decorators import _TargetType_e
 from jgdv.structs.dkey.decorator import DKeyMetaDecorator
 
 logging = logmod.root

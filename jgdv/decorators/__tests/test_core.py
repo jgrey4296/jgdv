@@ -2,19 +2,60 @@
 """
 
 """
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
+import datetime
+import enum
+import functools as ftz
+import itertools as itz
 import logging as logmod
 import pathlib as pl
-from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
-                    Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
-                    TypeVar, cast)
 import warnings
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
+from uuid import UUID, uuid1
 
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
 import pytest
-import functools as ftz
-from jgdv.decorators import base
-from jgdv.decorators.base import _TargetType_e, DecoratorBase, ANNOTATIONS_PREFIX, MARK_SUFFIX, DATA_SUFFIX, DataDecorator
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+from jgdv.decorators.core import (
+    ANNOTATIONS_PREFIX,
+    DATA_SUFFIX,
+    MARK_SUFFIX,
+    DecoratorBase,
+    _TargetType_e,
+)
+
+# ##-- end 1st party imports
 
 logging = logmod.root
 
@@ -69,6 +110,38 @@ class TestTargetTypeDiscrimination(_TestUtils):
 
     def test_is_class(self, dec, a_class):
         assert(dec._target_type(a_class) is _TargetType_e.CLASS)
+
+    def test_decorated_fn_retains_correct_type(self):
+
+        class Dec1(DecoratorBase):
+            pass
+
+        class Dec2(DecoratorBase):
+            pass
+
+        @Dec1()
+        @Dec2()
+        def testfn():
+            pass
+
+        assert(Dec1()._target_type(testfn) is _TargetType_e.FUNC)
+
+
+    def test_decorated_method_retains_correct_type(self):
+
+        class Dec1(DecoratorBase):
+            pass
+
+        class Dec2(DecoratorBase):
+            pass
+
+        class TestClass:
+            @Dec1()
+            @Dec2()
+            def testfn(self):
+                pass
+
+        assert(Dec1()._target_type(TestClass.testfn) is _TargetType_e.METHOD)
 
 class TestDecoratorBase(_TestUtils):
 
@@ -138,8 +211,8 @@ class TestDecoratorBase(_TestUtils):
 
     def test_no_annotations(self, dec, a_fn):
         assert(not bool(dec.get_annotations(a_fn)))
-        assert(not dec._mark_key in a_fn.__dict__)
-        assert(not dec._data_key in a_fn.__dict__)
+        assert(dec._mark_key not in a_fn.__dict__)
+        assert(dec._data_key not in a_fn.__dict__)
 
     def test_unwrap_depth(self, dec):
 
@@ -147,11 +220,11 @@ class TestDecoratorBase(_TestUtils):
             return 2
 
         assert(dec._unwrapped_depth(simple) == 0)
-        w1 = ftz.update_wrapper(lambda fn: f(), simple)
+        w1 = ftz.update_wrapper(lambda fn: fn(), simple)
         assert(dec._unwrapped_depth(w1) == 1)
-        w2 = ftz.update_wrapper(lambda fn: f(), w1)
+        w2 = ftz.update_wrapper(lambda fn: fn(), w1)
         assert(dec._unwrapped_depth(w2) == 2)
-        w3 = ftz.update_wrapper(lambda fn: f(), w2)
+        w3 = ftz.update_wrapper(lambda fn: fn(), w2)
         assert(dec._unwrapped_depth(w3) == 3)
 
     def test_wrap_dict_update(self, dec, a_fn):
@@ -204,48 +277,3 @@ class TestDecoratorBase(_TestUtils):
             decorated(instance)
             assert("Calling Wrapped Method" in caplog.text)
 
-class TestMetaDecorator(_TestUtils):
-
-    @pytest.fixture(scope="function")
-    def a_meta_dec(self):
-        return base.MetaDecorator("example")
-
-    def test_sanity(self):
-        assert(True is True)
-
-    def test_basic_init(self, a_meta_dec, dec):
-        assert(isinstance(a_meta_dec, DecoratorBase))
-        assert(issubclass(a_meta_dec.__class__, DecoratorBase))
-        assert(a_meta_dec._data == ["example"])
-
-    def test_basic_wrap_fn(self, a_meta_dec, a_fn):
-        assert(not a_meta_dec.get_annotations(a_fn))
-        wrapped = a_meta_dec(a_fn)
-        assert(wrapped is not a_fn)
-        assert(a_meta_dec.get_annotations(wrapped) == ["example"])
-
-class TestDataDecorator(_TestUtils):
-
-    @pytest.fixture(scope="function")
-    def ddec(self):
-        return DataDecorator("aval")
-
-    def test_sanity(self):
-        assert(True is not False)
-
-    def test_basic(self, ddec, a_fn):
-        wrapped = ddec(a_fn)
-        assert(ddec.get_annotations(wrapped) == ["aval"])
-
-class TestDecoratorAccessorMixin(_TestUtils):
-
-    @pytest.fixture(scope="function")
-    def setup(self):
-        pass
-
-    @pytest.fixture(scope="function")
-    def cleanup(self):
-        pass
-
-    def test_sanity(self):
-        assert(True is True)
