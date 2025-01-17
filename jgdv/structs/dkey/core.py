@@ -107,7 +107,7 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
         super().__init__(data, mark=mark, **kwargs)
         has_text, s_keys = DKeyFormatter.Parse(data)
         self._has_text   = has_text
-        self._subkeys    = s_keys
+        self._subkeys    = [x for x in s_keys if bool(x.key)]
         self._anon    = self.format("", state={key.key : "{}" for key in s_keys})
 
     def __format__(self, spec:str) -> Str:

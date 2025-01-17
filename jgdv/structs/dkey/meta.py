@@ -134,8 +134,9 @@ class DKey(SubAnnotate_m, metaclass=DKeyMeta):
         fparams = fmt or ""
         # Extract subkeys
         has_text, s_keys = DKey._parser.Parse(data)
-        use_multi_ctor   = len(s_keys) > 0
-        match len(s_keys):
+        active_keys      = [x for x in s_keys if bool(x.key)]
+        use_multi_ctor   = len(active_keys) > 0
+        match len(active_keys):
             case 0 if not implicit and mark is not DKey.mark.PATH:
                 # Just Text,
                 mark = DKeyMark_e.NULL
@@ -154,7 +155,7 @@ class DKey(SubAnnotate_m, metaclass=DKeyMeta):
             case x if not has_text and s_keys[0].conv == "p":
                 mark = DKeyMark_e.PATH
             case _ if implicit:
-                raise ValueError("Implicit instruction for multikey", data)
+                raise ValueError("Implicit instruction for multikey", data, s_keys, active_keys)
             case _ if has_text and mark is None:
                 mark = DKey._conv_registry.get(DKeyMark_e.MULTI)
             case x if x >= 1 and mark is None:

@@ -125,9 +125,13 @@ class DKeyFormatterEntry_m:
             match key:
                 case str() | Key_p():
                     # formatter.parse returns tuples of (literal, key, format, conversion)
-                    result = list(_DKeyParams(prefix=x[0], key=x[1] or "", format=x[2] or "", conv=x[3] or "") for x in cls._instance.parse(key))
+                    result = list(_DKeyParams(prefix=x[0],
+                                              key=x[1] or "",
+                                              format=x[2] or "",
+                                              conv=x[3] or "")
+                                  for x in cls._instance.parse(key))
                     non_key_text = any(bool(x.prefix) for x in result)
-                    return non_key_text, [x for x in result if bool(x)]
+                    return non_key_text, [x for x in result]
                 case _:
                     raise TypeError("Unknown type found", key)
         except ValueError:
@@ -216,7 +220,8 @@ class DKeyFormatter_Expansion_m:
           counting each loop as `count` attempts
 
         """
-        assert(isinstance(key, Key_p))
+        if not isinstance(key, Key_p):
+            raise TypeError("Key needs to be a jgdv.protocols.Key_p")
         current : DKey = key
         last    : set[str] = set()
 

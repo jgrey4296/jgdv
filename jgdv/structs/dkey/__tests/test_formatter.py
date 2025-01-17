@@ -54,7 +54,7 @@ class TestDKeyFormatterParsing:
         val = "bob bill"
         has_text, keys = DKeyFormatter.Parse(val)
         assert(has_text)
-        assert(not bool(keys))
+        assert(len([x for x in keys if bool(x.key)]) == 0)
 
     def test_parsing_empty_str(self):
         val = ""
