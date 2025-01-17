@@ -2,24 +2,71 @@
 """
 
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 import abc
+import datetime
+import enum
+import functools as ftz
+import itertools as itz
 import logging as logmod
+import os
 import pathlib as pl
+import re
+import typing
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field, replace
 from re import Pattern
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar, Self,
-                    Generator, cast, final, overload, runtime_checkable)
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    ClassVar,
+    Final,
+    Generator,
+    Generic,
+    Iterable,
+    Iterator,
+    Mapping,
+    Match,
+    MutableMapping,
+    Protocol,
+    Self,
+    Sequence,
+    Tuple,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    cast,
+    final,
+    overload,
+    runtime_checkable,
+)
 from uuid import UUID, uuid1
 from weakref import ref
-import functools as ftz
 
-##-- end imports
+# ##-- end stdlib imports
+
+# ##-- 1st party imports
+from jgdv import Maybe
+from jgdv.mixins.path_manip import PathManip_m
+from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.dkey import DKey, DKeyFormatter, MultiDKey, NonDKey, SingleDKey
+from jgdv.structs.strang.errors import DirAbsent, LocationError, LocationExpansionError
+from jgdv.structs.strang.location import Location, LocationMeta_e
+
+# ##-- end 1st party imports
+
+# ##-- typecheck imports
+# isort: off
+if typing.TYPE_CHECKING:
+   from jgdv import Maybe, Stack, Queue
+   type FmtStr = str
+
+# isort: on
+# ##-- end typecheck imports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -28,22 +75,13 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-import os
-import re
-from jgdv.structs.chainguard import ChainGuard
-from jgdv.structs.strang.errors import DirAbsent, LocationExpansionError, LocationError
-from jgdv.structs.strang.location import Location, LocationMeta_e
-from jgdv.structs.dkey import MultiDKey, NonDKey, SingleDKey, DKey, DKeyFormatter
-from jgdv.mixins.path_manip import PathManip_m
-
 class _LocationsGlobal:
     """ A program global stack of locations.
     Provides the enter/exit store for JGDVLocations objects
     """
 
     _global_locs : ClassVar[list["JGDVLocations"]] = []
-    # _global_locs : ClassVar[list[ref["JGDVLocations"]]] = []
-    _startup_cwd : ClasVar[pl.Path] = pl.Path.cwd()
+    _startup_cwd : ClassVar[pl.Path] = pl.Path.cwd()
 
     @staticmethod
     def stacklen() -> int:
@@ -76,7 +114,237 @@ class _LocationsGlobal:
         """
         return _LocationsGlobal.peek()
 
-class JGDVLocations(PathManip_m):
+class _LocationUtil_m:
+
+    def update(self, extra:dict|ChainGuard|Location|JGDVLocations, strict=True) -> Self:
+        """
+          Update the registered locations with a dict, chainguard, or other dootlocations obj.
+
+        when strict=True (default), don't allow overwriting existing locations
+        """
+        match extra: # unwrap to just a dict
+            case dict():
+                pass
+            case Location():
+                extra = {extra.name : extra}
+            case ChainGuard():
+                return self.update(dict(extra), strict=strict)
+            case JGDVLocations():
+                return self.update(extra._data, strict=strict)
+            case _:
+                raise TypeError("Tried to update locations with unknown type", extra)
+
+        raw          = dict(self._data.items())
+        base_keys    = set(raw.keys())
+        new_keys     = set(extra.keys())
+        conflicts    = (base_keys & new_keys)
+        if strict and bool(conflicts):
+            raise LocationError("Strict Location Update conflicts", conflicts)
+
+        for k,v in extra.items():
+            match Location(v):
+                case Location() as loc:
+                    raw[k] = loc
+                case _:
+                    raise LocationError("Couldn't build a Location", k, v)
+
+        logging.debug("Registered New Locations: %s", ", ".join(new_keys))
+        self._data = raw
+        return self
+
+    def metacheck(self, key:str|DKey, *meta:LocationMeta_e) -> bool:
+        """ return True if key provided has the applicable metadata"""
+        match key:
+            case NonDKey():
+                return False
+            case DKey() if key in self._data:
+                data = self._data[key]
+                return all(x in data for x in meta)
+            case MultiDKey():
+                 for k in key:
+                     if k not in self._data:
+                         continue
+                     data = self._data[key]
+                     if not all(x in data for x in meta):
+                         return False
+            case str():
+                return self.metacheck(DKey(key, implicit=True), meta)
+        return False
+
+    def registered(self, *values, task="doot", strict=True) -> set:
+        """ Ensure the values passed in are registered locations,
+          error with DirAbsent if they aren't
+        """
+        missing = set(x for x in values if x not in self)
+
+        if strict and bool(missing):
+            raise DirAbsent("Ensured Locations are missing for %s : %s", task, missing)
+
+        return missing
+
+    def normalize(self, path:pl.Path|Location, symlinks:bool=False) -> pl.Path:
+        """
+          Expand a path to be absolute, taking into account the set doot root.
+          resolves symlinks unless symlinks=True
+        """
+        match path:
+            case Location() if Location.gmark_e.earlycwd in path:
+                the_path = path.path
+                return self._normalize(the_path, root=_LocationsGlobal._startup_cwd)
+            case Location():
+                the_path = path.path
+                return self._normalize(the_path, root=self.root)
+            case pl.Path():
+                return self._normalize(path, root=self.root)
+            case _:
+                raise TypeError("Bad type to normalize", path)
+
+    def norm(self, path) -> pl.Path:
+        return self.normalize(path)
+
+class _LocationAccess_m:
+
+    def get(self, key, fallback=Any) -> pl.Path:
+        try:
+            return self.expand(key, norm=True, strict=True)
+        except KeyError as err:
+            match fallback:
+                case x if x is Any:
+                    raise err
+                case x:
+                    return x
+
+
+    def access(self, key:Maybe[DKey|str], fallback:Maybe[False|str|DKey]=Any) -> Maybe[Location]:
+        """
+          convert a *simple* str name of *one* toml location to a path.
+          does *not* recursively expand returned paths
+          More complex expansion is handled in DKey, or using item access of Locations
+        """
+        match key:
+            case None:
+                return None
+            case str() if key in self:
+                return self._data[key]
+            case _ if fallback is False:
+                raise KeyError("Key Not found", key)
+            case _ if isinstance(fallback, (str, DKey)):
+                return self.access(fallback) or fallback
+            case _ if fallback is None:
+                return None
+            case _:
+                return None
+    def expand(self, key:Maybe[Location|pl.Path|DKey|str], strict=True, norm=True) -> Maybe[pl.Path]:
+        coerced = self._coerce_key(key)
+        try:
+            expanded = self._expand_key(coerced, strict=strict)
+        except KeyError as err:
+            raise KeyError(err.args[0]) from None
+
+        match expanded:
+            case None if strict:
+                raise KeyError("Location Not Found", key)
+            case None:
+                return None
+            case x if norm:
+                return self.normalize(pl.Path(x))
+            case x:
+                return pl.Path(x)
+
+
+
+    def _coerce_key(self, key:Location|DKey|str|pl.Path) -> FmtStr:
+        """ Initial coercion of a key to a format string,
+        prior to expanding and converting to a path """
+        match key:
+            case Location():
+                current = key[1:]
+            # case str() if key in self:
+            #     return self._data[key][1:]
+            case DKey():
+                current = f"{key:w}"
+            case str():
+                current = key
+            case pl.Path():
+                current = str(key)
+            case _:
+                raise TypeError("Can't perform initial coercion of key", key)
+
+        return current
+
+    def _expand_key(self, key:FmtStr, strict=True) -> Maybe[str]:
+        """ Givena fmtstr, expand any matching keys until theres nothing more to expand """
+        assert(isinstance(key, str))
+        from collections import defaultdict, deque
+        current            = None
+        memo               = {}
+        sources            = defaultdict(list)
+        incomplete : deque = deque([(None, key)])
+        complete   : deque = deque()
+
+        def key_exp(key, source) -> list:
+            if bool(key.prefix):
+                yield (None, key.prefix)
+
+            if not bool(key.key):
+                return
+
+            match memo.get(key.key, None):
+                case None:
+                    pass
+                case [*xs]:
+                    yield from ((source, x) for x in xs)
+                    return
+
+            match self.access(key.key, fallback=None):
+                case None if strict:
+                    raise KeyError(key.key)
+                case None:
+                    yield (source, key.key)
+                case Location() as x if x[1:] in memo:
+                    yield from ((source, x) for x in memo[x[1:]])
+                case Location() as x:
+                    yield (source, x[1:])
+
+            return
+
+        # loop until theres no more changes
+        count = 0
+        while bool(incomplete):
+            source, key = incomplete.pop()
+            logging.debug("--(%s): [%s] -> '%s' -> [%s] (%s)",
+                          count,
+                          ", ".join(x[1] for x in incomplete),
+                          key,
+                          ",".join(complete),
+                          ", ".join(memo.keys()) )
+            count += 1
+
+            if source in sources[key] and key in sources[source]:
+                raise RecursionError("Recursion", key, source)
+            sources[key].append(source)
+
+            match DKeyFormatter.Parse(key):
+                case _, []:
+                    complete.appendleft(key)
+                case _, [x] if not bool(x.key) and bool(x.prefix):
+                    complete.appendleft(x.prefix)
+                case _, [x] if bool(x.key) and not bool(x.prefix) and x.key not in self:
+                    if strict:
+                        raise KeyError(x.key)
+                    complete.appendleft(format(DKey(key), "w"))
+                case _, [*xs]:
+                    expansion = [y for x in xs for y in key_exp(x, source=key)]
+                    logging.debug("Memo: %s : [%s] -> [%s]", key, "".join(memo.get(key, [])), "".join(x[1] for x in expansion))
+                    memo[key] = [x[1] for x in expansion]
+                    incomplete.extend(expansion)
+        else:
+            logging.debug("Complete: %s", complete)
+            return "".join(complete)
+
+
+
+class JGDVLocations(_LocationAccess_m, _LocationUtil_m, PathManip_m):
     """
       A managing context for storing and converting Locations to Paths.
       key=value pairs in [[locations]] toml blocks are integrated into it.
@@ -110,64 +378,46 @@ class JGDVLocations(PathManip_m):
             case JGDVLocations():
                 pass
 
+    @property
+    def root(self):
+        """
+          the registered root location
+        """
+        return self._root
+
     def __repr__(self):
         keys = ", ".join(iter(self))
         return f"<JGDVLocations ({_LocationsGlobal.stacklen()}) : {str(self.root)} : ({keys})>"
 
-    def __getattr__(self, key:str) -> pl.Path:
+    def __getattr__(self, key:str) -> Location:
         """
-          locs.simplename -> normalized expansion
-          where 'simplename' has been registered via toml
-
-          delegates to __getitem__
+          retrieve the raw named location
           eg: locs.temp
           """
         if key.startswith("__") and key.endswith("__"):
-            return None
+            raise AttributeError("Location Access Fail", key)
 
-        return self.normalize(self.get(key, fallback=False))
+        try:
+            return self.access(key, fallback=False)
+        except KeyError as err:
+            raise AttributeError(err.args[0]) from err
 
-    def __getitem__(self, val:pl.Path|Location|str) -> pl.Path:
+    def __getitem__(self, val:DKey|pl.Path|Location|str) -> pl.Path:
         """
-          doot.locs['{data}/somewhere']
-          or doot.locs[pl.Path('data/other/somewhere')]
+        Get the expanded path of a key or location
 
-          A public utility method to easily use toml loaded paths
-          expands explicit keys in the string or path
+        eg: doot.locs['{data}/somewhere']
+        or: doot.locs[pl.Path('data/{other}/somewhere')]
+        or  doot.locs[Location("dir::>a/{diff}/path"]
 
         """
-        match val: # initial coercion
-            case DKey() if 0 < len(val.keys()):
-                raise TypeError("Expand Multi Keys directly", val)
-            case DKey():
-                current = self.get(val)
-            case pl.Path():
-                current = str(val)
-            case str():
-                current = val
-
-        last          = None
-        expanded_keys = set()
-        while current != last:
-            last = current
-            match DKeyFormatter.Parse(current):
-                case _, []:
-                    current = str(current)
-                case _, [*xs] if bool(conflict:=expanded_keys & {x.key for x in xs}):
-                    raise LocationExpansionError("Location Expansion recursion detected",val, conflict)
-                case _, [*xs]:
-                    expanded_keys.update(x.key for x in xs)
-                    expanded = {x.key : self.get(x.key, fallback=False) for x in xs}
-                    current = current.format_map(expanded)
-
-        assert(current is not None)
-        return self.normalize(pl.Path(current))
+        return self.expand(val, strict=False)
 
     def __contains__(self, key:str|DKey|pl.Path|Location|Self):
         """ Test whether a key is a registered location """
         match key:
             case Location():
-                return False
+                return key in self._data.values()
             case str() | pl.Path():
                 return key in self._data
             case _:
@@ -177,7 +427,7 @@ class JGDVLocations(PathManip_m):
         """ Iterate over the registered location names """
         return iter(self._data.keys())
 
-    def __call__(self, new_root=None) -> Self:
+    def __call__(self, new_root=None) -> JGDVLocations:
         """ Create a copied locations object, with a different root """
         new_obj = JGDVLocations(new_root or self._root)
         return new_obj.update(self)
@@ -195,116 +445,6 @@ class JGDVLocations(PathManip_m):
         _LocationsGlobal.pop()
         os.chdir(self.Current._root)
         return False
-
-    def get(self, key:Maybe[DKey|str], fallback:Maybe[False|str|pl.Path]=Any) -> Maybe[pl.Path]:
-        """
-          convert a *simple* str name of *one* toml location to a path.
-          does *not* recursively expand returned paths
-          More complex expansion is handled in DKey, or using item access of Locations
-        """
-        match key:
-            case None:
-                return None
-            case str() if key in self._data:
-                return self._data[key].path
-            case _ if fallback is False:
-                raise LocationError("Key Not found", key)
-            case _ if isinstance(fallback, (str, pl.Path)):
-                return self.get(fallback)
-            case _ if fallback is None:
-                return None
-            case DKey():
-                return pl.Path(f"{key:w}")
-            case _:
-                return pl.Path(key)
-
-    def normalize(self, path:pl.Path|Location, symlinks:bool=False) -> pl.Path:
-        """
-          Expand a path to be absolute, taking into account the set doot root.
-          resolves symlinks unless symlinks=True
-        """
-        match path:
-            case Location() if Location.gmark_e.earlycwd in path:
-                the_path = path.path
-                return self._normalize(the_path, root=_LocationsGlobal._startup_cwd)
-            case Location():
-                the_path = path.path
-                return self._normalize(the_path, root=self.root)
-            case pl.Path():
-                return self._normalize(path, root=self.root)
-            case _:
-                raise TypeError("Bad type to normalize", path)
-
-    def metacheck(self, key:str|DKey, *meta:LocationMeta_e) -> bool:
-        """ return True if key provided has the applicable metadata"""
-        match key:
-            case NonDKey():
-                return False
-            case DKey() if key in self._data:
-                data = self._data[key]
-                return all(x in data for x in meta)
-            case MultiDKey():
-                 for k in key:
-                     if k not in self._data:
-                         continue
-                     data = self._data[key]
-                     if not all(x in data for x in meta):
-                         return False
-            case str():
-                return self.metacheck(DKey(key, implicit=True), meta)
-        return False
-
-    @property
-    def root(self):
-        """
-          the registered root location
-        """
-        return self._root
-
-    def update(self, extra:dict|ChainGuard|Location|JGDVLocations, strict=True) -> Self:
-        """
-          Update the registered locations with a dict, chainguard, or other dootlocations obj.
-        """
-        match extra: # unwrap to just a dict
-            case dict():
-                pass
-            case Location():
-                pass
-            case ChainGuard():
-                return self.update(extra._table(), strict=strict)
-            case JGDVLocations():
-                return self.update(extra._data, strict=strict)
-            case _:
-                raise LocationError("Tried to update locations with unknown type", extra)
-
-        raw          = dict(self._data.items())
-        base_keys    = set(raw.keys())
-        new_keys     = set(extra.keys())
-        conflicts    = (base_keys & new_keys)
-        if strict and bool(conflicts):
-            raise LocationError("Strict Location Update conflicts", conflicts)
-
-        for k,v in extra.items():
-            match Location(v):
-                case Location() as l:
-                    raw[k] = l
-                case _:
-                    raise LocationError("Couldn't build a Location", k, v)
-
-        logging.debug("Registered New Locations: %s", ", ".join(new_keys))
-        self._data = raw
-        return self
-
-    def registered(self, *values, task="doot", strict=True) -> set:
-        """ Ensure the values passed in are registered locations,
-          error with DirAbsent if they aren't
-        """
-        missing = set(x for x in values if x not in self)
-
-        if strict and bool(missing):
-            raise DirAbsent("Ensured Locations are missing for %s : %s", task, missing)
-
-        return missing
 
     def _clear(self):
         self._data.clear()
