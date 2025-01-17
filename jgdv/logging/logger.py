@@ -115,7 +115,12 @@ class JGDVLogger(logmod.getLoggerClass()):
                 case x if callable(x):
                     msg_total.append(x())
         else:
-            msg_total.append(args[4])
+            match args[4]:
+                case str():
+                    msg_total.append(args[4])
+                case x:
+                    msg_total.append("%s")
+                    args[5] = [args[4]] + list(args[5])
             args[4] = "".join(msg_total)
 
         rv = super().makeRecord(*args, **kwargs)

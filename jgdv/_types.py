@@ -31,7 +31,9 @@ type Lambda                   = LambdaType
 # Containers:
 type Weak[T]                  = ref[T]
 type Stack[T]                 = list[T]
+type Fifo[T]                  = list[T]
 type Queue[T]                 = list[T]
+type Lifo[T]                  = list[T]
 type Vector[T]                = list[T]
 
 type Maybe[T]                 = T | None

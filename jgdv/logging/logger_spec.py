@@ -154,8 +154,8 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
     nested                     : list[LoggerSpec]            = []
     prefix                     : Maybe[str]                  = None
 
-    RootName                   : ClassVar[str]               = "root"
 
+    RootName                   : ClassVar[str]               = "root"
     levels                     : ClassVar[enum.IntEnum]      = LogLevel_e
 
     @staticmethod

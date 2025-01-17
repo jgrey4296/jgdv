@@ -48,7 +48,7 @@ class PathManip_m:
     """
 
     def _calc_path_parts(self, fpath:pl.Path, roots:list[pl.Path]) -> dict:
-        """ take a path, and get a dict of bits to add to state from it
+        """ take a path, and get a dict of bits which aren't methods of Path
           if no roots are provided use cwd
         """
         assert(fpath is not None)
