@@ -225,6 +225,7 @@ class DKeyFormatter_Expansion_m:
         current : DKey = key
         last    : set[str] = set()
 
+        # TODO refactor this to do the same as locations._expand_key
         while 0 < self.rec_remaining and str(current) not in last:
             logging.debug("--- Loop (%s:%s) [%s] : %s", self._depth, MAX_KEY_EXPANSIONS - self.rec_remaining, key, repr(current))
             self.rec_remaining -= count
@@ -234,10 +235,6 @@ class DKeyFormatter_Expansion_m:
                     break
                 case Key_p() if current._mark is DKey.mark.NULL:
                      continue
-                case Key_p() if current._mark is DKey.mark.PATH and count != RECURSE_GUARD_COUNT:
-                    with self(sources=self.sources + [x for x in current.extra_sources() if x not in self.sources]) as sub:
-                        logging.debug("Handling Path key, sources: %s", (type(x) for x in sub.sources))
-                        current = sub._expand(current, count=RECURSE_GUARD_COUNT)
                 case Key_p() if current.multi:
                     current = self._multi_expand(current)
                 case Key_p():
@@ -306,8 +303,7 @@ class DKeyFormatter_Expansion_m:
         """
         assert(isinstance(key, Key_p))
         logging.debug("solo(%s)", key)
-        key_str, key_wrap   = f"{key:d}", f"{key:w}"
-        match chained_get(key_str, *self.sources, *[x for x in key.extra_sources() if x not in self.sources], fallback=fallback):
+        match chained_get(key, *self.sources, *[x for x in key.extra_sources() if x not in self.sources], fallback=fallback):
             case None:
                 return None
             case Key_p() as x:
@@ -316,9 +312,7 @@ class DKeyFormatter_Expansion_m:
                 return x
             case str() as x if key._mark is DKey.mark.PATH:
                 return DKey(x, mark=DKey.mark.PATH)
-            case str() as x if x == key_wrap:
-                return DKey(x, mark=DKey.mark.NULL)
-            case str() as x if x == key_str:
+            case str() as x if x == key:
                 # Got the key back, wrap it and don't expand it any more
                 return "{%s}" % key_str
             case str() | pl.Path() as x:
