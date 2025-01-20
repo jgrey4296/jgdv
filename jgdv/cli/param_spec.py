@@ -277,6 +277,8 @@ class ParamSpecBase(*PSpecMixins, BaseModel, *PSpecProtocols, metaclass=Protocol
 
     @model_validator(mode="after")
     def validate_model (self) -> Self:
+        # TODO extract prefix automatically from name
+        #
         match self.prefix:
             case str() if bool(self.prefix) and self.name.startswith(self.prefix):
                 raise TypeError("Prefix was found in the base name", self, self.prefix)
