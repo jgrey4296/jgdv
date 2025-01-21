@@ -85,14 +85,14 @@ class TomlLoader_m:
     @classmethod
     def load(cls, *paths:str|pl.Path) -> Self:
         logging.debug("Creating ChainGuard for %s", paths)
-        try:
-            texts = []
-            for path in paths:
-                texts.append(pl.Path(path).read_text())
-
-            return cls(tomllib.loads("\n".join(texts)))
-        except Exception as err:
-            raise IOError("ChainGuard Failed to Load: ", paths, err.args) from err
+        texts = []
+        for path in paths:
+            texts.append(pl.Path(path).read_text())
+        else:
+            try:
+                return cls(tomllib.loads("\n".join(texts)))
+            except tomllib.TOMLDecodeError as err:
+                raise IOError("Failed to Load Toml", *err.args) from err
 
     @classmethod
     def load_dir(cls, dirp:str|pl.Path) -> Self:
@@ -104,4 +104,4 @@ class TomlLoader_m:
 
             return cls(tomllib.loads("\n".join(texts)))
         except Exception as err:
-            raise IOError("ChainGuard Failed to Directory: ", dirp, err.args) from err
+            raise IOError("ChainGuard Failed to load Directory: ", dirp, err.args) from err

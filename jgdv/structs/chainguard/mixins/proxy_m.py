@@ -44,7 +44,7 @@ class GuardProxyEntry_m:
     tg.on_fail(2, int).a.value() # either get a.value, or 2. whichever returns has to be an int.
     """
 
-    def on_fail(self, fallback:Any, types:Maybe[Any]=None, non_root=False) -> GuardFailureProxy:
+    def on_fail(self, fallback:Any, types:Maybe[Any]=None, *, non_root=False) -> GuardFailureProxy:
         """
         use a fallback value in an access chain,
         eg: doot.config.on_fail("blah").this.doesnt.exist() -> "blah"

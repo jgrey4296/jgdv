@@ -167,15 +167,24 @@ class CLIParser(ArgParser_p):
           Parses the list of arguments against available registered parameter head_specs, cmds, and tasks.
         """
         logging.debug("Setting up Parsing : %s", args)
-        self._initial_args                     = args[:]
-        self._remaining_args                   = args[:]
+        head_specs                                  = head_specs or []
+        cmds                                        = cmds or []
+        subcmds                                     = subcmds or []
+        self._initial_args                          = args[:]
+        self._remaining_args                        = args[:]
         self._head_specs : list[ParamSpec]          = head_specs
-        match cmds:
-            case [*xs]:
-                self._cmd_specs = {x.name:x.param_specs for x in cmds}
-            case _:
-                logging.info("No Cmd Specs provided for parsing")
-                self._cmd_specs = {}
+
+        if not isinstance(cmds, list):
+            raise TypeError("cmds needs to be a list", cmds)
+
+        for x in cmds:
+            match x:
+                case (str() as alias, ParamSource_p() as source):
+                    self._cmd_specs[alias] = source.param_specs
+                case ParamSource_p():
+                    self._cmd_specs[x.name] = x.param_specs
+                case x:
+                    raise TypeError(x)
 
         match subcmds:
             case [*xs]:
