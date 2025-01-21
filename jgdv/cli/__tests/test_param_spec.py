@@ -233,7 +233,8 @@ class TestParamSpecConsumption:
                 assert(False), x
 
     def test_consume_positional(self):
-        obj = Specs.PositionalParam.build({"name":"test", "positional":True, "type":str})
+        obj = Specs.PositionalParam.build({"name":"test", "prefix":1, "type":str})
+        assert(obj.positional)
         match obj.consume(["aweg", "blah"]):
             case {"test": "aweg"}, 1:
                 assert(True)

@@ -202,8 +202,8 @@ class ParamSpecBase(*PSpecMixins, BaseModel, *PSpecProtocols, metaclass=Protocol
     If given, can have a {default} value.
     {insist} will cause an error if it isn't parsed
 
-    If {positional} is True, then to parse it requires no -key.
-    If {positional} is an int, then the parameter has to be in the correct place in the given args
+    If {prefix} is a non-empty string, then its positional, and to parse it requires no -key.
+    If {prefix} is an int, then the parameter has to be in the correct place in the given args.
 
     Can have a {desc} to help usage.
     Can be set using a short version of the name ({prefix}{name[0]}).
@@ -239,11 +239,11 @@ class ParamSpecBase(*PSpecMixins, BaseModel, *PSpecProtocols, metaclass=Protocol
         """
         match x.prefix:
             case _ if x.name == "help":
-                return (99, 99, x.name)
+                return (99, 99, x.prefix, x.name)
             case str():
-                return (0, -len(x.prefix), x.name)
+                return (0, -len(x.prefix), x.prefix, x.name)
             case int() as p:
-                return (10, p, x.name)
+                return (10, p, x.prefix, x.name)
 
     @field_validator("type_", mode="before")
     def validate_type(cls, val):

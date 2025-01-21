@@ -228,7 +228,7 @@ class CLIParser(ArgParser_p):
         head_specs       = sorted(self._head_specs, key=ParamSpec.key_func)
         defaults : dict  = ParamSpec.build_defaults(head_specs)
         self.head_result = ParseResult("_head_", defaults)
-        self._parse_params(self.head_result, head_specs)
+        self._parse_params_unordered(self.head_result, head_specs)
 
     @ParseMachine.Cmd.enter
     def _parse_cmd(self):
@@ -250,7 +250,7 @@ class CLIParser(ArgParser_p):
         cmd_specs        = sorted(self._cmd_specs[cmd_name], key=ParamSpec.key_func)
         defaults : dict  = ParamSpec.build_defaults(cmd_specs)
         self.cmd_result  = ParseResult(cmd_name, defaults)
-        self._parse_params(self.cmd_result, cmd_specs)
+        self._parse_params_unordered(self.cmd_result, cmd_specs)
 
     @ParseMachine.SubCmd.enter
     def _parse_subcmd(self):
@@ -276,7 +276,7 @@ class CLIParser(ArgParser_p):
                     sub_specs        = sorted(params, key=ParamSpec.key_func)
                     defaults : dict  = ParamSpec.build_defaults(sub_specs)
                     sub_result       = ParseResult(sub_name, defaults)
-                    self._parse_params(sub_result, sub_specs)
+                    self._parse_params_unordered(sub_result, sub_specs)
                     self.subcmd_results.append(sub_result)
                 case _, _:
                     pass
@@ -288,7 +288,7 @@ class CLIParser(ArgParser_p):
         logging.debug("Extra Parsing: %s", self._remaining_args)
         self._remaining_args = []
 
-    def _parse_params(self, res:ParseResult, params:list[ParamSpec]):
+    def _parse_params(self, res:ParseResult, params:list[ParamSpec]) -> None:
         for param in params:
             match param.consume(self._remaining_args):
                 case None:
@@ -298,6 +298,44 @@ class CLIParser(ArgParser_p):
                     self._remaining_args = self._remaining_args[count:]
                     res.args.update(data)
                     res.non_default.add(param.name)
+
+    def _parse_params_unordered(self, res:ParseResult, params:list[ParamSpec]):
+
+        def consume_it(x):
+            match x.consume(self._remaining_args):
+                case None:
+                    raise errors.ParseError("Failed to consume", x.name)
+                case data, count:
+                    logging.debug("Consuming Parameter: %s", x.name)
+                    self._remaining_args = self._remaining_args[count:]
+                    res.args.update(data)
+                    res.non_default.add(x.name)
+
+        # Parse non-positional params
+        remaining = [x for x in params if not x.positional]
+        while bool(remaining) and bool(self._remaining_args):
+            match [x for x in remaining if x.matches_head(self._remaining_args[0])]:
+                case []:
+                    remaining = []
+                case [x]:
+                    consume_it(x)
+                    remaining.remove(x)
+                case [*xs]:
+                    raise errors.ParseError("Too many potential params", xs)
+
+        # Parse positional params
+        remaining = [x for x in params if x.positional]
+        while bool(remaining) and bool(self._remaining_args):
+            match [x for x in remaining if x.matches_head(self._remaining_args[0])]:
+                case []:
+                    remaining = []
+                case [x]:
+                    consume_it(x)
+                    remaining.remove(x)
+                case [*xs]:
+                    raise errors.ParseError("Too many potential params", xs)
+
+
 
     def _parse_separator(self) -> bool:
         match SEPERATOR.consume(self._remaining_args):

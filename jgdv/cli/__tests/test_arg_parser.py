@@ -200,3 +200,55 @@ class TestParseResultReport:
                 assert(True)
             case _:
                 assert(False)
+
+
+class TestParseArgs:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_ordered(self):
+        params = [
+            ParamSpec.build({"prefix":"--", "name":"aweg", "type":"bool"}),
+            ParamSpec.build({"name":"on", "type":"bool"}),
+            ParamSpec.build({"prefix":1, "name":"val", "type":"str"}),
+        ]
+        obj = CLIParser()
+        obj._setup(["--aweg", "-on", "blah"], [],[],[])
+        result = ParseResult("test results")
+        obj._parse_params(result, params)
+        assert(result.args['aweg'] is True)
+        assert(result.args['on'] is True)
+        assert(result.args['val'] == "blah")
+
+
+    def test_ordered_fails(self):
+        params = [
+            ParamSpec.build({"prefix":"--", "name":"aweg", "type":"bool"}),
+            ParamSpec.build({"name":"on", "type":"bool"}),
+            ParamSpec.build({"prefix":1, "name":"val", "type":"str"}),
+        ]
+        obj = CLIParser()
+        # -on before --aweg
+        obj._setup(["-on", "--aweg", "blah"], [],[],[])
+        result = ParseResult("test results")
+        obj._parse_params(result, params)
+        assert(result.args['on'])
+        assert("aweg" not in result.args)
+        assert(result.args['val'] == "--aweg")
+
+
+    def test_unordered(self):
+        params = [
+            ParamSpec.build({"prefix":"--", "name":"aweg", "type":"bool"}),
+            ParamSpec.build({"name":"on", "type":"bool"}),
+            ParamSpec.build({"prefix":1, "name":"val", "type":"str"}),
+        ]
+        obj = CLIParser()
+        # -on before --aweg
+        obj._setup(["-on", "--aweg", "blah"], [],[],[])
+        result = ParseResult("test results")
+        obj._parse_params_unordered(result, params)
+        assert(result.args['on'])
+        assert(result.args['aweg'])
+        assert(result.args['val'] == "blah")
