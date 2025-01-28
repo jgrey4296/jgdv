@@ -38,7 +38,8 @@ class StackFormatter_m(logmod.Formatter):
     """
 
     indent_str       : ClassVar[str]         = "  |  "
-    suppress         : ClassVar[list[RxStr]] = [r".*pydantic.*"]
+    suppress         : ClassVar[list[RxStr]] = [r".*pydantic.*", r"<frozen importlib._bootstrap>"]
+    source_height    : ClassVar[int]         = 10
     source_lines     : ClassVar[int|str]     = 0
     use_stackprinter : bool                  = True
 
@@ -52,8 +53,8 @@ class StackFormatter_m(logmod.Formatter):
         msg : str = stackprinter.format(exc_info,
                                         source_lines=self.source_lines,
                                         suppressed_paths=self.suppress)
-        lines = msg.splitlines()
-        indented = [f"{self.indent_str}{line}\n" for line in lines]
+        lines = [x for x in msg.splitlines() if bool(x)]
+        indented = [f"{self.indent_str}{line}\n" for line in lines[-self.source_height:]]
         return "".join(indented)
 
 

@@ -5,3 +5,4 @@
 # Import:
 from __future__ import annotations
 
+from ._errors.base import JGDVError

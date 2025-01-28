@@ -92,7 +92,7 @@ class TomlLoader_m:
             try:
                 return cls(tomllib.loads("\n".join(texts)))
             except tomllib.TOMLDecodeError as err:
-                raise IOError("Failed to Load Toml", *err.args) from err
+                raise IOError("Failed to Load Toml", *err.args, paths) from err
 
     @classmethod
     def load_dir(cls, dirp:str|pl.Path) -> Self:

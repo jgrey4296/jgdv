@@ -45,13 +45,20 @@ from .enums import LogLevel_e
 
 # ##-- end 1st party imports
 
+# ##-- types
+# isort: off
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   type Logger                      = logmod.Logger
+   type Formatter                   = logmod.Formatter
+   type Handler                     = logmod.Handler
+
+# isort: on
+# ##-- end types
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-type Logger                      = logmod.Logger
-type Formatter                   = logmod.Formatter
-type Handler                     = logmod.Handler
 
 env           : dict             = os.environ
 IS_PRE_COMMIT : Final[bool]      = "PRE_COMMIT" in env
@@ -153,7 +160,6 @@ class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolMod
     style                      : str                         = "{"
     nested                     : list[LoggerSpec]            = []
     prefix                     : Maybe[str]                  = None
-
 
     RootName                   : ClassVar[str]               = "root"
     levels                     : ClassVar[enum.IntEnum]      = LogLevel_e

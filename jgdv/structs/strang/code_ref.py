@@ -126,6 +126,8 @@ class CodeReference(Strang):
         """ Tries to import and retrieve the reference,
         and casts errors to ImportErrors
         """
+        if self._value is not None:
+            return self._value
         try:
             return self._do_import(check)
         except ImportError as err:
@@ -141,7 +143,7 @@ class CodeReference(Strang):
                     mod = importlib.import_module(self.module)
                     curr = getattr(mod, self.value)
                 except ModuleNotFoundError:
-                    raise ImportError("Attempted import failed, module not found", str(self), self.value) from None
+                    raise ImportError("Attempted import failed, module not found", str(self), self.module) from None
                 except AttributeError:
                     raise ImportError("Attempted import failed, attribute not found", str(self), self.value) from None
                 else:

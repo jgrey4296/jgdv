@@ -158,7 +158,7 @@ class DKeyExpansionDecorator(DataDecorator):
         # Check the head
         for x,y in zip(params, head, strict=False):
             if x != y:
-                raise TypeError("Mismatch in signature head", x, y, ttype)
+                raise dkey_errs.DecorationMismatch("Mismatch in signature head", x, y, ttype)
 
         prefix_ig, suffix_ig = self._param_ignores
         # Then the tail, backwards, because the decorators are applied in reverse order
@@ -169,13 +169,13 @@ class DKeyExpansionDecorator(DataDecorator):
                 continue
 
             if keyword.iskeyword(key_str):
-                raise TypeError("Key is a keyword, use an alias like _{} or {}_ex", x, y)
+                raise dkey_errs.DecorationMismatch("Key is a keyword, use an alias like _{} or {}_ex", x, y)
 
             if not key_str.isidentifier():
-                raise TypeError("Key is not an identifier, use an alias _{} or {}_ex", x,y)
+                raise dkey_errs.DecorationMismatch("Key is not an identifier, use an alias _{} or {}_ex", x,y)
 
             if x != y:
-                raise TypeError("Mismatch in signature tail", x, y)
+                raise dkey_errs.DecorationMismatch("Mismatch in signature tail", str(x), str(y))
 
 class _DKeyedMeta_m:
     """ Mixin for decorators that declare meta information,

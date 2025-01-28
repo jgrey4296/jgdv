@@ -9,3 +9,6 @@ from jgdv import JGDVError
 
 class DKeyError(JGDVError):
     pass
+
+class DecorationMismatch(DKeyError):
+    pass

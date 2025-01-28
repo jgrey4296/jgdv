@@ -13,6 +13,7 @@ import warnings
 
 import pytest
 
+from jgdv import JGDVError
 from jgdv.structs.dkey import DKey, DKeyed
 from jgdv.structs.dkey import DKeyExpansionDecorator as DKexd
 from jgdv.decorators import _TargetType_e
@@ -54,7 +55,7 @@ class TestDkeyDecorator:
             pass
 
         sig = dec._signature(simple)
-        with pytest.raises(TypeError):
+        with pytest.raises(JGDVError):
             dec._verify_signature(sig, ttype, [])
 
 
@@ -78,7 +79,7 @@ class TestDkeyDecorator:
             pass
 
         sig = dec._signature(simple)
-        with pytest.raises(TypeError):
+        with pytest.raises(JGDVError):
             dec._verify_signature(sig, ttype, [])
 
 
@@ -102,7 +103,7 @@ class TestDkeyDecorator:
             pass
 
         sig = dec._signature(simple)
-        with pytest.raises(TypeError):
+        with pytest.raises(JGDVError):
             dec._verify_signature(sig, ttype, ["bloo", "blah"])
 
 
@@ -126,7 +127,7 @@ class TestDkeyDecorator:
             pass
 
         sig = dec._signature(simple)
-        with pytest.raises(TypeError):
+        with pytest.raises(JGDVError):
             dec._verify_signature(sig, ttype, ["bloo", "blah"])
 
 
@@ -170,7 +171,7 @@ class TestDKeyDecoratorExpansion:
 
 
     def test_mismatch_signature(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(JGDVError):
             @DKeyed.types("other")
             def simple(spec, state, basic):
                 assert(basic == "blah")

@@ -56,19 +56,19 @@ import decorator
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from jgdv import Ident, Maybe
 from jgdv._abstract.protocols import Decorator_p
+import jgdv.errors
 
 # ##-- end 1st party imports
 
-# ##-- typecheck imports
+# ##-- types
 # isort: off
 if typing.TYPE_CHECKING:
    from jgdv import Maybe
-
    type Signature = inspect.Signature
+
 # isort: on
-# ##-- end typecheck imports
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -184,13 +184,21 @@ class _DecoratorUtil_m(_DecAnnotate_m, _DecVerify_m, _DecWrap_m, _DecInspect_m):
         if self._is_marked(target):
             # Already Decorated, don't re-decorate, just update annotations
             assert(total_annotations == self.get_annotations(target))
-            self._verify_signature(self._signature(target), t_type, total_annotations)
-            self._verify_target(target, t_type, total_annotations)
+            try:
+                self._verify_signature(self._signature(target), t_type, total_annotations)
+                self._verify_target(target, t_type, total_annotations)
+            except jgdv.errors.JGDVError as err:
+                err.args = [f"{target.__module__}:{target.__qualname__}", *err.args]
+                raise err from None
             return orig
 
         # Not already decorated
-        self._verify_target(target, t_type, total_annotations)
-        self._verify_signature(self._signature(target), t_type, total_annotations)
+        try:
+            self._verify_target(target, t_type, total_annotations)
+            self._verify_signature(self._signature(target), t_type, total_annotations)
+        except jgdv.errors.JGDVError as err:
+            err.args = [f"{target.__module__}:{target.__qualname__}", *err.args]
+            raise err from None
 
         # add wrapper by target type
         match t_type:
