@@ -26,6 +26,15 @@ from uuid import UUID, uuid1
 
 ##-- end builtin imports
 
+# ##-- types
+# isort: off
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   Enum = enum.Enum
+
+# isort: on
+# ##-- end types
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
@@ -131,8 +140,10 @@ class CodeReference(Strang):
                 try:
                     mod = importlib.import_module(self.module)
                     curr = getattr(mod, self.value)
-                except AttributeError as err:
-                    raise ImportError("Attempted import failed, attribute not found", str(self), self.value)
+                except ModuleNotFoundError:
+                    raise ImportError("Attempted import failed, module not found", str(self), self.value) from None
+                except AttributeError:
+                    raise ImportError("Attempted import failed, attribute not found", str(self), self.value) from None
                 else:
                     self._value = curr
             case _:
@@ -145,7 +156,7 @@ class CodeReference(Strang):
             pass
         elif self.gmark_e.fn in self and not is_callable:
             raise ImportError("Imported 'Function' was not a callable", self._value, self)
-        elif self.gmark_e.cls in self and not isinstance(self._value, type):
+        elif self.gmark_e.cls in self and not is_type:
             raise ImportError("Imported 'Class' was not a type", self._value, self)
 
         match self._typevar:
@@ -158,7 +169,7 @@ class CodeReference(Strang):
             case x if x is Any:
                 return curr
             case x if not (isinstance(curr, x) or issubclass(curr, check)):
-                raise ImportError("Imported Code Reference is not of correct type", self, ensure)
+                raise ImportError("Imported Code Reference is not of correct type", self, check)
 
         Never()
 
@@ -166,7 +177,7 @@ class CodeReference(Strang):
         """ TODO Given a nested dict-like, see if this reference can be reduced to an alias """
         base_alias = str(self)
         match [x for x in plugins[group] if x.value == base_alias]:
-            case [x, *xs]:
+            case [x, *_]:
                 base_alias = x.name
 
         return base_alias

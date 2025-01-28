@@ -260,3 +260,9 @@ class Strang(s_mix.Strang_m, str, metaclass=_StrangMeta):
     @ftz.cache
     def shape(self) -> tuple[int, int]:
         return (len(self._group), len(self._body))
+
+
+    def uuid(self) -> Maybe[UUID]:
+        if bool(uuids:=[x for x in self._body_meta if isinstance(x, UUID)]):
+            return uuids[0]
+        return None
