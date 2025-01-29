@@ -35,6 +35,8 @@ type Fifo[T]                  = list[T]
 type Queue[T]                 = list[T]
 type Lifo[T]                  = list[T]
 type Vector[T]                = list[T]
+type Mut[T]                   = T
+type NoMut[T]                 = T
 
 type Maybe[T]                 = T | None
 type Result[T, E:Exception]   = T | E
