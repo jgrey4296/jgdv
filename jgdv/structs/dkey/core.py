@@ -100,15 +100,20 @@ class SingleDKey(DKeyBase, mark=DKeyMark_e.FREE):
 
 class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
     """
-      Multi keys allow contain 1+ explicit subkeys
+      Multi keys allow 1+ explicit subkeys.
+
+    The have additional fields:
+    _has_text : whether the multikey has non-key based text pre/suffixes
+    _subkeys  : parsed information about explicit subkeys
+
     """
 
-    def __init__(self, data:str|pl.Path, *, mark:DKeyMark_e=None, **kwargs):
-        super().__init__(data, mark=mark, **kwargs)
+    def __init__(self, data:str|pl.Path, **kwargs):
+        super().__init__(data, **kwargs)
         has_text, s_keys = DKeyFormatter.Parse(data)
         self._has_text   = has_text
         self._subkeys    = [x for x in s_keys if bool(x.key)]
-        self._anon    = self.format("", state={key.key : "{}" for key in s_keys})
+        self._anon       = self.format("", state={key.key : "{}" for key in s_keys})
 
     def __format__(self, spec:str) -> Str:
         """
@@ -135,7 +140,7 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
         return True
 
     def __contains__(self, other):
-         return other in self._subkeys
+         return other in self.keys()
 
 class NonDKey(DKeyBase, mark=DKeyMark_e.NULL):
     """

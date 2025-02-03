@@ -109,13 +109,12 @@ class DKeyFormatting_m:
     def format(self, fmt, *, spec=None, state=None) -> str:
         return DKeyFormatter.fmt(self, fmt, **(state or {}))
 
-    def set_fmt_params(self, params:str) -> Self:
+    def set_fmt_params(self, params:Maybe[str]) -> None:
         match params:
             case None:
                 pass
             case str() if bool(params):
                 self._fmt_params = params
-        return self
 
 class DKeyExpansion_m:
     """ general expansion for dkeys """
@@ -137,6 +136,7 @@ class DKeyExpansion_m:
                 raise TypeError("bad redirection type", x, self)
 
     def expand(self, *sources, fallback=None, max=None, check=None, **kwargs) -> Maybe[Any]:
+        """ Entrance point for a dkey to shift into a DKeyFormatter """
         logging.debug("DKey expansion for: %s", self)
         match DKeyFormatter.expand(self, sources=sources, fallback=fallback or self._fallback, max=max or self._max_expansions):
             case None:
@@ -164,25 +164,22 @@ class DKeyExpansion_m:
                 pass
 
     def _expansion_hook(self, value) -> Any:
+        """ An overridable hook for post-expansion control """
         return value
 
-    def _update_expansion_params(self, mark:DKeyMark_e) -> Self:
-        """ pre-register expansion parameters """
+    def _update_expansion_params(self, mark:DKeyMark_e) -> None:
+        """ pre-register expansion parameters based on the expansion mark"""
         match self._mark:
             case None:
                 pass
             case _ if self._expansion_type is not identity:
                 pass
-            case DKeyMark_e.PATH:
-                self._expansion_type  = pl.Path
-                self._typecheck = pl.Path
             case DKeyMark_e.STR:
                 self._expansion_type  = str
-                self._typecheck = str
+                self._typecheck       = str
 
         match self._expansion_type:
             case type() as x if issubclass(x, Buildable_p):
                 self._typecheck = x
                 self._expansion_type  = x.build
 
-        return self

@@ -34,7 +34,7 @@ VALID_MULTI_KEYS                                     = PATH_KEYS + MUTI_KEYS
 class TestDKeyTypeParams:
 
     def test_str_mark(self):
-        assert(dkey.StrDKey._mark is dkey.DKey.mark.STR)
+        assert(dkey.DKey.MarkOf(dkey.StrDKey) is dkey.DKey.mark.STR)
 
 class TestDKeyBasicConstruction:
 
@@ -339,27 +339,12 @@ class TestDKeyComparison:
         key2 = dkey.DKey(name)
         assert(hash(key1) == hash(key2) == hash(str(key1)) == hash(str(key2)))
 
-    @pytest.mark.parametrize("name", IMP_KEY_BASES)
-    def test_key_and_str(self, name):
-        """ both __and__ + __rand__ """
-        key      = dkey.DKey(name, implicit=True)
-        test_str = "this is a {} test".format(f"{key:w}")
-        assert(key & test_str)
-        assert(test_str & key)
 
-    @pytest.mark.parametrize("name", IMP_KEY_BASES)
-    def test_key_and_str_fail(self, name):
-        """ both __and__ + __rand__ """
-        key      = dkey.DKey(name, implicit=True)
-        test_str = "this is a {} test".format(f"{key}")
-        assert(not (key & test_str))
-        assert(not (test_str & key))
-
-    @pytest.mark.xfail
     def test_multikey_and_containment(self):
         """ both __and__ + __rand__ """
-        key      = dkey.DKey("{blah} with {bloo}")
-        assert((dkey.DKey("blah", implicit=True) & key))
+        key = dkey.DKey("{blah} with {bloo}")
+        subkey = dkey.DKey("blah", implicit=True)
+        assert(subkey in key)
 
     @pytest.mark.parametrize("name", IMP_KEY_BASES)
     def test_key_eq(self, name):

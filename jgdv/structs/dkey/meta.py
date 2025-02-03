@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
-
 """
 
 # Imports:
@@ -61,6 +59,7 @@ class DKeyMark_e(EnumBuilder_m, enum.Enum):
     MULTI    = enum.auto()
 
     default  = FREE
+
 class DKeyMeta(type(str)):
     """
       The Metaclass for keys, which ensures that subclasses of DKeyBase
@@ -72,9 +71,9 @@ class DKeyMeta(type(str)):
     def __call__(cls, *args, **kwargs):
         """ Runs on class instance creation
         skips running cls.__init__, allowing cls.__new__ control
-        (ie: Allows The DKey accessor to control the class it creates, and how it is init'd)
+        (ie: Allows The DKey accessor t
         """
-        # TODO maybe move dkey discrimination to here
+        # TODO maybe move dkey discrimination from dkey.__new__ to here
         return cls.__new__(cls, *args, **kwargs)
 
     def __instancecheck__(cls, instance):
@@ -107,13 +106,13 @@ class DKey(SubAnnotate_m, metaclass=DKeyMeta):
       DKey is the factory, but all DKeys are subclasses of DKeyBase,
       to allow control over __init__.
       """
-    mark                                   = DKeyMark_e
+    mark                                     = DKeyMark_e
     _single_registry : dict[DKeyMark_e,type] = {}
     _multi_registry  : dict[DKeyMark_e,type] = {}
     _conv_registry   : dict[str, DKeyMark_e] = {}
     _parser          : Maybe[type]           = None
 
-    def __new__(cls, data:str|DKey|pl.Path|dict, *, fmt=None, conv=None, implicit=False, mark:Maybe[DKeyMark_e]=None, **kwargs) -> DKey:
+    def __new__(cls, data:str|DKey|pl.Path|dict, **kwargs) -> DKey:
         """
           fmt : Format parameters. used from multi key subkey construction
           conv : Conversion parameters. used from multi key subkey construction.
@@ -121,24 +120,55 @@ class DKey(SubAnnotate_m, metaclass=DKeyMeta):
           mark     : Enum for explicitly setting the key type
         """
         assert(cls is DKey)
-        assert(isinstance(mark, None|DKeyMark_e)), mark
+        implicit : bool              = kwargs.get("implicit", False)
+        mark     : Maybe[DKeyMark_e] = kwargs.get("mark", None)
+        conv     : Maybe[str]        = kwargs.get("conv", None)
+
+        if not isinstance(mark, None|DKeyMark_e):
+            raise TypeError("Mark must be a DKeyMark_e", mark)
+
         # Early escape check
         match data:
             case DKey() if mark is None or mark == data._mark:
+                # Already have a dkey, not re-marking it
                 return data
             case DKey() | pl.Path():
+                # Got a dkey needing remarking, or a path
                 data = str(data)
             case _:
                 pass
 
-        fparams = fmt or ""
         # Extract subkeys
+        data, mark, fparams, is_multi = cls._extract_subkeys(data, implicit=implicit, mark=mark, conv=conv)
+
+        # Get the initiator using the mark
+        subtype_cls = DKey.get_subtype(mark, multi=is_multi)
+
+        # Build a str with the subtype_cls and data
+        # (Has to be str.__new__)
+        result           = str.__new__(subtype_cls, data)
+        # Update kwargs with more accurate data
+        if mark:
+            kwargs['mark']   = mark
+        if fparams:
+            kwargs['fmt']    = fparams
+        # Init the key
+        result.__init__(data, **kwargs)
+
+        return result
+
+    @classmethod
+    def _extract_subkeys(cls, data, *, implicit=False, mark=None, conv=None) -> tuple[str, str, DKeyMark_e, bool]:
+        """ figure out if they key is going to be a multikey """
+        has_text : bool
+        s_keys : list
         has_text, s_keys = DKey._parser.Parse(data)
         active_keys      = [x for x in s_keys if bool(x.key)]
         use_multi_ctor   = len(active_keys) > 0
+        fparams          = None
         match len(active_keys):
             case 0 if not implicit and mark is not DKey.mark.PATH:
-                # Just Text,
+                # Just Text, its not a key
                 mark = DKeyMark_e.NULL
             case _ if mark is DKey.mark.MULTI:
                 # Explicit override
@@ -161,14 +191,7 @@ class DKey(SubAnnotate_m, metaclass=DKeyMeta):
             case x if x >= 1 and mark is None:
                 mark = DKeyMark_e.MULTI
 
-        # Get the initiator using the mark
-        key_init = DKey.get_initiator(mark, multi=use_multi_ctor)
-
-        # Build a str with the key_init and data
-        result           = str.__new__(key_init, data)
-        result.__init__(data, fmt=fparams, mark=mark, **kwargs)
-
-        return result
+        return (data, mark, fparams, use_multi_ctor)
 
     @classmethod
     def _parse_single_key_params_to_mark(cls, data, conv, fallback=None) -> tuple[str, Maybe[DKeyMark_e]]:
@@ -200,18 +223,34 @@ class DKey(SubAnnotate_m, metaclass=DKeyMeta):
             case x, y:
                 raise ValueError("Conflicting conversion parameters", x, y, data)
 
+    @staticmethod
+    def get_subtype(mark, *, multi:bool=False) -> type:
+        """ Get the Ctor for a key, with a fallback to Multi or Free ctors"""
+        match multi:
+            case True:
+                ctor = DKey._multi_registry.get(mark, None)
+                return ctor or DKey._multi_registry[DKeyMark_e.MULTI]
+            case False:
+                ctor = DKey._single_registry.get(mark, None)
+                return ctor or DKey._single_registry[DKeyMark_e.FREE]
 
     @staticmethod
-    def register_key(ctor:type, mark:DKeyMark_e, tparam:Maybe[str]=None, multi=False):
-        """ Register a DKeyBase implementation to a mark """
+    def register_key(ctor:type, mark:DKeyMark_e, tparam:Maybe[str]=None, multi:bool=False):
+        """ Register a DKeyBase implementation to a mark
+
+        Can be a single key, or a multi key,
+        and can map a conversion char to the mark
+
+        eg: "p" -> DKeyMark_e.Path -> Path[Single/Multi]Key
+        """
         match mark:
             case None:
                 pass
             case DKey.mark.NULL:
-                DKey._multi_registry[mark] = ctor
+                DKey._multi_registry[mark]  = ctor
                 DKey._single_registry[mark] = ctor
             case _ if multi:
-                DKey._multi_registry[mark] = ctor
+                DKey._multi_registry[mark]  = ctor
             case _:
                 DKey._single_registry[mark] = ctor
 
@@ -224,19 +263,7 @@ class DKey(SubAnnotate_m, metaclass=DKeyMeta):
                 DKey._conv_registry[tparam] = mark
 
     @staticmethod
-    def get_initiator(mark, *, multi:bool=False) -> type:
-        """ Get the Ctor for a key, with a fallback to Multi or Free ctors"""
-        match multi:
-            case True:
-                ctor = DKey._multi_registry.get(mark, None)
-                return ctor or DKey._multi_registry[DKeyMark_e.MULTI]
-            case False:
-                ctor = DKey._single_registry.get(mark, None)
-                return ctor or DKey._single_registry[DKeyMark_e.FREE]
-
-
-    @staticmethod
-    def register_parser(fn:type, *, force=False):
+    def register_parser(fn:type, *, force:bool=False):
         """ Dependency inject a formatter capable of parsing type conversion and formatting parameters from strings,
           for DKey to use when constructing keys.
           Most likely will be DKeyFormatter.
@@ -250,3 +277,15 @@ class DKey(SubAnnotate_m, metaclass=DKeyMeta):
                 DKey._parser = fn
             case _:
                 pass
+
+
+    @staticmethod
+    def MarkOf(target) -> DKeyMark_e:
+        """ Get the mark of the key type or instance """
+        match target:
+            case DKey():
+                return target._mark
+            case type() if issubclass(target, DKey):
+                return target._mark
+            case _:
+                raise TypeError("Tried to retrieve a mark from an unknown type")

@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
-
 """
 
 # Imports:
@@ -19,44 +17,42 @@ import re
 import time
 import types
 import weakref
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Self,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv import Maybe, Ident, Rx, CHECKTYPE, FmtStr, Ctor
 from jgdv._abstract.protocols import Buildable_p, Key_p, SpecStruct_p
-from jgdv.structs.dkey.meta import CONV_SEP, REDIRECT_SUFFIX, DKey, DKeyMark_e
-from jgdv.structs.dkey.formatter import DKeyFormatter
-from jgdv.structs.dkey.mixins import DKeyExpansion_m, DKeyFormatting_m, identity
 from jgdv.mixins.annotate import SubAnnotate_m
+from jgdv.structs.dkey.formatter import DKeyFormatter
+from jgdv.structs.dkey.meta import CONV_SEP, REDIRECT_SUFFIX, DKey, DKeyMark_e
+from jgdv.structs.dkey.mixins import DKeyExpansion_m, DKeyFormatting_m, identity
+
+from jgdv.structs.dkey.formatter_v2 import _DKeyExpander_m
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Any, Self
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+   from jgdv import Maybe, M_, Rx, Ident, Ctor, FmtStr, CHECKTYPE
+   from typing import Final
+   from typing import ClassVar, Any, LiteralString
+   from typing import Never, Self, Literal
+   from typing import TypeGuard
+   from collections.abc import Iterable, Iterator, Callable, Generator
+   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -72,8 +68,7 @@ EXPANSION_HINT     : Final[Ident]                 = "_doot_expansion_hint"
 HELP_HINT          : Final[Ident]                 = "_doot_help_hint"
 CWD_MARKER         : Final[Ident]                 = "__cwd"
 
-
-class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, SubAnnotate_m, str):
+class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, _DKeyExpander_m, Key_p, SubAnnotate_m, str):
     """
       Base class characteristics of DKeys.
       adds:
@@ -83,6 +78,10 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, SubAnnotate_m, str):
 
       plus some util methods
 
+    init takes kwargs:
+    fmt, mark, check, ctor, help, fallback, max_exp
+
+    on class definition, can register a 'mark', 'multi', and a conversion parameter str
     """
 
     _mark               : DKeyMark_e                    = DKey.mark.default
@@ -92,9 +91,12 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, SubAnnotate_m, str):
     _fmt_params         : Maybe[FmtStr]                 = None
     _help               : Maybe[str]                    = None
 
+    __expected_init_keys : ClassVar[list[str]]          = ["ctor", "check", "mark", "fallback", "max_exp", "fmt", "help", "force", "implicit", "conv"]
+
+    # Use the default str hash method
     __hash__                                            = str.__hash__
 
-    def __init_subclass__(cls, *, mark:Maybe[DKeyMark_e]=None, tparam:Maybe[str]=None, multi=False):
+    def __init_subclass__(cls, *, mark:M_[DKeyMark_e]=None, tparam:M_[str]=None, multi:bool=False):
         """ Registered the subclass as a DKey and sets the Mark enum this class associates with """
         super().__init_subclass__()
         cls._mark = mark
@@ -105,48 +107,47 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, SubAnnotate_m, str):
         """ Blocks creation of DKey's except through DKey itself,
           unless 'force=True' kwarg (for testing).
         """
-        if not kwargs.get('force', False):
-            raise RuntimeError("Don't build DKey subclasses directly")
-        del kwargs['force']
-        obj = str.__new__(cls, *args)
-        obj.__init__(*args, **kwargs)
-        return obj
+        match kwargs:
+            case {"force": True}:
+                del kwargs['force']
+                obj = str.__new__(cls, *args)
+                obj.__init__(*args, **kwargs)
+                return obj
+            case _:
+                raise RuntimeError("Don't build DKey subclasses directly")
 
-    def __init__(self, data, fmt:Maybe[str]=None, mark:Maybe[DKeyMark_e]=None, check:CHECKTYPE=None, ctor:Maybe[type|callable]=None, help:Maybe[str]=None, fallback=None, max_exp=None, **kwargs):
+    def __init__(self, data, **kwargs):
+        assert(not bool((kwkeys:=kwargs.keys() - DKeyBase.__expected_init_keys))), kwkeys
         super().__init__(data)
-        self._expansion_type       = ctor or identity
-        self._typecheck            = check or Any
-        self._mark                 = mark or DKeyMark_e.FREE
-        self._fallback             = fallback
-        self._max_expansions       = max_exp
+        self._expansion_type : Ctor          = kwargs.get("ctor", identity)
+        self._typecheck      : CHECKTYPE     = kwargs.get("check", Any)
+        self._mark           : DKeyMark_e    = kwargs.get("mark", self.__class__._mark)
+        self._max_expansions : Maybe[int]    = kwargs.get("max_exp", None)
+        self._fallback       : Maybe[Any]    = kwargs.get("fallback", None)
         if self._fallback is Self:
             self._fallback = self
 
-        self._update_expansion_params(mark)
-        self.set_fmt_params(fmt)
-        self.set_help(help)
+        self._update_expansion_params(self._mark)
+        self.set_fmt_params(kwargs.get("fmt", ""))
+        self._set_help(kwargs.get("help", None))
 
     def __call__(self, *args, **kwargs) -> Any:
-        """ call expand on the key """
+        """ call expand on the key.
+        Args and kwargs are passed verbatim to expand()
+        """
         return self.expand(*args, **kwargs)
 
     def __repr__(self):
         return f"<{self.__class__.__name__}: {self}>"
-
-    def __and__(self, other) -> bool:
-        return f"{self:w}" in other
-
-    def __rand__(self, other):
-        return self & other
 
     def __eq__(self, other):
         match other:
             case DKey() | str():
                 return str.__eq__(self, other)
             case _:
-                return False
+                return NotImplemented
 
-    def set_help(self, help:Maybe[str]) -> Self:
+    def _set_help(self, help:Maybe[str]) -> Self:
         match help:
             case None:
                 pass
@@ -156,12 +157,23 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, Key_p, SubAnnotate_m, str):
         return self
 
     def keys(self) -> list[Key_p]:
-        """ Get subkeys of this key. by default, an empty list """
+        """ Get subkeys of this key. by default, an empty list.
+        (named 'keys' to be in keeping with dict)
+        """
         return []
 
     def extra_sources(self) -> list[Any]:
+        """ An overrideable method allowing subtypes
+        to add standard additional sources for expansion.
+
+        eg: Path Keys provide the global Locations database
+        """
         return []
 
     @property
     def multi(self) -> bool:
+        """ utility property to test if they key is a multikey,
+        without having to do reflection
+        (to avoid some recursive import issues)
+        """
         return False

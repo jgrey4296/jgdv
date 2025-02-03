@@ -43,6 +43,11 @@ type Result[T, E:Exception]   = T | E
 type Either[L, R]             = L | R
 type SubOf[T]                 = TypeGuard[T]
 
+# Shorthands
+type M_[T]                    = T | None
+type R_[T, E:Exception]       = T | E
+type E_[L, R]                 = L | R
+
 # TODO : Make These subtypes of int that are 0<=x
 type Depth              = int
 type Seconds            = int

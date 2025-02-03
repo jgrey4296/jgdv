@@ -23,7 +23,19 @@ from jgdv._abstract.protocols import Key_p
 
 class TestDKeyMetaSetup:
 
+    @pytest.fixture(scope="function")
+    def save_registry(self, mocker):
+        single_reg = dkey.DKey._single_registry.copy()
+        multi_reg  = dkey.DKey._multi_registry.copy()
+        yield
+        dkey.DKey._single_registry = single_reg
+        dkey.DKey._multi_registry  = multi_reg
+
+
     def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_basic(self):
         key  = dkey.DKey("test", implicit=True)
         assert(isinstance(key, dkey.SingleDKey))
         assert(isinstance(key, dkey.DKey))
@@ -31,18 +43,20 @@ class TestDKeyMetaSetup:
         assert(isinstance(key, Key_p))
         assert(f"{key:w}" == "{test}")
         assert(f"{key:i}" == "test_")
-        assert(str(key) == "test")
+        assert(str(key)   == "test")
 
-    def test_subclass_registration(self):
-        assert(dkey.DKey.get_initiator(dkey.DKeyMark_e.FREE) == dkey.SingleDKey)
+    def test_subclass_registration(self, save_registry):
+        """ check creating a new dkey type is registered """
+        assert(dkey.DKey.get_subtype(dkey.DKeyMark_e.FREE) == dkey.SingleDKey)
 
         class PretendDKey(dkey.DKeyBase, mark=dkey.DKeyMark_e.FREE):
             pass
-        assert(dkey.DKey.get_initiator(dkey.DKeyMark_e.FREE) == PretendDKey)
-        # return the original class
-        dkey.DKey.register_key(dkey.SingleDKey, dkey.DKeyMark_e.FREE)
+
+        assert(dkey.DKey.get_subtype(dkey.DKeyMark_e.FREE) == PretendDKey)
+
 
     def test_subclass_check(self):
+        """ Check all registered dkeys are subclasses, or not-dkeys"""
         for x in dkey.DKey._single_registry.values():
             assert(issubclass(x, dkey.DKey))
             assert(issubclass(x, (dkey.SingleDKey, dkey.NonDKey)))
@@ -54,10 +68,12 @@ class TestDKeyMetaSetup:
             assert(issubclass(x, dkey.MultiDKey))
 
     def test_subclass_creation_fail(self):
+        """ check you can't directly create a dkey subtype """
         with pytest.raises(RuntimeError):
             dkey.SingleDKey("test")
 
     def test_subclass_creation_force(self):
+        """ Check you can force creation of a dkey subtype """
         key = dkey.SingleDKey("test", force=True)
         assert(key is not None)
         assert(isinstance(key, dkey.DKey))

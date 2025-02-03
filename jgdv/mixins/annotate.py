@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
-
 """
 
 # Imports:
@@ -62,6 +60,7 @@ class SubAnnotate_m:
     A Mixin to create simple subclasses through annotation.
     Annotation var name can be customized through the subclass kwarg 'AnnotateTo'.
     eg:
+
     class MyExample(SubAnnotate_m, AnnotateTo='blah'):
         pass
 
@@ -81,8 +80,6 @@ class SubAnnotate_m:
                 setattr(cls, cls._AnnotateTo, None)
             case _ if not hasattr(cls, cls._AnnotateTo):
                 setattr(cls, cls._AnnotateTo, None)
-
-
 
     @classmethod
     def _get_annotation(cls) -> Maybe[str]:
@@ -116,7 +113,6 @@ class SubAnnotate_m:
         setattr(sub, cls._AnnotateTo, param)
         return sub
 
-
 class SubRegistry_m(SubAnnotate_m):
     """ Create Subclasses in a registry """
 
@@ -149,7 +145,6 @@ class SubRegistry_m(SubAnnotate_m):
                 return super().__class_getitem__(param)
             case x:
                 return x
-
 
     @classmethod
     def _get_subclass_form(cls, *, param=None) -> Self:

@@ -68,7 +68,7 @@ class StrDKey(SingleDKey, mark=DKeyMark_e.STR, tparam="s"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._expansion_type  = str
-        self._typecheck = str
+        self._typecheck       = str
 
 class RedirectionDKey(SingleDKey, mark=DKeyMark_e.REDIRECT, tparam="R"):
     """

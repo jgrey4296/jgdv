@@ -90,7 +90,7 @@ class _DKeyParams(BaseModel):
     def wrapped(self) -> str:
         return "{%s}" % self.key
 
-class DKeyFormatterEntry_m:
+class _DKeyFormatterEntry_m:
     """ Mixin to make DKeyFormatter a singleton with static access
 
       and makes the formatter a context manager, to hold the current data sources
@@ -170,9 +170,8 @@ class DKeyFormatterEntry_m:
         if not cls._instance:
             cls._instance = cls()
 
-        spec                   = kwargs.get('spec', None)
-        state                  = kwargs.get('state', None)
-        # locs                   = kwargs.get('locs', doot.locs)
+        spec                   = kwargs.get('spec',     None)
+        state                  = kwargs.get('state',    None)
         fallback               = kwargs.get("fallback", None)
 
         with cls._instance(key=key, sources=[spec, state], fallback=fallback, intent="format") as fmt:
@@ -212,7 +211,10 @@ class DKeyFormatterEntry_m:
         self._intent       = None
         return
 
-class DKeyFormatter_Expansion_m:
+class _DKeyFormatter_Expansion_m:
+    """
+    Expanding a dkey starts in _expand,
+    """
 
     def _expand(self, key:Key_p, *, fallback=None, count=DEFAULT_COUNT) -> Maybe[Any]:
         """
@@ -263,8 +265,8 @@ class DKeyFormatter_Expansion_m:
     def _multi_expand(self, key:Key_p) -> str:
         """
         expand a multi key,
-          by formatting the anon key version using a sequenec of expanded subkeys,
-          this allows for duplicate keys to be used differenly in a single multikey
+        by formatting the anon key version using a sequence of expanded subkeys,
+        this allows for duplicate keys to be used differenly in a single multikey
         """
         logging.debug("multi(%s)", key)
         logging.debug("----> %s", key.keys())
@@ -314,13 +316,13 @@ class DKeyFormatter_Expansion_m:
                 return DKey(x, mark=DKey.mark.PATH)
             case str() as x if x == key:
                 # Got the key back, wrap it and don't expand it any more
-                return "{%s}" % key_str
+                return "{%s}" % x
             case str() | pl.Path() as x:
                 return DKey(x)
             case x:
                 return x
 
-class DKeyFormatter(string.Formatter, DKeyFormatter_Expansion_m, DKeyFormatterEntry_m):
+class DKeyFormatter(string.Formatter, _DKeyFormatter_Expansion_m, _DKeyFormatterEntry_m):
     """
       An Expander/Formatter to extend string formatting with options useful for dkey's
       and doot specs/state.
