@@ -17,44 +17,41 @@ import re
 import time
 import types
 import weakref
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Self,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv import Maybe
 from jgdv._abstract.protocols import Buildable_p, Key_p, SpecStruct_p
-from jgdv.structs.dkey.meta import CONV_SEP, REDIRECT_SUFFIX, DKey, DKeyMark_e
-from jgdv.structs.dkey.base import DKeyBase
-from jgdv.structs.dkey.formatter import DKeyFormatter
-from jgdv.structs.dkey.mixins import DKeyExpansion_m, DKeyFormatting_m, identity
+from jgdv.structs.dkey._meta import DKey, DKeyMark_e, DKeyMeta
+from jgdv.structs.dkey._base import DKeyBase
+from ._parser import REDIRECT_SUFFIX
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   from typing import Final
+   from typing import ClassVar, Any, LiteralString
+   from typing import Never, Self, Literal
+   from typing import TypeGuard
+   from collections.abc import Iterable, Iterator, Callable, Generator
+   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -65,6 +62,18 @@ class SingleDKey(DKeyBase, mark=DKeyMark_e.FREE):
       A Single key with no extras.
       ie: {x}. not {x}{y}, or {x}.blah.
     """
+
+    def __init__(self, data, **kwargs):
+        super().__init__(data, **kwargs)
+        match kwargs.get(DKeyMeta._rawkey_id, None):
+            case [x]:
+                self._set_params(fmt=kwargs.get("fmt", None) or x.format,
+                                 conv=kwargs.get("conv", None) or x.conv)
+            case None | []:
+                raise ValueError("A Single Key no raw key data")
+            case [*xs]:
+                raise ValueError("A Single Key got multiple raw key data", xs)
+
 
     def __format__(self, spec:str) -> str:
         """
@@ -110,12 +119,16 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
 
     def __init__(self, data:str|pl.Path, **kwargs):
         super().__init__(data, **kwargs)
-        has_text, s_keys = DKeyFormatter.Parse(data)
-        self._has_text   = has_text
-        self._subkeys    = [x for x in s_keys if bool(x.key)]
-        self._anon       = self.format("", state={key.key : "{}" for key in s_keys})
+        match kwargs.get(DKeyMeta._rawkey_id, None):
+            case [*xs]:
+                self._subkeys = xs
+            case None | []:
+                raise ValueError("Tried to build a multi key with no subkeys", data)
 
-    def __format__(self, spec:str) -> Str:
+        # remove the names for the keys, to allow expanding positionally
+        self._anon       = self.format("", state={key.key : "{}" for key in self._subkeys})
+
+    def __format__(self, spec:str) -> str:
         """
           Multi keys have no special formatting
 
@@ -125,7 +138,10 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
         return format(str(self), rem)
 
     def keys(self) -> list[Key_p]:
-        return [DKey(key.key, fmt=key.format, conv=key.conv, implicit=True) for key in self._subkeys]
+        return [DKey(key.key, fmt=key.format, conv=key.conv, implicit=True)
+                for key in self._subkeys
+                if bool(key)
+                ]
 
     def expand(self, *sources, **kwargs) -> Any:
         logging.debug("MultiDKey Expand")

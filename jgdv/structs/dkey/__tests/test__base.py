@@ -17,7 +17,8 @@ import warnings
 import pytest
 # ##-- end 3rd party imports
 
-from jgdv.structs.dkey.base import DKeyBase
+from jgdv.structs.dkey import DKey
+from jgdv.structs.dkey._base import DKeyBase
 
 # ##-- types
 # isort: off
@@ -51,15 +52,7 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-class TestSuite:
-
-    @pytest.fixture(scope="function")
-    def setup(self):
-        pass
-
-    @pytest.fixture(scope="function")
-    def cleanup(self):
-        pass
+class TestBaseDKey:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -69,20 +62,24 @@ class TestSuite:
             DKeyBase("blah", force=False)
 
     def test_basic(self):
-        obj = DKeyBase("blah", force=True)
+        match DKey("blah", force=DKeyBase):
+            case DKeyBase():
+                assert(True)
+            case x:
+                assert(False), x
 
     def test_eq(self):
-        obj1 = DKeyBase("blah", force=True)
-        obj2 = DKeyBase("blah", force=True)
+        obj1 = DKey("blah", force=DKeyBase)
+        obj2 = DKey("blah", force=DKeyBase)
         assert(obj1 == obj2)
 
     def test_eq_str(self):
-        obj1 = DKeyBase("blah", force=True)
+        obj1 = DKey("blah", force=DKeyBase)
         obj2 = "blah"
         assert(obj1 == obj2)
 
     def test_eq_not_implemented(self):
-        obj1 = DKeyBase("blah", force=True)
+        obj1 = DKey("blah", force=DKeyBase)
         obj2 = 21
         assert(not (obj1 == obj2))
 

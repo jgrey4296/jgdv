@@ -2,23 +2,28 @@
 """
 
 """
-# ruff: noqa: ANN201, ARG001, ANN001, ARG002, ANN202
+# ruff: noqa: ANN201, ARG001, ANN001, ARG002, ANN202, B011
 
-# Imports
+# Imports:
 from __future__ import annotations
 
 # ##-- stdlib imports
 import logging as logmod
 import pathlib as pl
 import warnings
+
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
 import pytest
+
 # ##-- end 3rd party imports
 
+# ##-- 1st party imports
 from jgdv.structs.dkey import DKey
-from jgdv.structs.dkey.mixins import identity
+from jgdv import identity_fn
+
+# ##-- end 1st party imports
 
 # ##-- types
 # isort: off
@@ -84,6 +89,16 @@ class TestAltExpansion:
             case x:
                 assert(False), x
 
+
+    def test_redirect_in_source(self):
+        obj = DKey("test", implicit=True)
+        state = {"test_": "blah", "blah": "bloo"}
+        match obj.local_expand(state):
+            case "bloo":
+                assert(True)
+            case x:
+                assert(False), x
+
     def test_fallback(self):
         obj = DKey("test", implicit=True)
         state = {"test": "{blah}", "blah": "{aweg}"}
@@ -104,18 +119,8 @@ class TestAltExpansion:
 
     def test_check_type(self):
         obj = DKey("test", implicit=True, check=pl.Path)
-        assert(obj._expansion_type is identity)
+        assert(obj._expansion_type is identity_fn)
         state = {"test": pl.Path("blah")}
-        match obj.local_expand(state):
-            case pl.Path():
-                assert(True)
-            case x:
-                assert(False), x
-
-    @pytest.mark.xfail
-    def test_coerce_param(self):
-        obj = DKey("{test!p}")
-        state = {"test": "blah"}
         match obj.local_expand(state):
             case pl.Path():
                 assert(True)
@@ -130,3 +135,34 @@ class TestAltExpansion:
                 assert(True)
             case x:
                 assert(False), x
+
+
+    def test_multi_expand(self):
+        obj = DKey("{test} {blah}")
+        state = {"test": "{blah}", "blah": "{aweg}", "aweg": "qqqq"}
+        match obj.local_expand(state):
+            case "qqqq qqqq":
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_multi_expand_with_non_keys(self):
+        obj = DKey(":|: {test} || {blah} :|:")
+        state = {"test": "{blah}", "blah": "{aweg}", "aweg": "qqqq"}
+        match obj.local_expand(state):
+            case ":|: qqqq || qqqq :|:":
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_coerce_param(self):
+        obj = DKey("{test!p}")
+        state = {"test": "blah"}
+        assert(obj._conv_params == "p")
+        # match obj.local_expand(state):
+        #     case pl.Path():
+        #         assert(True)
+        #     case x:
+        #         assert(False), x

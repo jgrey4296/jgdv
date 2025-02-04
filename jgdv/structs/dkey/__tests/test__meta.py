@@ -18,7 +18,6 @@ logging = logmod.root
 from jgdv.structs.strang import CodeReference
 
 from jgdv.structs import dkey
-from jgdv.structs.dkey.formatter import DKeyFormatter
 from jgdv._abstract.protocols import Key_p
 
 class TestDKeyMetaSetup:
@@ -35,7 +34,7 @@ class TestDKeyMetaSetup:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    def test_basic(self):
+    def test_basic_implicit(self):
         key  = dkey.DKey("test", implicit=True)
         assert(isinstance(key, dkey.SingleDKey))
         assert(isinstance(key, dkey.DKey))
@@ -44,6 +43,50 @@ class TestDKeyMetaSetup:
         assert(f"{key:w}" == "{test}")
         assert(f"{key:i}" == "test_")
         assert(str(key)   == "test")
+
+
+    def test_basic_explicit(self):
+        key  = dkey.DKey("{test}")
+        assert(isinstance(key, dkey.SingleDKey))
+        assert(isinstance(key, dkey.DKey))
+        assert(isinstance(key, str))
+        assert(isinstance(key, Key_p))
+        assert(f"{key:w}" == "{test}")
+        assert(f"{key:i}" == "test_")
+        assert(str(key)   == "test")
+
+
+    def test_basic_explicit_with_format_params(self):
+        key  = dkey.DKey("{test:w}")
+        assert(isinstance(key, dkey.SingleDKey))
+        assert(key._fmt_params == "w")
+        assert(f"{key:w}" == "{test}")
+        assert(f"{key:i}" == "test_")
+        assert(str(key)   == "test")
+
+
+    def test_null_key(self):
+        key  = dkey.DKey("test")
+        assert(isinstance(key, dkey.NonDKey))
+        assert(isinstance(key, dkey.DKey))
+        assert(isinstance(key, str))
+        assert(isinstance(key, Key_p))
+        assert(dkey.DKey.MarkOf(key) is dkey.DKeyMark_e.NULL)
+        assert(f"{key:w}" == "test")
+        assert(f"{key:i}" == "test")
+        assert(str(key)   == "test")
+
+
+    def test_multi_key(self):
+        key  = dkey.DKey("{test} {blah}")
+        assert(isinstance(key, dkey.MultiDKey))
+        assert(isinstance(key, dkey.DKey))
+        assert(isinstance(key, str))
+        assert(isinstance(key, Key_p))
+        assert(dkey.DKey.MarkOf(key) is dkey.DKeyMark_e.MULTI)
+        assert(f"{key:w}" == "{test} {blah}")
+        assert(f"{key:i}" == "{test} {blah}")
+        assert(str(key)   == "{test} {blah}")
 
     def test_subclass_registration(self, save_registry):
         """ check creating a new dkey type is registered """
@@ -74,7 +117,7 @@ class TestDKeyMetaSetup:
 
     def test_subclass_creation_force(self):
         """ Check you can force creation of a dkey subtype """
-        key = dkey.SingleDKey("test", force=True)
+        key = dkey.DKey("test", implicit=True, force=dkey.SingleDKey)
         assert(key is not None)
         assert(isinstance(key, dkey.DKey))
         assert(isinstance(key, dkey.SingleDKey))

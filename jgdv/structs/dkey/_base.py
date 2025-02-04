@@ -22,13 +22,13 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
+from jgdv import identity_fn
 from jgdv._abstract.protocols import Buildable_p, Key_p, SpecStruct_p
 from jgdv.mixins.annotate import SubAnnotate_m
-from jgdv.structs.dkey.formatter import DKeyFormatter
-from jgdv.structs.dkey.meta import CONV_SEP, REDIRECT_SUFFIX, DKey, DKeyMark_e
-from jgdv.structs.dkey.mixins import DKeyExpansion_m, DKeyFormatting_m, identity
+from jgdv.structs.dkey._meta import DKey, DKeyMark_e, DKeyMeta
+from jgdv.structs.dkey._format import DKeyFormatting_m
 
-from jgdv.structs.dkey.formatter_v2 import _DKeyExpander_m
+from jgdv.structs.dkey._expander import _DKeyExpander_m, DKeyExpansion_m
 
 # ##-- end 1st party imports
 
@@ -70,7 +70,7 @@ CWD_MARKER         : Final[Ident]                 = "__cwd"
 
 class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, _DKeyExpander_m, Key_p, SubAnnotate_m, str):
     """
-      Base class characteristics of DKeys.
+      Base class for implementing actual DKeys.
       adds:
       `_mark`
       `_expansion_type`
@@ -89,37 +89,28 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, _DKeyExpander_m, Key_p, SubAnn
     _typecheck          : CHECKTYPE                     = Any
     _fallback           : Any                           = None
     _fmt_params         : Maybe[FmtStr]                 = None
+    _conv_params        : Maybe[FmtStr]                 = None
     _help               : Maybe[str]                    = None
 
-    __expected_init_keys : ClassVar[list[str]]          = ["ctor", "check", "mark", "fallback", "max_exp", "fmt", "help", "force", "implicit", "conv"]
-
-    # Use the default str hash method
     __hash__                                            = str.__hash__
 
-    def __init_subclass__(cls, *, mark:M_[DKeyMark_e]=None, tparam:M_[str]=None, multi:bool=False):
+    def __init_subclass__(cls, *, mark:M_[DKeyMark_e]=None, conv:M_[str]=None, multi:bool=False):
         """ Registered the subclass as a DKey and sets the Mark enum this class associates with """
         super().__init_subclass__()
         cls._mark = mark
-        DKey.register_key(cls, mark, tparam=tparam, multi=multi)
-        DKey.register_parser(DKeyFormatter)
+        DKeyMeta.register_key_type(cls, mark, conv=conv, multi=multi)
 
     def __new__(cls, *args, **kwargs):
         """ Blocks creation of DKey's except through DKey itself,
           unless 'force=True' kwarg (for testing).
         """
-        match kwargs:
-            case {"force": True}:
-                del kwargs['force']
-                obj = str.__new__(cls, *args)
-                obj.__init__(*args, **kwargs)
-                return obj
-            case _:
-                raise RuntimeError("Don't build DKey subclasses directly")
+        if kwargs.get("force", False):
+            return super().__new__(*args, **kwargs)
+        raise RuntimeError("Don't build DKey subclasses directly. use DKey(..., force=CLS) if you must")
 
     def __init__(self, data, **kwargs):
-        assert(not bool((kwkeys:=kwargs.keys() - DKeyBase.__expected_init_keys))), kwkeys
         super().__init__(data)
-        self._expansion_type : Ctor          = kwargs.get("ctor", identity)
+        self._expansion_type : Ctor          = kwargs.get("ctor", identity_fn)
         self._typecheck      : CHECKTYPE     = kwargs.get("check", Any)
         self._mark           : DKeyMark_e    = kwargs.get("mark", self.__class__._mark)
         self._max_expansions : Maybe[int]    = kwargs.get("max_exp", None)
@@ -128,7 +119,6 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, _DKeyExpander_m, Key_p, SubAnn
             self._fallback = self
 
         self._update_expansion_params(self._mark)
-        self.set_fmt_params(kwargs.get("fmt", ""))
         self._set_help(kwargs.get("help", None))
 
     def __call__(self, *args, **kwargs) -> Any:
@@ -156,6 +146,18 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, _DKeyExpander_m, Key_p, SubAnn
 
         return self
 
+    def _set_params(self, *, fmt:Maybe[str]=None, conv:Maybe[str]=None) -> None:
+        match fmt:
+            case None:
+                pass
+            case str() if bool(fmt):
+                self._fmt_params = fmt
+
+        match conv:
+            case None:
+                pass
+            case str() if bool(conv):
+                self._conv_params = conv
     def keys(self) -> list[Key_p]:
         """ Get subkeys of this key. by default, an empty list.
         (named 'keys' to be in keeping with dict)
@@ -177,3 +179,4 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, _DKeyExpander_m, Key_p, SubAnn
         (to avoid some recursive import issues)
         """
         return False
+
