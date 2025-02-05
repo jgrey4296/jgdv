@@ -29,11 +29,14 @@ from weakref import ref
 
 # ##-- end stdlib imports
 
+import sh
+
 # ##-- 1st party imports
 from jgdv import identity_fn
-from jgdv._abstract.protocols import Key_p, SpecStruct_p
+from jgdv._abstract.protocols import Key_p, SpecStruct_p, Buildable_p
 from jgdv.structs.dkey._meta import DKey, DKeyMark_e
 from jgdv.util.chain_get import ChainedKeyGetter
+from jgdv.structs.strang import Strang, CodeReference
 
 # ##-- end 1st party imports
 
@@ -41,16 +44,16 @@ from jgdv.util.chain_get import ChainedKeyGetter
 # isort: off
 import abc
 import collections.abc
-from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Self
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
-from typing import no_type_check, final, override, overload
+from typing import no_type_check, final, overload
 # from dataclasses import InitVar, dataclass, field
 # from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
-   from jgdv import Maybe, Func, RxStr, Rx, Ident, FmtStr
+   from jgdv import Maybe, M_, Func, RxStr, Rx, Ident, FmtStr
    from typing import Final
    from typing import ClassVar, Any, LiteralString
    from typing import Never, Self, Literal
@@ -67,18 +70,9 @@ logging = logmod.getLogger(__name__)
 
 # Vars:
 
-KEY_PATTERN         : Final[RxStr]                 = "{(.+?)}"
 MAX_KEY_EXPANSIONS  : Final[int]                   = 200
 
-FMT_PATTERN         : Final[Rx]                    = re.compile("[wdi]+")
-PATTERN             : Final[Rx]                    = re.compile(KEY_PATTERN)
-FAIL_PATTERN        : Final[Rx]                    = re.compile("[^a-zA-Z_{}/0-9-]")
-EXPANSION_HINT      : Final[Ident]                 = "_doot_expansion_hint"
-HELP_HINT           : Final[Ident]                 = "_doot_help_hint"
-MAX_DEPTH           : Final[int]                   = 10
-
 DEFAULT_COUNT       : Final[int]                   = 1
-RECURSE_GUARD_COUNT : Final[int]                   = 2
 PAUSE_COUNT         : Final[int]                   = 0
 
 chained_get         : Func                         = ChainedKeyGetter.chained_get
@@ -88,6 +82,31 @@ chained_get         : Func                         = ChainedKeyGetter.chained_ge
 class _DKeyExpander_m:
     """
     A Mixin for DKeys, which does expansion locally
+    in order it:
+    - pre-formats the value to (A, coerceA,B, coerceB)
+    - (lookup A) or (lookup B) or None
+    - manipulates the retrieved value
+    - potentially recurses on retrieved values
+    - type coerces the value
+    - runs a post-coercion hook
+    - checks the type of the value to be returned
+
+    All of those steps are fallible.
+    If one of them fails, then the expansion tries to return, in order:
+    - a 'fallback' value passed into the expansion call
+    - a 'fallback' value stored on construction of the key
+    - None
+
+    Redirection Rules:
+    - Hit          : {test}  -> state[test->blah]  -> blah
+    - Soft Miss    : {test}  -> state[test_->blah] -> {blah}
+    - Hard Miss    : {test}  -> state[...] -> fallback or None
+
+    Indirect Keys act as:
+    - Indirect Hard Hit :  {test_}  -> state[test->blah] -> blah
+    - Indirect Hit      :  {test_}  -> state[test_->blah] -> {blah}
+    - Indirect Miss     :  {test_} -> state[...]         -> {test_}
+
     """
 
     def local_expand(self, *sources, **kwargs) -> Maybe[Any]:
@@ -95,106 +114,132 @@ class _DKeyExpander_m:
         if self._mark is DKeyMark_e.NULL:
             return self
 
-        full_sources = [*sources, *self._extra_sources()]
+        full_sources = [*sources, *self.exp_extra_sources()]
         fallback     = kwargs.get("fallback", self._fallback) or None
         limit        = kwargs.get("limit", None)
-        match self._do_redirect(full_sources, kwargs):
-            case None:
-                pass
-            case str() as x:
-                return DKey(x, implicit=True).local_expand(*sources, **kwargs)
-            case DKey() as x:
-                return x.local_expand(*sources, **kwargs)
-
-        match (vals:=self._do_lookup(full_sources, kwargs)):
-            case None:
+        targets = self.exp_pre_lookup_hook(sources, kwargs)
+        match (vals:=self.exp_do_lookup(targets, full_sources, kwargs)):
+            case []:
                 logging.debug("Failed lookup")
                 return fallback
 
-        match (vals:=self._post_lookup_hook(vals, sources, kwargs)):
-            case None | []:
+        match (vals:=self.exp_pre_recurse_hook(vals, sources, kwargs)):
+            case []:
                 logging.deug("Failed Post Lookup Hook")
                 return fallback
 
-        if limit is None or 1 < limit:
-            match (rec_vals:=self._recursion_hook(vals, sources, kwargs)):
-                case None:
-                    logging.debug("Failed Recursion Hook")
-                    return fallback
-                case [*xs]:
-                    vals = rec_vals
+        match (vals:=self.exp_do_recursion(vals, sources, kwargs, limit=limit)):
+            case []:
+                logging.debug("Failed Recursion Hook")
+                return fallback
 
-        match (coerced:=self._coerce_result(vals, kwargs)):
+        match (flattened:=self.exp_flatten_hook(vals, kwargs)):
+             case None:
+                logging.debug("Failed Flatten Hook")
+                return fallback
+
+        match (coerced:=self.exp_coerce_result(flattened, kwargs)):
             case None:
                 logging.debug("Failed Coercion")
                 return fallback
 
-        match (final_val:=self._post_coerce_hook(coerced, kwargs)):
+        match (final_val:=self.exp_final_hook(coerced, kwargs)):
             case None:
                 logging.debug("Failed Post Coerce")
                 return fallback
 
-        self._check_result(final_val, kwargs)
+        self.exp_check_result(final_val, kwargs)
         logging.info("%s -> %s", self, final_val)
         return final_val
 
-    def _extra_sources(self) -> list[Any]:
+    def exp_extra_sources(self) -> list[Any]:
         return []
 
-    def _do_redirect(self, sources, opts) -> Maybe[DKey]:
-        if self.multi:
-            return None
+    def exp_pre_lookup_hook(self, sources, opts) -> list:
+        return [
+            (f"{self:d}", False, None),
+            (f"{self:i}", True, None)
+        ]
 
-        key_str = f"{self:i}"
-        return chained_get(key_str, *sources)
+    def exp_do_lookup(self, targets:list, sources:list, opts:dict) -> list:
+        """ customisable method for each key subtype """
+        result = []
+        for key,coerce,fallback in targets:
+            if coerce is None:
+                result.append(key)
+                continue
+            match chained_get(key, *sources):
+                case None:
+                    pass
+                case str() as x if coerce:
+                    result.append(DKey(x, implicit=True, fallback=fallback))
+                case x:
+                    result.append(x)
+        else:
+            return result
 
-    def _do_lookup(self, sources, opts) -> Maybe[list]:
-        """ customisable method for each key subtype
 
-        single key: lookup in sources, return val
-        multi key : lookup each subkey in sources, return list
-
-        """
-        if self.multi:
-            return [x.local_expand(*sources) for x in self.keys()]
-
-        match chained_get(self, *sources):
-            case None:
-                return None
-            case x:
-                return [x]
-
-    def _post_lookup_hook(self, vals:list[Any], sources, opts) -> Maybe[list]:
+    def exp_pre_recurse_hook(self, vals:list[Any], sources, opts) -> list:
         return vals
 
-    def _recursion_hook(self, vals:list[Any], sources, opts) -> Maybe[list]:
-        match opts.get("limit", None):
-            case None:
-                limit = None
+    def exp_do_recursion(self, vals:list[Any], sources, opts, *, limit=None) -> list:
+        match limit:
+            case 0 | 1:
+                return vals
             case int() as x:
                 limit = x - 1
+            case None:
+                pass
 
-        subkeys = [DKey(x, fallback=x) if isinstance(x, str) else x for x in vals]
-        subexps = [x.local_expand(*sources, limit=limit) if isinstance(x, DKey) else x for x in subkeys]
-        return [x for x in subexps if x is not None]
+        result = []
+        for x in vals:
+            match x:
+                case DKey():
+                    result.append(x.local_expand(*sources, fallback=x, limit=limit))
+                case str():
+                    as_key = DKey(x)
+                    result.append(as_key.local_expand(*sources, fallback=x, limit=limit))
+                case x:
+                    result.append(x)
+        else:
+            return result
 
-    def _coerce_result(self, vals:list[Any], opts) -> Maybe[Any]:
-        if self.multi:
-            vals = [self._anon.format(*vals)]
+    def exp_flatten_hook(self, vals:list[Any], opts) -> Maybe[Any]:
+        match vals:
+            case []:
+                return None
+            case [x, *xs]:
+                return x
 
-        return self._expansion_type(vals[0])
+    def exp_coerce_result(self, val:Any, opts) -> Maybe[Any]:
+        if self._expansion_type is not identity_fn:
+            return self._expansion_type(val)
 
-    def _post_coerce_hook(self, val, opts) -> Maybe[Any]:
-        match val:
-            case DKey():
-                return f"{val:w}"
-            case _:
+        logging.debug("Coercing: %s : %s", val, self._conv_params)
+        match self._conv_params:
+            case None:
                 return val
+            case "p":
+                return pl.Path(val).resolve()
+            case "s":
+                return str(val)
+            case "S":
+                return Strang(val)
+            case "c":
+                return CodeReference(val)
+            case "i":
+                return int(val)
+            case "f":
+                return float(val)
+            case x:
+                logging.warning("unknown conversion parameter: %s", x)
+                return None
 
-    def _check_result(self, val, opts) -> None:
+    def exp_final_hook(self, val, opts) -> Maybe[Any]:
+        return val
+
+    def exp_check_result(self, val, opts) -> None:
         pass
-
-
 
 class DKeyExpansion_m:
     """ general expansion for dkeys """
@@ -203,7 +248,7 @@ class DKeyExpansion_m:
         """
           Always returns a list of keys, even if the key is itself
         """
-        match DKeyFormatter.redirect(self, sources=sources, fallback=fallback):
+        match self.redirect(self, sources=sources, fallback=fallback):
             case []:
                 return [DKey(f"{self:d}", mark=re_mark)]
             case [*xs] if multi:
@@ -218,7 +263,7 @@ class DKeyExpansion_m:
     def expand(self, *sources, fallback=None, max=None, check=None, **kwargs) -> Maybe[Any]:
         """ Entrance point for a dkey to shift into a DKeyFormatter """
         logging.debug("DKey expansion for: %s", self)
-        match DKeyFormatter.expand(self, sources=sources, fallback=fallback or self._fallback, max=max or self._max_expansions):
+        match self.expand(self, sources=sources, fallback=fallback or self._fallback, max=max or self._max_expansions):
             case None:
                 return None
             case DKey() as x if self._expansion_type is str:
@@ -246,22 +291,6 @@ class DKeyExpansion_m:
     def _expansion_hook(self, value) -> Any:
         """ An overridable hook for post-expansion control """
         return value
-
-    def _update_expansion_params(self, mark:DKeyMark_e) -> None:
-        """ pre-register expansion parameters based on the expansion mark"""
-        match self._mark:
-            case None:
-                pass
-            case _ if self._expansion_type is not identity_fn:
-                pass
-            case DKeyMark_e.STR:
-                self._expansion_type  = str
-                self._typecheck       = str
-
-        match self._expansion_type:
-            case type() as x if issubclass(x, Buildable_p):
-                self._typecheck = x
-                self._expansion_type  = x.build
 
 class _DKeyFormatter_Expansion_m:
     """

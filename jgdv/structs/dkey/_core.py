@@ -33,7 +33,7 @@ from ._parser import REDIRECT_SUFFIX
 # isort: off
 import abc
 import collections.abc
-from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Self
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
@@ -73,7 +73,6 @@ class SingleDKey(DKeyBase, mark=DKeyMark_e.FREE):
                 raise ValueError("A Single Key no raw key data")
             case [*xs]:
                 raise ValueError("A Single Key got multiple raw key data", xs)
-
 
     def __format__(self, spec:str) -> str:
         """
@@ -126,7 +125,7 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
                 raise ValueError("Tried to build a multi key with no subkeys", data)
 
         # remove the names for the keys, to allow expanding positionally
-        self._anon       = self.format("", state={key.key : "{}" for key in self._subkeys})
+        self._anon       = "".join(y for x in self._subkeys for y in x.anon())
 
     def __format__(self, spec:str) -> str:
         """
@@ -158,15 +157,23 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
     def __contains__(self, other):
          return other in self.keys()
 
+    def exp_pre_lookup_hook(self, sources, opts) -> list:
+        return [(x.local_expand(*sources), None, None) for x in self.keys()]
+
+    def exp_flatten_hook(self, vals, opts) -> Maybe[Any]:
+        if None in vals:
+            return None
+        return self._anon.format(*vals)
+
+    def exp_final_hook(self, val, opts) -> Maybe[Any]:
+        return val
+
 class NonDKey(DKeyBase, mark=DKeyMark_e.NULL):
     """
       Just a string, not a key. But this lets you call no-ops for key specific methods
     """
 
     def __init__(self, data, **kwargs):
-        """
-          ignores all kwargs
-        """
         super().__init__(data)
         if (fb:=kwargs.get('fallback', None)) is not None and fb != self:
             raise ValueError("NonKeys can't have a fallback, did you mean to use an explicit key?", self)
