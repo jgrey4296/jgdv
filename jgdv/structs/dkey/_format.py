@@ -34,7 +34,7 @@ from jgdv._abstract.protocols import Key_p, SpecStruct_p
 from jgdv.util.chain_get import ChainedKeyGetter
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.dkey._expander import _DKeyFormatter_Expansion_m
-from ._parser import REDIRECT_SUFFIX
+from ._parser import INDIRECT_SUFFIX
 
 # ##-- end 1st party imports
 
@@ -97,9 +97,9 @@ class DKeyFormatting_m:
         # format
         result = str(self)
         if direct:
-            result = result.removesuffix(REDIRECT_SUFFIX)
-        elif not result.endswith(REDIRECT_SUFFIX):
-            result = f"{result}{REDIRECT_SUFFIX}"
+            result = result.removesuffix(INDIRECT_SUFFIX)
+        elif not result.endswith(INDIRECT_SUFFIX):
+            result = f"{result}{INDIRECT_SUFFIX}"
 
         if wrap:
             result = "".join(["{", result, "}"])

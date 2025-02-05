@@ -28,7 +28,7 @@ import sh
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from jgdv.structs.dkey._meta import DKey, DKeyMark_e
+from jgdv.structs.dkey._meta import DKey
 from jgdv.structs.dkey._parser import RawKey
 from jgdv._abstract.protocols import Key_p, SpecStruct_p
 from jgdv.util.chain_get import ChainedKeyGetter

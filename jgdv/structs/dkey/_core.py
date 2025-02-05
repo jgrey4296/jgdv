@@ -25,7 +25,7 @@ from uuid import UUID, uuid1
 from jgdv._abstract.protocols import Buildable_p, Key_p, SpecStruct_p
 from jgdv.structs.dkey._meta import DKey, DKeyMark_e, DKeyMeta
 from jgdv.structs.dkey._base import DKeyBase
-from ._parser import REDIRECT_SUFFIX
+from ._parser import INDIRECT_SUFFIX
 
 # ##-- end 1st party imports
 
@@ -97,9 +97,9 @@ class SingleDKey(DKeyBase, mark=DKeyMark_e.FREE):
         # format
         result = str(self)
         if direct:
-            result = result.removesuffix(REDIRECT_SUFFIX)
-        elif not result.endswith(REDIRECT_SUFFIX):
-            result = f"{result}{REDIRECT_SUFFIX}"
+            result = result.removesuffix(INDIRECT_SUFFIX)
+        elif not result.endswith(INDIRECT_SUFFIX):
+            result = f"{result}{INDIRECT_SUFFIX}"
 
         if wrap:
             result = "".join(["{", result, "}"])
@@ -137,7 +137,7 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
         return format(str(self), rem)
 
     def keys(self) -> list[Key_p]:
-        return [DKey(key.key, fmt=key.format, conv=key.conv, implicit=True)
+        return [DKey(key.joined(), implicit=True)
                 for key in self._subkeys
                 if bool(key)
                 ]
@@ -158,12 +158,29 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
          return other in self.keys()
 
     def exp_pre_lookup_hook(self, sources, opts) -> list:
-        return [(x.local_expand(*sources), None, None) for x in self.keys()]
+        """ Expands subkeys, to be merged into the main key"""
+        targets = []
+        for key in self.keys():
+            match key.local_expand(*sources):
+                case None:
+                    return []
+                case x:
+                    targets.append([x])
+        else:
+            return targets
 
     def exp_flatten_hook(self, vals, opts) -> Maybe[Any]:
         if None in vals:
             return None
-        return self._anon.format(*vals)
+        flat : list[str] = []
+        for x in vals:
+            match x:
+                case IndirectDKey():
+                    flat.append(f"{x:wi}")
+                case x:
+                    flat.append(str(x))
+        else:
+            return self._anon.format(*flat)
 
     def exp_final_hook(self, val, opts) -> Maybe[Any]:
         return val
@@ -208,7 +225,14 @@ class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
         self.re_mark          = re_mark
         self._expansion_type  = DKey
         self._typecheck       = DKey | list[DKey]
-        self._fallback         = f"{self:wi}"
+
+    def __eq__(self, other):
+        match other:
+            case str() if other.endswith(INDIRECT_SUFFIX):
+                return f"{self:i}" == other
+            case _:
+                return super().__eq__(other)
+
 
     def expand(self, *sources, max=None, full:bool=False, **kwargs) -> Maybe[DKey]:
         match super().redirect(*sources, multi=self.multi_redir, re_mark=self.re_mark, **kwargs):
@@ -228,7 +252,8 @@ class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
                 return self._fallback
 
     def exp_pre_lookup_hook(self, sources, opts) -> list:
-        return [
+        return [[
             (f"{self:i}", True, None),
-            (f"{self:d}", False, None)
-        ]
+            (f"{self:d}", False, None),
+            self
+        ]]

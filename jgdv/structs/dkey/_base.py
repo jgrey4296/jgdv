@@ -28,7 +28,7 @@ from jgdv.mixins.annotate import SubAnnotate_m
 from jgdv.structs.dkey._meta import DKey, DKeyMark_e, DKeyMeta
 from jgdv.structs.dkey._format import DKeyFormatting_m
 
-from jgdv.structs.dkey._expander import _DKeyExpander_m, DKeyExpansion_m
+from jgdv.structs.dkey._expander import DKeyLocalExpander_m, DKeyCentralExpander_m
 
 # ##-- end 1st party imports
 
@@ -51,6 +51,8 @@ if TYPE_CHECKING:
    from collections.abc import Iterable, Iterator, Callable, Generator
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+   type KeyMark = DKeyMark_e|str
+
 # isort: on
 # ##-- end types
 
@@ -58,7 +60,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, _DKeyExpander_m, Key_p, SubAnnotate_m, str):
+class DKeyBase(DKeyFormatting_m, DKeyCentralExpander_m, DKeyLocalExpander_m, Key_p, SubAnnotate_m, str):
     """
       Base class for implementing actual DKeys.
       adds:
@@ -74,7 +76,7 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, _DKeyExpander_m, Key_p, SubAnn
     on class definition, can register a 'mark', 'multi', and a conversion parameter str
     """
 
-    _mark               : DKeyMark_e                    = DKey.mark.default
+    _mark               : KeyMark                       = DKey.mark.default
     _expansion_type     : Ctor                          = identity_fn
     _typecheck          : CHECKTYPE                     = Any
     _fallback           : Any                           = None
@@ -84,7 +86,10 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, _DKeyExpander_m, Key_p, SubAnn
 
     __hash__                                            = str.__hash__
 
-    def __init_subclass__(cls, *, mark:M_[DKeyMark_e]=None, conv:M_[str]=None, multi:bool=False):
+    expand                                              = DKeyCentralExpander_m.central_expand
+    redirect                                            = DKeyCentralExpander_m.central_redirect
+
+    def __init_subclass__(cls, *, mark:M_[KeyMark]=None, conv:M_[str]=None, multi:bool=False):
         """ Registered the subclass as a DKey and sets the Mark enum this class associates with """
         super().__init_subclass__()
         cls._mark = mark
@@ -102,7 +107,7 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, _DKeyExpander_m, Key_p, SubAnn
         super().__init__(data)
         self._expansion_type : Ctor          = kwargs.get("ctor", identity_fn)
         self._typecheck      : CHECKTYPE     = kwargs.get("check", Any)
-        self._mark           : DKeyMark_e    = kwargs.get("mark", self.__class__._mark)
+        self._mark           : KeyMark       = kwargs.get("mark", self.__class__._mark)
         self._max_expansions : Maybe[int]    = kwargs.get("max_exp", None)
         self._fallback       : Maybe[Any]    = kwargs.get("fallback", None)
         if self._fallback is Self:

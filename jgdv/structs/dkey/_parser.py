@@ -57,7 +57,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-REDIRECT_SUFFIX : Final[Ident]                = "_"
+INDIRECT_SUFFIX : Final[Ident]                = "_"
 # Body:
 
 class RawKey(BaseModel):
@@ -88,14 +88,29 @@ class RawKey(BaseModel):
     def __bool__(self):
         return bool(self.key)
 
+    def joined(self):
+        args = [self.key]
+        if bool(self.format):
+            args += [":", self.format]
+        if bool(self.conv):
+            args += ["!", self.conv]
+
+        return "".join(args)
+
     def wrapped(self) -> str:
         return "{%s}" % self.key
 
     def direct(self) -> str:
-        return self.key.removesuffix(REDIRECT_SUFFIX)
+        return self.key.removesuffix(INDIRECT_SUFFIX)
+
+    def indirect(self) -> str:
+        if self.key.endswith(INDIRECT_SUFFIX):
+            return self.key
+
+        return f"{self.key}{INDIRECT_SUFFIX}"
 
     def is_indirect(self) -> bool:
-        return self.key.endswith(REDIRECT_SUFFIX)
+        return self.key.endswith(INDIRECT_SUFFIX)
 
     def anon(self) -> list[str]:
         return [self.prefix, "{}"]
