@@ -102,7 +102,7 @@ class TestDKeyMetaSetup:
         """ Check all registered dkeys are subclasses, or not-dkeys"""
         for x in dkey.DKey._single_registry.values():
             assert(issubclass(x, dkey.DKey))
-            assert(issubclass(x, (dkey.SingleDKey, dkey.NonDKey)))
+            assert(issubclass(x, dkey.DKeyBase))
 
         for m, x in dkey.DKey._multi_registry.items():
             if m is dkey.DKey.mark.NULL:

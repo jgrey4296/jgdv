@@ -44,7 +44,7 @@ from jgdv.structs.strang import Strang, CodeReference
 # isort: off
 import abc
 import collections.abc
-from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Self
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Self, Any
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
@@ -263,7 +263,8 @@ class DKeyExpansion_m:
     def expand(self, *sources, fallback=None, max=None, check=None, **kwargs) -> Maybe[Any]:
         """ Entrance point for a dkey to shift into a DKeyFormatter """
         logging.debug("DKey expansion for: %s", self)
-        match self.expand(self, sources=sources, fallback=fallback or self._fallback, max=max or self._max_expansions):
+        from jgdv.structs.dkey import DKeyFormatter
+        match DKeyFormatter.expand(self, sources=sources, fallback=fallback or self._fallback, max=max or self._max_expansions):
             case None:
                 return None
             case DKey() as x if self._expansion_type is str:

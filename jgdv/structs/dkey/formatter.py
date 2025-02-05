@@ -194,7 +194,7 @@ class _DKeyFormatterEntry_m:
         self._intent       = None
         return
 
-class DKeyFormatter(string.Formatter, _DKeyFormatterEntry_m):
+class DKeyFormatter(string.Formatter, _DKeyFormatter_Expansion_m, _DKeyFormatterEntry_m):
     """
       An Expander/Formatter to extend string formatting with options useful for dkey's
       and doot specs/state.
