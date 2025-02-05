@@ -70,7 +70,7 @@ class SingleDKey(DKeyBase, mark=DKeyMark_e.FREE):
                 self._set_params(fmt=kwargs.get("fmt", None) or x.format,
                                  conv=kwargs.get("conv", None) or x.conv)
             case None | []:
-                raise ValueError("A Single Key no raw key data")
+                raise ValueError("A Single Key has no raw key data")
             case [*xs]:
                 raise ValueError("A Single Key got multiple raw key data", xs)
 
@@ -193,7 +193,7 @@ class NonDKey(DKeyBase, mark=DKeyMark_e.NULL):
     def local_expand(self, *args, **kwrags) -> str:
         return str(self)
 
-class IndirectDKey(SingleDKey, mark=DKeyMark_e.INDIRECT, conv="I"):
+class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
     """
       A Key for getting a redirected key.
       eg: RedirectionDKey(key_) -> SingleDKey(value)
