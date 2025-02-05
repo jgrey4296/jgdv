@@ -183,7 +183,45 @@ class NonDKey(DKeyBase, mark=DKeyMark_e.NULL):
             raise ValueError("NonKeys can't have a fallback, did you mean to use an explicit key?", self)
         return str(self)
 
-    def _update_expansion_params(self, *args) -> Self:
-        self._expansion_type  = str
-        self._typecheck       = str
-        return self
+    def local_expand(self, *args, **kwrags) -> str:
+        return str(self)
+
+class IndirectDKey(SingleDKey, mark=DKeyMark_e.INDIRECT, conv="I"):
+    """
+      A Key for getting a redirected key.
+      eg: RedirectionDKey(key_) -> SingleDKey(value)
+
+      re_mark :
+    """
+
+    def __init__(self, data, multi=False, re_mark=None, **kwargs):
+        kwargs.setdefault("fallback", Self)
+        super().__init__(data, **kwargs)
+        self.multi_redir      = multi
+        self.re_mark          = re_mark
+        self._expansion_type  = DKey
+        self._typecheck       = DKey | list[DKey]
+        self._fallback         = f"{self:wi}"
+
+    def expand(self, *sources, max=None, full:bool=False, **kwargs) -> Maybe[DKey]:
+        match super().redirect(*sources, multi=self.multi_redir, re_mark=self.re_mark, **kwargs):
+            case list() as xs if self.multi_redir and full:
+                return [x.expand(*sources) for x in xs]
+            case list() as xs if self.multi_redir:
+                return xs
+            case [x, *xs] if full:
+                return x.expand(*sources)
+            case [x, *xs] if self._fallback == self and x < self:
+                return x
+            case [x, *xs] if self._fallback is None:
+                return None
+            case [x, *xs]:
+                return x
+            case []:
+                return self._fallback
+
+    def exp_pre_lookup_hook(self, sources, opts) -> list:
+        return [
+            (f"{self:i}", True, None),
+            (f"{self:d}", False, None)
+        ]
