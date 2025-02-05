@@ -248,9 +248,8 @@ class TestIndirection:
         obj = DKey("test_", implicit=True)
         state = {}
         match obj.local_expand(state, limit=1):
-            case str() as k:
-                assert(k == f"{obj:wi}")
-                assert(True)
+            case DKey() as k:
+                assert(k == "test_")
             case x:
                 assert(False), x
 
@@ -282,10 +281,26 @@ class TestMultiExpansion:
     def test_coerce_subkey(self):
         obj = DKey("{test!p}/{test}")
         assert(DKey.MarkOf(obj) is DKey.mark.MULTI)
+        assert(obj.keys()[0]._conv_params == "p")
         state = {"test": "blah"}
         match obj.local_expand(state):
             case str() as x:
                 assert(x == str(pl.Path.cwd() / "blah/blah"))
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_coerce_multi(self):
+        obj = DKey("{test!p} : {test!p}")
+        assert(DKey.MarkOf(obj) is DKey.mark.MULTI)
+        assert(obj.keys()[0]._conv_params == "p")
+        state = {"test": "blah"}
+        match obj.local_expand(state):
+            case str() as x:
+                assert(x == "".join([str(pl.Path.cwd() / "blah"),
+                                    " : ",
+                                    str(pl.Path.cwd() / "blah")]))
                 assert(True)
             case x:
                 assert(False), x

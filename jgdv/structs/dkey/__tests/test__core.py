@@ -155,21 +155,39 @@ class TestIndirectDKey:
         with pytest.raises(RuntimeError):
             IndirectDKey("blah", force=False)
 
-    def test_basic(self):
-        match DKey("blah", force=IndirectDKey):
+
+    @pytest.mark.parametrize("name", ["blah", "blah_"])
+    def test_basic(self, name):
+        match DKey(name, force=IndirectDKey):
             case IndirectDKey():
                 assert(True)
             case x:
                 assert(False), x
 
-    def test_eq(self):
-        obj1 = DKey("blah", force=IndirectDKey)
-        obj2 = DKey("blah", force=IndirectDKey)
+
+    @pytest.mark.parametrize("name", ["blah", "blah_"])
+    def test_eq(self, name):
+        obj1 = DKey(name, implicit=True, force=IndirectDKey)
+        obj2 = DKey(name, implicit=True, force=IndirectDKey)
         assert(obj1 == obj2)
 
-    def test_eq_str(self):
+    @pytest.mark.parametrize("name", ["blah"])
+    def test_eq_with_underscore(self, name):
+        obj1 = DKey(name, implicit=True, force=IndirectDKey)
+        obj2 = DKey(f"{name}_", implicit=True, force=IndirectDKey)
+        assert(obj1 == obj2)
+
+
+    @pytest.mark.parametrize("name", ["blah", "blah_"])
+    def test_eq_str(self, name):
+        obj1 = DKey(name, implicit=True, force=IndirectDKey)
+        obj2 = name
+        assert(obj1 == obj2)
+
+
+    def test_eq_indirect(self):
         obj1 = DKey("blah", force=IndirectDKey)
-        obj2 = "blah"
+        obj2 = "blah_"
         assert(obj1 == obj2)
 
     def test_eq_not_implemented(self):

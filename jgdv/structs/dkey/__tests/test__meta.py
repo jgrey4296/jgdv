@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+import enum
 import logging as logmod
 import pathlib as pl
 from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
@@ -20,6 +21,20 @@ from jgdv.structs.strang import CodeReference
 from jgdv.structs import dkey
 from jgdv._abstract.protocols import Key_p
 
+class TestDKeyMark:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_basic_mark(self):
+        assert(isinstance(dkey.DKeyMark_e, enum.EnumMeta))
+
+    def test_other_mark(self):
+        assert("free" in dkey.DKeyMark_e)
+        assert("path" in dkey.DKeyMark_e)
+        assert("indirect" in dkey.DKeyMark_e)
+        assert("blah" not in dkey.DKeyMark_e)
+
 class TestDKeyMetaSetup:
 
     @pytest.fixture(scope="function")
@@ -29,7 +44,6 @@ class TestDKeyMetaSetup:
         yield
         dkey.DKey._single_registry = single_reg
         dkey.DKey._multi_registry  = multi_reg
-
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -44,7 +58,6 @@ class TestDKeyMetaSetup:
         assert(f"{key:i}" == "test_")
         assert(str(key)   == "test")
 
-
     def test_basic_explicit(self):
         key  = dkey.DKey("{test}")
         assert(isinstance(key, dkey.SingleDKey))
@@ -55,7 +68,6 @@ class TestDKeyMetaSetup:
         assert(f"{key:i}" == "test_")
         assert(str(key)   == "test")
 
-
     def test_basic_explicit_with_format_params(self):
         key  = dkey.DKey("{test:w}")
         assert(isinstance(key, dkey.SingleDKey))
@@ -63,7 +75,6 @@ class TestDKeyMetaSetup:
         assert(f"{key:w}" == "{test}")
         assert(f"{key:i}" == "test_")
         assert(str(key)   == "test")
-
 
     def test_null_key(self):
         key  = dkey.DKey("test")
@@ -75,7 +86,6 @@ class TestDKeyMetaSetup:
         assert(f"{key:w}" == "test")
         assert(f"{key:i}" == "test")
         assert(str(key)   == "test")
-
 
     def test_multi_key(self):
         key  = dkey.DKey("{test} {blah}")
@@ -96,7 +106,6 @@ class TestDKeyMetaSetup:
             pass
 
         assert(dkey.DKey.get_subtype(dkey.DKeyMark_e.FREE) == PretendDKey)
-
 
     def test_subclass_check(self):
         """ Check all registered dkeys are subclasses, or not-dkeys"""
