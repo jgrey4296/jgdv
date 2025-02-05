@@ -58,16 +58,6 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-KEY_PATTERN        : Final[FmtStr]                = "{(.+?)}"
-MAX_KEY_EXPANSIONS : Final[int]                   = 10
-
-PATTERN            : Final[Rx]                    = re.compile(KEY_PATTERN)
-FAIL_PATTERN       : Final[Rx]                    = re.compile("[^a-zA-Z_{}/0-9-]")
-FMT_PATTERN        : Final[Rx]                    = re.compile("[wdi]+")
-EXPANSION_HINT     : Final[Ident]                 = "_doot_expansion_hint"
-HELP_HINT          : Final[Ident]                 = "_doot_help_hint"
-CWD_MARKER         : Final[Ident]                 = "__cwd"
-
 class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, _DKeyExpander_m, Key_p, SubAnnotate_m, str):
     """
       Base class for implementing actual DKeys.
@@ -85,7 +75,7 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, _DKeyExpander_m, Key_p, SubAnn
     """
 
     _mark               : DKeyMark_e                    = DKey.mark.default
-    _expansion_type     : Ctor                          = str
+    _expansion_type     : Ctor                          = identity_fn
     _typecheck          : CHECKTYPE                     = Any
     _fallback           : Any                           = None
     _fmt_params         : Maybe[FmtStr]                 = None
@@ -118,7 +108,6 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, _DKeyExpander_m, Key_p, SubAnn
         if self._fallback is Self:
             self._fallback = self
 
-        self._update_expansion_params(self._mark)
         self._set_help(kwargs.get("help", None))
 
     def __call__(self, *args, **kwargs) -> Any:
@@ -158,6 +147,7 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, _DKeyExpander_m, Key_p, SubAnn
                 pass
             case str() if bool(conv):
                 self._conv_params = conv
+
     def keys(self) -> list[Key_p]:
         """ Get subkeys of this key. by default, an empty list.
         (named 'keys' to be in keeping with dict)
@@ -179,4 +169,3 @@ class DKeyBase(DKeyFormatting_m, DKeyExpansion_m, _DKeyExpander_m, Key_p, SubAnn
         (to avoid some recursive import issues)
         """
         return False
-

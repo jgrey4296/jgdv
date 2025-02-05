@@ -8,6 +8,6 @@ from . import errors
 from jgdv.decorators.check_protocol import check_protocol
 from .errors import JGDVError
 
-def identity_fn(*xs):
+def identity_fn(x):
     """ Just returns what it gets """
-    return xs
+    return x

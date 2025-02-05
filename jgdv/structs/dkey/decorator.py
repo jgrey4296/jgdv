@@ -34,6 +34,7 @@ from jgdv.decorators import (
 from jgdv.structs.dkey import _errors as dkey_errs
 from jgdv.structs.dkey._meta import DKey
 from jgdv.structs.strang import CodeReference
+from .other_keys import ARGS_K, KWARGS_K
 
 # ##-- end 1st party imports
 
@@ -66,14 +67,6 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-KEY_PATTERN         : Final[FmtStr]               =  "{(.+?)}"
-MAX_KEY_EXPANSIONS  : Final[int]                  = 10
-ARGS_K              : Final[Ident]                = "args"
-KWARGS_K            : Final[Ident]                = "kwargs"
-PATTERN             : Final[Rx]                   = re.compile(KEY_PATTERN)
-FAIL_PATTERN        : Final[Rx]                   = re.compile("[^a-zA-Z_{}/1-9-]")
-EXPANSION_HINT      : Final[Ident]                = "_doot_expansion_hint"
-HELP_HINT           : Final[Ident]                = "_doot_help_hint"
 PARAM_IGNORES       : Final[list[str]]            = ["_", "_ex"]
 
 class DKeyMetaDecorator(MetaDecorator):

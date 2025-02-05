@@ -57,7 +57,7 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-class TestAltExpansion:
+class TestExpansion:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -80,30 +80,20 @@ class TestAltExpansion:
             case x:
                 assert(False), x
 
+    def test_nonkey_expansion(self):
+        obj = DKey("aweg")
+        state = {"test": "blah"}
+        match obj.local_expand(state):
+            case "aweg":
+                assert(True)
+            case x:
+                assert(False), x
+
     def test_recursive(self):
         obj = DKey("test", implicit=True)
         state = {"test": "{blah}", "blah": "bloo"}
         match obj.local_expand(state):
             case "bloo":
-                assert(True)
-            case x:
-                assert(False), x
-
-
-    def test_redirect_in_source(self):
-        obj = DKey("test", implicit=True)
-        state = {"test_": "blah", "blah": "bloo"}
-        match obj.local_expand(state):
-            case "bloo":
-                assert(True)
-            case x:
-                assert(False), x
-
-    def test_fallback(self):
-        obj = DKey("test", implicit=True)
-        state = {"test": "{blah}", "blah": "{aweg}"}
-        match obj.local_expand(state, fallback=25):
-            case 25:
                 assert(True)
             case x:
                 assert(False), x
@@ -136,33 +126,250 @@ class TestAltExpansion:
             case x:
                 assert(False), x
 
+class TestIndirection:
 
-    def test_multi_expand(self):
-        obj = DKey("{test} {blah}")
-        state = {"test": "{blah}", "blah": "{aweg}", "aweg": "qqqq"}
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_hit(self):
+        """
+        {key} -> state[key:val] -> val
+        """
+        obj = DKey("test", implicit=True)
+        state = {"test": "blah"}
+        match obj.local_expand(state, limit=1):
+            case "blah":
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_hit_ignores_indirect(self):
+        """
+        {key} -> state[key:val, key_:val2] -> val
+        """
+        obj = DKey("test", implicit=True)
+        state = {"test": "blah", "test_":"aweg"}
+        match obj.local_expand(state, limit=1):
+            case "blah":
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_hard_miss(self):
+        """
+        {key} -> state[] -> None
+        """
+        obj = DKey("test", implicit=True)
+        state = {}
+        match obj.local_expand(state, limit=1):
+            case None:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_hard_miss_with_call_fallback(self):
+        """
+        {key} -> state[] -> 25
+        """
+        obj = DKey("test", implicit=True)
+        state = {}
+        match obj.local_expand(state, fallback=25, limit=1):
+            case 25:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_hard_miss_with_ctor_fallback(self):
+        """
+        {key} -> state[] -> 25
+        """
+        obj = DKey("test", fallback=25, implicit=True)
+        state = {}
+        match obj.local_expand(state, limit=1):
+            case 25:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_hard_miss_with_ctor_hierarchy(self):
+        """
+        {key} -> state[] -> 25
+        """
+        obj = DKey("test", fallback=10, implicit=True)
+        state = {}
+        match obj.local_expand(state, fallback=25, limit=1):
+            case 25:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_soft_miss(self):
+        """
+        {key} -> state[key_:val] -> {val_}
+        """
+        obj = DKey("test", implicit=True)
+        state = {"test_": "blah"}
+        match obj.local_expand(state, limit=1):
+            case DKey() as x:
+                assert(x == "blah")
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_indirect_hit_direct(self):
+        """
+        {key_} -> state[key:val] -> val
+        """
+        obj = DKey("test_", implicit=True)
+        state = {"test": "blah"}
+        match obj.local_expand(state, limit=1):
+            case "blah":
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_indirect_hit_indirect(self):
+        """
+        {key_} -> state[key_:val] -> {val}
+        """
+        obj = DKey("test_", implicit=True)
+        state = {"test_": "blah"}
+        match obj.local_expand(state, limit=1):
+            case DKey() as k:
+                assert(k == "blah")
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_indirect_miss(self):
+        """
+        {key_} -> state[] -> {key_}
+        """
+        obj = DKey("test_", implicit=True)
+        state = {}
+        match obj.local_expand(state, limit=1):
+            case str() as k:
+                assert(k == f"{obj:wi}")
+                assert(True)
+            case x:
+                assert(False), x
+
+class TestMultiExpansion:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_basic(self):
+        obj = DKey("{test} {test}")
+        assert(DKey.MarkOf(obj) is DKey.mark.MULTI)
+        state = {"test": "blah"}
         match obj.local_expand(state):
-            case "qqqq qqqq":
+            case "blah blah":
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_coerce_to_path(self):
+        obj = DKey("{test}/{test}", ctor=pl.Path)
+        assert(DKey.MarkOf(obj) is DKey.mark.MULTI)
+        state = {"test": "blah"}
+        match obj.local_expand(state):
+            case pl.Path():
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_coerce_subkey(self):
+        obj = DKey("{test!p}/{test}")
+        assert(DKey.MarkOf(obj) is DKey.mark.MULTI)
+        state = {"test": "blah"}
+        match obj.local_expand(state):
+            case str() as x:
+                assert(x == str(pl.Path.cwd() / "blah/blah"))
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_hard_miss_subkey(self):
+        obj = DKey("{test}/{aweg}")
+        assert(DKey.MarkOf(obj) is DKey.mark.MULTI)
+        state = {"test": "blah"}
+        match obj.local_expand(state):
+            case None:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_soft_miss_subkey(self):
+        obj = DKey("{test}/{aweg}")
+        assert(DKey.MarkOf(obj) is DKey.mark.MULTI)
+        state = {"test": "blah", "aweg_":"test"}
+        match obj.local_expand(state):
+            case "blah/blah":
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_indirect_subkey(self):
+        obj = DKey("{test}/{aweg_}")
+        assert(DKey.MarkOf(obj) is DKey.mark.MULTI)
+        state = {"test": "blah", "aweg_":"test"}
+        match obj.local_expand(state):
+            case "blah/blah":
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_indirect_key_subkey(self):
+        obj = DKey("{test}/{aweg_}")
+        assert(DKey.MarkOf(obj) is DKey.mark.MULTI)
+        state = {"test": "blah", "aweg":"test"}
+        match obj.local_expand(state):
+            case "blah/test":
                 assert(True)
             case x:
                 assert(False), x
 
 
-    def test_multi_expand_with_non_keys(self):
-        obj = DKey(":|: {test} || {blah} :|:")
-        state = {"test": "{blah}", "blah": "{aweg}", "aweg": "qqqq"}
+    def test_indirect_miss_subkey(self):
+        obj = DKey("{test}/{aweg_}")
+        assert(DKey.MarkOf(obj) is DKey.mark.MULTI)
+        state = {"test": "blah"}
         match obj.local_expand(state):
-            case ":|: qqqq || qqqq :|:":
+            case "blah/{aweg_}":
                 assert(True)
             case x:
                 assert(False), x
 
+class TestCoercion:
 
-    def test_coerce_param(self):
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_coerce_param_path(self):
         obj = DKey("{test!p}")
         state = {"test": "blah"}
         assert(obj._conv_params == "p")
-        # match obj.local_expand(state):
-        #     case pl.Path():
-        #         assert(True)
-        #     case x:
-        #         assert(False), x
+        match obj.local_expand(state):
+            case pl.Path():
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_coerce_param_int(self):
+        obj = DKey("{test!i}")
+        state = {"test": "25"}
+        assert(obj._conv_params == "i")
+        match obj.local_expand(state):
+            case int() as x:
+                assert(x == 25)
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_coerce_param_fail(self):
+        obj = DKey("{test!i}")
+        state = {"test": "blah"}
+        assert(obj._conv_params == "i")
+        with pytest.raises(ValueError):
+            obj.local_expand(state)

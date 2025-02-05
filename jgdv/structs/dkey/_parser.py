@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 # ruff: noqa:
 
@@ -97,6 +96,9 @@ class RawKey(BaseModel):
 
     def is_indirect(self) -> bool:
         return self.key.endswith(REDIRECT_SUFFIX)
+
+    def anon(self) -> list[str]:
+        return [self.prefix, "{}"]
 
 class DKeyParser(Formatter):
     """ parser for extracting {keys:params} from strings, """

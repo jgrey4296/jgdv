@@ -60,17 +60,6 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-KEY_PATTERN        : Final[RxStr]                = "{(.+?)}"
-MAX_KEY_EXPANSIONS : Final[int]                  = 10
-
-PATTERN            : Final[Rx]                   = re.compile(KEY_PATTERN)
-FAIL_PATTERN       : Final[Rx]                   = re.compile("[^a-zA-Z_{}/0-9-]")
-FMT_PATTERN        : Final[Rx]                   = re.compile("[wdi]+")
-EXPANSION_HINT     : Final[Ident]                = "_doot_expansion_hint"
-HELP_HINT          : Final[Ident]                = "_doot_help_hint"
-FORMAT_SEP         : Final[Ident]                = ":"
-CWD_MARKER         : Final[Ident]                = "__cwd"
-
 class StrDKey(SingleDKey, mark=DKeyMark_e.STR, conv="s"):
     """
     A Simple key that always expands to a string
@@ -80,4 +69,3 @@ class StrDKey(SingleDKey, mark=DKeyMark_e.STR, conv="s"):
         super().__init__(*args, **kwargs)
         self._expansion_type  = str
         self._typecheck       = str
-

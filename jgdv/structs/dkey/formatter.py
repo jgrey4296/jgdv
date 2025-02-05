@@ -66,19 +66,10 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__file__)
 ##-- end logging
 
-KEY_PATTERN         : Final[RxStr]                 = "{(.+?)}"
 MAX_KEY_EXPANSIONS  : Final[int]                   = 200
 
 FMT_PATTERN         : Final[Rx]                    = re.compile("[wdi]+")
-PATTERN             : Final[Rx]                    = re.compile(KEY_PATTERN)
-FAIL_PATTERN        : Final[Rx]                    = re.compile("[^a-zA-Z_{}/0-9-]")
-EXPANSION_HINT      : Final[Ident]                 = "_doot_expansion_hint"
-HELP_HINT           : Final[Ident]                 = "_doot_help_hint"
 MAX_DEPTH           : Final[int]                   = 10
-
-DEFAULT_COUNT       : Final[int]                   = 1
-RECURSE_GUARD_COUNT : Final[int]                   = 2
-PAUSE_COUNT         : Final[int]                   = 0
 
 chained_get         : Func                         = ChainedKeyGetter.chained_get
 

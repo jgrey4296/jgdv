@@ -63,13 +63,8 @@ logging = logmod.getLogger(__name__)
 KEY_PATTERN        : Final[RxStr]                = "{(.+?)}"
 MAX_KEY_EXPANSIONS : Final[int]                  = 10
 
-PATTERN            : Final[Rx]                   = re.compile(KEY_PATTERN)
-FAIL_PATTERN       : Final[Rx]                   = re.compile("[^a-zA-Z_{}/0-9-]")
-FMT_PATTERN        : Final[Rx]                   = re.compile("[wdi]+")
-EXPANSION_HINT     : Final[Ident]                = "_doot_expansion_hint"
-HELP_HINT          : Final[Ident]                = "_doot_help_hint"
-FORMAT_SEP         : Final[Ident]                = ":"
-CWD_MARKER         : Final[Ident]                = "__cwd"
+ARGS_K              : Final[Ident]                = "args"
+KWARGS_K            : Final[Ident]                = "kwargs"
 
 class ArgsDKey(SingleDKey, mark=DKeyMark_e.ARGS):
     """ A Key representing the action spec's args """
