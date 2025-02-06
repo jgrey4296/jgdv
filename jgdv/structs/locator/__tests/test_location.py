@@ -15,8 +15,7 @@ import pytest
 
 from jgdv.structs.dkey import DKey
 from jgdv.structs.strang import Strang
-from jgdv.structs.strang.location import Location
-from jgdv.structs.strang.locations import JGDVLocations
+from jgdv.structs.locator import JGDVLocator, Location
 
 logging = logmod.root
 
@@ -110,7 +109,7 @@ class TestLocation:
         loc = Location("file/earlycwd::>a/b/c.py")
         orig_cwd = pl.Path.cwd()
         sub_cwd = [x for x in orig_cwd.iterdir() if not x.is_file()][0]
-        with JGDVLocations(sub_cwd) as loclookup:
+        with JGDVLocator(sub_cwd) as loclookup:
             assert(pl.Path.cwd() != orig_cwd)
             assert(pl.Path.cwd() == sub_cwd)
             expanded = loclookup.normalize(loc)

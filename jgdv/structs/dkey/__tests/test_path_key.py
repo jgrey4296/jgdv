@@ -14,11 +14,12 @@ import warnings
 import pytest
 
 
-from jgdv.structs.strang.errors import DirAbsent, LocationExpansionError, LocationError
+from jgdv.structs.locator.errors import DirAbsent, LocationExpansionError, LocationError
 from jgdv._abstract.protocols import Key_p
 from jgdv.structs.dkey import DKey
 from jgdv.structs.dkey.path_key import PathDKey
-from jgdv.structs.strang.locations import JGDVLocations, _LocationsGlobal
+from jgdv.structs.locator import JGDVLocator
+from jgdv.structs.locator.locator import _LocatorGlobal
 
 logging = logmod.root
 
@@ -33,15 +34,15 @@ EXP_IND_KEYS                : Final[list[str]]           = [f"{{{x}}}" for x in 
 VALID_KEYS                                           = IMP_KEY_BASES + EXP_KEY_BASES + EXP_P_KEY_BASES + IMP_IND_KEYS + EXP_IND_KEYS
 VALID_MULTI_KEYS                                     = PATH_KEYS + MUTI_KEYS
 
-match JGDVLocations.Current:
+match JGDVLocator.Current:
     case None:
-        initial_loc = JGDVLocations(pl.Path.cwd())
+        initial_loc = JGDVLocator(pl.Path.cwd())
     case x:
         initial_loc = x
 
 @pytest.fixture(scope="function")
-def simple() -> JGDVLocations:
-    return JGDVLocations(pl.Path.cwd())
+def simple() -> JGDVLocator:
+    return JGDVLocator(pl.Path.cwd())
 
 class TestPathKey:
 
@@ -117,7 +118,7 @@ class TestLocationsExpandLocation:
         assert(result == simple.normalize(pl.Path("base/blah/bloo")))
 
     def test_expand_trailing_slash(self):
-        simple = JGDVLocations(pl.Path.cwd()).update({"a": "dir::>base/blah/", "b": "dir::>bloo"})
+        simple = JGDVLocator(pl.Path.cwd()).update({"a": "dir::>base/blah/", "b": "dir::>bloo"})
         key = DKey("{a}/{b}", ctor=pl.Path)
         result = simple.expand(key)
         assert(result == simple.normalize(pl.Path("base/blah/bloo")))
@@ -128,7 +129,7 @@ class TestLocationsExpandLocation:
         Eg: a/b/c + /d/e
         or: a/b/c + ~/d/e
         """
-        simple = JGDVLocations(pl.Path.cwd()).update({"a": "dir::>base/blah", "b": "dir::>/bloo"})
+        simple = JGDVLocator(pl.Path.cwd()).update({"a": "dir::>base/blah", "b": "dir::>/bloo"})
         key = DKey("{a}/{b}", ctor=pl.Path)
         with pytest.raises(LocationExpansionError):
             simple.expand(key)
@@ -137,12 +138,12 @@ class TestLocationsExpandLocation:
         """
         Eg: /a/b/c/ + d/e = /a/b/c/d/e
         """
-        simple = JGDVLocations(pl.Path.cwd()).update({"a": "dir::>/base/blah", "b": "dir::>bloo"})
+        simple = JGDVLocator(pl.Path.cwd()).update({"a": "dir::>/base/blah", "b": "dir::>bloo"})
         key = DKey("{a}/{b}", ctor=pl.Path)
         assert(simple.expand(key) == pl.Path("/base/blah/bloo"))
 
     def test_expand_with_multikey(self):
-        simple = JGDVLocations(pl.Path.cwd()).update({"a": "dir::>{other}/blah", "other": "dir::>bloo"})
+        simple = JGDVLocator(pl.Path.cwd()).update({"a": "dir::>{other}/blah", "other": "dir::>bloo"})
         key = DKey("{a}", ctor=pl.Path)
         result = simple[key]
         assert(result == simple.normalize(pl.Path("bloo/blah")))

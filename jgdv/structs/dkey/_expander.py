@@ -196,7 +196,6 @@ class DKeyLocalExpander_m:
                     case x:
                         return x
 
-
         for target in targets:
             match lookup_target(target):
                 case None:

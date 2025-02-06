@@ -16,14 +16,3 @@ from jgdv import JGDVError
 class StrangError(JGDVError):
     pass
 
-class LocationError(StrangError):
-    """ A Task tried to access a location that didn't existing """
-    general_msg = "Location Error:"
-
-class LocationExpansionError(LocationError):
-    """ When trying to resolve a location, something went wrong. """
-    general_msg = "Expansion of Location hit max value:"
-
-class DirAbsent(LocationError):
-    """ In the course of startup verification, a directory was not found """
-    general_msg = "Missing Directory:"

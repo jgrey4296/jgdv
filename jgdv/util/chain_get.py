@@ -8,7 +8,6 @@ See EOF for license/metadata/notes as applicable
 from __future__ import annotations
 
 # ##-- stdlib imports
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -19,33 +18,6 @@ import re
 import time
 import types
 import weakref
-
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -54,6 +26,31 @@ from uuid import UUID, uuid1
 from jgdv._abstract.protocols import SpecStruct_p
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   from typing import Final
+   from typing import ClassVar, Any, LiteralString
+   from typing import Never, Self, Literal
+   from typing import TypeGuard
+   from collections.abc import Iterable, Iterator, Callable, Generator
+   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+   from jgdv.structs.locator import JGDVLocator
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -68,7 +65,7 @@ class ChainedKeyGetter:
     """
 
     @staticmethod
-    def chained_get(key:str, *sources:dict|SpecStruct_p|JGDVLocations, fallback=None) -> Maybe[Any]:
+    def chained_get(key:str, *sources:dict|SpecStruct_p|JGDVLocator, fallback=None) -> Maybe[Any]:
         """
         Get a key's value from an ordered sequence of potential sources.
         Try to get {key} then {key_} in order of sources passed in

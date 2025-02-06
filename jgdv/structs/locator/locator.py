@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 # ##-- stdlib imports
-import abc
 import datetime
 import enum
 import functools as ftz
@@ -19,54 +18,45 @@ import typing
 from copy import deepcopy
 from dataclasses import InitVar, dataclass, field, replace
 from re import Pattern
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Self,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
+from collections import defaultdict, deque
 from uuid import UUID, uuid1
 from weakref import ref
 
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv import Maybe
 from jgdv.mixins.path_manip import PathManip_m
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.dkey import DKey, DKeyFormatter, MultiDKey, NonDKey, SingleDKey
-from jgdv.structs.strang.errors import DirAbsent, LocationError, LocationExpansionError
-from jgdv.structs.strang.location import Location, LocationMeta_e
 
+from .location import Location, LocationMeta_e
+from .errors import DirAbsent, LocationError, LocationExpansionError
 # ##-- end 1st party imports
 
-# ##-- typecheck imports
+# ##-- types
 # isort: off
-if typing.TYPE_CHECKING:
-   from jgdv import Maybe, Stack, Queue
-   type FmtStr = str
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Any
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
+if TYPE_CHECKING:
+   from jgdv import Maybe, Stack, Queue
+   from typing import Final
+   from typing import ClassVar, Any, LiteralString
+   from typing import Never, Self, Literal
+   from typing import TypeGuard
+   from collections.abc import Iterable, Iterator, Callable, Generator
+   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+   type FmtStr = str
+   type JGDVLocator = Any
 # isort: on
-# ##-- end typecheck imports
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -75,21 +65,21 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-class _LocationsGlobal:
+class _LocatorGlobal:
     """ A program global stack of locations.
-    Provides the enter/exit store for JGDVLocations objects
+    Provides the enter/exit store for JGDVLocator objects
     """
 
-    _global_locs : ClassVar[list["JGDVLocations"]] = []
+    _global_locs : ClassVar[list[JGDVLocator]] = []
     _startup_cwd : ClassVar[pl.Path] = pl.Path.cwd()
 
     @staticmethod
     def stacklen() -> int:
-        return len(_LocationsGlobal._global_locs)
+        return len(_LocatorGlobal._global_locs)
 
     @staticmethod
-    def peek() -> None|"JGDVLocations":
-        match _LocationsGlobal._global_locs:
+    def peek() -> None|"JGDVLocator":
+        match _LocatorGlobal._global_locs:
             case []:
                 return None
             case [*_, x]:
@@ -97,26 +87,26 @@ class _LocationsGlobal:
 
     @staticmethod
     def push(locs):
-        _LocationsGlobal._global_locs.append(locs)
+        _LocatorGlobal._global_locs.append(locs)
 
     @staticmethod
-    def pop() -> None|"JGDVLocations":
-        match _LocationsGlobal._global_locs:
+    def pop() -> None|"JGDVLocator":
+        match _LocatorGlobal._global_locs:
             case []:
                 return None
             case [*xs, x]:
-                _LocationsGlobal._global_locs = xs
+                _LocatorGlobal._global_locs = xs
                 return x
 
     def __get__(self, obj, objtype=None):
         """ use the descriptor protocol to make a pseudo static-variable
         https://docs.python.org/3/howto/descriptor.html
         """
-        return _LocationsGlobal.peek()
+        return _LocatorGlobal.peek()
 
-class _LocationUtil_m:
+class _LocatorUtil_m:
 
-    def update(self, extra:dict|ChainGuard|Location|JGDVLocations, strict=True) -> Self:
+    def update(self, extra:dict|ChainGuard|Location|JGDVLocator, strict=True) -> Self:
         """
           Update the registered locations with a dict, chainguard, or other dootlocations obj.
 
@@ -129,7 +119,7 @@ class _LocationUtil_m:
                 extra = {extra.name : extra}
             case ChainGuard():
                 return self.update(dict(extra), strict=strict)
-            case JGDVLocations():
+            case JGDVLocator():
                 return self.update(extra._data, strict=strict)
             case _:
                 raise TypeError("Tried to update locations with unknown type", extra)
@@ -190,7 +180,7 @@ class _LocationUtil_m:
         match path:
             case Location() if Location.gmark_e.earlycwd in path:
                 the_path = path.path
-                return self._normalize(the_path, root=_LocationsGlobal._startup_cwd)
+                return self._normalize(the_path, root=_LocatorGlobal._startup_cwd)
             case Location():
                 the_path = path.path
                 return self._normalize(the_path, root=self.root)
@@ -202,9 +192,12 @@ class _LocationUtil_m:
     def norm(self, path) -> pl.Path:
         return self.normalize(path)
 
-class _LocationAccess_m:
+class _LocatorAccess_m:
 
     def get(self, key, fallback=Any) -> pl.Path:
+        """
+
+        """
         try:
             return self.expand(key, norm=True, strict=True)
         except KeyError as err:
@@ -214,12 +207,11 @@ class _LocationAccess_m:
                 case x:
                     return x
 
-
     def access(self, key:Maybe[DKey|str], fallback:Maybe[False|str|DKey]=Any) -> Maybe[Location]:
         """
           convert a *simple* str name of *one* toml location to a path.
           does *not* recursively expand returned paths
-          More complex expansion is handled in DKey, or using item access of Locations
+          More complex expansion is handled in DKey, or using item access of Locator
         """
         match key:
             case None:
@@ -234,7 +226,11 @@ class _LocationAccess_m:
                 return None
             case _:
                 return None
+
     def expand(self, key:Maybe[Location|pl.Path|DKey|str], strict=True, norm=True) -> Maybe[pl.Path]:
+        """
+
+        """
         coerced = self._coerce_key(key)
         try:
             expanded = self._expand_key(coerced, strict=strict)
@@ -251,8 +247,6 @@ class _LocationAccess_m:
             case x:
                 return pl.Path(x)
 
-
-
     def _coerce_key(self, key:Location|DKey|str|pl.Path) -> FmtStr:
         """ Initial coercion of a key to a format string,
         prior to expanding and converting to a path """
@@ -263,8 +257,10 @@ class _LocationAccess_m:
             #     return self._data[key][1:]
             case DKey():
                 current = f"{key:w}"
-            case str():
+            case str() if "{" in key:
                 current = key
+            case str():
+                current = f"{{{key}}}"
             case pl.Path():
                 current = str(key)
             case _:
@@ -275,8 +271,6 @@ class _LocationAccess_m:
     def _expand_key(self, key:FmtStr, strict=True) -> Maybe[str]:
         """ Givena fmtstr, expand any matching keys until theres nothing more to expand """
         assert(isinstance(key, str))
-        from collections import defaultdict, deque
-        current            = None
         memo               = {}
         sources            = defaultdict(list)
         incomplete : deque = deque([(None, key)])
@@ -342,9 +336,7 @@ class _LocationAccess_m:
             logging.debug("Complete: %s", complete)
             return "".join(complete)
 
-
-
-class JGDVLocations(_LocationAccess_m, _LocationUtil_m, PathManip_m):
+class JGDVLocator(_LocatorAccess_m, _LocatorUtil_m, PathManip_m):
     """
       A managing context for storing and converting Locations to Paths.
       key=value pairs in [[locations]] toml blocks are integrated into it.
@@ -353,7 +345,7 @@ class JGDVLocations(_LocationAccess_m, _LocationUtil_m, PathManip_m):
       (or the cwd at program start if the Location has the earlycwd flag)
 
       Can be used as a context manager to expand from a temp different root.
-      In which case the current global loc store is at JGDVLocations.Current
+      In which case the current global loc store is at JGDVLocator.Current
 
       Locations are of the form:
       key = "meta/vars::path/to/dir/or/file.ext"
@@ -366,16 +358,16 @@ class JGDVLocations(_LocationAccess_m, _LocationUtil_m, PathManip_m):
       will expand 'temp' (if it is a registered location)
       """
     gmark_e = LocationMeta_e
-    Current : ClassVar[_LocationsGlobal] = _LocationsGlobal()
+    Current : ClassVar[_LocatorGlobal] = _LocatorGlobal()
 
     def __init__(self, root:pl.Path):
         self._root    : pl.Path()                 = root.expanduser().resolve()
         self._data    : dict[str, Location]       = dict()
-        self._loc_ctx : Maybe[JGDVLocations]      = None
+        self._loc_ctx : Maybe[JGDVLocator]      = None
         match self.Current:
             case None:
-                _LocationsGlobal.push(self)
-            case JGDVLocations():
+                _LocatorGlobal.push(self)
+            case JGDVLocator():
                 pass
 
     @property
@@ -387,14 +379,14 @@ class JGDVLocations(_LocationAccess_m, _LocationUtil_m, PathManip_m):
 
     def __repr__(self):
         keys = ", ".join(iter(self))
-        return f"<JGDVLocations ({_LocationsGlobal.stacklen()}) : {str(self.root)} : ({keys})>"
+        return f"<JGDVLocator ({_LocatorGlobal.stacklen()}) : {str(self.root)} : ({keys})>"
 
     def __getattr__(self, key:str) -> Location:
         """
           retrieve the raw named location
           eg: locs.temp
           """
-        if key.startswith("__") and key.endswith("__"):
+        if key.startswith("__") or key.endswith("__"):
             raise AttributeError("Location Access Fail", key)
 
         try:
@@ -427,22 +419,22 @@ class JGDVLocations(_LocationAccess_m, _LocationUtil_m, PathManip_m):
         """ Iterate over the registered location names """
         return iter(self._data.keys())
 
-    def __call__(self, new_root=None) -> JGDVLocations:
+    def __call__(self, new_root=None) -> JGDVLocator:
         """ Create a copied locations object, with a different root """
-        new_obj = JGDVLocations(new_root or self._root)
+        new_obj = JGDVLocator(new_root or self._root)
         return new_obj.update(self)
 
     def __enter__(self) -> Any:
         """ replaces the global doot.locs with this locations obj,
         and changes the system root to wherever this locations obj uses as root
         """
-        _LocationsGlobal.push(self)
+        _LocatorGlobal.push(self)
         os.chdir(self._root)
         return self.Current
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
         """ returns the global state to its original, """
-        _LocationsGlobal.pop()
+        _LocatorGlobal.pop()
         os.chdir(self.Current._root)
         return False
 

@@ -17,12 +17,6 @@ import re
 import time
 import types
 import weakref
-from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload, NamedTuple, Self,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -37,16 +31,34 @@ from jgdv._abstract.protocols import Buildable_p, Location_p, ProtocolModelMeta
 from jgdv.structs.dkey import DKey, DKeyFormatter
 from jgdv.mixins.path_manip import PathManip_m
 from jgdv.mixins.enum_builders import FlagsBuilder_m
-
+from jgdv.structs.strang import Strang
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+TimeDelta = datetime.timedelta
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   from typing import Final
+   from typing import ClassVar, Any, LiteralString
+   from typing import Never, Self, Literal
+   from typing import TypeGuard
+   from collections.abc import Iterable, Iterator, Callable, Generator
+   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-from .strang import Strang
-
-TimeDelta = datetime.timedelta
 
 class WildCard_e(enum.StrEnum):
     """ Ways a path can have a wildcard. """
@@ -81,7 +93,7 @@ class Location(Strang, PathManip_m):
     """ A Location is an abstraction higher than a path.
       ie: a path, with metadata.
 
-    Doesn't expand on its own, requires a JGDVLocations store
+    Doesn't expand on its own, requires a JGDVLocator store
 
     A Strang subclass, of {meta}+::a/path/location
     eg: file/clean::.temp/docs/blah.rst
@@ -126,8 +138,6 @@ class Location(Strang, PathManip_m):
         max_body         = len(self._body)
         self._body_meta  = [None for x in range(max_body)]
         self._group_meta = set()
-
-        parent_bound     = max(len(self._body) - 0, 0)
 
         # Group metadata
         for elem in self.group:
@@ -206,7 +216,7 @@ class Location(Strang, PathManip_m):
             return self < other
 
         # Compare path
-        for x,y in zip(self.body_parent, other.body_parent):
+        for x,y in zip(self.body_parent, other.body_parent, strict=True):
             match x, y:
                 case _, _ if x == y:
                     pass
@@ -219,7 +229,7 @@ class Location(Strang, PathManip_m):
                 case str(), str():
                     return False
 
-        if not self.gmark_e.file in self._group_meta:
+        if self.gmark_e.file not in self._group_meta:
             return True
 
         logging.debug("%s and %s match on path", self, other)
@@ -279,7 +289,6 @@ class Location(Strang, PathManip_m):
 
         return elem
 
-    @ftz.cache
     def ext(self, *, last=False) -> Maybe[str|tuple[Location.bmark_e, str]]:
         """ return the ext, or a tuple of how it is a wildcard.
         returns nothing if theres no extension,

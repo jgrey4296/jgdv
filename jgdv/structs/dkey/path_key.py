@@ -71,5 +71,6 @@ class PathDKey(SingleDKey, mark=DKeyMark_e.PATH, conv="p"):
         self._expansion_type  = pl.Path
         self._typecheck       = pl.Path
 
+
     def exp_final_hook(self, val, opts):
         return pl.Path(val).resolve()
