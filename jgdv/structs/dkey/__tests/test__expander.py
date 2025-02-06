@@ -135,8 +135,7 @@ class TestExpansion:
                 assert(False), x
 
     def test_check_type(self):
-        obj = DKey("test", implicit=True, check=pl.Path)
-        assert(obj._expansion_type is identity_fn)
+        obj = DKey("test", implicit=True, ctor=pl.Path)
         state = {"test": pl.Path("blah")}
         match obj.local_expand(state):
             case ExpInst(val=pl.Path()):

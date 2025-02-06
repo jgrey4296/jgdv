@@ -220,6 +220,12 @@ class DKeyLocalExpander_m:
                     case str() as x if lift:
                         logging.debug("Lifting Result to Key: %s", x)
                         return ExpInst(DKey(x, implicit=True, fallback=fallback))
+                    case pl.Path() as x:
+                        match DKey(str(x), fallback=fallback):
+                            case DKey(nonkey=True) as y:
+                                return ExpInst(y, rec=0)
+                            case y:
+                                return ExpInst(y, rec=-1)
                     case str() as x:
                         match DKey(x, fallback=fallback):
                             case DKey(nonkey=True) as y:
@@ -227,7 +233,7 @@ class DKeyLocalExpander_m:
                             case y:
                                 return ExpInst(y, rec=-1)
                     case x:
-                        return ExpInst(x, literal=True)
+                        return ExpInst(x)
 
         for target in targets:
             match lookup_target(target):
