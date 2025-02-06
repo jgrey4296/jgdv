@@ -20,61 +20,46 @@ import time
 import types as types_
 import typing
 import weakref
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-# ##-- 3rd party imports
-import decorator
-import more_itertools as mitz
-from pydantic import BaseModel, Field, field_validator, model_validator
-
-# ##-- end 3rd party imports
-
 # ##-- 1st party imports
-from jgdv import Decorator, FmtStr, Func, Ident, Maybe, Method, Rx
 from jgdv.decorators import (
     DataDecorator,
     DecoratorAccessor_m,
     MetaDecorator,
     _TargetType_e,
 )
-from jgdv.structs.dkey import errors as dkey_errs
-from jgdv.structs.dkey.meta import DKey
+from jgdv.structs.dkey import _errors as dkey_errs
+from jgdv.structs.dkey._meta import DKey
 from jgdv.structs.strang import CodeReference
+from .other_keys import ARGS_K, KWARGS_K
 
 # ##-- end 1st party imports
 
 # ##-- types
-type Signature = inspect.Signature
 # isort: off
-if typing.TYPE_CHECKING:
-   from jgdv import Maybe
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
+if TYPE_CHECKING:
+    from jgdv import Decorator, FmtStr, Func, Ident, Maybe, Method, Rx
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    type Signature = inspect.Signature
 # isort: on
 # ##-- end types
 
@@ -82,14 +67,6 @@ if typing.TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-KEY_PATTERN         : Final[FmtStr]               =  "{(.+?)}"
-MAX_KEY_EXPANSIONS  : Final[int]                  = 10
-ARGS_K              : Final[Ident]                = "args"
-KWARGS_K            : Final[Ident]                = "kwargs"
-PATTERN             : Final[Rx]                   = re.compile(KEY_PATTERN)
-FAIL_PATTERN        : Final[Rx]                   = re.compile("[^a-zA-Z_{}/1-9-]")
-EXPANSION_HINT      : Final[Ident]                = "_doot_expansion_hint"
-HELP_HINT           : Final[Ident]                = "_doot_help_hint"
 PARAM_IGNORES       : Final[list[str]]            = ["_", "_ex"]
 
 class DKeyMetaDecorator(MetaDecorator):

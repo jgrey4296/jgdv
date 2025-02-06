@@ -17,7 +17,7 @@ import warnings
 import pytest
 # ##-- end 3rd party imports
 
-from jgdv.structs.dkey.base import DKeyBase
+from jgdv.structs.dkey._parser import RawKey, DKeyParser
 
 # ##-- types
 # isort: off
@@ -51,39 +51,41 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-class TestSuite:
-
-    @pytest.fixture(scope="function")
-    def setup(self):
-        pass
-
-    @pytest.fixture(scope="function")
-    def cleanup(self):
-        pass
+class TestRawKey:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    def test_must_force(self):
-        with pytest.raises(RuntimeError):
-            DKeyBase("blah", force=False)
-
     def test_basic(self):
-        obj = DKeyBase("blah", force=True)
-
-    def test_eq(self):
-        obj1 = DKeyBase("blah", force=True)
-        obj2 = DKeyBase("blah", force=True)
-        assert(obj1 == obj2)
-
-    def test_eq_str(self):
-        obj1 = DKeyBase("blah", force=True)
-        obj2 = "blah"
-        assert(obj1 == obj2)
-
-    def test_eq_not_implemented(self):
-        obj1 = DKeyBase("blah", force=True)
-        obj2 = 21
-        assert(not (obj1 == obj2))
+        match RawKey(prefix="", key="blah"):
+            case RawKey():
+                assert(True)
+            case x:
+                assert(False), x
 
 
+    def test_joined(self):
+        match RawKey(prefix="", key="blah", conv="p"):
+            case RawKey() as x if x.joined() == "blah!p":
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    @pytest.mark.parametrize("name", ["blah", "bloo", "blee", "aweg"])
+    def test_wrapped(self, name):
+        match RawKey(prefix="", key=name):
+            case RawKey() as x if x.wrapped() == f"{{{name}}}":
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    @pytest.mark.parametrize("name", ["blah", "bloo_", "blee_", "aweg"])
+    def test_indirect(self, name):
+        ind = "".join([name.removesuffix("_"), "_"])
+        match RawKey(prefix="", key=name):
+            case RawKey() as x if x.indirect() == ind:
+                assert(True)
+            case x:
+                assert(False), x

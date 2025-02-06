@@ -18,77 +18,60 @@ import string
 import time
 import types
 import weakref
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match, Self,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-import decorator
-from pydantic import BaseModel, Field, field_validator, model_validator
 import sh
 
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from jgdv import Maybe, Ident, FmtStr, Rx, RxStr, Func
-from jgdv.structs.dkey.meta import DKey, DKeyMark_e
+from jgdv.structs.dkey._meta import DKey
+from jgdv.structs.dkey._parser import RawKey
 from jgdv._abstract.protocols import Key_p, SpecStruct_p
 from jgdv.util.chain_get import ChainedKeyGetter
 from jgdv.structs.chainguard import ChainGuard
+from jgdv.structs.dkey._expander import _DKeyFormatter_Expansion_m
 
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+from jgdv import Maybe
+
+if TYPE_CHECKING:
+    from jgdv import Ident, FmtStr, Rx, RxStr, Func
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__file__)
 ##-- end logging
 
-KEY_PATTERN         : Final[RxStr]                 = "{(.+?)}"
 MAX_KEY_EXPANSIONS  : Final[int]                   = 200
 
 FMT_PATTERN         : Final[Rx]                    = re.compile("[wdi]+")
-PATTERN             : Final[Rx]                    = re.compile(KEY_PATTERN)
-FAIL_PATTERN        : Final[Rx]                    = re.compile("[^a-zA-Z_{}/0-9-]")
-EXPANSION_HINT      : Final[Ident]                 = "_doot_expansion_hint"
-HELP_HINT           : Final[Ident]                 = "_doot_help_hint"
 MAX_DEPTH           : Final[int]                   = 10
 
-DEFAULT_COUNT       : Final[int]                   = 1
-RECURSE_GUARD_COUNT : Final[int]                   = 2
-PAUSE_COUNT         : Final[int]                   = 0
-
 chained_get         : Func                         = ChainedKeyGetter.chained_get
-
-class _DKeyParams(BaseModel):
-    """ Utility class for parsed string parameters """
-
-    prefix : Maybe[str] = ""
-    key    : Maybe[str] = ""
-    format : Maybe[str] = ""
-    conv   : Maybe[str] = ""
-
-    def __getitem__(self, i):
-        match i:
-            case 0:
-                return self.prefix
-            case 1:
-                return self.key
-            case 2:
-                return self.format
-            case 3:
-                return self.conv
-            case _:
-                raise ValueError("Tried to access a bad element of DKeyParams", i)
-
-    def __bool__(self):
-        return bool(self.key)
-
-    def wrapped(self) -> str:
-        return "{%s}" % self.key
 
 class _DKeyFormatterEntry_m:
     """ Mixin to make DKeyFormatter a singleton with static access
@@ -106,7 +89,7 @@ class _DKeyFormatterEntry_m:
     _original_key : str|Key_p           = None
 
     @classmethod
-    def Parse(cls, key:Key_p|pl.Path) -> tuple(bool, list[_DKeyParams]):
+    def Parse(cls, key:Key_p|pl.Path) -> tuple(bool, list[RawKey]):
         """ Use the python c formatter parser to extract keys from a string
           of form (prefix, key, format, conversion)
 
@@ -125,7 +108,7 @@ class _DKeyFormatterEntry_m:
             match key:
                 case str() | Key_p():
                     # formatter.parse returns tuples of (literal, key, format, conversion)
-                    result = list(_DKeyParams(prefix=x[0],
+                    result = list(RawKey(prefix=x[0],
                                               key=x[1] or "",
                                               format=x[2] or "",
                                               conv=x[3] or "")
@@ -210,117 +193,6 @@ class _DKeyFormatterEntry_m:
         self.rec_remaining = 0
         self._intent       = None
         return
-
-class _DKeyFormatter_Expansion_m:
-    """
-    Expanding a dkey starts in _expand,
-    """
-
-    def _expand(self, key:Key_p, *, fallback=None, count=DEFAULT_COUNT) -> Maybe[Any]:
-        """
-          Expand the key, returning fallback if it fails,
-          counting each loop as `count` attempts
-
-        """
-        if not isinstance(key, Key_p):
-            raise TypeError("Key needs to be a jgdv.protocols.Key_p")
-        current : DKey = key
-        last    : set[str] = set()
-
-        # TODO refactor this to do the same as locations._expand_key
-        while 0 < self.rec_remaining and str(current) not in last:
-            logging.debug("--- Loop (%s:%s) [%s] : %s", self._depth, MAX_KEY_EXPANSIONS - self.rec_remaining, key, repr(current))
-            self.rec_remaining -= count
-            last.add(str(current))
-            match current:
-                case sh.Command():
-                    break
-                case Key_p() if current._mark is DKey.mark.NULL:
-                     continue
-                case Key_p() if current.multi:
-                    current = self._multi_expand(current)
-                case Key_p():
-                    redirected = self._try_redirection(current)[0]
-                    current    = self._single_expand(redirected) or current
-                case _:
-                    break
-
-        match current:
-            case None:
-                current = fallback or key._fallback
-            case x if str(x) == str(key):
-                current = fallback or key._fallback
-            case _:
-                pass
-
-        if current is not None:
-            logging.debug("Running Expansion Hook: (%s) -> (%s)", key, current)
-            exp_val = key._expansion_type(current)
-            key._check_expansion(exp_val)
-            current = key._expansion_hook(exp_val)
-
-        logging.debug("Expanded (%s) -> (%s)", key, current)
-        return current
-
-    def _multi_expand(self, key:Key_p) -> str:
-        """
-        expand a multi key,
-        by formatting the anon key version using a sequence of expanded subkeys,
-        this allows for duplicate keys to be used differenly in a single multikey
-        """
-        logging.debug("multi(%s)", key)
-        logging.debug("----> %s", key.keys())
-        expanded_keys   = [ str(self._expand(x, fallback=f"{x:w}", count=PAUSE_COUNT)) for x in key.keys() ]
-        expanded        = self.format(key._anon, *expanded_keys)
-        logging.debug("<---- %s", key.keys())
-        return DKey(expanded)
-
-    def _try_redirection(self, key:Key_p) -> list[Key_p]:
-        """ Try to redirect a key if necessary,
-          if theres no redirection, return the key as a direct key
-          """
-        key_str = f"{key:i}"
-        match chained_get(key_str, *self.sources, *[x for x in key.extra_sources() if x not in self.sources]):
-            case list() as ks:
-                logging.debug("(%s -> %s -> %s)", key, key_str, ks)
-                return [DKey(x, implicit=True) for x in ks]
-            case Key_p() as k:
-                logging.debug("(%s -> %s -> %s)", key, key_str, k)
-                return [k]
-            case str() as k:
-                logging.debug("(%s -> %s -> %s)", key, key_str, k)
-                return [DKey(k, implicit=True)]
-            case None if key._mark is DKey.mark.REDIRECT and isinstance(key._fallback, (str,DKey)):
-                logging.debug("%s -> %s -> %s (fallback)", key, key_str, key._fallback)
-                return [DKey(key._fallback, implicit=True)]
-            case None:
-                logging.debug("(%s -> %s -> Ø)", key, key_str)
-                return [key]
-            case _:
-                raise TypeError("Reached an unknown response path for redirection", key)
-
-    def _single_expand(self, key:Key_p, fallback=None) -> Maybe[Any]:
-        """
-          Expand a single key up to {rec_remaining} times
-        """
-        assert(isinstance(key, Key_p))
-        logging.debug("solo(%s)", key)
-        match chained_get(key, *self.sources, *[x for x in key.extra_sources() if x not in self.sources], fallback=fallback):
-            case None:
-                return None
-            case Key_p() as x:
-                return x
-            case x if self.rec_remaining == 0:
-                return x
-            case str() as x if key._mark is DKey.mark.PATH:
-                return DKey(x, mark=DKey.mark.PATH)
-            case str() as x if x == key:
-                # Got the key back, wrap it and don't expand it any more
-                return "{%s}" % x
-            case str() | pl.Path() as x:
-                return DKey(x)
-            case x:
-                return x
 
 class DKeyFormatter(string.Formatter, _DKeyFormatter_Expansion_m, _DKeyFormatterEntry_m):
     """
