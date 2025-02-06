@@ -28,7 +28,7 @@ from jgdv.mixins.annotate import SubAnnotate_m
 from jgdv.structs.dkey._meta import DKey, DKeyMark_e, DKeyMeta
 from jgdv.structs.dkey._format import DKeyFormatting_m
 
-from jgdv.structs.dkey._expander import DKeyLocalExpander_m, DKeyCentralExpander_m
+from jgdv.structs.dkey._expander import DKeyLocalExpander_m, ExpInst
 
 # ##-- end 1st party imports
 
@@ -85,9 +85,6 @@ class DKeyBase(DKeyFormatting_m, DKeyLocalExpander_m, Key_p, SubAnnotate_m, str)
     _help               : Maybe[str]                    = None
 
     __hash__                                            = str.__hash__
-
-    expand                                              = DKeyLocalExpander_m.local_expand
-    redirect                                            = DKeyLocalExpander_m.local_redirect
 
     def __init_subclass__(cls, *, mark:M_[KeyMark]=None, conv:M_[str]=None, multi:bool=False):
         """ Registered the subclass as a DKey and sets the Mark enum this class associates with """
@@ -166,3 +163,14 @@ class DKeyBase(DKeyFormatting_m, DKeyLocalExpander_m, Key_p, SubAnnotate_m, str)
         (to avoid some recursive import issues)
         """
         return False
+
+
+    def expand(self, *args, **kwargs) -> Maybe:
+        match self.local_expand(*args, **kwargs):
+            case ExpInst(val=val, literal=True):
+                return val
+            case _:
+                return None
+
+    def redirect(self, *args, **kwargs) -> list[DKey]:
+        return self.local_redirect(*args, **kwargs)

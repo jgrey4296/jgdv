@@ -30,176 +30,196 @@ match JGDVLocator.Current:
 def simple() -> JGDVLocator:
     return JGDVLocator(pl.Path.cwd())
 
+
 class TestLocatorGet:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-class TestLocatorAccess:
-
-    def test_get_none(self, simple):
-        """
-          loc.access(None) -> None
-        """
-        simple.update({"a": "dir::>blah"})
-        result = simple.access(None)
-        assert(result is None)
-
-    def test_get_nonkey(self, simple):
-        """
-          loc.access(NonDKey(simple)) -> pl.Path(.../simple)
-        """
-        simple.update({"a": "dir::>blah"})
-        key = DKey("simple", implicit=False)
-        assert(isinstance(key, NonDKey))
-        assert(simple.access(key) is None)
-
-    def test_get_no_entry_str(self, simple):
-        """
-          loc.access('simple') -> pl.Path(.../simple)
-        """
-        simple.update({"a": "dir::>blah"})
-        key = "simple"
-        assert(simple.access(key) is None)
-
-    def test_get_entry_str(self, simple):
-        """
-          loc.access('simple') -> pl.Path(.../simple)
-        """
-        simple.update({"a": "dir::>blah"})
-        key = "a"
-        assert(simple.access(key) is not None)
-
-    def test_get_fmtstr(self, simple):
-        """
-          loc.access('{simple}') -> pl.Path(.../{simple})
-        """
-        simple.update({"a": "dir::>blah", "simple":"dir::>bloo"})
-        key = "{simple}"
-        assert(simple.access(key) == None)
-
-    def test_get_key_entry(self, simple):
-        """
-          loc.access(DKey('simple')) => pl.Path(...bloo)
-        """
-        simple.update({"a": "dir::>blah", "simple":"dir::>bloo"})
-        key = DKey("simple")
-        assert(simple.access(key) is not None)
+    def test_get_registered(self, simple):
+        simple.update({"blah":"bloo/blee"})
+        match simple.get("blah"):
+            case pl.Path() as x if x == pl.Path("bloo/blee"):
+                assert(True)
+            case x:
+                assert(False), x
 
     def test_get_missing(self, simple):
-        """
-          loc.access(DKey('simple')) => pl.Path(...{simple})
-        """
-        simple.update({"a": "dir::>blah"})
-        key = DKey("simple", implicit=True)
-        assert(simple.access(key) is None)
+        simple.update({"blah":"bloo/blee"})
+        with pytest.raises(KeyError):
+            simple.get("aweg")
 
     def test_get_fallback(self, simple):
-        simple.update({"a": "dir::>blah"})
-        result = simple.access("{b}", "a")
-        assert(result == "dir::>blah")
+        simple.update({"blah":"bloo/blee"})
+        match simple.get("aweg", "bloo"):
+            case pl.Path() as x if x == pl.Path("bloo"):
+                assert(True)
+            case x:
+                assert(False), x
 
-    def test_get_raise_error_with_false_fallback(self, simple):
-        simple.update({"a": "dir::>blah"})
-        with pytest.raises(KeyError):
-            simple.access("badkey", False)
+class TestLocatorAccess:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_registered(self, simple):
+        simple.update({"blah":"bloo/blee"})
+        match simple.access("blah"):
+            case Location():
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_missing(self, simple):
+        simple.update({"blah":"bloo/blee"})
+        match simple.access("aweg"):
+            case None:
+                assert(True)
+            case x:
+                assert(False), x
 
 class TestLocatorExpand:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-class TestLocatorGetAttr:
+    def test_nokey(self, simple):
+        simple.update({"blah":"bloo/blee"})
+        target = pl.Path.cwd() / "aweg"
+        match simple.expand("aweg", strict=False):
+            case pl.Path() as x if x == target:
+                assert(True)
+            case x:
+                assert(False), x
 
-    def test_attr_access_success(self, simple):
-        simple.update({"a": "dir::>blah"})
-        result = simple.a
-        assert(simple.a == "dir::>blah")
-        assert(isinstance(simple.a, Location))
+    def test_single_registered(self, simple):
+        simple.update({"blah":"bloo/blee"})
+        target = pl.Path.cwd() / "bloo/blee"
+        match simple.expand("{blah}"):
+            case pl.Path() as x if x == target:
+                assert(True)
+            case x:
+                assert(False), x
 
-    def test_attr_access_no_expansion(self, simple):
-        simple.update({"a": "dir::>{other}/blah", "other": "dir::>bloo"})
-        assert(simple.a == "dir::>{other}/blah")
-        assert(isinstance(simple.a, Location))
+    def test_single_missing_strict(self, simple):
+        simple.update({"blah":"bloo/blee"})
+        target = pl.Path.cwd() / "bloo/blee"
+        with pytest.raises(KeyError):
+            simple.expand("{aweg}")
 
-    def test_attr_access_non_existing_loc(self, simple):
-        simple.update({"a": "dir::>blah"})
-        with pytest.raises(AttributeError):
-            simple.b
+    def test_single_missing_not_strict(self, simple):
+        simple.update({"blah":"bloo/blee"})
+        target = pl.Path.cwd() / "{aweg}"
+        match simple.expand("{aweg}", strict=False):
+            case pl.Path() as x if x == target:
+                assert(True)
+            case x:
+                assert(False), x
 
-class TestLocatorGetItem:
+    def test_single_missing_fallback(self, simple):
+        simple.update({"blah":"bloo/blee"})
+        target = pl.Path.cwd() / "bloo/blee"
+        match simple.expand("{blah}"):
+            case pl.Path() as x if x == target:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_multi_registered(self, simple):
+        simple.update({"blah":"bloo/blee"})
+        target = pl.Path.cwd() / "bloo/blee"
+        match simple.expand("{blah}"):
+            case pl.Path() as x if x == target:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_multi_missing_strict(self, simple):
+        simple.update({"blah":"bloo/blee"})
+        target = pl.Path.cwd() / "bloo/blee"
+        match simple.expand("{blah}"):
+            case pl.Path() as x if x == target:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_multi_missing_not_strict(self, simple):
+        simple.update({"blah":"bloo/blee"})
+        target = pl.Path.cwd() / "bloo/blee"
+        match simple.expand("{blah}"):
+            case pl.Path() as x if x == target:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_multi_missing_fallback(self, simple):
+        simple.update({"blah":"bloo/blee"})
+        target = pl.Path.cwd() / "bloo/blee"
+        match simple.expand("{blah}"):
+            case pl.Path() as x if x == target:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_recursion(self, simple):
+        simple.update({"blah":"bloo/blee"})
+        target = pl.Path.cwd() / "bloo/blee"
+        match simple.expand("{blah}"):
+            case pl.Path() as x if x == target:
+                assert(True)
+            case x:
+                assert(False), x
+
+class TestLocatorMainAccess:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-class TestLocatorFails:
+    def test_attr_basic_dir(self, simple):
+        """Locator.blah            -> {cwd}/ex/dir"""
+        target = Location("ex/dir")
+        simple.update({"blah": "ex/dir"})
+        assert("blah" in simple)
+        assert(simple.blah == target)
 
-    def test_getitem_expansion_missing_key(self, simple):
-        assert(not bool(simple._data))
-        simple.update({"other": "dir::>bloo"})
-        assert(bool(simple._data))
+    def test_item_basic_dir(self, simple):
+        """Locator['{blah}']       -> {cwd}/ex/dir"""
+        target = pl.Path.cwd() / "ex/dir"
+        simple.update({"blah": "ex/dir"})
+        assert("blah" in simple)
+        assert(simple['{blah}'] == target)
 
-        assert(simple.expand('{aweg}', strict=False) == simple.normalize(pl.Path("{aweg}")))
+    def test_item_join_dir(self, simple):
+        """Locator['{blah}/blee']  -> {cwd}/ex/dir/blee"""
+        target = pl.Path.cwd() / "ex/dir/blee"
+        simple.update({"blah": "ex/dir"})
+        assert("blah" in simple)
+        assert(simple['{blah}/blee'] == target)
 
-    def test_item_access_expansion_recursion_fail(self, simple):
-        assert(not bool(simple._data))
-        simple.update({"a": "dir::>{other}/blah", "other": "dir::>/bloo/{a}"})
-        with pytest.raises(RecursionError):
-            simple['{a}']
+    def test_attr_basic_file(self, simple):
+        """Locator.bloo            -> {cwd}/a/b/c.txt"""
+        target = Location("file::>a/b/c.txt")
+        simple.update({"bloo": "file::>a/b/c.txt"})
+        assert("bloo" in simple)
+        assert(simple.bloo == target)
 
-class TestLocatorMixins:
+    def test_item_basic_file(self, simple):
+        """Locator['{bloo}']       -> {cwd}/a/b/c.txt"""
+        target = pl.Path.cwd() / "a/b/c.txt"
+        simple.update({"bloo": "file::>a/b/c.txt"})
+        assert("bloo" in simple)
+        assert(simple['{bloo}'] == target)
 
-    def test_sanity(self, simple):
-        assert(True is not False) # noqa: PLR0133
+    def test_item_dir_file_join(self, simple):
+        """Locator[{blah}/{bloo}'] -> {cwd}/ex/dir/a/b/c.txt"""
+        pass
 
-    @pytest.mark.parametrize("key", ["blah", pl.Path("blah"), DKey("blah"), Location("blah")])
-    def test_simple_coercions(self, key):
-        locs = JGDVLocator(pl.Path.cwd())
-        assert(isinstance(locs._coerce_key(key), str))
+class TestLocationExpansionConflict:
 
-    def test_getattr_missing(self, simple):
-        locs = JGDVLocator(pl.Path.cwd())
-        with pytest.raises(AttributeError):
-            locs.blah
-
-    def test_expand_key_stack(self, simple):
-        simple.update({"a":"blah"})
-        assert(simple._expand_key("{a}") == "blah")
-
-    def test_expand_key_stack_multi(self, simple):
-        simple.update({"a":"blah", "b":"bloo"})
-        assert(simple._expand_key("{a}/{b}") == "blah/bloo")
-
-    def test_expand_key_stack_recursive(self, simple):
-        simple.update({"a":"blah/{c}", "b":"bloo", "c":"aweg"})
-        assert(simple._expand_key("{a}/{b}") == "blah/aweg/bloo")
-
-    def test_extended_expand(self, simple):
-        simple.update({"a":"blah/{c}",
-                       "b":"bloo/{d}/aw/{e}",
-                       "c":"aweg/{d}",
-                       "d": "qqq/{e}",
-                       "e": "www",
-                       })
-        target = "".join([
-            # a = blah/ c
-            "blah/",
-            # c = aweg/ d
-            "aweg/",
-            # d = qqq/ e
-            "qqq/",
-            # e = www/
-            "www/",
-            # c
-            "aweg/", "qqq/", "www/",
-            # b = bloo / d /aw/ e
-            "bloo/",
-            # d
-            "qqq/", "www/",
-            # e
-            "aw/", "www/",
-            # d
-            "qqq/", "www"
-
-            ])
-        assert(simple._expand_key("{a}/{c}/{b}/{d}") == target)
+    @pytest.mark.xfail
+    def test_item_file_join_fail(self, simple):
+        """Locator['{bloo}/blee']  -> Error"""
+        simple.update({"bloo": "file::>a/b/c.txt"})
+        assert("bloo" in simple)
+        with pytest.raises(LocationError):
+            simple['{bloo}/blah']

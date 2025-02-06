@@ -207,7 +207,7 @@ class DKey(SubAnnotate_m, metaclass=DKeyMeta):
             raw_keys = DKeyMeta.extract_raw_keys(data, implicit=kwargs.get("implicit", False))
 
         match raw_keys:
-            case [x] if not bool(x) and bool(x.prefix):
+            case [x] if not bool(x) and bool(x.prefix) and not multi_key:
                 # No key found
                 mark = DKeyMark_e.NULL
             case [x] if not bool(x.prefix) and x.is_indirect():

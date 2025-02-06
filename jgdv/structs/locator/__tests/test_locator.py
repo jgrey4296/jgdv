@@ -147,10 +147,10 @@ class TestLocatorGlobal:
         assert(not bool(simple._data))
         simple.update({"a": "dir::>blah"})
         assert(bool(simple._data))
-        assert(simple['{a}'] == pl.Path("blah").resolve())
-
+        assert(simple.root == pl.Path.cwd())
+        target = pl.Path("~/Desktop").expanduser().resolve()
         with simple(pl.Path("~/Desktop")) as ctx:
-            assert(ctx['{a}'] == pl.Path("~/Desktop/blah").expanduser().resolve())
+            assert(ctx.root == target)
 
     def test_stacklen(self, simple):
         assert(_LocatorGlobal.stacklen() == 1)

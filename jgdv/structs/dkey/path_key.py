@@ -29,6 +29,7 @@ from jgdv.structs.strang import CodeReference
 from jgdv.structs.dkey._base import DKeyBase
 from jgdv.structs.dkey._core import SingleDKey, MultiDKey, NonDKey
 from jgdv.structs.dkey._meta import DKey, DKeyMark_e
+from ._expander import ExpInst
 
 # ##-- end 1st party imports
 
@@ -72,5 +73,5 @@ class PathDKey(SingleDKey, mark=DKeyMark_e.PATH, conv="p"):
         self._typecheck       = pl.Path
 
 
-    def exp_final_hook(self, val, opts):
-        return pl.Path(val).resolve()
+    def exp_final_hook(self, val:ExpInst, opts) -> Maybe[ExpInst]:
+        return ExpInst(val=pl.Path(val.val).resolve())

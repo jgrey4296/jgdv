@@ -1,5 +1,27 @@
 #!/usr/bin/env python3
 """
+Central store of Locations,
+which expands paths and can hook into the dkey system
+
+For a registered location ("blah": "ex/dir", "bloo": "file:>a/b/c.txt"):
+Locator.blah            -> {cwd}/ex/dir
+Locator['{blah}']       -> {cwd}/ex/dir
+Locator['{blah}/blee']  -> {cwd}/ex/dir/blee
+
+Locator.bloo            -> {cwd}/a/b/c.txt
+Locator['{bloo}']       -> {cwd}/a/b/c.txt
+Locator['{bloo}/blee']  -> Error
+
+Locator[{blah}/{bloo}'] -> {cwd}/ex/dir/a/b/c.txt
+
+Locator has 3 main access methods:
+Locator.get    : like dict.get
+Locator.access : Access the Location object
+Locator.expand : Expand the location(s) into a path
+
+Shorthands:
+Locator.KEY -    > Locator.access
+Locator["{KEY}"] > Locator.expand
 
 """
 # Imports:
@@ -27,7 +49,9 @@ from weakref import ref
 # ##-- 1st party imports
 from jgdv.mixins.path_manip import PathManip_m
 from jgdv.structs.chainguard import ChainGuard
-from jgdv.structs.dkey import DKey, DKeyFormatter, MultiDKey, NonDKey, SingleDKey
+from jgdv.structs.dkey import DKey, MultiDKey, NonDKey, SingleDKey
+from jgdv.structs.dkey._parser import DKeyParser
+from jgdv.structs.dkey._expander import ExpInst
 
 from .location import Location, LocationMeta_e
 from .errors import DirAbsent, LocationError, LocationExpansionError
@@ -53,7 +77,7 @@ if TYPE_CHECKING:
    from typing import TypeGuard
    from collections.abc import Iterable, Iterator, Callable, Generator
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
-   type FmtStr = str
+   type FmtStr      = str
    type JGDVLocator = Any
 # isort: on
 # ##-- end types
@@ -64,6 +88,16 @@ logging = logmod.getLogger(__name__)
 # logging = logmod.root
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
+
+class SoftFailMultiDKey(MultiDKey, mark="soft.fail"):
+
+    def exp_pre_lookup_hook(self, sources, opts) -> list:
+        """ Expands subkeys, to be merged into the main key"""
+        targets = []
+        for key in self.keys():
+            targets.append([ExpInst(val=key, fallback=f"{key:w}")] )
+        else:
+            return targets
 
 class _LocatorGlobal:
     """ A program global stack of locations.
@@ -192,149 +226,93 @@ class _LocatorUtil_m:
     def norm(self, path) -> pl.Path:
         return self.normalize(path)
 
+    def pre_expand(self) -> None:
+        """
+        Called after updating the Locator,
+        it pre-expands any registered keys found in registered Locations
+        """
+        # TODO
+        pass
+
 class _LocatorAccess_m:
 
-    def get(self, key, fallback=Any) -> pl.Path:
+    def get(self, key, fallback:Maybe[pl.Path]=None) -> Maybe[pl.Path]:
         """
+        Behavinng like a dict.get,
+        uses Locator.access, but coerces to an unexpanded path
 
+        raises a KeyError when fallback is None
         """
-        try:
-            return self.expand(key, norm=True, strict=True)
-        except KeyError as err:
-            match fallback:
-                case x if x is Any:
-                    raise err
-                case x:
-                    return x
+        match fallback:
+            case pl.Path() | None:
+                pass
+            case str() as x:
+                fallback =  pl.Path(x)
+            case x:
+                raise TypeError("Fallback needs to be a path", x)
 
-    def access(self, key:Maybe[DKey|str], fallback:Maybe[False|str|DKey]=Any) -> Maybe[Location]:
-        """
-          convert a *simple* str name of *one* toml location to a path.
-          does *not* recursively expand returned paths
-          More complex expansion is handled in DKey, or using item access of Locator
-        """
-        match key:
+        match self.access(key):
+            case Location() as x:
+                return x.path
+            case None if fallback is None:
+                raise KeyError("Failed to Access", key)
+            case None if fallback:
+                return fallback
             case None:
                 return None
+
+    def access(self, key:DKey|str) -> Maybe[Location]:
+        """
+          Access the registered Location associated with 'key'
+        """
+        match key:
             case str() if key in self:
                 return self._data[key]
-            case _ if fallback is False:
-                raise KeyError("Key Not found", key)
-            case _ if isinstance(fallback, (str, DKey)):
-                return self.access(fallback) or fallback
-            case _ if fallback is None:
-                return None
             case _:
                 return None
 
-    def expand(self, key:Maybe[Location|pl.Path|DKey|str], strict=True, norm=True) -> Maybe[pl.Path]:
+    def expand(self, key:Location|pl.Path|DKey|str, strict=True, norm=True) -> Maybe[pl.Path]:
         """
-
+        Access the locations mentioned in 'key',
+        join them together, and normalize it
         """
-        coerced = self._coerce_key(key)
-        try:
-            expanded = self._expand_key(coerced, strict=strict)
-        except KeyError as err:
-            raise KeyError(err.args[0]) from None
-
-        match expanded:
+        coerced : DKey = self._coerce_key(key, strict=strict)
+        match coerced.expand(self):
             case None if strict:
-                raise KeyError("Location Not Found", key)
+                raise KeyError("Strict Expansion of Location failed", key)
             case None:
                 return None
-            case x if norm:
-                return self.normalize(pl.Path(x))
+            case pl.Path() as x if norm:
+                return self.normalize(x)
+            case pl.Path() as x:
+                return x
             case x:
-                return pl.Path(x)
+                raise TypeError("Unknown response when expanding Location", key, x)
 
-    def _coerce_key(self, key:Location|DKey|str|pl.Path) -> FmtStr:
-        """ Initial coercion of a key to a format string,
-        prior to expanding and converting to a path """
+    def _coerce_key(self, key:Location|DKey|str|pl.Path, *, strict=False) -> DKey:
+        """ Coerces a key to a MultiDKey for expansion using DKey's expansion mechanism,
+        using self as the source
+        """
         match key:
             case Location():
                 current = key[1:]
-            # case str() if key in self:
-            #     return self._data[key][1:]
             case DKey():
                 current = f"{key:w}"
-            case str() if "{" in key:
-                current = key
             case str():
-                current = f"{{{key}}}"
+                current = key
             case pl.Path():
                 current = str(key)
             case _:
                 raise TypeError("Can't perform initial coercion of key", key)
 
-        return current
+        match strict:
+            case False:
+                return DKey(current, ctor=pl.Path, mark="soft.fail")
+            case True:
+                return DKey(current, ctor=pl.Path, mark=DKey.mark.MULTI)
 
-    def _expand_key(self, key:FmtStr, strict=True) -> Maybe[str]:
-        """ Givena fmtstr, expand any matching keys until theres nothing more to expand """
-        assert(isinstance(key, str))
-        memo               = {}
-        sources            = defaultdict(list)
-        incomplete : deque = deque([(None, key)])
-        complete   : deque = deque()
 
-        def key_exp(key, source) -> list:
-            if bool(key.prefix):
-                yield (None, key.prefix)
 
-            if not bool(key.key):
-                return
-
-            match memo.get(key.key, None):
-                case None:
-                    pass
-                case [*xs]:
-                    yield from ((source, x) for x in xs)
-                    return
-
-            match self.access(key.key, fallback=None):
-                case None if strict:
-                    raise KeyError(key.key)
-                case None:
-                    yield (source, key.key)
-                case Location() as x if x[1:] in memo:
-                    yield from ((source, x) for x in memo[x[1:]])
-                case Location() as x:
-                    yield (source, x[1:])
-
-            return
-
-        # loop until theres no more changes
-        count = 0
-        while bool(incomplete):
-            source, key = incomplete.pop()
-            logging.debug("--(%s): [%s] -> '%s' -> [%s] (%s)",
-                          count,
-                          ", ".join(x[1] for x in incomplete),
-                          key,
-                          ",".join(complete),
-                          ", ".join(memo.keys()) )
-            count += 1
-
-            if source in sources[key] and key in sources[source]:
-                raise RecursionError("Recursion", key, source)
-            sources[key].append(source)
-
-            match DKeyFormatter.Parse(key):
-                case _, []:
-                    complete.appendleft(key)
-                case _, [x] if not bool(x.key) and bool(x.prefix):
-                    complete.appendleft(x.prefix)
-                case _, [x] if bool(x.key) and not bool(x.prefix) and x.key not in self:
-                    if strict:
-                        raise KeyError(x.key)
-                    complete.appendleft(format(DKey(key), "w"))
-                case _, [*xs]:
-                    expansion = [y for x in xs for y in key_exp(x, source=key)]
-                    logging.debug("Memo: %s : [%s] -> [%s]", key, "".join(memo.get(key, [])), "".join(x[1] for x in expansion))
-                    memo[key] = [x[1] for x in expansion]
-                    incomplete.extend(expansion)
-        else:
-            logging.debug("Complete: %s", complete)
-            return "".join(complete)
 
 class JGDVLocator(_LocatorAccess_m, _LocatorUtil_m, PathManip_m):
     """
@@ -390,7 +368,7 @@ class JGDVLocator(_LocatorAccess_m, _LocatorUtil_m, PathManip_m):
             raise AttributeError("Location Access Fail", key)
 
         try:
-            return self.access(key, fallback=False)
+            return self.access(key)
         except KeyError as err:
             raise AttributeError(err.args[0]) from err
 

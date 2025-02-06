@@ -26,7 +26,7 @@ from jgdv._abstract.protocols import Buildable_p, Key_p, SpecStruct_p
 from jgdv.structs.dkey._meta import DKey, DKeyMark_e, DKeyMeta
 from jgdv.structs.dkey._base import DKeyBase
 from ._parser import INDIRECT_SUFFIX
-
+from ._expander import ExpInst
 # ##-- end 1st party imports
 
 # ##-- types
@@ -111,7 +111,6 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
       Multi keys allow 1+ explicit subkeys.
 
     The have additional fields:
-    _has_text : whether the multikey has non-key based text pre/suffixes
     _subkeys  : parsed information about explicit subkeys
 
     """
@@ -125,8 +124,8 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
                 raise ValueError("Tried to build a multi key with no subkeys", data)
 
         # remove the names for the keys, to allow expanding positionally
-        self._anon       = "".join(y for x in self._subkeys for y in x.anon())
-        pass
+        self._anon       = "".join(x.anon() for x in self._subkeys)
+
 
     def __format__(self, spec:str) -> str:
         """
@@ -143,14 +142,6 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
                 if bool(key)
                 ]
 
-    def expand(self, *sources, **kwargs) -> Any:
-        logging.debug("MultiDKey Expand")
-        match self.keys():
-            case [x] if not self._has_text:
-                return self._expansion_hook(x.expand(*sources, **kwargs))
-            case _:
-                return super().expand(*sources, **kwargs)
-
     @property
     def multi(self) -> bool:
         return True
@@ -158,43 +149,39 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
     def __contains__(self, other):
          return other in self.keys()
 
-    def exp_pre_lookup_hook(self, sources, opts) -> list:
-        """ Expands subkeys, to be merged into the main key"""
+    def exp_pre_lookup_hook(self, sources, opts) -> list[list[ExpInst]]:
+        """ Lift subkeys to expansion instructions """
         targets = []
         for key in self.keys():
-            match key.local_expand(*sources):
-                case None:
-                    return []
-                case x:
-                    targets.append([x])
+            targets.append([ExpInst(val=key)])
         else:
             return targets
 
-    def exp_flatten_hook(self, vals, opts) -> Maybe[Any]:
-        if None in vals:
-            return None
+    def exp_flatten_hook(self, vals:list[ExpInst], opts) -> Maybe[ExpInst]:
         flat : list[str] = []
         for x in vals:
             match x:
-                case IndirectDKey():
-                    flat.append(f"{x:wi}")
-                case x:
+                case ExpInst(val=IndirectDKey() as k):
+                    flat.append(f"{k:wi}")
+                case ExpInst(val=x):
                     flat.append(str(x))
         else:
-            return self._anon.format(*flat)
+            return ExpInst(self._anon.format(*flat), literal=True)
 
-    def exp_final_hook(self, val, opts) -> Maybe[Any]:
+    def exp_final_hook(self, val:ExpInst, opts) -> Maybe[ExpInst]:
         return val
 
 class NonDKey(DKeyBase, mark=DKeyMark_e.NULL):
     """
       Just a string, not a key. But this lets you call no-ops for key specific methods
+    It can coerce itself though
     """
 
     def __init__(self, data, **kwargs):
-        super().__init__(data)
+        super().__init__(data, **kwargs)
         if (fb:=kwargs.get('fallback', None)) is not None and fb != self:
             raise ValueError("NonKeys can't have a fallback, did you mean to use an explicit key?", self)
+        self.nonkey = True
 
     def __format__(self, spec) -> str:
         rem, _, _ = self._consume_format_params(spec)
@@ -203,13 +190,18 @@ class NonDKey(DKeyBase, mark=DKeyMark_e.NULL):
     def format(self, fmt) -> str:
         return format(self, fmt)
 
-    def expand(self, *args, **kwargs) -> str:
-        if (fb:=kwargs.get('fallback', None)) is not None and fb != self:
-            raise ValueError("NonKeys can't have a fallback, did you mean to use an explicit key?", self)
-        return str(self)
+    def local_expand(self, *args, **kwargs) -> Maybe[ExpInst]:
+        val = ExpInst(str(self))
+        match self.exp_coerce_result(val, kwargs):
+            case None if (fallback:=kwargs.get("fallback")) is not None:
+                return ExpInst(fallback, literal=True)
+            case None:
+                return self._fallback
+            case ExpInst() as x:
+                return x
+            case x:
+                raise TypeError("Nonkey coercion didn't return an ExpInst", x)
 
-    def local_expand(self, *args, **kwrags) -> str:
-        return str(self)
 
 class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
     """
@@ -234,9 +226,9 @@ class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
             case _:
                 return super().__eq__(other)
 
-    def exp_pre_lookup_hook(self, sources, opts) -> list:
+    def exp_pre_lookup_hook(self, sources, opts) -> list[list[ExpInst]]:
         return [[
-            (f"{self:i}", True, None),
-            (f"{self:d}", False, None),
-            self
+            ExpInst(f"{self:i}", lift=True),
+            ExpInst(f"{self:d}"),
+            ExpInst(self, literal=True),
         ]]

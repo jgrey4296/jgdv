@@ -25,7 +25,7 @@ from uuid import UUID, uuid1
 from weakref import ref
 import atexit # for @atexit.register
 import faulthandler
-from string import Formatter
+import _string
 # ##-- end stdlib imports
 
 # ##-- types
@@ -42,12 +42,13 @@ from pydantic import BaseModel, Field, model_validator, field_validator, Validat
 from jgdv import Maybe
 
 if TYPE_CHECKING:
-   from typing import Final
-   from typing import ClassVar, Any, LiteralString
-   from typing import Never, Self, Literal
-   from typing import TypeGuard
-   from collections.abc import Iterable, Iterator, Callable, Generator
-   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from jgdv import Ident
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
 # isort: on
 # ##-- end types
@@ -61,16 +62,28 @@ INDIRECT_SUFFIX : Final[Ident]                = "_"
 # Body:
 
 class RawKey(BaseModel):
-    """ Utility class for parsed string parameters
+    """ Utility class for parsed {}-format string parameters.
+    see: https://peps.python.org/pep-3101/
+    and: https://docs.python.org/3/library/string.html#format-string-syntax
 
     Provides the data from string.Formatter.parse, but in a structure
-    instead of a tuple
+    instead of a tuple.
     """
 
     prefix : Maybe[str] = ""
-    key    : Maybe[str] = ""
-    format : Maybe[str] = ""
-    conv   : Maybe[str] = ""
+    key    : Maybe[str] = None
+    format : Maybe[str] = None
+    conv   : Maybe[str] = None
+
+    @field_validator("format")
+    def _validate_format(cls, val:str) -> str:
+        """ Ensure the format params are valid """
+        return val
+
+    @field_validator("conv")
+    def _validate_conv(cls, val):
+        """ Ensure the conv params are valid """
+        return val
 
     def __getitem__(self, i):
         match i:
@@ -88,7 +101,14 @@ class RawKey(BaseModel):
     def __bool__(self):
         return bool(self.key)
 
-    def joined(self):
+    def joined(self) -> str:
+        """ return the key and params as one string
+        eg: blah, fmt=5, conv=p -> blah:5!p
+
+        """
+        if not bool(self.key):
+            return ""
+
         args = [self.key]
         if bool(self.format):
             args += [":", self.format]
@@ -98,12 +118,33 @@ class RawKey(BaseModel):
         return "".join(args)
 
     def wrapped(self) -> str:
+        """ return this key in simple wrapped form
+        (it ignores format, conv params and prefix)
+        eg: blah -> {blah}
+        """
         return "{%s}" % self.key
 
+    def anon(self) -> str:
+        """ Make a format str of this key, with anon variables.
+        eg: blah {key:f!p} -> blah {}
+        """
+        if bool(self.key):
+            return "%s{}" % self.prefix
+
+        return self.prefix
+
     def direct(self) -> str:
+        """ return this key in direct form
+        eg: blah -> blah
+        ... blah_ -> blah
+        """
         return self.key.removesuffix(INDIRECT_SUFFIX)
 
     def indirect(self) -> str:
+        """ return this key in indirect form
+        eg: blah -> blah_
+        ... blah_ -> blah_
+        """
         if self.key.endswith(INDIRECT_SUFFIX):
             return self.key
 
@@ -112,25 +153,20 @@ class RawKey(BaseModel):
     def is_indirect(self) -> bool:
         return self.key.endswith(INDIRECT_SUFFIX)
 
-    def anon(self) -> list[str]:
-        return [self.prefix, "{}"]
+class DKeyParser:
+    """ Parser for extracting {}-format params from strings.
+    see: https://peps.python.org/pep-3101/
+    and: https://docs.python.org/3/library/string.html#format-string-syntax
+    """
 
-class DKeyParser(Formatter):
-    """ parser for extracting {keys:params} from strings, """
-
-    def parse(self, *args, implicit=False, **kwargs) -> Iterator[RawKey]:
-        if implicit and "{" in args[0]:
-            breakpoint()
-            pass
-            raise ValueError("Implicit key already has braces", args[0])
+    def parse(self, format_string, *, implicit=False) -> Iterator[RawKey]:
+        if implicit and "{" in format_string:
+            raise ValueError("Implicit key already has braces", format_string)
 
         if implicit:
-            args = [
-                "".join(["{", args[0], "}"]),
-                *args[1:]
-            ]
+            format_string = "".join(["{", format_string, "}"])
 
-        for x in super().parse(*args, **kwargs):
+        for x in _string.formatter_parser(format_string):
             yield self.make_param(*x)
 
     def make_param(self, *args):
