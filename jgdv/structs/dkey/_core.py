@@ -126,6 +126,7 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
 
         # remove the names for the keys, to allow expanding positionally
         self._anon       = "".join(y for x in self._subkeys for y in x.anon())
+        pass
 
     def __format__(self, spec:str) -> str:
         """
@@ -232,24 +233,6 @@ class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
                 return f"{self:i}" == other
             case _:
                 return super().__eq__(other)
-
-
-    def expand(self, *sources, max=None, full:bool=False, **kwargs) -> Maybe[DKey]:
-        match super().redirect(*sources, multi=self.multi_redir, re_mark=self.re_mark, **kwargs):
-            case list() as xs if self.multi_redir and full:
-                return [x.expand(*sources) for x in xs]
-            case list() as xs if self.multi_redir:
-                return xs
-            case [x, *xs] if full:
-                return x.expand(*sources)
-            case [x, *xs] if self._fallback == self and x < self:
-                return x
-            case [x, *xs] if self._fallback is None:
-                return None
-            case [x, *xs]:
-                return x
-            case []:
-                return self._fallback
 
     def exp_pre_lookup_hook(self, sources, opts) -> list:
         return [[

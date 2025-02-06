@@ -119,6 +119,11 @@ class DKeyParser(Formatter):
     """ parser for extracting {keys:params} from strings, """
 
     def parse(self, *args, implicit=False, **kwargs) -> Iterator[RawKey]:
+        if implicit and "{" in args[0]:
+            breakpoint()
+            pass
+            raise ValueError("Implicit key already has braces", args[0])
+
         if implicit:
             args = [
                 "".join(["{", args[0], "}"]),

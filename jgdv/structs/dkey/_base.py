@@ -86,8 +86,8 @@ class DKeyBase(DKeyFormatting_m, DKeyCentralExpander_m, DKeyLocalExpander_m, Key
 
     __hash__                                            = str.__hash__
 
-    expand                                              = DKeyCentralExpander_m.central_expand
-    redirect                                            = DKeyCentralExpander_m.central_redirect
+    expand                                              = DKeyLocalExpander_m.local_expand
+    redirect                                            = DKeyLocalExpander_m.local_redirect
 
     def __init_subclass__(cls, *, mark:M_[KeyMark]=None, conv:M_[str]=None, multi:bool=False):
         """ Registered the subclass as a DKey and sets the Mark enum this class associates with """

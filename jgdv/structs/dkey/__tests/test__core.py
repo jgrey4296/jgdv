@@ -115,6 +115,23 @@ class TestMultiDKey:
         obj2 = 21
         assert(not (obj1 == obj2))
 
+
+    def test_subkeys(self):
+        obj = DKey("{first} {second} {third}")
+        for sub in obj.keys():
+            assert(isinstance(sub, SingleDKey))
+
+
+    def test_anon(self):
+        obj = DKey("{first} {second} {third}")
+        assert(obj._anon == "{} {} {}")
+
+
+    def test_anon_2(self):
+        obj = DKey("{b}", mark=DKey.mark.MULTI)
+        assert(isinstance(obj, MultiDKey))
+        assert(obj._anon == "{}")
+
 class TestNonDKey:
 
     def test_sanity(self):

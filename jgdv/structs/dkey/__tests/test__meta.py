@@ -35,7 +35,7 @@ class TestDKeyMark:
         assert("indirect" in dkey.DKeyMark_e)
         assert("blah" not in dkey.DKeyMark_e)
 
-class TestDKeyMetaSetup:
+class TestDKeyMeta:
 
     @pytest.fixture(scope="function")
     def save_registry(self, mocker):
@@ -130,3 +130,7 @@ class TestDKeyMetaSetup:
         assert(key is not None)
         assert(isinstance(key, dkey.DKey))
         assert(isinstance(key, dkey.SingleDKey))
+
+    def test_mark_conflict(self):
+        with pytest.raises(ValueError):
+             dkey.DKey("{blah!p}", mark=dkey.DKey.mark.CODE)

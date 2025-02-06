@@ -49,6 +49,7 @@ if TYPE_CHECKING:
    from typing import TypeGuard
    from collections.abc import Iterable, Iterator, Callable, Generator
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+   from string import Formatter
 
    type KeyMark = DKeyMark_e|str
 # isort: on
@@ -200,7 +201,7 @@ class DKey(SubAnnotate_m, metaclass=DKeyMeta):
     def __new__(cls, data, **kwargs) -> DKey:
         # Get Raw Key information to choose the mark
         # put the rawkey data into _rawkey_id to save on reparsing later
-        multi_key = False
+        multi_key = kwargs.get("mark", None) is DKeyMark_e.MULTI
         # Use passed in keys if they are there
         if not (raw_keys:=kwargs.get(DKeyMeta._rawkey_id, None)):
             raw_keys = DKeyMeta.extract_raw_keys(data, implicit=kwargs.get("implicit", False))
@@ -217,22 +218,26 @@ class DKey(SubAnnotate_m, metaclass=DKeyMeta):
                 kwargs[DKeyMeta._rawkey_id ] = [x]
             case [x] if not bool(x.prefix):
                 # one key, no extra text
-                mark = kwargs.get("mark", DKeyMark_e.FREE)
-                mark = DKeyMeta._conv_registry.get(x.conv, None) or mark
+                kw_mark      = kwargs.get("mark", None)
+                conv_mark = DKeyMeta._conv_registry.get(x.conv, None)
+                if (kw_mark and conv_mark):
+                    raise ValueError("Kwd Mark/Conversion Conflict", kw_mark, conv_mark)
+                mark = kw_mark or conv_mark or DKeyMark_e.FREE
+
                 # so truncate to just the exact key
                 data = x.direct()
                 kwargs[DKeyMeta._rawkey_id ] = [x]
             case [x]:
-                mark = kwargs.get("mark", DKeyMark_e.FREE)
-                mark = DKeyMeta._conv_registry.get(x.conv, None) or mark
-                kwargs[DKeyMeta._rawkey_id ] = [x]
                 # Is a multi key because bool(x.prefix)
+                mark = kwargs.get("mark", DKeyMark_e.MULTI)
+                kwargs[DKeyMeta._rawkey_id ] = [x]
                 multi_key = True
             case [*xs]:
                 # Multiple keys found
                 kwargs[DKeyMeta._rawkey_id] = xs
                 mark = kwargs.get("mark", DKeyMark_e.MULTI)
                 multi_key = True
+
 
         # Choose the sub-ctor
         match kwargs.get(DKeyMeta._force_type_id, None):

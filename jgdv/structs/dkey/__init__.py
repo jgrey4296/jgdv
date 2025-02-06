@@ -10,3 +10,4 @@ from .formatter import DKeyFormatter
 from .import_key import ImportDKey
 from .other_keys import ArgsDKey, KwargsDKey
 from .str_key import StrDKey
+from .path_key import PathDKey

@@ -110,7 +110,7 @@ class DKeyLocalExpander_m:
     """
 
     def local_redirect(self, *sources, **kwargs) -> list[DKey]:
-        return []
+        return [self.local_expand(*sources, limit=1, **kwargs)]
 
     def local_expand(self, *sources, **kwargs) -> Maybe[Any]:
         logging.info("- Locally Expanding: %s : %s : multi=%s", repr(self), kwargs, self.multi)
@@ -290,7 +290,8 @@ class DKeyCentralExpander_m:
         multi    = kwargs.get("multi", False)
         re_mark  = kwargs.get("re_mark", None)
         fallback = kwargs.get("fallback", None)
-        match self.redirect(self, sources=sources, fallback=fallback):
+        from jgdv.structs.dkey import DKeyFormatter
+        match DKeyFormatter.redirect(self, sources=sources, fallback=fallback):
             case []:
                 return [DKey(f"{self:d}", mark=re_mark)]
             case [*xs] if multi:
@@ -317,7 +318,7 @@ class DKeyCentralExpander_m:
             case x:
                 return x
 
-    def _check_expansion(self, value, override=None):
+    def cent_check_expansion(self, value, override=None):
         """ typecheck an expansion result """
         match override or self._typecheck:
             case x if x == Any:
@@ -383,7 +384,7 @@ class _DKeyFormatter_Expansion_m:
         if current is not None:
             logging.debug("Running Expansion Hook: (%s) -> (%s)", key, current)
             exp_val = key._expansion_type(current)
-            key._check_expansion(exp_val)
+            key.cent_check_expansion(exp_val)
             current = key._expansion_hook(exp_val)
 
         logging.debug("Expanded (%s) -> (%s)", key, current)
