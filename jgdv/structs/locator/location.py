@@ -216,7 +216,7 @@ class Location(Strang, PathManip_m):
             return self < other
 
         # Compare path
-        for x,y in zip(self.body_parent, other.body_parent, strict=True):
+        for x,y in zip(self.body_parent, other.body_parent, strict=False):
             match x, y:
                 case _, _ if x == y:
                     pass

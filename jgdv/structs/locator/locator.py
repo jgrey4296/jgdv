@@ -311,9 +311,6 @@ class _LocatorAccess_m:
             case True:
                 return DKey(current, ctor=pl.Path, mark=DKey.mark.MULTI)
 
-
-
-
 class JGDVLocator(_LocatorAccess_m, _LocatorUtil_m, PathManip_m):
     """
       A managing context for storing and converting Locations to Paths.
@@ -367,10 +364,11 @@ class JGDVLocator(_LocatorAccess_m, _LocatorUtil_m, PathManip_m):
         if key.startswith("__") or key.endswith("__"):
             raise AttributeError("Location Access Fail", key)
 
-        try:
-            return self.access(key)
-        except KeyError as err:
-            raise AttributeError(err.args[0]) from err
+        match self.access(key):
+            case Location() as x:
+                return x
+            case _:
+                raise AttributeError(key)
 
     def __getitem__(self, val:DKey|pl.Path|Location|str) -> pl.Path:
         """
