@@ -60,7 +60,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class DKeyBase(DKeyFormatting_m, DKeyCentralExpander_m, DKeyLocalExpander_m, Key_p, SubAnnotate_m, str):
+class DKeyBase(DKeyFormatting_m, DKeyLocalExpander_m, Key_p, SubAnnotate_m, str):
     """
       Base class for implementing actual DKeys.
       adds:
@@ -156,14 +156,6 @@ class DKeyBase(DKeyFormatting_m, DKeyCentralExpander_m, DKeyLocalExpander_m, Key
     def keys(self) -> list[Key_p]:
         """ Get subkeys of this key. by default, an empty list.
         (named 'keys' to be in keeping with dict)
-        """
-        return []
-
-    def extra_sources(self) -> list[Any]:
-        """ An overrideable method allowing subtypes
-        to add standard additional sources for expansion.
-
-        eg: Path Keys provide the global Locations database
         """
         return []
 
