@@ -55,9 +55,31 @@ from jgdv.decorators.core import (
     _TargetType_e,
 )
 
+from jgdv.decorators.class_decorators import WithProto, Mixin
+from jgdv.decorators.check_protocol import CheckProtocol
 # ##-- end 1st party imports
 
 logging = logmod.root
+
+@runtime_checkable
+class Proto_p(Protocol):
+
+    def blah(self): ...
+
+    def aweg(self): ...
+
+class Simple_m:
+
+    def blah(self):
+        return 2
+
+    def bloo(self):
+        return 4
+
+class Second_m:
+
+    def aweg(self):
+        return super(Second_m, self).bloo()
 
 class _TestUtils:
 
@@ -135,3 +157,103 @@ class TestClassDecorator(_TestUtils):
         inst = Basic()
         assert(inst.amethod() == 2)
         assert(inst.bmethod(2) == 4)
+
+class TestMixinDecorator:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_basic(self):
+
+        @Mixin(Simple_m)
+        class Example:
+
+            def bloo(self):
+                return 10
+
+        obj = Example()
+        assert(obj.blah() == 2)
+        assert(obj.bloo() == 10)
+
+    def test_two_mixins(self):
+
+        @Mixin(Second_m, Simple_m)
+        class Example:
+
+            def bloo(self):
+                return 10
+
+        obj = Example()
+        assert(obj.blah() == 2)
+        assert(obj.bloo() == 10)
+        # Aweg->super()->Simple_m.bloo
+        assert(obj.aweg() == 4)
+
+    def test_append_mixin(self):
+
+        @Mixin(Second_m, append=[Simple_m])
+        class Example:
+            val : ClassVar[int] = 25
+
+            def bloo(self):
+                return 10
+
+        obj = Example()
+        assert(obj.blah() == 2)
+        assert(obj.bloo() == 10)
+        # Aweg->super()->Example.bloo
+        assert(obj.aweg() == 10)
+        assert(Example.val == 25)
+
+class TestProtoDecorator:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_proto_no_check(self):
+
+        @WithProto(Proto_p, check=False)
+        class Example:
+            val : ClassVar[int] = 25
+
+            def bloo(self):
+                return 10
+
+        obj = Example()
+        assert(isinstance(Example, Proto_p))
+        assert(obj.bloo() == 10)
+        assert(Example.val == 25)
+
+
+    def test_proto_check_success(self):
+
+        @WithProto(Proto_p, check=True)
+        class Example:
+            val : ClassVar[int] = 25
+
+            def bloo(self):
+                return 10
+            
+            def blah(self):
+                return
+            
+            def aweg(self):
+                return
+
+        obj = Example()
+        assert(isinstance(Example, Proto_p))
+        assert(obj.bloo() == 10)
+        assert(Example.val == 25)
+
+
+    def test_proto_check_fail(self):
+
+        with pytest.raises(NotImplementedError):
+            @WithProto(Proto_p, check=True)
+            class Example:
+                val : ClassVar[int] = 25
+    
+                def bloo(self):
+                    return 10
+
+

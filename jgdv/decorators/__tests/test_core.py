@@ -149,13 +149,13 @@ class TestDecoratorBase(_TestUtils):
         assert(True is True)
 
     def test_basic_init(self, dec):
-        assert(dec._mark_key == f"{ANNOTATIONS_PREFIX}:{MARK_SUFFIX}")
+        assert(dec._mark_key == f"{ANNOTATIONS_PREFIX}:{dec.__class__.__name__}")
         assert(dec._data_key == f"{ANNOTATIONS_PREFIX}:{DATA_SUFFIX}")
 
     @pytest.mark.parametrize("name", ["blah", "bloo", "blee"])
     def test_custom_prefix(self, name):
         dec = DecoratorBase(prefix=name)
-        assert(dec._mark_key == f"{name}:{MARK_SUFFIX}")
+        assert(dec._mark_key == f"{name}:{dec.__class__.__name__}")
         assert(dec._data_key == f"{name}:{DATA_SUFFIX}")
 
     @pytest.mark.parametrize("name", ["blah", "bloo", "blee"])
@@ -167,7 +167,7 @@ class TestDecoratorBase(_TestUtils):
     @pytest.mark.parametrize("name", ["blah", "bloo", "blee"])
     def test_custom_data(self, name):
         dec = DecoratorBase(data=name)
-        assert(dec._mark_key == f"{ANNOTATIONS_PREFIX}:{MARK_SUFFIX}")
+        assert(dec._mark_key == f"{ANNOTATIONS_PREFIX}:{dec.__class__.__name__}")
         assert(dec._data_key == f"{ANNOTATIONS_PREFIX}:{name}")
 
     def test_mark_fn(self, dec, a_fn):

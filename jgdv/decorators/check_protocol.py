@@ -122,6 +122,6 @@ class CheckProtocol(DecoratorBase):
             still_abstract.update(self._test_protocol(proto, cls))
 
         if not bool(still_abstract):
-            return
+            return cls
 
         raise NotImplementedError("Class has Abstract Methods", cls.__module__, cls.__name__, still_abstract)

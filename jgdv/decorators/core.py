@@ -202,10 +202,10 @@ class _DecoratorUtil_m(_DecAnnotate_m, _DecVerify_m, _DecWrap_m, _DecInspect_m):
         # add wrapper by target type
         match t_type:
             case _TargetType_e.CLASS:
-                # Classes are a special case, modifying instead of wrapping
-                self._mod_class(target)
-                self._apply_mark(target)
-                return target
+                # Classes are a special case, Maybe modifying instead of wrapping
+                wrapper = self._mod_class(target) or target
+                self._apply_mark(wrapper)
+                return wrapper
             case _TargetType_e.METHOD:
                 wrapper = self._wrap_method(target)
             case _TargetType_e.FUNC:
@@ -234,7 +234,7 @@ class _DecoratorUtil_m(_DecAnnotate_m, _DecVerify_m, _DecWrap_m, _DecInspect_m):
 
         return _basic_fn_wrapper
 
-    def _mod_class(self, cls:type) -> None:
+    def _mod_class(self, cls:type) -> Maybe[type]:
         pass
 
 class DecoratorBase(_DecoratorUtil_m, Decorator_p):
@@ -255,7 +255,7 @@ class DecoratorBase(_DecoratorUtil_m, Decorator_p):
 
     def __init__(self, prefix:Maybe[str]=None, mark:Maybe[str]=None, data:Maybe[str]=None):
         self._annotation_prefix   : str              = prefix  or ANNOTATIONS_PREFIX
-        self._mark_suffix         : str              = mark    or MARK_SUFFIX
+        self._mark_suffix         : str              = mark    or self.__class__.__name__
         self._data_suffix         : str              = data    or DATA_SUFFIX
         self._wrapper_assignments : list[str]        = list(ftz.WRAPPER_ASSIGNMENTS)
         self._wrapper_updates     : list[str]        = list(ftz.WRAPPER_UPDATES)
