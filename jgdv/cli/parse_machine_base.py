@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """
+Provdes the Main ArgParser_p Protocol,
+and the ParseMachineBase StateMachine.
 
+ParseMachineBase descibes the statemachine to parse argument,
+while jgdv.cli.arg_parser.CLIParser adds the specific logic to states and transitions
 """
 
 # Imports:
@@ -82,6 +86,17 @@ class ArgParser_p(Protocol):
         raise NotImplementedError()
 
     def _has_no_more_args_cond(self) -> bool:
+        raise NotImplementedError()
+
+@runtime_checkable
+class ParamSource_p(Protocol):
+
+    @property
+    def name(self) -> str:
+        raise NotImplementedError()
+
+    @property
+    def param_specs(self) -> list[ParamStruct_p]:
         raise NotImplementedError()
 
 class ParseMachineBase(StateMachine):

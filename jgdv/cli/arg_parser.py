@@ -1,3 +1,6 @@
+"""
+
+"""
 # Imports:
 from __future__ import annotations
 
@@ -58,8 +61,8 @@ from jgdv.structs.chainguard import ChainGuard
 # ##-- end 1st party imports
 
 from . import errors
-from .param_spec import HelpParam, LiteralParam, ParamSpec, SeparatorParam
-from .parse_machine_base import ArgParser_p, ParseMachineBase
+from .param_spec import HelpParam, ParamSpec, SeparatorParam
+from .parse_machine_base import ArgParser_p, ParamSource_p, ParseMachineBase
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -80,17 +83,6 @@ class ParseResult:
 
     def to_dict(self) -> dict:
         return {"name":self.name, "args":self.args, NON_DEFAULT_KEY:self.non_default}
-
-@runtime_checkable
-class ParamSource_p(Protocol):
-
-    @property
-    def name(self) -> str:
-        raise NotImplementedError()
-
-    @property
-    def param_specs(self) -> list[ParamStruct_p]:
-        raise NotImplementedError()
 
 class ParseMachine(ParseMachineBase):
     """ Implemented Parse State Machine

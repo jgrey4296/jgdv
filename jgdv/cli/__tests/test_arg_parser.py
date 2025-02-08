@@ -181,10 +181,6 @@ class TestParser:
             case _:
                 assert(False)
 
-    @pytest.mark.skip
-    def test_parse_extra(self, a_source, b_source, c_source):
-        pass
-
 class TestParseResultReport:
 
     def test_sanity(self):
