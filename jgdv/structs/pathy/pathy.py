@@ -60,6 +60,7 @@ logging = logmod.getLogger(__name__)
 if sys.version_info.minor < 12:
     raise RuntimeError("Pathy needs 3.12+")
 
+# Types for Annotating Pathy. eg: Pathy[File]
 Pure = NewType("Pure", None)
 Real = NewType("Real", None)
 File = NewType("File", None)
@@ -67,6 +68,7 @@ Dir  = NewType("Dir", None)
 Wild = NewType("Wild", None)
 
 class _PathyExpand_m:
+    """ Mixin for normalizing the Paths """
 
     def normalize(self, *, root=None, symlinks:bool=False) -> pl.Path:
         """
@@ -90,6 +92,7 @@ class _PathyExpand_m:
         return result
 
 class _PathyTime_m:
+    """ Mixin for getting time created and modified, and comparing two files """
 
     def time_created(self) -> DateTime:
         stat = self.stat()
@@ -102,6 +105,9 @@ class _PathyTime_m:
         return datetime.datetime.fromtimestamp(self.stat().st_mtime)
 
     def _newer_than(self, time:DateTime, *, tolerance:TimeDelta=None) -> bool:
+        """ True if self.time_modified() < time,
+        with a tolerance because some file systems have lower resolution
+        """
         if not self.exists():
             return False
 
@@ -116,7 +122,14 @@ class _PathyTime_m:
 
 class Pathy(SubRegistry_m, AnnotateTo="pathy_type"):
     """
-    An Abstract Pathy class
+    The Main Accessor to Pathy.
+    You don't build Pathy's directly eg: Pathy("a/loc/test.txt"),
+    but using Subtypes: Pathy[File]("a/loc/test.txt")
+
+    The subtypes are: Pure, Real, File, Dir, Wild
+    They are class attrs of Pathy, and in the pathy module.
+
+    Also: Pathy.cwd() and Pathy.home()
     """
     _registry : dict[type, pl.PurePath|pl.Path] = {}
     # Standard Pathy Subtypes
@@ -159,7 +172,7 @@ class Pathy(SubRegistry_m, AnnotateTo="pathy_type"):
 
 class PathyPure(_PathyExpand_m, Pathy[Pure], pl.PurePath):
     """
-    The Main Accessor for building Pathy Subtypes
+    A Pure Pathy, subclass of pathlib.PurePath with extra functionality
     """
 
     def __contains__(self, other) -> bool:
@@ -224,10 +237,13 @@ class PathyPure(_PathyExpand_m, Pathy[Pure], pl.PurePath):
         return Pathy[File](super().with_suffix(suffix))
 
 class PathyReal( _PathyTime_m, Pathy[Real], PathyPure, pl.Path):
+    """
+    The Pathy equivalent of pathlib.Path
+    """
     pass
 
 class PathyFile(Pathy[File], PathyReal):
-    """ a location of a file
+    """ A Pathy for an existing File
 
     TODO disable:
     iterdir
@@ -244,7 +260,7 @@ class PathyFile(Pathy[File], PathyReal):
         return self.parent.mkdir(*args)
 
 class PathyDir(Pathy[Dir], PathyReal):
-    """ A location of a directory
+    """ A Pathy for Directories, not files
 
     TODO disable:
     open, read_bytes/text, write_bytes/text
@@ -252,15 +268,15 @@ class PathyDir(Pathy[Dir], PathyReal):
     pass
 
 class WildPathy(Pathy[Wild], PathyPure):
-    """ A Path that can handle ?wildcards, *globs, and {keys} in it.
+    """ A Pure Pathy that represents a location with wildcards and keys in it.
+    can handle wildcards (?), globs (* and **), and keys ({}) in it.
     eg: a/path/*/?.txt
+
+    Converts to a List of PathReal's by calling 'expand'
     """
 
     def keys(self) -> set[str]:
         raise NotImplementedError()
-
-    def normalize(self, *, root=None, symlinks:bool=False) -> pl.Path:
-        pass
 
     def glob(self, pattern, *, case_sensitive=None, recurse_symlinks=True):
         pass
