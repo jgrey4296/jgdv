@@ -25,25 +25,52 @@ class TestPathy:
     def test_sanity(self):
         assert(True is True)
 
-    def test_basic(self):
+    def test_subclassing(self):
+        # assert(issubclass(Pathy, pl.PurePath))
+        assert(issubclass(Pathy['pure'], Pathy))
+        assert(issubclass(Pathy['real'], Pathy))
+        assert(issubclass(Pathy['pure'], pl.PurePath))
+        assert(issubclass(Pathy['real'], pl.Path))
+        assert(issubclass(Pathy['real'], pl.PurePath))
+
+        assert(not issubclass(pl.Path, Pathy))
+        assert(not issubclass(Pathy['pure'], pl.Path))
+
+    def test_pathy_build(self):
         val : Pathy = Pathy("a/test")
+        assert(isinstance(val, pl.PurePath))
+        assert(not isinstance(val, pl.Path))
+        assert(isinstance(val, Pathy))
+        assert(isinstance(val, Pathy['pure']))
+        assert(hasattr(val, "__dict__"))
+        assert(not hasattr(val, "exists"))
+
+    def test_pure(self):
+        val : Pathy = Pathy['pure']("a/test")
+        assert(isinstance(val, pl.PurePath))
+        assert(not isinstance(val, pl.Path))
+        assert(hasattr(val, "__dict__"))
+        assert(not hasattr(val, "exists"))
+
+    def test_file(self):
+        val : Pathy = Pathy['file']("a/test")
+        assert(isinstance(val, pl.PurePath))
         assert(isinstance(val, pl.Path))
         assert(hasattr(val, "__dict__"))
+        assert(hasattr(val, "exists"))
         assert(not val.exists())
 
-    def test_basic_with_kwargs(self):
-        val = Pathy("a/test", val="blah")
+    def test_dir(self):
+        val : Pathy = Pathy['dir']("a/test/")
+        assert(isinstance(val, pl.PurePath))
         assert(isinstance(val, pl.Path))
-        assert(hasattr(val, "_meta"))
-        assert(val._meta['val'] == 'blah')
+        assert(hasattr(val, "__dict__"))
+        assert(hasattr(val, "exists"))
+        assert(not val.exists())
 
-    def test_pathy_file(self):
-        val : Pathy['file'] = Pathy['file']("a/test.txt", val="blah")
-        assert(val.pathy_type is Pathy.mark_e.File)
-        assert(issubclass(Pathy['file'], Ps.PathyFile))
-        assert(isinstance(val, Pathy['file']))
-        assert(isinstance(val, Pathy))
-        assert(isinstance(val, pl.Path))
+    def test_with_kwargs(self):
+        val = Pathy("a/test", val="blah")
+        assert(isinstance(val, pl.PurePath))
         assert(hasattr(val, "_meta"))
         assert(val._meta['val'] == 'blah')
 
@@ -51,10 +78,16 @@ class TestPathy:
         with pytest.raises(ValueError):
             Pathy['blah']
 
+class TestPathyOps:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
     def test_join_file(self):
         obj = Pathy['dir']("a/b/c")
-        obj2 = obj / Pathy['file']("test.txt")
-        assert(isinstance(obj2, Pathy['file']))
+        obj2 = Pathy['file']("test.txt")
+        obj3 =  obj / obj2
+        assert(isinstance(obj3, Pathy['file']))
 
     def test_join_file_str(self):
         obj = Pathy['dir']("a/b/c")
@@ -71,12 +104,6 @@ class TestPathy:
         obj2 = obj / Pathy("test")
         assert(isinstance(obj2, Pathy))
         assert(obj2 == "a/b/c/test")
-
-    def test_call_expansion(self):
-        obj    = Pathy("a/b/c")
-        normed = obj()
-        assert(isinstance(normed, pl.Path))
-        assert(normed.is_absolute())
 
     def test_get_time_modified(self):
         obj = Pathy.cwd()
@@ -171,24 +198,54 @@ class TestPathy:
         assert(obj.time_modified() is a_time)
         assert(obj._newer_than(older_time, tolerance=tolerance))
 
-
     @pytest.mark.skip
     def test_walk_dirs(self):
+
         def filter_fn(x):
             return x.startswith(".")
 
         obj = Pathy['*'].cwd()
         dirs = list(obj.walk_dirs(d_skip=filter_fn))
 
-
     @pytest.mark.skip
     def test_walk_files(self):
+
         def filter_fn(x):
             return x.startswith(".") or x in ["docs", "__data", "_pycache_"]
 
         def file_filter_fn(x):
             return x.suffix in [".py", ".pyc"]
 
-
         obj = Pathy['*'].cwd()
         files = list(obj.walk_files(d_skip=filter_fn, f_skip=file_filter_fn))
+
+class TestPathyNormalize:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_call_normalize(self):
+        obj    = Pathy("a/b/c")
+        normed = obj()
+        assert(isinstance(normed, pl.Path))
+        assert(normed.is_absolute())
+
+class TestPathyFile:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_pathy_file(self):
+        val : Pathy['file'] = Pathy['file']("a/test.txt", val="blah")
+        assert(val.pathy_type is Pathy.mark_e.File)
+        assert(issubclass(Pathy['file'], Ps.PathyFile))
+        assert(isinstance(val, Pathy['file']))
+        assert(isinstance(val, Pathy))
+        assert(isinstance(val, pl.Path))
+        assert(hasattr(val, "_meta"))
+        assert(val._meta['val'] == 'blah')
+
+class TestPathDir:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Subclasses of pathlib.Path for working with typesafe:
-- Directories,
-- Files, and
+Subclasses of pathlib.Path for working with type safe:
 - Abstract paths that will be expanded
+- Directories,
+- Files
 """
 
 # Imports:
@@ -61,10 +61,59 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 if sys.version_info.minor < 12:
-    raise RuntimeError("Path Path needs 3.12+")
+    raise RuntimeError("Pathy needs 3.12+")
+
+class _PathyExpand_m:
+
+    def normalize(self, *, root=None, symlinks:bool=False) -> pl.Path:
+        """
+          a basic path normalization
+          expands user, and resolves the location to be absolute
+        """
+        result = pl.Path(self)
+        if symlinks and result.is_symlink():
+            raise NotImplementedError("symlink normalization", result)
+
+        match result.parts:
+            case ["~", *_]:
+                result = result.expanduser().resolve()
+            case ["/", *_]:
+                result = result
+            case _ if root:
+                result = (root / result).expanduser().resolve()
+            case _:
+                result = result.expanduser().resolve()
+
+        return result
+
+class _PathyTime_m:
+
+    def time_created(self) -> DateTime:
+        stat = self.stat()
+        try:
+            return datetime.datetime.fromtimestamp(stat.st_birthtime)
+        except AttributeError:
+            return datetime.datetime.fromtimestamp(stat.st_ctime)
+
+    def time_modified(self) -> DateTime:
+        return datetime.datetime.fromtimestamp(self.stat().st_mtime)
+
+    def _newer_than(self, time:DateTime, *, tolerance:TimeDelta=None) -> bool:
+        if not self.exists():
+            return False
+
+        match tolerance:
+            case datetime.timedelta():
+                mod_time = self.time_modified()
+                diff = mod_time - time
+                return tolerance < diff
+            case None:
+                return time < self.time_modified()
 
 class PathyTypes_e(enum.StrEnum):
     """ An Enum of available Path+ types"""
+    Pure     = "pure"
+    Real     = "real"
     Dir      = "dir"
     File     = "file"
     Path     = "path"
@@ -73,33 +122,46 @@ class PathyTypes_e(enum.StrEnum):
 
     default  = Loc
 
-class PathyMeta(type(pl.Path)):
-    """ Meta class for building the right type of location """
-
-    _registry : dict[PathyTypes_e, pl.Path] = {PathyTypes_e.Path: pl.Path}
-
-    def __call__(cls, *args, **kwargs):
-        logging.debug("PathyMeta Call: %s : %s : %s", cls, args, kwargs)
-        cls = cls._get_subclass_form()
-        obj = cls.__new__(cls, *args, **kwargs)
-        obj.__init__(*args, **kwargs)
-        return obj
-
-class Pathy(SubRegistry_m, pl.Path, AnnotateTo="pathy_type", metaclass=PathyMeta):
-
+class Pathy(SubRegistry_m, AnnotateTo="pathy_type"):
+    """
+    An Abstract Pathy class
+    """
     mark_e : ClassVar[enum.Enum] = PathyTypes_e
+    _registry : dict[PathyTypes_e, pl.PurePath|pl.Path] = {}
 
     @classmethod
     def __class_getitem__(cls, param) -> Self:
         param = cls.mark_e(param)
         return super().__class_getitem__(param)
 
+    @staticmethod
+    def cwd():
+        return Pathy['real'](pl.Path.cwd())
+
+    @staticmethod
+    def home():
+        return Pathy['real'](pl.Path.home())
+
+    def __new__(cls, *args, **kwargs):
+        """ When instantiating a Pathy, get the right subtype """
+        logging.debug("PathyMeta Call: %s : %s : %s", cls, args, kwargs)
+        cls = cls._maybe_subclass_form() or PathyPure
+        if cls is Pathy:
+            cls = PathyPure
+        obj = object.__new__(cls)
+        obj.__init__(*args, **kwargs)
+        return obj
+
     def __init__(self, *paths:str|pl.Path, key=None, **kwargs):
         super().__init__(*paths)
         self._meta        = {}
         self._key         = key
-
         self._meta.update(kwargs)
+
+class PathyPure(_PathyExpand_m, Pathy['pure'], pl.PurePath):
+    """
+    The Main Accessor for building Pathy Subtypes
+    """
 
     def __contains__(self, other) -> bool:
         """ a/b/c.py ∈ a/*/?.py  """
@@ -154,27 +216,6 @@ class Pathy(SubRegistry_m, pl.Path, AnnotateTo="pathy_type", metaclass=PathyMeta
             case _:
                 return Pathy['dir'](*segments)
 
-    def normalize(self, *, root=None, symlinks:bool=False) -> pl.Path:
-        """
-          a basic path normalization
-          expands user, and resolves the location to be absolute
-        """
-        result = pl.Path(self)
-        if symlinks and result.is_symlink():
-            raise NotImplementedError("symlink normalization", result)
-
-        match result.parts:
-            case ["~", *_]:
-                result = result.expanduser().resolve()
-            case ["/", *_]:
-                result = result
-            case _ if root:
-                result = (root / result).expanduser().resolve()
-            case _:
-                result = result.expanduser().resolve()
-
-        return result
-
     def format(self, *args, **kwargs) -> Self:
         as_str = str(self)
         formatted = as_str.format(*args, **kwargs)
@@ -183,30 +224,16 @@ class Pathy(SubRegistry_m, pl.Path, AnnotateTo="pathy_type", metaclass=PathyMeta
     def with_suffix(self, suffix):
         return Pathy['file'](super().with_suffix(suffix))
 
-    def time_created(self) -> DateTime:
-        stat = self.stat()
-        try:
-            return datetime.datetime.fromtimestamp(stat.st_birthtime)
-        except AttributeError:
-            return datetime.datetime.fromtimestamp(stat.st_ctime)
+class PathyReal( _PathyTime_m, Pathy['real'], PathyPure, pl.Path):
+    pass
 
-    def time_modified(self) -> DateTime:
-        return datetime.datetime.fromtimestamp(self.stat().st_mtime)
+class PathyFile(Pathy['file'], PathyReal):
+    """ a location of a file
 
-    def _newer_than(self, time:DateTime, *, tolerance:TimeDelta=None) -> bool:
-        if not self.exists():
-            return False
-
-        match tolerance:
-            case datetime.timedelta():
-                mod_time = self.time_modified()
-                diff = mod_time - time
-                return tolerance < diff
-            case None:
-                return time < self.time_modified()
-
-class PathyFile(Pathy['file']):
-    """ a location of a file """
+    TODO disable:
+    iterdir
+    rglob
+    """
 
     def glob(self, *args, **kwargs):
         raise NotImplementedError()
@@ -217,10 +244,15 @@ class PathyFile(Pathy['file']):
     def mkdir(self, *args):
         return self.parent.mkdir(*args)
 
-class PathyDir(Pathy['dir']):
-    """ A location of a directory """
+class PathyDir(Pathy['dir'], PathyReal):
+    """ A location of a directory
 
-class WildPathy(Pathy['*']):
+    TODO disable:
+    open, read_bytes/text, write_bytes/text
+    """
+    pass
+
+class WildPathy(Pathy['*'], PathyPure):
     """ A Path that can handle ?wildcards, *globs, and {keys} in it.
     eg: a/path/*/?.txt
     """
