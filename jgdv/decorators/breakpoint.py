@@ -37,15 +37,16 @@ import more_itertools as mitz
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from jgdv._interfaces.decorator import JGDVDecorator_i
-from jgdv.debugginer.running_debugger import RunningDebugger
+import sys
+from jgdv.decorators.core import DecoratorBase
 
-class JGDVBreakpoint(JGDVDecorator_i):
+class Breakpoint(DecoratorBase):
     """
-      Decorator to attach a debugger to a function, without pausing execution
+      Decorator to attach a breakpoint to a function, without pausing execution
     """
 
     def __call__(self, *args, **kwargs):
+        raise NotImplementedError("needs RunningDebugger")
         # TODO handle repeats
         if args[0].breakpoint:
             f_code = f.__code__
