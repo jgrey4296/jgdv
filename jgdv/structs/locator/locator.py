@@ -166,11 +166,10 @@ class _LocatorUtil_m:
             raise LocationError("Strict Location Update conflicts", conflicts)
 
         for k,v in extra.items():
-            match Location(v):
-                case Location() as loc:
-                    raw[k] = loc
-                case _:
-                    raise LocationError("Couldn't build a Location", k, v)
+            try:
+                raw[k] = Location(v)
+            except KeyError as err:
+                raise LocationError("Couldn't build a Location", k, v)
 
         logging.debug("Registered New Locations: %s", ", ".join(new_keys))
         self._data = raw
