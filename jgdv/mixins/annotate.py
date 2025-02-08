@@ -69,7 +69,7 @@ class SubAnnotate_m:
 
     """
 
-    _AnnotateTo: ClassVar[str] = AnnotationTarget
+    _AnnotateTo : ClassVar[str] = AnnotationTarget
 
     def __init_subclass__(cls, **kwargs):
         match kwargs:
@@ -80,10 +80,6 @@ class SubAnnotate_m:
                 setattr(cls, cls._AnnotateTo, None)
             case _ if not hasattr(cls, cls._AnnotateTo):
                 setattr(cls, cls._AnnotateTo, None)
-
-    @classmethod
-    def _get_annotation(cls) -> Maybe[str]:
-        return getattr(cls, cls._AnnotateTo, None)
 
     @classmethod
     @ftz.cache
@@ -97,6 +93,10 @@ class SubAnnotate_m:
                 return cls._make_subclass(*params)
 
     @classmethod
+    def _get_annotation(cls) -> Maybe[str]:
+        return getattr(cls, cls._AnnotateTo, None)
+
+    @classmethod
     def _make_subclass(cls, *params) -> type:
         match params:
             case [type() as param]:
@@ -107,6 +107,8 @@ class SubAnnotate_m:
                 p_str = str(param)
             case [param, *params]:
                 raise NotImplementedError("Multi Param Annotation not supported yet")
+            case _:
+                raise ValueError("Bad param value for making an annotated subclass", params)
 
         def_mod = _caller()
         subname = f"{cls.__name__}[{p_str}]"
@@ -123,6 +125,7 @@ class SubRegistry_m(SubAnnotate_m):
     """ Create Subclasses in a registry
 
     By doing:
+
     class MyReg(SubRegistry_m):
         _registry : dict[str, type] = {}
 
@@ -131,7 +134,7 @@ class SubRegistry_m(SubAnnotate_m):
     MyClass is created as a subclass of MyReg, with a parameter set to 'blah'.
     This is added into MyReg._registry
     """
-
+    _registry : ClassVar[dict] = {}
 
     @classmethod
     def __init_subclass__(cls, *args, **kwargs):
