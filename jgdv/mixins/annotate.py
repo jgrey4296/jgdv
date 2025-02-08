@@ -17,37 +17,33 @@ import re
 import time
 import types
 import weakref
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Self,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    _caller,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-from jgdv import Maybe
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, NewType, _caller
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   from typing import Final
+   from typing import ClassVar, Any, LiteralString
+   from typing import Never, Self, Literal
+   from typing import TypeGuard
+   from collections.abc import Iterable, Iterator, Callable, Generator
+   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -99,6 +95,8 @@ class SubAnnotate_m:
     @classmethod
     def _make_subclass(cls, *params) -> type:
         match params:
+            case [NewType() as param]:
+                p_str = param.__name__
             case [type() as param]:
                 p_str = param.__name__
             case [str() as param]:
@@ -110,7 +108,9 @@ class SubAnnotate_m:
             case _:
                 raise ValueError("Bad param value for making an annotated subclass", params)
 
-        def_mod = _caller()
+        # Get the module definer 3 frames up.
+        # So not _make_subclass, or __class_getitem__, but where the subclass is created
+        def_mod = _caller(3)
         subname = f"{cls.__name__}[{p_str}]"
         subdata = {cls._AnnotateTo : param,
                    "__module__"     : def_mod,
