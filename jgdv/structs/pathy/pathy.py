@@ -21,31 +21,6 @@ import sys
 import time as time_
 import types
 import weakref
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    Self,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -56,12 +31,40 @@ from jgdv.mixins.annotate import SubRegistry_m
 
 # ##-- end 1st party imports
 
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   from typing import Final
+   from typing import ClassVar, Any, LiteralString
+   from typing import Never, Self, Literal
+   from typing import TypeGuard
+   from collections.abc import Iterable, Iterator, Callable, Generator
+   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+# isort: on
+# ##-- end types
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
 if sys.version_info.minor < 12:
     raise RuntimeError("Pathy needs 3.12+")
+
+Pure = NewType("Pure", None)
+Real = NewType("Real", None)
+File = NewType("File", None)
+Dir  = NewType("Dir", None)
+Wild = NewType("Wild", None)
 
 class _PathyExpand_m:
 
@@ -110,37 +113,26 @@ class _PathyTime_m:
             case None:
                 return time < self.time_modified()
 
-class PathyTypes_e(enum.StrEnum):
-    """ An Enum of available Path+ types"""
-    Pure     = "pure"
-    Real     = "real"
-    Dir      = "dir"
-    File     = "file"
-    Path     = "path"
-    Loc      = "loc"
-    Wildcard = "*"
-
-    default  = Loc
 
 class Pathy(SubRegistry_m, AnnotateTo="pathy_type"):
     """
     An Abstract Pathy class
     """
-    mark_e : ClassVar[enum.Enum] = PathyTypes_e
-    _registry : dict[PathyTypes_e, pl.PurePath|pl.Path] = {}
+    _registry : dict[type, pl.PurePath|pl.Path] = {}
 
     @classmethod
     def __class_getitem__(cls, param) -> Self:
-        param = cls.mark_e(param)
+        if not isinstance(param, NewType):
+            raise TypeError("Bad Pathy Subtype", param)
         return super().__class_getitem__(param)
 
     @staticmethod
     def cwd():
-        return Pathy['real'](pl.Path.cwd())
+        return Pathy[Real](pl.Path.cwd())
 
     @staticmethod
     def home():
-        return Pathy['real'](pl.Path.home())
+        return Pathy[Real](pl.Path.home())
 
     def __new__(cls, *args, **kwargs):
         """ When instantiating a Pathy, get the right subtype """
@@ -158,7 +150,7 @@ class Pathy(SubRegistry_m, AnnotateTo="pathy_type"):
         self._key         = key
         self._meta.update(kwargs)
 
-class PathyPure(_PathyExpand_m, Pathy['pure'], pl.PurePath):
+class PathyPure(_PathyExpand_m, Pathy[Pure], pl.PurePath):
     """
     The Main Accessor for building Pathy Subtypes
     """
@@ -193,7 +185,7 @@ class PathyPure(_PathyExpand_m, Pathy['pure'], pl.PurePath):
             case str():
                 return Pathy(other, self)
             case Pathy():
-                return other / self
+                return other.joinpath(self)
 
     def __lt__(self, other:Pathy|DateTime) -> bool:
         """ do self<other for paths,
@@ -206,15 +198,15 @@ class PathyPure(_PathyExpand_m, Pathy['pure'], pl.PurePath):
                 return super().__lt__(other)
 
     def with_segments(self, *segments) -> Self:
-        if self._get_annotation() is self.mark_e.File:
+        if isinstance(self, Pathy[File]):
             raise ValueError("Can't subpath a file")
         match segments:
             case [*_, PathyFile()]:
-                return Pathy['file'](*segments)
+                return Pathy[File](*segments)
             case [*_, pl.Path()|str() as x] if pl.Path(x).suffix != "":
-                return Pathy['file'](*segments)
+                return Pathy[File](*segments)
             case _:
-                return Pathy['dir'](*segments)
+                return Pathy[Dir](*segments)
 
     def format(self, *args, **kwargs) -> Self:
         as_str = str(self)
@@ -222,12 +214,12 @@ class PathyPure(_PathyExpand_m, Pathy['pure'], pl.PurePath):
         return type(self)(formatted)
 
     def with_suffix(self, suffix):
-        return Pathy['file'](super().with_suffix(suffix))
+        return Pathy[File](super().with_suffix(suffix))
 
-class PathyReal( _PathyTime_m, Pathy['real'], PathyPure, pl.Path):
+class PathyReal( _PathyTime_m, Pathy[Real], PathyPure, pl.Path):
     pass
 
-class PathyFile(Pathy['file'], PathyReal):
+class PathyFile(Pathy[File], PathyReal):
     """ a location of a file
 
     TODO disable:
@@ -244,7 +236,7 @@ class PathyFile(Pathy['file'], PathyReal):
     def mkdir(self, *args):
         return self.parent.mkdir(*args)
 
-class PathyDir(Pathy['dir'], PathyReal):
+class PathyDir(Pathy[Dir], PathyReal):
     """ A location of a directory
 
     TODO disable:
@@ -252,7 +244,7 @@ class PathyDir(Pathy['dir'], PathyReal):
     """
     pass
 
-class WildPathy(Pathy['*'], PathyPure):
+class WildPathy(Pathy[Wild], PathyPure):
     """ A Path that can handle ?wildcards, *globs, and {keys} in it.
     eg: a/path/*/?.txt
     """

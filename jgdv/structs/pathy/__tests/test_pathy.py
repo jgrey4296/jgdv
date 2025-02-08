@@ -15,11 +15,10 @@ import warnings
 import pytest
 
 from jgdv._types import *
-from jgdv.structs.pathy import Pathy
+from jgdv.structs.pathy import Pathy, Pure,Real,File,Dir
 import jgdv.structs.pathy.pathy as Ps
 
 logging = logmod.root
-
 class TestPathy:
 
     def test_sanity(self):
@@ -27,33 +26,33 @@ class TestPathy:
 
     def test_subclassing(self):
         # assert(issubclass(Pathy, pl.PurePath))
-        assert(issubclass(Pathy['pure'], Pathy))
-        assert(issubclass(Pathy['real'], Pathy))
-        assert(issubclass(Pathy['pure'], pl.PurePath))
-        assert(issubclass(Pathy['real'], pl.Path))
-        assert(issubclass(Pathy['real'], pl.PurePath))
+        assert(issubclass(Pathy[Pure], Pathy))
+        assert(issubclass(Pathy[Real], Pathy))
+        assert(issubclass(Pathy[Pure], pl.PurePath))
+        assert(issubclass(Pathy[Real], pl.Path))
+        assert(issubclass(Pathy[Real], pl.PurePath))
 
         assert(not issubclass(pl.Path, Pathy))
-        assert(not issubclass(Pathy['pure'], pl.Path))
+        assert(not issubclass(Pathy[Pure], pl.Path))
 
     def test_pathy_build(self):
         val : Pathy = Pathy("a/test")
         assert(isinstance(val, pl.PurePath))
         assert(not isinstance(val, pl.Path))
         assert(isinstance(val, Pathy))
-        assert(isinstance(val, Pathy['pure']))
+        assert(isinstance(val, Pathy[Pure]))
         assert(hasattr(val, "__dict__"))
         assert(not hasattr(val, "exists"))
 
     def test_pure(self):
-        val : Pathy = Pathy['pure']("a/test")
+        val : Pathy = Pathy[Pure]("a/test")
         assert(isinstance(val, pl.PurePath))
         assert(not isinstance(val, pl.Path))
         assert(hasattr(val, "__dict__"))
         assert(not hasattr(val, "exists"))
 
     def test_file(self):
-        val : Pathy = Pathy['file']("a/test")
+        val : Pathy = Pathy[File]("a/test")
         assert(isinstance(val, pl.PurePath))
         assert(isinstance(val, pl.Path))
         assert(hasattr(val, "__dict__"))
@@ -61,7 +60,7 @@ class TestPathy:
         assert(not val.exists())
 
     def test_dir(self):
-        val : Pathy = Pathy['dir']("a/test/")
+        val : Pathy = Pathy[Dir]("a/test/")
         assert(isinstance(val, pl.PurePath))
         assert(isinstance(val, pl.Path))
         assert(hasattr(val, "__dict__"))
@@ -75,7 +74,7 @@ class TestPathy:
         assert(val._meta['val'] == 'blah')
 
     def test_bad_annotation(self):
-        with pytest.raises(ValueError):
+        with pytest.raises(TypeError):
             Pathy['blah']
 
 class TestPathyOps:
@@ -84,18 +83,18 @@ class TestPathyOps:
         assert(True is not False) # noqa: PLR0133
 
     def test_join_file(self):
-        obj = Pathy['dir']("a/b/c")
-        obj2 = Pathy['file']("test.txt")
+        obj = Pathy[Dir]("a/b/c")
+        obj2 = Pathy[File]("test.txt")
         obj3 =  obj / obj2
-        assert(isinstance(obj3, Pathy['file']))
+        assert(isinstance(obj3, Pathy[File]))
 
     def test_join_file_str(self):
-        obj = Pathy['dir']("a/b/c")
+        obj = Pathy[Dir]("a/b/c")
         obj2 = obj / "test.txt"
-        assert(isinstance(obj2, Pathy['file']))
+        assert(isinstance(obj2, Pathy[File]))
 
     def test_join_fail_on_file(self):
-        obj = Pathy['file']("a/b/c/test.txt")
+        obj = Pathy[File]("a/b/c/test.txt")
         with pytest.raises(ValueError):
             obj / "test.txt"
 
@@ -105,7 +104,7 @@ class TestPathyOps:
         assert(isinstance(obj2, Pathy))
         assert(obj2 == "a/b/c/test")
 
-    def test_get_time_modified(self):
+    def test_get_tijme_modified(self):
         obj = Pathy.cwd()
         assert(isinstance(obj.time_modified(), datetime.datetime))
 
@@ -139,13 +138,13 @@ class TestPathyOps:
         assert(res == "a/blah/c")
 
     def test_format_keep_filetype(self):
-        obj  = Pathy['file']("a/{b}/c.txt")
+        obj  = Pathy[File]("a/{b}/c.txt")
         res  = obj.format(b="blah")
-        assert(isinstance(res, Pathy['file']))
+        assert(isinstance(res, Pathy[File]))
         assert(res == "a/blah/c.txt")
-
+class TestPathy_Time:
     def test_newer_than(self):
-        obj        = Pathy['file']("a/b/c.txt")
+        obj        = Pathy[File]("a/b/c.txt")
         obj.exists = lambda: True
         a_time     = datetime.datetime.fromtimestamp(pl.Path.cwd().stat().st_mtime)
         newer_time = a_time + datetime.timedelta(minutes=1)
@@ -156,7 +155,7 @@ class TestPathyOps:
         assert(not obj._newer_than(newer_time))
 
     def test_older_than(self):
-        obj        = Pathy['file']("a/b/c.txt")
+        obj        = Pathy[File]("a/b/c.txt")
         obj.exists = lambda: True
         a_time     = datetime.datetime.fromtimestamp(pl.Path.cwd().stat().st_mtime)
         older_time = a_time - datetime.timedelta(minutes=1)
@@ -166,7 +165,7 @@ class TestPathyOps:
         assert(obj._newer_than(older_time))
 
     def test_newer_than_tolerance_fail(self):
-        obj        = Pathy['file']("a/b/c.txt")
+        obj        = Pathy[File]("a/b/c.txt")
         obj.exists = lambda: True
         a_time     = datetime.datetime.fromtimestamp(pl.Path.cwd().stat().st_mtime)
         older_time = a_time - datetime.timedelta(minutes=1)
@@ -177,7 +176,7 @@ class TestPathyOps:
         assert(not obj._newer_than(older_time, tolerance=tolerance))
 
     def test_newer_than_tolerance_fail2(self):
-        obj        = Pathy['file']("a/b/c.txt")
+        obj        = Pathy[File]("a/b/c.txt")
         obj.exists = lambda: True
         a_time     = datetime.datetime.fromtimestamp(pl.Path.cwd().stat().st_mtime)
         newer_time = a_time + datetime.timedelta(minutes=1)
@@ -188,7 +187,7 @@ class TestPathyOps:
         assert(not obj._newer_than(newer_time, tolerance=tolerance))
 
     def test_newer_than_tolerance(self):
-        obj        = Pathy['file']("a/b/c.txt")
+        obj        = Pathy[File]("a/b/c.txt")
         obj.exists = lambda: True
         a_time     = datetime.datetime.fromtimestamp(pl.Path.cwd().stat().st_mtime)
         older_time = a_time - datetime.timedelta(days=3)
@@ -198,6 +197,7 @@ class TestPathyOps:
         assert(obj.time_modified() is a_time)
         assert(obj._newer_than(older_time, tolerance=tolerance))
 
+class TestPathy_Walking:
     @pytest.mark.skip
     def test_walk_dirs(self):
 
@@ -235,11 +235,11 @@ class TestPathyFile:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    def test_pathy_file(self):
-        val : Pathy['file'] = Pathy['file']("a/test.txt", val="blah")
-        assert(val.pathy_type is Pathy.mark_e.File)
-        assert(issubclass(Pathy['file'], Ps.PathyFile))
-        assert(isinstance(val, Pathy['file']))
+    def test_basic(self):
+        val : Pathy['file'] = Pathy[File]("a/test.txt", val="blah")
+        assert(val.pathy_type is File)
+        assert(issubclass(Pathy[File], Ps.PathyFile))
+        assert(isinstance(val, Pathy[File]))
         assert(isinstance(val, Pathy))
         assert(isinstance(val, pl.Path))
         assert(hasattr(val, "_meta"))
@@ -249,3 +249,7 @@ class TestPathDir:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
+
+    def test_basic(self):
+        obj = Pathy[File]("blah/bloo")
+        assert(isinstance(obj, pl.Path))
