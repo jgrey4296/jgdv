@@ -132,6 +132,7 @@ class Pathy(SubRegistry_m, AnnotateTo="pathy_type"):
     Also: Pathy.cwd() and Pathy.home()
     """
     _registry : dict[type, pl.PurePath|pl.Path] = {}
+    __match_args__ = ("pathy_type",)
     # Standard Pathy Subtypes
     Pure = Pure
     Real = Real
@@ -155,7 +156,6 @@ class Pathy(SubRegistry_m, AnnotateTo="pathy_type"):
 
     def __new__(cls, *args, **kwargs):
         """ When instantiating a Pathy, get the right subtype """
-        logging.debug("PathyMeta Call: %s : %s : %s", cls, args, kwargs)
         cls = cls._maybe_subclass_form() or PathyPure
         if cls is Pathy:
             cls = PathyPure
@@ -219,8 +219,10 @@ class PathyPure(_PathyExpand_m, Pathy[Pure], pl.PurePath):
 
     def with_segments(self, *segments) -> Self:
         if isinstance(self, Pathy[File]):
-            raise ValueError("Can't subpath a file")
+            raise TypeError("Can't subpath a file")
         match segments:
+            case [*_, pl.PurePath() as x] if x.is_absolute():
+                raise ValueError("Can't join when rhs is absolute", segments)
             case [*_, PathyFile()]:
                 return Pathy[File](*segments)
             case [*_, pl.Path()|str() as x] if pl.Path(x).suffix != "":
@@ -229,7 +231,7 @@ class PathyPure(_PathyExpand_m, Pathy[Pure], pl.PurePath):
                 return Pathy[Dir](*segments)
 
     def format(self, *args, **kwargs) -> Self:
-        as_str = str(self)
+        as_str    = str(self)
         formatted = as_str.format(*args, **kwargs)
         return type(self)(formatted)
 

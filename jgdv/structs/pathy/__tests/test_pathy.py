@@ -15,10 +15,11 @@ import warnings
 import pytest
 
 from jgdv._types import *
-from jgdv.structs.pathy import Pathy, Pure,Real,File,Dir
-import jgdv.structs.pathy.pathy as Ps
+from jgdv.structs.pathy import Pathy, Pure, Real, File, Dir
+import jgdv.structs.pathy.pathy as Pth
 
 logging = logmod.root
+
 class TestPathy:
 
     def test_sanity(self):
@@ -82,28 +83,6 @@ class TestPathyOps:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    def test_join_file(self):
-        obj = Pathy[Dir]("a/b/c")
-        obj2 = Pathy[File]("test.txt")
-        obj3 =  obj / obj2
-        assert(isinstance(obj3, Pathy[File]))
-
-    def test_join_file_str(self):
-        obj = Pathy[Dir]("a/b/c")
-        obj2 = obj / "test.txt"
-        assert(isinstance(obj2, Pathy[File]))
-
-    def test_join_fail_on_file(self):
-        obj = Pathy[File]("a/b/c/test.txt")
-        with pytest.raises(ValueError):
-            obj / "test.txt"
-
-    def test_rjoin_for_str(self):
-        obj = "a/b/c"
-        obj2 = obj / Pathy("test")
-        assert(isinstance(obj2, Pathy))
-        assert(obj2 == "a/b/c/test")
-
     def test_get_tijme_modified(self):
         obj = Pathy.cwd()
         assert(isinstance(obj.time_modified(), datetime.datetime))
@@ -142,7 +121,56 @@ class TestPathyOps:
         res  = obj.format(b="blah")
         assert(isinstance(res, Pathy[File]))
         assert(res == "a/blah/c.txt")
+
+class TestPathyJoin:
+
+    def test_join_file(self):
+        obj = Pathy[Dir]("a/b/c")
+        obj2 = Pathy[File]("test.txt")
+        obj3 =  obj / obj2
+        assert(isinstance(obj3, Pathy[File]))
+
+    def test_join_dir(self):
+        obj = Pathy[Dir]("a/b/c")
+        obj2 = Pathy[Dir]("test/blah")
+        obj3 =  obj / obj2
+        assert(isinstance(obj3, Pathy[Dir]))
+        assert(obj3 == "a/b/c/test/blah")
+
+    def test_join_file_str(self):
+        obj = Pathy[Dir]("a/b/c")
+        obj2 = obj / "test.txt"
+        assert(isinstance(obj2, Pathy[File]))
+
+    def test_subpath_file_fail(self):
+        obj = Pathy[File]("test.txt")
+        obj2 = Pathy[Dir]("blah/bloo")
+        with pytest.raises(TypeError):
+            obj / obj2
+
+    def test_rjoin_for_str(self):
+        obj = "a/b/c"
+        obj2 = obj / Pathy("test")
+        assert(isinstance(obj2, Pathy))
+        assert(obj2 == "a/b/c/test")
+
+    def test_join_relative_to_absolute_fail(self):
+        obj = Pathy[Dir]("a/b/c")
+        obj2 = Pathy[Dir]("/test")
+        with pytest.raises(ValueError):
+            obj / obj2
+
+    def test_join_absolute(self):
+        obj  = Pathy[Dir]("a/b/c")
+        obj2 = Pathy[Dir]("/test")
+        match obj2 / obj:
+            case Pathy(Pth.Dir) as obj3:
+                assert(obj3 == "/test/a/b/c")
+            case x:
+                assert(False), x
+
 class TestPathy_Time:
+
     def test_newer_than(self):
         obj        = Pathy[File]("a/b/c.txt")
         obj.exists = lambda: True
@@ -198,6 +226,7 @@ class TestPathy_Time:
         assert(obj._newer_than(older_time, tolerance=tolerance))
 
 class TestPathy_Walking:
+
     @pytest.mark.skip
     def test_walk_dirs(self):
 
@@ -238,7 +267,7 @@ class TestPathyFile:
     def test_basic(self):
         val : Pathy['file'] = Pathy[File]("a/test.txt", val="blah")
         assert(val.pathy_type is File)
-        assert(issubclass(Pathy[File], Ps.PathyFile))
+        assert(issubclass(Pathy[File], Pth.PathyFile))
         assert(isinstance(val, Pathy[File]))
         assert(isinstance(val, Pathy))
         assert(isinstance(val, pl.Path))
@@ -253,3 +282,48 @@ class TestPathDir:
     def test_basic(self):
         obj = Pathy[File]("blah/bloo")
         assert(isinstance(obj, pl.Path))
+
+class TestMatching:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_match_to_pure_path(self):
+        match Pathy("a/b/c"):
+            case pl.PurePath():
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_match_to_real_path(self):
+        match Pathy[Real]("a/b/c"):
+            case pl.Path():
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_match_to_pathy(self):
+        match Pathy[Real]("a/b/c"):
+            case Pathy():
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_match_to_pathy_sub(self):
+        match Pathy[Real]("a/b/c"):
+            case Pth.PathyReal():
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_match_to_pathy_sub_2(self):
+        """
+        you can't do case Pathy[Real](),
+        but you can do a postiional match:
+        case Pathy(Pth.Real):
+        """
+        match Pathy[Real]("a/b/c"):
+            case Pathy(Pth.Real):
+                assert(True)
+            case x:
+                assert(False), x
