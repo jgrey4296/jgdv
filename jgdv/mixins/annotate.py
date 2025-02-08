@@ -93,6 +93,12 @@ class SubAnnotate_m:
         match params:
             case []:
                 return cls
+            case _:
+                return cls._make_subclass(*params)
+
+    @classmethod
+    def _make_subclass(cls, *params) -> type:
+        match params:
             case [type() as param]:
                 p_str = param.__name__
             case [str() as param]:
@@ -114,7 +120,18 @@ class SubAnnotate_m:
         return sub
 
 class SubRegistry_m(SubAnnotate_m):
-    """ Create Subclasses in a registry """
+    """ Create Subclasses in a registry
+
+    By doing:
+    class MyReg(SubRegistry_m):
+        _registry : dict[str, type] = {}
+
+    class MyClass(MyReg['blah']: ...
+
+    MyClass is created as a subclass of MyReg, with a parameter set to 'blah'.
+    This is added into MyReg._registry
+    """
+
 
     @classmethod
     def __init_subclass__(cls, *args, **kwargs):
@@ -150,3 +167,8 @@ class SubRegistry_m(SubAnnotate_m):
     def _get_subclass_form(cls, *, param=None) -> Self:
         param = param or cls._get_annotation()
         return cls._registry.get(param, cls)
+
+    @classmethod
+    def _maybe_subclass_form(cls, *, param=None) -> Maybe[Self]:
+        param = param or cls._get_annotation()
+        return cls._registry.get(param, None)
