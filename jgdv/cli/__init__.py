@@ -1,5 +1,5 @@
 """
-
+jgdv.cli provides a statemachine based argument parser
 
 """
 from . import errors
