@@ -17,37 +17,33 @@ import re
 import time
 import types
 import weakref
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Self,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    _caller,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-from jgdv import Maybe
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, NewType, _caller
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+
+if TYPE_CHECKING:
+   from jgdv import Maybe
+   from typing import Final
+   from typing import ClassVar, Any, LiteralString
+   from typing import Never, Self, Literal
+   from typing import TypeGuard
+   from collections.abc import Iterable, Iterator, Callable, Generator
+   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -69,7 +65,7 @@ class SubAnnotate_m:
 
     """
 
-    _AnnotateTo: ClassVar[str] = AnnotationTarget
+    _AnnotateTo : ClassVar[str] = AnnotationTarget
 
     def __init_subclass__(cls, **kwargs):
         match kwargs:
@@ -82,10 +78,6 @@ class SubAnnotate_m:
                 setattr(cls, cls._AnnotateTo, None)
 
     @classmethod
-    def _get_annotation(cls) -> Maybe[str]:
-        return getattr(cls, cls._AnnotateTo, None)
-
-    @classmethod
     @ftz.cache
     def __class_getitem__(cls, *params) -> Self:
         """ Auto-subclass as {cls.__name__}[param]"""
@@ -93,6 +85,18 @@ class SubAnnotate_m:
         match params:
             case []:
                 return cls
+            case _:
+                return cls._make_subclass(*params)
+
+    @classmethod
+    def _get_annotation(cls) -> Maybe[str]:
+        return getattr(cls, cls._AnnotateTo, None)
+
+    @classmethod
+    def _make_subclass(cls, *params) -> type:
+        match params:
+            case [NewType() as param]:
+                p_str = param.__name__
             case [type() as param]:
                 p_str = param.__name__
             case [str() as param]:
@@ -101,8 +105,12 @@ class SubAnnotate_m:
                 p_str = str(param)
             case [param, *params]:
                 raise NotImplementedError("Multi Param Annotation not supported yet")
+            case _:
+                raise ValueError("Bad param value for making an annotated subclass", params)
 
-        def_mod = _caller()
+        # Get the module definer 3 frames up.
+        # So not _make_subclass, or __class_getitem__, but where the subclass is created
+        def_mod = _caller(3)
         subname = f"{cls.__name__}[{p_str}]"
         subdata = {cls._AnnotateTo : param,
                    "__module__"     : def_mod,
@@ -114,7 +122,19 @@ class SubAnnotate_m:
         return sub
 
 class SubRegistry_m(SubAnnotate_m):
-    """ Create Subclasses in a registry """
+    """ Create Subclasses in a registry
+
+    By doing:
+
+    class MyReg(SubRegistry_m):
+        _registry : dict[str, type] = {}
+
+    class MyClass(MyReg['blah']: ...
+
+    MyClass is created as a subclass of MyReg, with a parameter set to 'blah'.
+    This is added into MyReg._registry
+    """
+    _registry : ClassVar[dict] = {}
 
     @classmethod
     def __init_subclass__(cls, *args, **kwargs):
@@ -150,3 +170,8 @@ class SubRegistry_m(SubAnnotate_m):
     def _get_subclass_form(cls, *, param=None) -> Self:
         param = param or cls._get_annotation()
         return cls._registry.get(param, cls)
+
+    @classmethod
+    def _maybe_subclass_form(cls, *, param=None) -> Maybe[Self]:
+        param = param or cls._get_annotation()
+        return cls._registry.get(param, None)
