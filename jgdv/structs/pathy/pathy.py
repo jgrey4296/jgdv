@@ -119,6 +119,12 @@ class Pathy(SubRegistry_m, AnnotateTo="pathy_type"):
     An Abstract Pathy class
     """
     _registry : dict[type, pl.PurePath|pl.Path] = {}
+    # Standard Pathy Subtypes
+    Pure = Pure
+    Real = Real
+    File = File
+    Dir  = Dir
+    Wild = Wild
 
     @classmethod
     def __class_getitem__(cls, param) -> Self:
@@ -140,6 +146,7 @@ class Pathy(SubRegistry_m, AnnotateTo="pathy_type"):
         cls = cls._maybe_subclass_form() or PathyPure
         if cls is Pathy:
             cls = PathyPure
+
         obj = object.__new__(cls)
         obj.__init__(*args, **kwargs)
         return obj
@@ -265,6 +272,7 @@ class WildPathy(Pathy[Wild], PathyPure):
         """
         if not isinstance(pattern, pl.Path):
             pattern = self.with_segments(pattern)
+
         pattern = '**' / pattern
         return self.glob(pattern, case_sensitive=case_sensitive, recurse_symlinks=recurse_symlinks)
 
@@ -298,6 +306,7 @@ class WildPathy(Pathy[Wild], PathyPure):
             for i in sorted((i for i,x in enumerate(dirs) if d_skip(x)), reverse=True):
                 logging.debug("Removing: %s : %s", i, dirs[i])
                 del dirs[i]
+
             yield from [x for x in dirs]
 
     def with_segments(self, *segments) -> Self:

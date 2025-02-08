@@ -25,7 +25,7 @@ class TestPathy:
         assert(True is True)
 
     def test_subclassing(self):
-        # assert(issubclass(Pathy, pl.PurePath))
+        assert(not issubclass(Pathy, pl.PurePath))
         assert(issubclass(Pathy[Pure], Pathy))
         assert(issubclass(Pathy[Real], Pathy))
         assert(issubclass(Pathy[Pure], pl.PurePath))
