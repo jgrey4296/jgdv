@@ -1,4 +1,10 @@
 """
+Idenpotent Decorators, as an extendable class
+
+Key Classes:
+- DecoratorBase : Simplifies decorations to writing a _wrap_[method/fn] method or _mod_class.
+- MetaDecorator : Adds metadata to callable, without changing the behaviour of it.
+- DataDecorator : Stacks data onto the callable, with only one wrapping function
 
 """
 from __future__ import annotations

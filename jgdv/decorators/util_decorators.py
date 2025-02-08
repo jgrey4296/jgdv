@@ -45,5 +45,5 @@ logging = logmod.getLogger(__name__)
 # Body:
 
 class SideEffectFree(DecoratorBase):
-    """ Mark a Target as not modifying external variables """
+    """ TODO Mark a Target as not modifying external variables """
     pass
