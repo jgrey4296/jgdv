@@ -81,7 +81,6 @@ DATA_SUFFIX         : Final[str]       = "_data"
 
 # TODO use ideas from pytest.mark
 
-
 class _TargetType_e(enum.Enum):
 
     CLASS    = enum.auto()
