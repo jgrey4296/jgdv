@@ -49,15 +49,16 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+AnnotateKWD      : Final[str] = "annotate_to"
 AnnotationTarget : Final[str] = "_typevar"
 
 class SubAnnotate_m:
     """
     A Mixin to create simple subclasses through annotation.
-    Annotation var name can be customized through the subclass kwarg 'AnnotateTo'.
+    Annotation var name can be customized through the subclass kwarg 'annotate_to'.
     eg:
 
-    class MyExample(SubAnnotate_m, AnnotateTo='blah'):
+    class MyExample(SubAnnotate_m, annotate_to='blah'):
         pass
 
     a_sub = MyExample[int]
@@ -65,23 +66,26 @@ class SubAnnotate_m:
 
     """
 
-    _AnnotateTo : ClassVar[str] = AnnotationTarget
+    _annotate_to : ClassVar[str] = AnnotationTarget
 
     def __init_subclass__(cls, **kwargs):
-        match kwargs:
-            case {"AnnotateTo": target}:
+        """ TODO does this need to call super? """
+        match kwargs.get(AnnotateKWD, None):
+            case str() as target:
                 logging.debug("Annotate Subclassing: %s : %s", cls, kwargs)
-                del kwargs['AnnotateTo']
-                cls._AnnotateTo = target
-                setattr(cls, cls._AnnotateTo, None)
-            case _ if not hasattr(cls, cls._AnnotateTo):
-                setattr(cls, cls._AnnotateTo, None)
+                del kwargs[AnnotateKWD]
+                cls._annotate_to = target
+                setattr(cls, cls._annotate_to, None)
+            case None if not hasattr(cls, cls._annotate_to):
+                setattr(cls, cls._annotate_to, None)
+            case _:
+                pass
 
     @classmethod
     @ftz.cache
     def __class_getitem__(cls, *params) -> Self:
         """ Auto-subclass as {cls.__name__}[param]"""
-        logging.debug("Annotating: %s : %s : (%s)", cls.__name__, params, cls._AnnotateTo)
+        logging.debug("Annotating: %s : %s : (%s)", cls.__name__, params, cls._annotate_to)
         match params:
             case []:
                 return cls
@@ -90,7 +94,7 @@ class SubAnnotate_m:
 
     @classmethod
     def _get_annotation(cls) -> Maybe[str]:
-        return getattr(cls, cls._AnnotateTo, None)
+        return getattr(cls, cls._annotate_to, None)
 
     @classmethod
     def _make_subclass(cls, *params) -> type:
@@ -112,13 +116,13 @@ class SubAnnotate_m:
         # So not _make_subclass, or __class_getitem__, but where the subclass is created
         def_mod = _caller(3)
         subname = f"{cls.__name__}[{p_str}]"
-        subdata = {cls._AnnotateTo : param,
+        subdata = {cls._annotate_to : param,
                    "__module__"     : def_mod,
                    "__supertype__"  : cls,
                    "__qualname__"   : f"{def_mod}.{subname}"
                    }
         sub = type(subname, (cls,), subdata)
-        setattr(sub, cls._AnnotateTo, param)
+        setattr(sub, cls._annotate_to, param)
         return sub
 
 class SubRegistry_m(SubAnnotate_m):

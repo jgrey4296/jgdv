@@ -16,10 +16,10 @@ logging = logmod.root
 
 from jgdv.structs.strang import Strang
 from jgdv.structs.strang.code_ref import CodeReference
-from jgdv.decorators.check_protocol import check_protocol
+from jgdv import check_protocol
 
-EX_STR    : Final[str] = "fn::jgdv.decorators.check_protocol:check_protocol"
-NO_PREFIX : Final[str] = "jgdv.decorators.check_protocol:check_protocol"
+EX_STR    : Final[str] = "fn::jgdv.decorators.class_decorators:check_protocol"
+NO_PREFIX : Final[str] = "jgdv.decorators.class_decorators:check_protocol"
 
 class TestCodeReference:
 
@@ -51,7 +51,7 @@ class TestCodeReference:
 
     def test_module(self):
         ref = CodeReference(EX_STR)
-        assert(ref.module == "jgdv.decorators.check_protocol")
+        assert(ref.module == "jgdv.decorators.class_decorators")
 
     def test_value(self):
         ref = CodeReference(EX_STR)
@@ -60,8 +60,8 @@ class TestCodeReference:
     def test_import(self):
         ref      = CodeReference(EX_STR)
         match ref():
-            case Exception():
-                assert(False)
+            case Exception() as x:
+                assert(False), x
             case x:
                 assert(callable(x))
                 assert(x == check_protocol)

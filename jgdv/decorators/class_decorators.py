@@ -46,8 +46,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 from .core import DecoratorBase
-from .check_protocol import CheckProtocol
-from types import resolve_bases
+from types import resolve_bases, FunctionType
 
 # ##-- types
 # isort: off
@@ -61,10 +60,92 @@ if typing.TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-# Global Vars:
+##--| Global Vars:
+MIXIN_KWD : Final[str] = "_jgdv_mixins"
+PROTO_KWD : Final[str] = "_jgdv_protos"
+ABSMETHS  : Final[str] = "__abstractmethods__"
+IS_ABS    : Final[str] = "__isabstractmethod__"
+##--| Funcs
+def check_protocol(cls):
+    """ Decorator. Check the class implements all its methods / has no abstractmethods """
+    checker = CheckProtocol()
+    return checker(cls)
 
-# Body:
+##--| Body
 
+class CheckProtocol(DecoratorBase):
+    """ A Class Decorator to ensure a class has no abc.abstractmethod's
+    or unimplemented protocol members
+
+    pass additional protocols when making the decorator,
+    eg:
+    @CheckProtocol(Proto1_p, Proto2_p, AbsClass...)
+    class MyClass:
+    pass
+    """
+    @staticmethod
+    def _get_protos(cls) -> set[Protocol]:
+        # From MRO
+        protos = [x for x in cls.__mro__
+                  if issubclass(x, Protocol)
+                  and x is not cls
+                  and x is not Protocol]
+        # from JGDV Annotations
+        protos += getattr(cls, PROTO_KWD, [])
+        return set(protos)
+    def __init__(self, *protos):
+        super().__init__()
+        self._protos = protos
+
+    def _test_method(self, cls:type, name:str) -> bool:
+        """ return True if the named method is abstract still """
+        if name == ABSMETHS:
+            return False
+        match getattr(cls, name, None):
+            case None:
+                return True
+            case FunctionType() as x if hasattr(x, IS_ABS):
+                return x.__isabstractmethod__
+            case FunctionType() | property():
+                return False
+
+
+
+
+    def _test_protocol(self, proto:Protocol, cls) -> list[str]:
+        """ Returns a list of methods which are defined in the protocol, no where else in the mro """
+        result = []
+        for member in proto.__protocol_attrs__:
+            match getattr(cls, member, None):
+                case property():
+                    pass
+                case None:
+                    result.append(member)
+                case FunctionType() as meth if proto.__qualname__ in meth.__qualname__:
+                    # (as a class, the method isn't actually bound as a method yet, its still a function)
+                    result.append(member)
+                case FunctionType():
+                    pass
+                case x:
+                    raise TypeError("Unexpected Type in protocol checking", member, x, cls)
+        else:
+            return result
+
+    def _mod_class(self, cls:type) -> type:
+        still_abstract = set()
+        for meth in getattr(cls, ABSMETHS, []):
+            if self._test_method(cls, meth):
+                still_abstract.add(meth)
+        for proto in self._get_protos(cls):
+            still_abstract.update(self._test_protocol(proto, cls))
+
+        for proto in self._protos:
+            still_abstract.update(self._test_protocol(proto, cls))
+
+        if not bool(still_abstract):
+            return cls
+
+        raise NotImplementedError("Class has Abstract Methods", cls.__module__, cls.__name__, still_abstract)
 class Mixin(DecoratorBase):
     """ Decorator to Prepend Mixins into the decorated class.
     kwarg 'append'
@@ -104,15 +185,15 @@ class Mixin(DecoratorBase):
 
 
 
-class WithProto(DecoratorBase):
-    """ Mixin to change:
+class Proto(CheckProtocol):
+    """ Mixin to explicitly annotate a class with a set of protocols
+    Protocols are annotated into cls._jgdv_protos : set[Protocol]
 
-    class ClsName(mixins, Supers, Protocols, metaclass=MCls, **kwargs):...
+    class ClsName(Supers*, P1, P1..., **kwargs):...
 
     into:
 
-    @Mixin(*ms)
-    @Protocols(*ps)
+    @Protocols(P1, P2,...)
     class ClsName(Supers): ...
 
 """
@@ -121,16 +202,26 @@ class WithProto(DecoratorBase):
         self._protos = protos or []
         self._check = check
 
-    def _mod_class(self, cls):
-        bases = [*cls.mro()[:-1], *self._protos]
-        new_mro = resolve_bases(bases)
+    def _mod_class(self, cls:type):
         new_name = f"{cls.__qualname__}<WithProtocols>"
+        with_protos : dict = dict(cls.__dict__)
+
+        match with_protos.get(PROTO_KWD, None):
+            case None:
+                with_protos[PROTO_KWD] = set([*self._get_protos(cls), *self._protos])
+            case [*xs]:
+                with_protos[PROTO_KWD] = set([*xs, *self._protos])
         try:
-            custom = type(cls)(new_name, tuple(new_mro), dict(cls.__dict__))
+            custom = type(cls)(new_name, tuple(cls.mro()), with_protos)
             if not self._check:
                 return custom
 
             checker = CheckProtocol()
             return checker(custom)
         except TypeError as err:
-            raise TypeError(*err.args, new_mro) from None
+            raise TypeError(*err.args, cls, self._protos) from None
+
+    @staticmethod
+    def get(cls:type) -> list[Protocol]:
+        """ Get a List of protocols the class is annotated with """
+        return list(Proto._get_protos(cls))

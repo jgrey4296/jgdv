@@ -5,7 +5,7 @@ __version__ = "0.3.2"
 from . import prelude
 from ._types import *
 from . import errors
-from jgdv.decorators.check_protocol import check_protocol
+from jgdv.decorators.class_decorators import Mixin, Proto, check_protocol, CheckProtocol
 from .errors import JGDVError
 
 def identity_fn(x):
