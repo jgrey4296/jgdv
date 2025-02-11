@@ -25,6 +25,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
+from jgdv import Mixin
 from jgdv.decorators import (
     DataDecorator,
     DecoratorAccessor_m,
@@ -47,8 +48,7 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+from types import MethodType
 
 if TYPE_CHECKING:
     from jgdv import Decorator, FmtStr, Func, Ident, Maybe, Method, Rx
@@ -154,7 +154,38 @@ class DKeyExpansionDecorator(DataDecorator):
             if x != y:
                 raise dkey_errs.DecorationMismatch("Mismatch in signature tail", str(x), str(y))
 
-class _DKeyedMeta_m:
+class DKeyed:
+    """ Decorators for actions
+
+    It registers arguments on an action and extracts them from the spec and state automatically.
+
+    provides: expands/paths/types/requires/returns/args/kwargs/redirects
+    The kwarg 'hint' takes a dict and passes the contents to the relevant expansion method as kwargs
+
+    arguments are added to the tail of the action args, in order of the decorators.
+    the name of the expansion is expected to be the name of the action parameter,
+    with a "_" prepended if the name would conflict with a keyword., or with "_ex" as a suffix
+    eg: @DKeyed.paths("from") -> def __call__(self, spec, state, _from):...
+    or: @DKeyed.paths("from") -> def __call__(self, spec, state, from_ex):...
+    """
+
+    _extensions : ClassVar[set[type]] = set()
+
+    def __init_subclass__(cls):
+        """
+        Subclasses of DKeyed are stored, and used to extend DKeyed
+        """
+        if cls in DKeyed._extensions:
+            return
+        DKeyed._extensions.add(cls)
+        for x in dir(cls):
+            match getattr(cls, x):
+                case MethodType() as y if not hasattr(DKeyed, x):
+                    setattr(DKeyed, x, y)
+                case _:
+                    pass
+
+class DKeyedMeta(DKeyed):
     """ Mixin for decorators that declare meta information,
     but doesnt modify the behaviour
     """
@@ -171,7 +202,7 @@ class _DKeyedMeta_m:
         keys = [DKey(x, implicit=True, mark=DKey.Mark.NULL, **kwargs) for x in args]
         return DKeyMetaDecorator(keys)
 
-class _DKeyedRetrieval_m(DecoratorAccessor_m):
+class DKeyedRetrieval(DecoratorAccessor_m, DKeyed):
     """ Mixin for decorators which modify the calling behaviour of the decoration target
 
     """
@@ -230,19 +261,3 @@ class _DKeyedRetrieval_m(DecoratorAccessor_m):
     def postbox(cls, *args, **kwargs) -> Decorator:
         keys = [DKey(x, implicit=True, mark=DKey.Mark.POSTBOX, **kwargs) for x in args]
         return cls._build_decorator(keys)
-
-class DKeyed(_DKeyedRetrieval_m, _DKeyedMeta_m):
-    """ Decorators for actions
-
-    It registers arguments on an action and extracts them from the spec and state automatically.
-
-    provides: expands/paths/types/requires/returns/args/kwargs/redirects
-    The kwarg 'hint' takes a dict and passes the contents to the relevant expansion method as kwargs
-
-    arguments are added to the tail of the action args, in order of the decorators.
-    the name of the expansion is expected to be the name of the action parameter,
-    with a "_" prepended if the name would conflict with a keyword., or with "_ex" as a suffix
-    eg: @DKeyed.paths("from") -> def __call__(self, spec, state, _from):...
-    or: @DKeyed.paths("from") -> def __call__(self, spec, state, from_ex):...
-    """
-    pass

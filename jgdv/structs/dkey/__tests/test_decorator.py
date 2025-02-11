@@ -9,6 +9,7 @@ import pathlib as pl
 from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
                     TypeVar, cast)
+from types import MethodType
 import warnings
 
 import pytest
@@ -17,7 +18,7 @@ from jgdv import JGDVError
 from jgdv.structs.dkey import DKey, DKeyed
 from jgdv.structs.dkey import DKeyExpansionDecorator as DKexd
 from jgdv.decorators import _TargetType_e
-from jgdv.structs.dkey.decorator import DKeyMetaDecorator
+from jgdv.structs.dkey.decorator import DKeyMetaDecorator, DKeyedMeta, DKeyedRetrieval
 
 logging = logmod.root
 
@@ -46,7 +47,6 @@ class TestDkeyDecorator:
         dec._verify_signature(sig, ttype, [])
         assert(True)
 
-
     def test_verify_signature_method_head_fail(self):
         dec   = DKexd([])
         ttype = _TargetType_e.METHOD
@@ -57,7 +57,6 @@ class TestDkeyDecorator:
         sig = dec._signature(simple)
         with pytest.raises(JGDVError):
             dec._verify_signature(sig, ttype, [])
-
 
     def test_verify_signature_func_head(self):
         dec   = DKexd([])
@@ -70,7 +69,6 @@ class TestDkeyDecorator:
         dec._verify_signature(sig, ttype, [])
         assert(True)
 
-
     def test_verify_signature_func_head_fail(self):
         dec   = DKexd([])
         ttype = _TargetType_e.FUNC
@@ -81,7 +79,6 @@ class TestDkeyDecorator:
         sig = dec._signature(simple)
         with pytest.raises(JGDVError):
             dec._verify_signature(sig, ttype, [])
-
 
     def test_verify_signature_method_tail(self):
         dec   = DKexd([])
@@ -94,7 +91,6 @@ class TestDkeyDecorator:
         dec._verify_signature(sig, ttype, ["bloo", "blee"])
         assert(True)
 
-
     def test_verify_signature_method_tail_fail(self):
         dec   = DKexd([])
         ttype = _TargetType_e.METHOD
@@ -105,7 +101,6 @@ class TestDkeyDecorator:
         sig = dec._signature(simple)
         with pytest.raises(JGDVError):
             dec._verify_signature(sig, ttype, ["bloo", "blah"])
-
 
     def test_verify_signature_func_tail(self):
         dec   = DKexd([])
@@ -118,7 +113,6 @@ class TestDkeyDecorator:
         dec._verify_signature(sig, ttype, ["bloo", "blee"])
         assert(True)
 
-
     def test_verify_signature_func_tail_fail(self):
         dec   = DKexd([])
         ttype = _TargetType_e.FUNC
@@ -129,7 +123,6 @@ class TestDkeyDecorator:
         sig = dec._signature(simple)
         with pytest.raises(JGDVError):
             dec._verify_signature(sig, ttype, ["bloo", "blah"])
-
 
     def test_verify_signature_incomplete_tail(self):
         dec   = DKexd([])
@@ -142,7 +135,6 @@ class TestDkeyDecorator:
         dec._verify_signature(sig, ttype, ["blee", "blob"])
         assert(True)
 
-
     def test_verify_signature_skip_ignores(self):
         dec   = DKexd([])
         ttype = _TargetType_e.FUNC
@@ -153,7 +145,6 @@ class TestDkeyDecorator:
         sig = dec._signature(simple)
         dec._verify_signature(sig, ttype, ["awef", "aweg", "blob"])
         assert(True)
-
 
 class TestDKeyDecoratorExpansion:
 
@@ -169,13 +160,12 @@ class TestDKeyDecoratorExpansion:
 
         simple(None, state)
 
-
     def test_mismatch_signature(self):
         with pytest.raises(JGDVError):
+
             @DKeyed.types("other")
             def simple(spec, state, basic):
                 assert(basic == "blah")
-
 
     def test_expansion_fallback(self):
         state = { "notbasic": "bloo" }
@@ -185,7 +175,6 @@ class TestDKeyDecoratorExpansion:
             assert(basic == "blah")
 
         simple(None, state)
-
 
     def test_multi_expansion(self):
         state = { "basic": "bloo", "other": "qwerty" }
@@ -198,7 +187,6 @@ class TestDKeyDecoratorExpansion:
 
         simple(None, state)
 
-
     def test_multi_expansion_fallback(self):
         state = { "notbasic": "bloo", "notother": "qwerty" }
 
@@ -210,11 +198,29 @@ class TestDKeyDecoratorExpansion:
 
         simple(None, state)
 
-
     def test_meta_decorator_no_change(self):
+
         @DKeyed.requires("basic")
         @DKeyed.requires("other")
         def simple(spec, state):
             pass
 
         simple(None, None)
+
+class TestDKeyed:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_basic(self):
+        assert(DKeyedMeta in DKeyed._extensions)
+        assert(DKeyedRetrieval in DKeyed._extensions)
+
+    def test_simple_access(self):
+        assert(hasattr(DKeyedMeta, "requires"))
+        assert(hasattr(DKeyed, "requires"))
+        match DKeyed.requires:
+            case MethodType():
+                assert(True)
+            case x:
+                assert(False), x
