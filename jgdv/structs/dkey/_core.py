@@ -228,5 +228,5 @@ class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
         return [[
             ExpInst(f"{self:i}", lift=True),
             ExpInst(f"{self:d}", convert=False),
-            ExpInst(self, literal=True),
+            ExpInst(self._fallback, literal=True, convert=False),
         ]]

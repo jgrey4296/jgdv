@@ -165,8 +165,8 @@ class TestExpansion:
         """
         obj = DKey("test", implicit=True)
         state = {"test": "{blah}", "blah": "{aweg}", "aweg": "qqqq"}
-        assert(obj.expand(state, limit=1) == "{blah}")
-        assert(obj.expand(state, limit=2) == "{aweg}")
+        assert(obj.expand(state, limit=1) == "blah")
+        assert(obj.expand(state, limit=2) == "aweg")
         assert(obj.expand(state, limit=3) == "qqqq")
 
 
@@ -424,7 +424,7 @@ class TestMultiExpansion:
         assert(DKey.MarkOf(obj) is DKey.Mark.MULTI)
         state = {"test": "{test}", "blah": "blah/{aweg_}"}
         match obj.local_expand(state, limit=10):
-            case ExpInst(val="{test}"):
+            case ExpInst(val=str() as x) if x == "test":
                 assert(True)
             case x:
                 assert(False), x

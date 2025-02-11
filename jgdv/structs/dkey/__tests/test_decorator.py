@@ -207,6 +207,32 @@ class TestDKeyDecoratorExpansion:
 
         simple(None, None)
 
+
+    def test_redirects_expansion(self):
+
+        @DKeyed.redirects("other_")
+        def simple(spec, state, _other):
+            match _other:
+                case str():
+                    assert(_other == "blah")
+                case x:
+                    assert(False), x
+
+        simple(None, {"other_":"blah"})
+
+
+    def test_redirects_expansion_doesnt_recurse(self):
+
+        @DKeyed.redirects("other_")
+        def simple(spec, state, _other):
+            match _other:
+                case DKey():
+                    assert(_other == "blah")
+                case x:
+                    assert(False), x
+
+        simple(None, {"other_":"blah", "blah":"bloo"})
+
 class TestDKeyed:
 
     def test_sanity(self):

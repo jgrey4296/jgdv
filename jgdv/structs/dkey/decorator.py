@@ -229,7 +229,6 @@ class DKeyedRetrieval(DecoratorAccessor_m, DKeyed):
     @classmethod
     def types(cls, *args, **kwargs) -> Decorator:
         """ mark an action as using raw type keys """
-        kwargs.setdefault("max_exp", 1)
         keys = [DKey(x, implicit=True, mark=DKey.Mark.FREE, **kwargs) for x in args]
         return cls._build_decorator(keys)
 
@@ -248,6 +247,7 @@ class DKeyedRetrieval(DecoratorAccessor_m, DKeyed):
     @classmethod
     def redirects(cls, *args, **kwargs) -> Decorator:
         """ mark an action as using redirection keys """
+        kwargs.setdefault("max_exp", 1)
         keys = [DKey(x, implicit=True, mark=DKey.Mark.INDIRECT, ctor=DKey, **kwargs) for x in args]
         return cls._build_decorator(keys)
 

@@ -134,9 +134,11 @@ class DKeyLocalExpander_m:
         full_sources += [x for x in self.exp_extra_sources() if x not in full_sources]
         # Limit defaults to -1 / until completion
         # but recursions can pass in limits
-        match kwargs.get("limit", -1):
+        match kwargs.get("limit", None):
             case 0:
-                return fallback or ExpInst(val=f"{self:w}", literal=True)
+                return fallback or ExpInst(val=self, literal=True)
+            case None | -1:
+                limit = -1
             case x if x < -1:
                 limit = -1
             case x:
