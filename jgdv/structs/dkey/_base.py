@@ -60,8 +60,8 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-@Mixin(DKeyFormatting_m, DKeyLocalExpander_m)
 @Proto(Key_p, check=False)
+@Mixin(DKeyFormatting_m, DKeyLocalExpander_m)
 class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
     """
       Base class for implementing actual DKeys.
@@ -95,7 +95,7 @@ class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
         cls._conv_params = conv or cls._conv_params
         match cls._mark:
             case None:
-                logging.warning("No Mark to Register Key Subtype: %s", cls)
+                logging.info("No Mark to Register Key Subtype: %s", cls)
             case x:
                 DKeyMeta.register_key_type(cls, x, conv=cls._conv_params, multi=multi)
 

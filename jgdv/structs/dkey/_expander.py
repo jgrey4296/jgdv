@@ -366,7 +366,6 @@ class _DKeyFormatter_Expansion_m:
         current : DKey = key
         last    : set[str] = set()
 
-        # TODO refactor this to do the same as locations._expand_key
         while 0 < self.rec_remaining and str(current) not in last:
             logging.debug("--- Loop (%s:%s) [%s] : %s", self._depth, MAX_KEY_EXPANSIONS - self.rec_remaining, key, repr(current))
             self.rec_remaining -= count

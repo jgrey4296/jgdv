@@ -64,7 +64,6 @@ class DKeyMark_e(EnumBuilder_m, enum.StrEnum):
     """
       Enums for how to use/build a dkey
 
-    TODO refactor this to StrEnum
     """
     FREE     = "free"
     PATH     = enum.auto() # -> pl.Path
@@ -208,8 +207,6 @@ class DKeyMeta(type(str)):
 class DKey(metaclass=DKeyMeta):
     """ A facade for DKeys and variants.
       Implements __new__ to create the correct key type, from a string, dynamically.
-
-    TODO use subclass annotation
 
       kwargs:
       explicit = insists that keys in the string are wrapped in braces '{akey} {anotherkey}'.
