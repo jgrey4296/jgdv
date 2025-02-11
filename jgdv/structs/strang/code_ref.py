@@ -53,7 +53,7 @@ class CodeRefMeta_e(enum.StrEnum):
     fn      = "fn"
 
     val     = "value"
-    default = cls
+    default = fn
 
 class CodeReference(Strang):
     """
