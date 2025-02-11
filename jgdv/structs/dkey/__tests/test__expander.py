@@ -20,7 +20,7 @@ import pytest
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from jgdv.structs.dkey import DKey
+from jgdv.structs.dkey import DKey, IndirectDKey
 from jgdv import identity_fn
 
 from jgdv.structs.dkey._expander import ExpInst
@@ -116,11 +116,27 @@ class TestExpansion:
             case x:
                 assert(False), x
 
-    def test_recursive(self):
+    def test_simple_recursive(self):
+        """
+        {test} -> {blah} -> bloo
+        """
         obj = DKey("test", implicit=True)
         state = {"test": "{blah}", "blah": "bloo"}
         match obj.local_expand(state):
             case ExpInst(val="bloo"):
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_double_recursive(self):
+        """
+        {test} -> {blah} -> {aweg}/{bloo} -> qqqq/{aweg} -> qqqq/qqqq
+        """
+        obj = DKey("test", implicit=True)
+        state = {"test": "{blah}", "blah": "{aweg}/{bloo}", "aweg":"qqqq", "bloo":"{aweg}"}
+        match obj.local_expand(state):
+            case ExpInst(val="qqqq/qqqq"):
                 assert(True)
             case x:
                 assert(False), x
@@ -143,17 +159,15 @@ class TestExpansion:
             case x:
                 assert(False), x
 
-    def test_limited_depth_expansion(self):
+    def test_expansion_cascade(self):
         """ {test} -> {blah},
         *not* qqqq
         """
         obj = DKey("test", implicit=True)
         state = {"test": "{blah}", "blah": "{aweg}", "aweg": "qqqq"}
-        match obj.local_expand(state, limit=0):
-            case ExpInst(val=DKey() as key) if key == "blah":
-                assert(True)
-            case x:
-                assert(False), x
+        assert(obj.expand(state, limit=1) == "{blah}")
+        assert(obj.expand(state, limit=2) == "{aweg}")
+        assert(obj.expand(state, limit=3) == "qqqq")
 
 class TestIndirection:
 
@@ -166,7 +180,7 @@ class TestIndirection:
         """
         obj = DKey("test", implicit=True)
         state = {"test": "blah"}
-        match obj.local_expand(state, limit=0):
+        match obj.local_expand(state):
             case ExpInst(val="blah"):
                 assert(True)
             case x:
@@ -178,7 +192,7 @@ class TestIndirection:
         """
         obj = DKey("test", implicit=True)
         state = {"test": "blah", "test_":"aweg"}
-        match obj.local_expand(state, limit=0):
+        match obj.local_expand(state):
             case ExpInst(val="blah"):
                 assert(True)
             case x:
@@ -190,7 +204,7 @@ class TestIndirection:
         """
         obj = DKey("test", implicit=True)
         state = {}
-        match obj.local_expand(state, limit=0):
+        match obj.local_expand(state):
             case None:
                 assert(True)
             case x:
@@ -202,7 +216,7 @@ class TestIndirection:
         """
         obj = DKey("test", implicit=True)
         state = {}
-        match obj.local_expand(state, fallback=25, limit=0):
+        match obj.local_expand(state, fallback=25):
             case ExpInst(val=25):
                 assert(True)
             case x:
@@ -214,71 +228,75 @@ class TestIndirection:
         """
         obj = DKey("test", fallback=25, implicit=True)
         state = {}
-        match obj.local_expand(state, limit=0):
+        match obj.local_expand(state):
             case ExpInst(val=25):
                 assert(True)
             case x:
                 assert(False), x
 
-    def test_hard_miss_with_ctor_hierarchy(self):
+    def test_hard_miss_prefer_call_fallback_over_ctor(self):
         """
         {key} -> state[] -> 25
         """
         obj = DKey("test", fallback=10, implicit=True)
         state = {}
-        match obj.local_expand(state, fallback=25, limit=0):
+        match obj.local_expand(state, fallback=25):
             case ExpInst(val=25):
                 assert(True)
             case x:
                 assert(False), x
 
+    def test_hard_miss_indirect(self):
+        """
+        {key_} -> state[] -> {key_}
+        """
+        obj = DKey("test_", implicit=True)
+        assert(obj._mark is DKey.mark.INDIRECT)
+        state = {}
+        match obj.local_expand(state):
+            case ExpInst(val=DKey() as k) if k == "test_":
+                assert(k._mark is DKey.mark.INDIRECT)
+                assert(True)
+            case x:
+                assert(False), x
     def test_soft_miss(self):
         """
-        {key} -> state[key_:val] -> {val_}
+        {key} -> state[key_:blah] -> {blah}
         """
         obj = DKey("test", implicit=True)
         state = {"test_": "blah"}
-        match obj.local_expand(state, limit=0):
+        match obj.local_expand(state):
             case ExpInst(val=DKey() as x) if x == "blah":
                 assert(True)
             case x:
                 assert(False), x
 
-    def test_indirect_hit_direct(self):
+    def test_soft_hit_direct(self):
         """
         {key_} -> state[key:val] -> val
         """
         obj = DKey("test_", implicit=True)
+        assert(obj._mark is DKey.mark.INDIRECT)
         state = {"test": "blah"}
-        match obj.local_expand(state, limit=0):
-            case ExpInst(val="blah"):
+        match obj.local_expand(state):
+            case ExpInst(val=str() as x) if str(x) == "blah":
                 assert(True)
             case x:
                 assert(False), x
 
-    def test_indirect_hit_indirect(self):
+    def test_soft_hit_indirect(self):
         """
         {key_} -> state[key_:val] -> {val}
         """
         obj = DKey("test_", implicit=True)
+        assert(obj._mark is DKey.mark.INDIRECT)
         state = {"test_": "blah"}
-        match obj.local_expand(state, limit=0):
-            case ExpInst(val=DKey() as k) if k == "blah":
+        match obj.local_expand(state):
+            case ExpInst(val=DKey() as k) if str(k) == "blah":
                 assert(True)
             case x:
                 assert(False), x
 
-    def test_indirect_miss(self):
-        """
-        {key_} -> state[] -> {key_}
-        """
-        obj = DKey("test_", implicit=True)
-        state = {}
-        match obj.local_expand(state, limit=0):
-            case ExpInst(val=DKey() as k) if k == "test_":
-                assert(True)
-            case x:
-                assert(False), x
 
 class TestMultiExpansion:
 
@@ -377,6 +395,28 @@ class TestMultiExpansion:
         state = {"test": "blah"}
         match obj.local_expand(state):
             case ExpInst(val="blah/{aweg_}"):
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_multikey_of_one(self):
+        obj = DKey("{test}", mark=DKey.mark.MULTI)
+        assert(DKey.MarkOf(obj) is DKey.mark.MULTI)
+        state = {"test": "{blah}", "blah": "blah/{aweg_}"}
+        match obj.local_expand(state):
+            case ExpInst(val="blah/{aweg_}"):
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_multikey_recursion(self):
+        obj = DKey("{test}", mark=DKey.mark.MULTI)
+        assert(DKey.MarkOf(obj) is DKey.mark.MULTI)
+        state = {"test": "{test}", "blah": "blah/{aweg_}"}
+        match obj.local_expand(state, limit=10):
+            case ExpInst(val="{test}"):
                 assert(True)
             case x:
                 assert(False), x

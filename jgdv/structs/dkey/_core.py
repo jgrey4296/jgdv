@@ -126,7 +126,6 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
         # remove the names for the keys, to allow expanding positionally
         self._anon       = "".join(x.anon() for x in self._subkeys)
 
-
     def __format__(self, spec:str) -> str:
         """
           Multi keys have no special formatting
@@ -153,7 +152,7 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
         """ Lift subkeys to expansion instructions """
         targets = []
         for key in self.keys():
-            targets.append([ExpInst(val=key)])
+            targets.append([ExpInst(val=key, fallback=None)])
         else:
             return targets
 
@@ -201,7 +200,6 @@ class NonDKey(DKeyBase, mark=DKeyMark_e.NULL):
                 return x
             case x:
                 raise TypeError("Nonkey coercion didn't return an ExpInst", x)
-
 
 class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
     """

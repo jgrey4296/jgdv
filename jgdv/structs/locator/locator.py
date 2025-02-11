@@ -47,6 +47,7 @@ from weakref import ref
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
+from jgdv import Mixin
 from jgdv.mixins.path_manip import PathManip_m
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.dkey import DKey, MultiDKey, NonDKey, SingleDKey
@@ -89,7 +90,7 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
-class SoftFailMultiDKey(MultiDKey, mark="soft.fail"):
+class SoftFailMultiDKey(MultiDKey["soft.fail"], multi=True):
 
     def exp_pre_lookup_hook(self, sources, opts) -> list:
         """ Expands subkeys, to be merged into the main key"""
@@ -97,6 +98,9 @@ class SoftFailMultiDKey(MultiDKey, mark="soft.fail"):
         for key in self.keys():
             targets.append([ExpInst(val=key, fallback=f"{key:w}")] )
         else:
+            if not bool(targets):
+                targets.append([ExpInst(val=f"{self}"),
+                                ExpInst(val=f"{self}", literal=True)])
             return targets
 
 class _LocatorGlobal:
@@ -310,7 +314,8 @@ class _LocatorAccess_m:
             case True:
                 return DKey(current, ctor=pl.Path, mark=DKey.mark.MULTI)
 
-class JGDVLocator(_LocatorAccess_m, _LocatorUtil_m, PathManip_m):
+@Mixin(_LocatorAccess_m, _LocatorUtil_m, PathManip_m)
+class JGDVLocator:
     """
       A managing context for storing and converting Locations to Paths.
       key=value pairs in [[locations]] toml blocks are integrated into it.

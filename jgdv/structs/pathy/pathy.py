@@ -120,7 +120,7 @@ class _PathyTime_m:
                 return time < self.time_modified()
 
 
-class Pathy(SubRegistry_m, AnnotateTo="pathy_type"):
+class Pathy(SubRegistry_m, annotate_to="pathy_type"):
     """
     The Main Accessor to Pathy.
     You don't build Pathy's directly eg: Pathy("a/loc/test.txt"),

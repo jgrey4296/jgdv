@@ -28,6 +28,7 @@ import sh
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
+from jgdv import Mixin
 from jgdv.structs.dkey._meta import DKey
 from jgdv.structs.dkey._parser import RawKey
 from jgdv._abstract.protocols import Key_p, SpecStruct_p
@@ -194,7 +195,9 @@ class _DKeyFormatterEntry_m:
         self._intent       = None
         return
 
-class DKeyFormatter(string.Formatter, _DKeyFormatter_Expansion_m, _DKeyFormatterEntry_m):
+
+@Mixin(_DKeyFormatter_Expansion_m, _DKeyFormatterEntry_m)
+class DKeyFormatter(string.Formatter):
     """
       An Expander/Formatter to extend string formatting with options useful for dkey's
       and doot specs/state.

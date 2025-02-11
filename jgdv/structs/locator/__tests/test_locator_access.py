@@ -2,6 +2,7 @@
 """
 
 """
+# ruff: noqa: B011
 from __future__ import annotations
 
 import logging as logmod
@@ -29,7 +30,6 @@ match JGDVLocator.Current:
 @pytest.fixture(scope="function")
 def simple() -> JGDVLocator:
     return JGDVLocator(pl.Path.cwd())
-
 
 class TestLocatorGet:
 
@@ -103,9 +103,8 @@ class TestLocatorExpand:
 
     def test_single_missing_strict(self, simple):
         simple.update({"blah":"bloo/blee"})
-        target = pl.Path.cwd() / "bloo/blee"
         with pytest.raises(KeyError):
-            simple.expand("{aweg}")
+            simple.expand("{aweg}", strict=True)
 
     def test_single_missing_not_strict(self, simple):
         simple.update({"blah":"bloo/blee"})
@@ -161,9 +160,18 @@ class TestLocatorExpand:
             case x:
                 assert(False), x
 
-    def test_recursion(self, simple):
+    def test_simple_recursion(self, simple):
         simple.update({"blah":"bloo/blee"})
         target = pl.Path.cwd() / "bloo/blee"
+        match simple.expand("{blah}"):
+            case pl.Path() as x if x == target:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_double_recursion(self, simple):
+        simple.update({"blah":"{bloo}/blee", "bloo":"aweg"})
+        target = pl.Path.cwd() / "aweg/blee"
         match simple.expand("{blah}"):
             case pl.Path() as x if x == target:
                 assert(True)

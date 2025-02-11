@@ -72,6 +72,7 @@ MAX_KEY_EXPANSIONS  : Final[int]                   = 200
 
 DEFAULT_COUNT       : Final[int]                   = 1
 PAUSE_COUNT         : Final[int]                   = 0
+RECURSION_GUARD     : Final[int]                   = 5
 
 chained_get         : Func                         = ChainedKeyGetter.chained_get
 
@@ -79,15 +80,18 @@ chained_get         : Func                         = ChainedKeyGetter.chained_ge
 
 class ExpInst:
     """ simple holder of expansion instructions"""
-    __slots__ = "val", "rec", "fallback", "lift", "literal", "convert"
+    __slots__ = "val", "rec", "fallback", "lift", "literal", "convert", "total_recs"
 
     def __init__(self, val:DKey|str, **kwargs):
+        if isinstance(val, ExpInst):
+            raise TypeError("Nested ExpInst", val)
         object.__setattr__(self, "val", val)
         object.__setattr__(self, "rec", kwargs.get("rec", -1))
         object.__setattr__(self, "fallback", kwargs.get("fallback", None))
         object.__setattr__(self, "lift", kwargs.get("lift", False))
         object.__setattr__(self, "literal", kwargs.get("literal", False))
         object.__setattr__(self, "convert", kwargs.get("convert", None))
+        object.__setattr__(self, "total_recs", kwargs.get("total_recs", 1))
 
     def __repr__(self) -> str:
         lit = "(Lit)" if self.literal else ""
@@ -134,11 +138,24 @@ class DKeyLocalExpander_m:
         match kwargs.get("fallback", self._fallback):
             case None:
                 fallback = None
+            case ExpInst() as x:
+                fallback = x
+                logging.debug("Fallback %s -> %s", self, fallback.val)
             case x:
                 fallback = ExpInst(val=x, literal=True)
+                logging.debug("Fallback %s -> %s", self, fallback.val)
 
         full_sources = [*sources, *self.exp_extra_sources()]
-        limit        = kwargs.get("limit", -1)
+        # Limit defaults to -2 / until completion
+        # but recursions can pass in limits
+        match kwargs.get("limit", -1):
+            case 0:
+                return fallback or ExpInst(val=f"{self:w}", literal=True)
+            case x if x < -1:
+                limit = -1
+            case x:
+                limit = x - 1
+
         targets = self.exp_pre_lookup_hook(sources, kwargs)
         match (vals:=self.exp_do_lookup(targets, full_sources, kwargs)):
             case []:
@@ -150,7 +167,7 @@ class DKeyLocalExpander_m:
                 logging.deug("Failed Post Lookup Hook")
                 return fallback
 
-        match (vals:=self.exp_do_recursion(vals, sources, kwargs, limit=limit)):
+        match (vals:=self.exp_do_recursion(vals, sources, kwargs, max_rec=limit)):
             case []:
                 logging.debug("Failed Recursion Hook")
                 return fallback
@@ -219,27 +236,30 @@ class DKeyLocalExpander_m:
                         pass
                     case str() as x if lift:
                         logging.debug("Lifting Result to Key: %s", x)
-                        return ExpInst(DKey(x, implicit=True, fallback=fallback))
+                        return ExpInst(DKey(x, implicit=True), fallback=fallback, lift=True)
                     case pl.Path() as x:
-                        match DKey(str(x), fallback=fallback):
+                        match DKey(str(x)):
                             case DKey(nonkey=True) as y:
                                 return ExpInst(y, rec=0)
                             case y:
-                                return ExpInst(y, rec=-1)
+                                return ExpInst(y, fallback=fallback)
                     case str() as x:
-                        match DKey(x, fallback=fallback):
+                        match DKey(x):
                             case DKey(nonkey=True) as y:
                                 return ExpInst(y, rec=0)
                             case y:
-                                return ExpInst(y, rec=-1)
+                                return ExpInst(y, fallback=fallback)
                     case x:
-                        return ExpInst(x)
+                        return ExpInst(x, fallback=fallback)
 
         for target in targets:
             match lookup_target(target):
                 case None:
                     logging.debug("Lookup Failed for: %s", target)
                     return []
+                case ExpInst(val=DKey() as key, rec=-1) as res if self == key:
+                    res.rec = RECURSION_GUARD
+                    result.append(res)
                 case ExpInst() as x:
                     result.append(x)
                 case x:
@@ -251,43 +271,44 @@ class DKeyLocalExpander_m:
         """ Produces a list[Key|Val|(Key, rec:int)]"""
         return vals
 
-    def exp_do_recursion(self, vals:list[ExpInst], sources, opts, *, limit:int=-1) -> list[ExpInst]:
+    def exp_do_recursion(self, vals:list[ExpInst], sources, opts, max_rec=RECURSION_GUARD) -> list[ExpInst]:
         """
         For values that can expand futher, try to expand them
 
         """
-        match limit:
-            case 0:
-                return vals
-            case int() as x if x < 0:
-                limit = -1
-            case int() as x:
-                limit = x - 1
-
         result = []
+        logging.debug("Recursing: %s", self)
         for x in vals:
             match x:
-                case ExpInst(literal=True):
+                case ExpInst(literal=True) | ExpInst(rec=0):
                     result.append(x)
-                case ExpInst(val=DKey() as key, rec=-1, fallback=fallback) if key is self or key == self:
-                    # Guard against infinite recursion
-                    expanded = key.local_expand(*sources, limit=1, fallback=fallback)
-                    if expanded is None:
-                        return []
-                    result.append(expanded)
-                case ExpInst(val=str() as key, rec=rec, fallback=fallback) if rec != 0:
-                    expanded = DKey(key).local_expand(*sources, limit=rec, fallback=fallback)
-                    if expanded is None:
-                        return []
-                    result.append(expanded)
-                case ExpInst(val=str() as key, fallback=fallback) if rec != 0:
-                    expanded = DKey(key).local_expand(*sources, limit=rec, fallback=fallback)
-                    if expanded is None:
-                        return []
-                    result.append(expanded)
+                case ExpInst(val=DKey() as key, rec=-1) if key is self or key == self:
+                    raise RecursionError("unrestrained recursive expansion", self)
+                case ExpInst(val=str() as key, rec=-1, fallback=fallback, lift=lift):
+                    as_key = DKey(key)
+                    match as_key.local_expand(*sources, limit=max_rec, fallback=fallback):
+                        case None if lift:
+                            return [ExpInst(as_key, literal=True)]
+                        case None:
+                            return []
+                        case exp:
+                            result.append(exp)
+                case ExpInst(val=str() as key, rec=rec, fallback=fallback, lift=lift):
+                    new_limit = min(max_rec, rec)
+                    as_key = DKey(key)
+                    match as_key.local_expand(*sources, limit=new_limit, fallback=fallback):
+                        case None if lift:
+                            return [ExpInst(as_key, literal=True)]
+                        case None:
+                            return []
+                        case exp:
+                            result.append(exp)
+                case ExpInst() as x:
+                    result.append(x)
                 case x:
-                    result.append(x)
+                    raise TypeError("Unexpected recursion value", x)
         else:
+            logging.debug("Finshed Recursing: %s", self)
             return result
 
     def exp_flatten_hook(self, vals:list[ExpInst], opts) -> Maybe[ExpInst]:

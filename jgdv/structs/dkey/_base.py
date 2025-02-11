@@ -22,7 +22,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv import identity_fn
+from jgdv import identity_fn, Proto, Mixin
 from jgdv._abstract.protocols import Buildable_p, Key_p, SpecStruct_p
 from jgdv.mixins.annotate import SubAnnotate_m
 from jgdv.structs.dkey._meta import DKey, DKeyMark_e, DKeyMeta
@@ -60,7 +60,9 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class DKeyBase(DKeyFormatting_m, DKeyLocalExpander_m, Key_p, SubAnnotate_m, str):
+@Mixin(DKeyFormatting_m, DKeyLocalExpander_m)
+@Proto(Key_p, check=False)
+class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
     """
       Base class for implementing actual DKeys.
       adds:
@@ -76,7 +78,7 @@ class DKeyBase(DKeyFormatting_m, DKeyLocalExpander_m, Key_p, SubAnnotate_m, str)
     on class definition, can register a 'mark', 'multi', and a conversion parameter str
     """
 
-    _mark               : KeyMark                       = DKey.mark.default
+    _mark               : KeyMark|str                   = DKey.mark.default
     _expansion_type     : Ctor                          = identity_fn
     _typecheck          : CHECKTYPE                     = Any
     _fallback           : Any                           = None
@@ -89,19 +91,22 @@ class DKeyBase(DKeyFormatting_m, DKeyLocalExpander_m, Key_p, SubAnnotate_m, str)
     def __init_subclass__(cls, *, mark:M_[KeyMark]=None, conv:M_[str]=None, multi:bool=False):
         """ Registered the subclass as a DKey and sets the Mark enum this class associates with """
         super().__init_subclass__()
-        cls._mark = mark
-        DKeyMeta.register_key_type(cls, mark, conv=conv, multi=multi)
+        cls._mark        = mark or cls._mark
+        cls._conv_params = conv or cls._conv_params
+        match cls._mark:
+            case None:
+                logging.warning("No Mark to Register Key Subtype: %s", cls)
+            case x:
+                DKeyMeta.register_key_type(cls, x, conv=cls._conv_params, multi=multi)
 
     def __new__(cls, *args, **kwargs):
         """ Blocks creation of DKey's except through DKey itself,
           unless 'force=True' kwarg (for testing).
         """
-        if kwargs.get("force", False):
-            return super().__new__(*args, **kwargs)
         raise RuntimeError("Don't build DKey subclasses directly. use DKey(..., force=CLS) if you must")
 
     def __init__(self, data, **kwargs):
-        super().__init__(data)
+        super().__init__()
         self._expansion_type : Ctor          = kwargs.get("ctor", identity_fn)
         self._typecheck      : CHECKTYPE     = kwargs.get("check", Any)
         self._mark           : KeyMark       = kwargs.get("mark", self.__class__._mark)
@@ -158,7 +163,7 @@ class DKeyBase(DKeyFormatting_m, DKeyLocalExpander_m, Key_p, SubAnnotate_m, str)
 
     @property
     def multi(self) -> bool:
-        """ utility property to test if they key is a multikey,
+        """ utility property to test if the key is a multikey,
         without having to do reflection
         (to avoid some recursive import issues)
         """

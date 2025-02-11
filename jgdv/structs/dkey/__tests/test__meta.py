@@ -19,7 +19,17 @@ logging = logmod.root
 from jgdv.structs.strang import CodeReference
 
 from jgdv.structs import dkey
+from jgdv.structs.dkey._meta import DKeyMeta
 from jgdv._abstract.protocols import Key_p
+
+@pytest.fixture(scope="function")
+def save_registry(mocker):
+    single_reg = DKeyMeta._single_registry.copy()
+    multi_reg  = DKeyMeta._multi_registry.copy()
+    yield
+    DKeyMeta._single_registry = single_reg
+    DKeyMeta._multi_registry  = multi_reg
+
 
 class TestDKeyMark:
 
@@ -36,14 +46,6 @@ class TestDKeyMark:
         assert("blah" not in dkey.DKeyMark_e)
 
 class TestDKeyMeta:
-
-    @pytest.fixture(scope="function")
-    def save_registry(self, mocker):
-        single_reg = dkey.DKey._single_registry.copy()
-        multi_reg  = dkey.DKey._multi_registry.copy()
-        yield
-        dkey.DKey._single_registry = single_reg
-        dkey.DKey._multi_registry  = multi_reg
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -98,39 +100,121 @@ class TestDKeyMeta:
         assert(f"{key:i}" == "{test} {blah}")
         assert(str(key)   == "{test} {blah}")
 
-    def test_subclass_registration(self, save_registry):
+    def test_mark_conflict(self):
+        with pytest.raises(ValueError):
+             dkey.DKey("{blah!p}", mark=dkey.DKey.mark.CODE)
+
+
+    def test_isntance_check(self):
+        assert(isinstance(dkey.SingleDKey, dkey.DKey))
+
+class TestDKeySubclassing:
+
+    def test_subclass_registration_conflict(self, save_registry):
         """ check creating a new dkey type is registered """
         assert(dkey.DKey.get_subtype(dkey.DKeyMark_e.FREE) == dkey.SingleDKey)
 
-        class PretendDKey(dkey.DKeyBase, mark=dkey.DKeyMark_e.FREE):
+        with pytest.raises(ValueError):
+            class PretendDKey(dkey.DKeyBase, mark=dkey.DKeyMark_e.FREE):
+                pass
+
+        assert(dkey.DKey.get_subtype(dkey.DKeyMark_e.FREE) == dkey.SingleDKey)
+
+    def test_subclass_override(self, save_registry):
+        """ check creating a new dkey type is registered """
+        assert(dkey.DKey.get_subtype(dkey.DKeyMark_e.FREE) == dkey.SingleDKey)
+
+        class PretendDKey(dkey.SingleDKey, mark=dkey.DKeyMark_e.FREE):
             pass
 
         assert(dkey.DKey.get_subtype(dkey.DKeyMark_e.FREE) == PretendDKey)
 
-    def test_subclass_check(self):
+    def test_single_subclass_check(self, save_registry):
         """ Check all registered dkeys are subclasses, or not-dkeys"""
+        assert(dkey.DKey.get_subtype(dkey.DKeyMark_e.FREE) == dkey.SingleDKey)
         for x in dkey.DKey._single_registry.values():
             assert(issubclass(x, dkey.DKey))
             assert(issubclass(x, dkey.DKeyBase))
+            assert(not issubclass(x, dkey.MultiDKey))
 
+    def test_multi_subclass_check(self, save_registry):
         for m, x in dkey.DKey._multi_registry.items():
             if m is dkey.DKey.mark.NULL:
                 continue
             assert(issubclass(x, dkey.DKey))
+            assert(issubclass(x, dkey.DKeyBase))
             assert(issubclass(x, dkey.MultiDKey))
 
-    def test_subclass_creation_fail(self):
+    def test_subclass_creation_fail(self, save_registry):
         """ check you can't directly create a dkey subtype """
         with pytest.raises(RuntimeError):
             dkey.SingleDKey("test")
 
-    def test_subclass_creation_force(self):
+    def test_subclass_creation_force(self, save_registry):
         """ Check you can force creation of a dkey subtype """
         key = dkey.DKey("test", implicit=True, force=dkey.SingleDKey)
         assert(key is not None)
         assert(isinstance(key, dkey.DKey))
         assert(isinstance(key, dkey.SingleDKey))
 
-    def test_mark_conflict(self):
-        with pytest.raises(ValueError):
-             dkey.DKey("{blah!p}", mark=dkey.DKey.mark.CODE)
+    def test_subclass_by_class_item(self, save_registry):
+        """ check you can create new key subtypes """
+        SimpleDKey = dkey.SingleDKey['simple']
+        assert(issubclass(SimpleDKey, dkey.DKey))
+        assert(issubclass(SimpleDKey, dkey.DKeyBase))
+        match dkey.DKey("blah", force=SimpleDKey):
+            case SimpleDKey() as x:
+                assert(dkey.DKey.MarkOf(x) == "simple")
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_subclass_real_by_class_item(self, save_registry):
+        """ check you can create new key subtypes """
+
+        class AnotherSimpleDKey(dkey.SingleDKey['another']):
+            pass
+
+        assert(issubclass(AnotherSimpleDKey, dkey.DKey))
+        assert(issubclass(AnotherSimpleDKey, dkey.DKeyBase))
+        match dkey.DKey("blah", force=AnotherSimpleDKey):
+            case AnotherSimpleDKey() as x:
+                assert(dkey.DKey.MarkOf(x) == "another")
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_subclass_non_base_by_class_item(self, save_registry):
+        """ check you can create new key subtypes """
+
+        class AnotherSimpleDKey(dkey.SingleDKey['another2']):
+            pass
+
+        assert(issubclass(AnotherSimpleDKey, dkey.DKey))
+        assert(issubclass(AnotherSimpleDKey, dkey.DKeyBase))
+        assert(issubclass(AnotherSimpleDKey, dkey.SingleDKey))
+        assert(dkey.DKey['another2'] is AnotherSimpleDKey)
+        match dkey.DKey("blah", force=AnotherSimpleDKey):
+            case AnotherSimpleDKey() as x:
+                assert(dkey.DKey.MarkOf(x) == "another2")
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_subclass_multi_key(self, save_registry):
+        """ check you can create new key subtypes """
+        class AnotherSimpleDKey(dkey.MultiDKey['another2']):
+            pass
+
+        assert(issubclass(AnotherSimpleDKey, dkey.DKey))
+        assert(issubclass(AnotherSimpleDKey, dkey.DKeyBase))
+        assert(issubclass(AnotherSimpleDKey, dkey.MultiDKey))
+        assert(dkey.DKey['another2'] is AnotherSimpleDKey)
+        assert(AnotherSimpleDKey not in DKeyMeta._single_registry.values())
+        match dkey.DKey("blah", force=AnotherSimpleDKey):
+            case AnotherSimpleDKey() as x:
+                assert(dkey.DKey.MarkOf(x) == "another2")
+                assert(True)
+            case x:
+                 assert(False), x

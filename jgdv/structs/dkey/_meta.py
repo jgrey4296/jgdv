@@ -70,7 +70,7 @@ class DKeyMark_e(EnumBuilder_m, enum.StrEnum):
     INDIRECT = "indirect"
     STR      = enum.auto() # -> str
     CODE     = enum.auto() # -> coderef
-    TASK     = enum.auto() # -> taskname
+    IDENT    = enum.auto() # -> taskname
     ARGS     = enum.auto() # -> list
     KWARGS   = enum.auto() # -> dict
     POSTBOX  = enum.auto() # -> list
@@ -78,6 +78,7 @@ class DKeyMark_e(EnumBuilder_m, enum.StrEnum):
     MULTI    = enum.auto()
 
     REDIRECT = INDIRECT
+    TASK     = IDENT
     default  = FREE
 
 class DKeyMeta(type(str)):
@@ -97,9 +98,9 @@ class DKeyMeta(type(str)):
     _rawkey_id          : ClassVar[str]                = "_rawkeys"
     _force_type_id      : ClassVar[str]                = "force"
     _expected_init_keys : ClassVar[list[str]]          = ["ctor", "check", "mark", "fallback",
-                                                           "max_exp", "fmt", "help", "force",
-                                                           "implicit", "conv", _rawkey_id,
-                                                           ]
+                                                          "max_exp", "fmt", "help", "force",
+                                                          "implicit", "conv", _rawkey_id,
+                                                          ]
 
     def __call__(cls, *args, **kwargs):
         """ Runs on class instance creation
@@ -107,18 +108,31 @@ class DKeyMeta(type(str)):
         (ie: Allows The DKey accessor t
         """
         # TODO maybe move dkey discrimination from dkey.__new__ to here
-        match args[-1]:
-            case DKey() if kwargs.get("mark", None) is None:
-                return args[0]
 
-        return cls.__new__(cls, *args, **kwargs)
+        match args:
+            case [DKey() as x] if kwargs.get("mark", None) is None:
+                return x
+            case [str()|DKey() as x]:
+                return cls.__new__(cls, *args, **kwargs)
+            case x:
+                raise TypeError("Unknown type passed to construct dkey", x)
 
     def __instancecheck__(cls, instance):
         return any(x.__instancecheck__(instance) for x in {Key_p})
 
     def __subclasscheck__(cls, sub):
-        candidates = {Key_p}
-        return any(x in candidates for x in sub.mro())
+        if cls is DKey:
+            bases = [DKeyMeta.get_subtype(DKeyMark_e.NULL),
+                     DKeyMeta.get_subtype(DKeyMark_e.FREE),
+                     DKeyMeta.get_subtype(DKeyMark_e.INDIRECT),
+                     DKeyMeta.get_subtype(DKeyMark_e.MULTI, multi=True),
+                     ]
+            for x in bases:
+                 if issubclass(sub, x):
+                     return True
+            else:
+                return False
+        return any(sub in x for x in cls.mro())
 
     @staticmethod
     def extract_raw_keys(data:str, *, implicit=False) -> list:
@@ -134,11 +148,17 @@ class DKeyMeta(type(str)):
         """
         Get the Ctor for a given mark from those registered.
         """
-        if multi:
-            ctor = DKeyMeta._multi_registry.get(mark, None)
-            ctor = ctor or DKeyMeta._single_registry.get(mark, None)
-        else:
-            ctor = DKeyMeta._single_registry.get(mark, None)
+        ctor = None
+        match mark:
+            case None:
+                raise ValueError("Mark has to be a value")
+            case DKeyMark_e() as x if x is DKeyMark_e.MULTI and not multi:
+                raise ValueError("Mark is MULTI but multi=False")
+            case str()|DKeyMark_e() as x if multi:
+                ctor = DKeyMeta._multi_registry.get(x, None)
+                ctor = ctor or DKeyMeta._single_registry.get(x, None)
+            case str()|DKeyMark_e() as x:
+                ctor = DKeyMeta._single_registry.get(x, None)
 
         if ctor is None:
             raise ValueError("Couldn't find a ctor for mark", mark)
@@ -146,7 +166,7 @@ class DKeyMeta(type(str)):
         return ctor
 
     @staticmethod
-    def register_key_type(ctor:type, mark:KeyMark, conv:Maybe[str]=None, multi:bool=False):
+    def register_key_type(ctor:type, mark:KeyMark, conv:Maybe[str]=None, multi:bool=False) -> None:
         """ Register a DKeyBase implementation to a mark
 
         Can be a single key, or a multi key,
@@ -154,16 +174,30 @@ class DKeyMeta(type(str)):
 
         eg: "p" -> DKeyMark_e.Path -> Path[Single/Multi]Key
         """
+        logging.debug("Registering: %s : %s", mark, ctor)
         match mark:
             case None:
+                raise ValueError("Can't register when the mark is None", ctor)
+            case DKeyMark_e():
                 pass
-            case DKey.mark.NULL:
-                DKeyMeta._multi_registry[mark]  = ctor
-                DKeyMeta._single_registry[mark] = ctor
-            case _ if multi:
-                DKeyMeta._multi_registry[mark]  = ctor
+            case str():
+                pass
+
+
+        match multi:
+            case True:
+                target = DKeyMeta._multi_registry
+            case False if ((multi_ctor:=DKeyMeta._multi_registry.get(DKeyMark_e.MULTI, None))
+                           and issubclass(ctor, multi_ctor)):
+                target = DKeyMeta._multi_registry
+            case False:
+                target = DKeyMeta._single_registry
+
+        match target.get(mark, None):
+            case type() as curr if not issubclass(ctor, curr):
+                raise ValueError("DKey Registry conflict", curr, ctor, mark)
             case _:
-                DKeyMeta._single_registry[mark] = ctor
+                target[mark] = ctor
 
         match conv:
             case None:
@@ -173,7 +207,7 @@ class DKeyMeta(type(str)):
             case str():
                 DKeyMeta._conv_registry[conv] = mark
 
-class DKey(SubAnnotate_m, metaclass=DKeyMeta):
+class DKey(metaclass=DKeyMeta):
     """ A facade for DKeys and variants.
       Implements __new__ to create the correct key type, from a string, dynamically.
 
@@ -197,11 +231,15 @@ class DKey(SubAnnotate_m, metaclass=DKeyMeta):
       to allow control over __init__.
       """
     mark                                     = DKeyMark_e
+    __match_args = ("_mark",)
+
+    def __class_getitem__(cls, name) -> type:
+        return DKeyMeta.get_subtype(name, multi=True)
 
     def __new__(cls, data, **kwargs) -> DKey:
         # Get Raw Key information to choose the mark
         # put the rawkey data into _rawkey_id to save on reparsing later
-        multi_key = kwargs.get("mark", None) is DKeyMark_e.MULTI
+        multi_key = kwargs.get("mark", None) in DKeyMeta._multi_registry
         # Use passed in keys if they are there
         if not (raw_keys:=kwargs.get(DKeyMeta._rawkey_id, None)):
             raw_keys = DKeyMeta.extract_raw_keys(data, implicit=kwargs.get("implicit", False))
@@ -210,6 +248,7 @@ class DKey(SubAnnotate_m, metaclass=DKeyMeta):
             case [x] if not bool(x) and bool(x.prefix) and not multi_key:
                 # No key found
                 mark = DKeyMark_e.NULL
+                kwargs[DKeyMeta._rawkey_id] = [x]
             case [x] if not bool(x.prefix) and x.is_indirect():
                 # One Key_ found with no extra text
                 mark = DKeyMark_e.INDIRECT

@@ -207,27 +207,13 @@ class Key_p(Protocol):
     """ The protocol for a Key, something that used in a template system"""
 
     @property
-    def form(self) -> str:
-        pass
+    def multi(self) -> bool: ...
 
-    @property
-    def direct(self) -> str:
-        pass
+    def keys(self) -> list[Key_p]: ...
 
-    def redirect(self, spec=None) -> Key_p:
-        pass
+    def redirect(self, spec=None) -> Key_p: ...
 
-    def to_path(self, spec=None, state=None, *, chain:list[Key_p]=None, locs:Mapping=None, on_fail:Maybe[str|pl.Path|Key_p]=Any, symlinks:bool=False) -> pl.Path:
-        pass
-
-    def within(self, other:str|dict|ChainGuard) -> bool:
-        pass
-
-    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[Key_p]=None, on_fail=Any, locs:Mapping=None, **kwargs) -> str:
-        pass
-
-    def to_type(self, spec, state, type_=Any, **kwargs) -> str:
-        pass
+    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[Key_p]=None, on_fail=Any, locs:Mapping=None, **kwargs) -> str: ...
 
 @runtime_checkable
 class Location_p(Protocol):
