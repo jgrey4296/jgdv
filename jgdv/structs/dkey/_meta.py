@@ -78,8 +78,6 @@ class DKeyMark_e(EnumBuilder_m, enum.StrEnum):
     NULL     = enum.auto() # -> None
     MULTI    = enum.auto()
 
-    REDIRECT = INDIRECT
-    TASK     = IDENT
     default  = FREE
 
 class DKeyMeta(type(str)):

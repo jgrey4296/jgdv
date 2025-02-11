@@ -426,7 +426,7 @@ class _DKeyFormatter_Expansion_m:
             case str() as k:
                 logging.debug("(%s -> %s -> %s)", key, key_str, k)
                 return [DKey(k, implicit=True)]
-            case None if key._mark is DKey.Mark.REDIRECT and isinstance(key._fallback, (str,DKey)):
+            case None if key._mark is DKey.Mark.INDIRECT and isinstance(key._fallback, (str,DKey)):
                 logging.debug("%s -> %s -> %s (fallback)", key, key_str, key._fallback)
                 return [DKey(key._fallback, implicit=True)]
             case None:

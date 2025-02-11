@@ -217,7 +217,7 @@ class _DKeyedRetrieval_m(DecoratorAccessor_m):
     @classmethod
     def redirects(cls, *args, **kwargs) -> Decorator:
         """ mark an action as using redirection keys """
-        keys = [DKey(x, implicit=True, mark=DKey.Mark.REDIRECT, ctor=DKey, **kwargs) for x in args]
+        keys = [DKey(x, implicit=True, mark=DKey.Mark.INDIRECT, ctor=DKey, **kwargs) for x in args]
         return cls._build_decorator(keys)
 
     @classmethod
