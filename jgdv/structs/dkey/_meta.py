@@ -245,7 +245,10 @@ class DKey(metaclass=DKeyMeta):
                 # No key found
                 mark = DKeyMark_e.NULL
                 kwargs[DKeyMeta._rawkey_id] = [x]
-            case [x] if not bool(x.prefix) and x.is_indirect() and not multi_key:
+            case [x] if multi_key:
+                mark = kwargs.get("mark", DKeyMark_e.MULTI)
+                kwargs[DKeyMeta._rawkey_id ] = [x]
+            case [x] if not bool(x.prefix) and x.is_indirect():
                 # One Key_ found with no extra text
                 mark = DKeyMark_e.INDIRECT
                 # so truncate to just the exact key
@@ -262,15 +265,10 @@ class DKey(metaclass=DKeyMeta):
                 # so truncate to just the exact key
                 data = x.direct()
                 kwargs[DKeyMeta._rawkey_id ] = [x]
-            case [x]:
-                # Is a multi key because bool(x.prefix)
-                mark = kwargs.get("mark", DKeyMark_e.MULTI)
-                kwargs[DKeyMeta._rawkey_id ] = [x]
-                multi_key = True
             case [*xs]:
                 # Multiple keys found
-                kwargs[DKeyMeta._rawkey_id] = xs
                 mark = kwargs.get("mark", DKeyMark_e.MULTI)
+                kwargs[DKeyMeta._rawkey_id] = xs
                 multi_key = True
 
 
