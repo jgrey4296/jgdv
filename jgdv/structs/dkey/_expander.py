@@ -130,8 +130,9 @@ class DKeyLocalExpander_m:
                 fallback = ExpInst(val=x, literal=True)
                 logging.debug("Fallback %s -> %s", self, fallback.val)
 
-        full_sources = [*sources, *self.exp_extra_sources()]
-        # Limit defaults to -2 / until completion
+        full_sources = list(sources)
+        full_sources += [x for x in self.exp_extra_sources() if x not in full_sources]
+        # Limit defaults to -1 / until completion
         # but recursions can pass in limits
         match kwargs.get("limit", -1):
             case 0:
@@ -152,7 +153,7 @@ class DKeyLocalExpander_m:
                 logging.deug("Failed Post Lookup Hook")
                 return fallback
 
-        match (vals:=self.exp_do_recursion(vals, sources, kwargs, max_rec=limit)):
+        match (vals:=self.exp_do_recursion(vals, full_sources, kwargs, max_rec=limit)):
             case []:
                 logging.debug("Failed Recursion Hook")
                 return fallback

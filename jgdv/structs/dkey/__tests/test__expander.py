@@ -169,6 +169,14 @@ class TestExpansion:
         assert(obj.expand(state, limit=2) == "{aweg}")
         assert(obj.expand(state, limit=3) == "qqqq")
 
+
+    @pytest.mark.skip("TODO")
+    def test_additional_sources_recurse(self):
+        """ see doot test_dkey.TestDKeyExpansion.test_indirect_wrapped_expansion
+        """
+        assert(False)
+
+
 class TestIndirection:
 
     def test_sanity(self):
