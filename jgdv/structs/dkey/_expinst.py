@@ -78,4 +78,4 @@ class ExpInst:
 
     def __repr__(self) -> str:
         lit = "(Lit)" if self.literal else ""
-        return f"<ExpInst:{lit} {self.val} / {self.fallback} (R:{self.rec},L:{self.lift},C:{self.convert})>"
+        return f"<ExpInst:{lit} {self.val!r} / {self.fallback!r} (R:{self.rec},L:{self.lift},C:{self.convert})>"

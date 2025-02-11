@@ -221,7 +221,7 @@ class DKeyLocalExpander_m:
                     case None:
                         pass
                     case str() as x if lift:
-                        logging.debug("Lifting Result to Key: %s", x)
+                        logging.debug("Lifting Result to Key: %r", x)
                         return ExpInst(DKey(x, implicit=True), fallback=fallback, lift=True)
                     case pl.Path() as x:
                         match DKey(str(x)):
@@ -263,7 +263,7 @@ class DKeyLocalExpander_m:
 
         """
         result = []
-        logging.debug("Recursing: %s", self)
+        logging.debug("Recursing: %r", self)
         for x in vals:
             match x:
                 case ExpInst(literal=True) | ExpInst(rec=0):
@@ -277,6 +277,9 @@ class DKeyLocalExpander_m:
                             return [ExpInst(as_key, literal=True)]
                         case None:
                             return []
+                        case x if lift:
+                             x.convert = False
+                             result.append(x)
                         case exp:
                             result.append(exp)
                 case ExpInst(val=str() as key, rec=rec, fallback=fallback, lift=lift):
@@ -294,7 +297,7 @@ class DKeyLocalExpander_m:
                 case x:
                     raise TypeError("Unexpected recursion value", x)
         else:
-            logging.debug("Finshed Recursing: %s", self)
+            logging.debug("Finshed Recursing: %r", self)
             return result
 
     def exp_flatten_hook(self, vals:list[ExpInst], opts) -> Maybe[ExpInst]:
@@ -305,12 +308,12 @@ class DKeyLocalExpander_m:
                 return x
 
     def exp_coerce_result(self, val:ExpInst, opts) -> Maybe[ExpInst]:
-        logging.debug("Type Coercion: %s : %s", val, self._conv_params)
+        logging.debug("%r Type Coercion: %s : %s", self, val, self._conv_params)
         match val:
             case ExpInst(convert=False):
                 val.literal = True
                 return val
-            case ExpInst(val=value) if self._expansion_type is not identity_fn:
+            case ExpInst(val=value, convert=None) if self._expansion_type is not identity_fn:
                 return ExpInst(self._expansion_type(value), literal=True)
             case ExpInst(convert=None) if self._conv_params is None:
                 val.literal = True

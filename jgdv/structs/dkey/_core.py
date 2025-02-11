@@ -227,6 +227,6 @@ class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
     def exp_pre_lookup_hook(self, sources, opts) -> list[list[ExpInst]]:
         return [[
             ExpInst(f"{self:i}", lift=True),
-            ExpInst(f"{self:d}"),
+            ExpInst(f"{self:d}", convert=False),
             ExpInst(self, literal=True),
         ]]

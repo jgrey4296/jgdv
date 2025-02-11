@@ -107,7 +107,6 @@ class DKeyMeta(type(str)):
         (ie: Allows The DKey accessor t
         """
         # TODO maybe move dkey discrimination from dkey.__new__ to here
-
         match args:
             case [DKey() as x] if kwargs.get("mark", None) is None:
                 return x
@@ -249,7 +248,7 @@ class DKey(metaclass=DKeyMeta):
                 # No key found
                 mark = DKeyMark_e.NULL
                 kwargs[DKeyMeta._rawkey_id] = [x]
-            case [x] if not bool(x.prefix) and x.is_indirect():
+            case [x] if not bool(x.prefix) and x.is_indirect() and not multi_key:
                 # One Key_ found with no extra text
                 mark = DKeyMark_e.INDIRECT
                 # so truncate to just the exact key
