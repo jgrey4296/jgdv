@@ -98,6 +98,11 @@ class TestLocator:
         simple._clear()
         assert("a" not in simple)
 
+
+    @pytest.mark.xfail
+    def test_metacheck(self, simple):
+        assert(False)
+
 class TestLocatorUtils:
 
     def test_normalize(self, simple):

@@ -180,19 +180,19 @@ class _LocatorUtil_m:
         return self
 
     def metacheck(self, key:str|DKey, *meta:LocationMeta_e) -> bool:
-        """ return True if key provided has the applicable metadata"""
+        """ return True if key provided has any of the metadata flags """
         match key:
             case NonDKey():
                 return False
             case DKey() if key in self._data:
                 data = self._data[key]
-                return all(x in data for x in meta)
+                return any(x in data for x in meta)
             case MultiDKey():
                  for k in key:
                      if k not in self._data:
                          continue
                      data = self._data[key]
-                     if not all(x in data for x in meta):
+                     if not any(x in data for x in meta):
                          return False
             case str():
                 return self.metacheck(DKey(key, implicit=True), meta)
