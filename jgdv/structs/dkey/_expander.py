@@ -27,14 +27,18 @@ from weakref import ref
 
 # ##-- end stdlib imports
 
+# ##-- 3rd party imports
 import sh
+
+# ##-- end 3rd party imports
 
 # ##-- 1st party imports
 from jgdv import identity_fn
-from jgdv._abstract.protocols import Key_p, SpecStruct_p, Buildable_p
+from jgdv._abstract.protocols import Buildable_p, Key_p, SpecStruct_p
 from jgdv.structs.dkey._meta import DKey, DKeyMark_e
+from jgdv.structs.strang import CodeReference, Strang
 from jgdv.util.chain_get import ChainedKeyGetter
-from jgdv.structs.strang import Strang, CodeReference
+from ._expinst import ExpInst
 
 # ##-- end 1st party imports
 
@@ -77,25 +81,6 @@ RECURSION_GUARD     : Final[int]                   = 5
 chained_get         : Func                         = ChainedKeyGetter.chained_get
 
 # Body:
-
-class ExpInst:
-    """ simple holder of expansion instructions"""
-    __slots__ = "val", "rec", "fallback", "lift", "literal", "convert", "total_recs"
-
-    def __init__(self, val:DKey|str, **kwargs):
-        if isinstance(val, ExpInst):
-            raise TypeError("Nested ExpInst", val)
-        object.__setattr__(self, "val", val)
-        object.__setattr__(self, "rec", kwargs.get("rec", -1))
-        object.__setattr__(self, "fallback", kwargs.get("fallback", None))
-        object.__setattr__(self, "lift", kwargs.get("lift", False))
-        object.__setattr__(self, "literal", kwargs.get("literal", False))
-        object.__setattr__(self, "convert", kwargs.get("convert", None))
-        object.__setattr__(self, "total_recs", kwargs.get("total_recs", 1))
-
-    def __repr__(self) -> str:
-        lit = "(Lit)" if self.literal else ""
-        return f"<ExpInst:{lit} {self.val} / {self.fallback} (R:{self.rec},L:{self.lift},C:{self.convert})>"
 
 class DKeyLocalExpander_m:
     """
@@ -385,7 +370,7 @@ class _DKeyFormatter_Expansion_m:
             match current:
                 case sh.Command():
                     break
-                case Key_p() if current._mark is DKey.mark.NULL:
+                case Key_p() if current._mark is DKey.Mark.NULL:
                      continue
                 case Key_p() if current.multi:
                     current = self._multi_expand(current)
@@ -440,7 +425,7 @@ class _DKeyFormatter_Expansion_m:
             case str() as k:
                 logging.debug("(%s -> %s -> %s)", key, key_str, k)
                 return [DKey(k, implicit=True)]
-            case None if key._mark is DKey.mark.REDIRECT and isinstance(key._fallback, (str,DKey)):
+            case None if key._mark is DKey.Mark.REDIRECT and isinstance(key._fallback, (str,DKey)):
                 logging.debug("%s -> %s -> %s (fallback)", key, key_str, key._fallback)
                 return [DKey(key._fallback, implicit=True)]
             case None:
@@ -462,8 +447,8 @@ class _DKeyFormatter_Expansion_m:
                 return x
             case x if self.rec_remaining == 0:
                 return x
-            case str() as x if key._mark is DKey.mark.PATH:
-                return DKey(x, mark=DKey.mark.PATH)
+            case str() as x if key._mark is DKey.Mark.PATH:
+                return DKey(x, mark=DKey.Mark.PATH)
             case str() as x if x == key:
                 # Got the key back, wrap it and don't expand it any more
                 return "{%s}" % x

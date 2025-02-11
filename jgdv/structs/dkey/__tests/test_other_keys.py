@@ -34,9 +34,9 @@ VALID_MULTI_KEYS                                     = PATH_KEYS + MUTI_KEYS
 class TestArgsDKey:
 
     def test_mark(self):
-        assert(DKey.MarkOf(ArgsDKey) is DKey.mark.ARGS)
+        assert(DKey.MarkOf(ArgsDKey) is DKey.Mark.ARGS)
 
 class TestKwargsDKey:
 
     def test_mark(self):
-        assert(DKey.MarkOf(KwargsDKey) is DKey.mark.KWARGS)
+        assert(DKey.MarkOf(KwargsDKey) is DKey.Mark.KWARGS)

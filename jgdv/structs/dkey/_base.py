@@ -78,7 +78,7 @@ class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
     on class definition, can register a 'mark', 'multi', and a conversion parameter str
     """
 
-    _mark               : KeyMark|str                   = DKey.mark.default
+    _mark               : KeyMark|str                   = DKey.Mark.default
     _expansion_type     : Ctor                          = identity_fn
     _typecheck          : CHECKTYPE                     = Any
     _fallback           : Any                           = None

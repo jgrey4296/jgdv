@@ -312,7 +312,7 @@ class _LocatorAccess_m:
             case False:
                 return DKey(current, ctor=pl.Path, mark="soft.fail")
             case True:
-                return DKey(current, ctor=pl.Path, mark=DKey.mark.MULTI)
+                return DKey(current, ctor=pl.Path, mark=DKey.Mark.MULTI)
 
 @Mixin(_LocatorAccess_m, _LocatorUtil_m, PathManip_m)
 class JGDVLocator:

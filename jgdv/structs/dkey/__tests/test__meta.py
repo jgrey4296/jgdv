@@ -102,7 +102,7 @@ class TestDKeyMeta:
 
     def test_mark_conflict(self):
         with pytest.raises(ValueError):
-             dkey.DKey("{blah!p}", mark=dkey.DKey.mark.CODE)
+             dkey.DKey("{blah!p}", mark=dkey.DKey.Mark.CODE)
 
 
     def test_isntance_check(self):
@@ -139,7 +139,7 @@ class TestDKeySubclassing:
 
     def test_multi_subclass_check(self, save_registry):
         for m, x in dkey.DKey._multi_registry.items():
-            if m is dkey.DKey.mark.NULL:
+            if m is dkey.DKey.Mark.NULL:
                 continue
             assert(issubclass(x, dkey.DKey))
             assert(issubclass(x, dkey.DKeyBase))

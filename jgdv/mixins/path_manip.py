@@ -75,7 +75,7 @@ class PathManip_m:
         roots   = roots or []
         results = []
         for root in roots:
-            root_key = DKey(root, fallback=root, mark=DKey.mark.PATH)
+            root_key = DKey(root, fallback=root, mark=DKey.Mark.PATH)
             results.append(root_key.expand(spec, state))
 
         return results

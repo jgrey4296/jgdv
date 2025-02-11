@@ -26,6 +26,7 @@ from jgdv._abstract.protocols import Key_p
 from jgdv.mixins.enum_builders import EnumBuilder_m
 from jgdv.mixins.annotate import SubAnnotate_m
 from ._parser import DKeyParser
+from ._expinst import ExpInst
 # ##-- end 1st party imports
 
 # ##-- types
@@ -230,7 +231,8 @@ class DKey(metaclass=DKeyMeta):
       DKey is the factory, but all DKeys are subclasses of DKeyBase,
       to allow control over __init__.
       """
-    mark                                     = DKeyMark_e
+    Mark    : ClassVar[enum.Enum] = DKeyMark_e
+    ExpInst : ClassVar[type]      = ExpInst
     __match_args = ("_mark",)
 
     def __class_getitem__(cls, name) -> type:

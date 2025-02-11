@@ -37,5 +37,4 @@ class TestImportKey:
         assert(True is not False) # noqa: PLR0133
 
     def test_str_mark(self):
-        assert(DKey.MarkOf(ImportDKey) is DKey.mark.CODE)
-
+        assert(DKey.MarkOf(ImportDKey) is DKey.Mark.CODE)

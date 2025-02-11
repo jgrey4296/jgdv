@@ -128,7 +128,7 @@ class TestMultiDKey:
 
 
     def test_anon_2(self):
-        obj = DKey("{b}", mark=DKey.mark.MULTI)
+        obj = DKey("{b}", mark=DKey.Mark.MULTI)
         assert(isinstance(obj, MultiDKey))
         assert(obj._anon == "{}")
 
