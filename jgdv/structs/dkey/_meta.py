@@ -216,6 +216,8 @@ class DKeyMeta(type(str)):
                 return
             case str() if len(conv) > 1:
                 raise ValueError("conversion parameters for DKey's can't be more than a single char")
+            case str() if DKeyMeta._conv_registry.get(conv, mark) != mark :
+                raise ValueError("Conversion param conflict", conv, DKeyMeta._conv_registry[conv])
             case str():
                 DKeyMeta._conv_registry[conv] = mark
 

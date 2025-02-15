@@ -315,8 +315,13 @@ class DKeyLocalExpander_m:
             case ExpInst(convert=False):
                 val.literal = True
                 return val
+            case ExpInst(val=value, convert=None) if isinstance(self._expansion_type, type) and isinstance(value, self._expansion_type):
+                val.literal = True
+                return val
             case ExpInst(val=value, convert=None) if self._expansion_type is not identity_fn:
-                return ExpInst(self._expansion_type(value), literal=True)
+                val.val = self._expansion_type(value)
+                val.literal = True
+                return val
             case ExpInst(convert=None) if self._conv_params is None:
                 val.literal = True
                 return val

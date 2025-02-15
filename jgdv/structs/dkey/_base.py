@@ -175,7 +175,7 @@ class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
         match self.local_expand(*args, **kwargs):
             case ExpInst(val=val, literal=True):
                 return val
-            case _:
+            case x:
                 return None
 
     def redirect(self, *args, **kwargs) -> list[DKey]:
