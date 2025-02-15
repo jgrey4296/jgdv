@@ -300,7 +300,7 @@ class DKey(metaclass=DKeyMeta):
         # (Has to be str.__new__ for reasons)
         result           = str.__new__(subtype_cls, data)
         
-        match list(kwargs.keys() - DKeyMeta._expected_init_keys):
+        match list(kwargs.keys() - DKeyMeta._expected_init_keys - subtype_cls._extra_kwargs):
             case []:
                 pass
             case [*xs]:

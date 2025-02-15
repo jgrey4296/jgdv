@@ -238,6 +238,11 @@ class DKeyedRetrieval(DecoratorAccessor_m, DKeyed):
         """ mark an action as using raw type keys """
         keys = [DKey(x, implicit=True, mark=DKey.Mark.FREE, **kwargs) for x in args]
         return cls._build_decorator(keys)
+    
+    @classmethod
+    def toggles(cls, *args, **kwargs) -> Decorator:
+        keys = [DKey(x, implicit=True, mark=DKey.Mark.FREE, ctor=bool, check=bool, **kwargs) for x in args]
+        return cls._build_decorator(keys)
 
     @classmethod
     def args(cls, fn) -> Decorator:

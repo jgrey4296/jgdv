@@ -78,7 +78,7 @@ class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
     on class definition, can register a 'mark', 'multi', and a conversion parameter str
     """
 
-    _mark               : KeyMark|str                   = DKey.Mark.default
+    _mark               : KeyMark|str|type              = DKey.Mark.default
     _expansion_type     : Ctor                          = identity_fn
     _typecheck          : CHECKTYPE                     = Any
     _fallback           : Any                           = None
@@ -86,6 +86,7 @@ class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
     _conv_params        : Maybe[FmtStr]                 = None
     _help               : Maybe[str]                    = None
 
+    _extra_kwargs       : ClassVar[set[str]]           = set()
     __hash__                                            = str.__hash__
 
     def __init_subclass__(cls, *, mark:M_[KeyMark]=None, conv:M_[str]=None, multi:bool=False):
@@ -168,7 +169,6 @@ class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
         (to avoid some recursive import issues)
         """
         return False
-
 
     def expand(self, *args, **kwargs) -> Maybe:
         kwargs.setdefault("limit", self._max_expansions)
