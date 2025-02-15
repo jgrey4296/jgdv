@@ -131,7 +131,7 @@ class CheckProtocol(DecoratorBase):
         else:
             return result
 
-    def _mod_class(self, cls:type) -> type:
+    def _wrap_class(self, cls:type) -> type:
         still_abstract = set()
         for meth in getattr(cls, ABSMETHS, []):
             if self._test_method(cls, meth):
@@ -165,7 +165,7 @@ class Mixin(DecoratorBase):
         self._prepend_mixins = mixins or []
         self._append_mixins = append or []
 
-    def _mod_class(self, cls):
+    def _wrap_class(self, cls):
 
         match self._append_mixins:
             case []:
@@ -202,7 +202,7 @@ class Proto(CheckProtocol):
         self._protos = protos or []
         self._check = check
 
-    def _mod_class(self, cls:type):
+    def _wrap_class(self, cls:type):
         new_name = f"{cls.__qualname__}<WithProtocols>"
         with_protos : dict = dict(cls.__dict__)
 

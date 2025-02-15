@@ -184,7 +184,7 @@ class TestClassDecorator:
             def bmethod(self, val):
                 return val + self._val
 
-            def _mod_class(self, target):
+            def _wrap_class(self, target):
                 # Gets the unbound method and binds it to the target
                 setattr(target, "bmethod", self.__class__.bmethod) # noqa: B010
 

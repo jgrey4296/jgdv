@@ -100,7 +100,11 @@ class _DecAnnotate_m:
         return data[:]
 
     def _is_marked(self, target) -> bool:
-        return self._mark_key in target.__dict__
+        match target:
+            case type():
+                return self._mark_key in target.__dict__ 
+            case _:
+                return self._mark_key in target.__dict__ 
 
     def _apply_mark(self, *args:Callable) -> None:
         """ Mark the UNWRAPPED, original target as already decorated """
@@ -203,7 +207,7 @@ class _DecoratorUtil_m(_DecAnnotate_m, _DecVerify_m, _DecWrap_m, _DecInspect_m):
         match t_type:
             case _TargetType_e.CLASS:
                 # Classes are a special case, Maybe modifying instead of wrapping
-                wrapper = self._mod_class(target) or target
+                wrapper = self._wrap_class(target) or target
                 self._apply_mark(wrapper)
                 return wrapper
             case _TargetType_e.METHOD:
@@ -234,7 +238,7 @@ class _DecoratorUtil_m(_DecAnnotate_m, _DecVerify_m, _DecWrap_m, _DecInspect_m):
 
         return _basic_fn_wrapper
 
-    def _mod_class(self, cls:type) -> Maybe[type]:
+    def _wrap_class(self, cls:type) -> Maybe[type]:
         pass
 
 class DecoratorBase(_DecoratorUtil_m, Decorator_p):

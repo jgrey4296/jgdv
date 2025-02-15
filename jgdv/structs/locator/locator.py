@@ -90,6 +90,10 @@ logging = logmod.getLogger(__name__)
 # logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
+##--| Vars
+CWD_MARKER      : Final[Ident]                = "__cwd"
+
+##--| Body 
 class SoftFailMultiDKey(MultiDKey["soft.fail"], multi=True):
 
     def exp_pre_lookup_hook(self, sources, opts) -> list:
