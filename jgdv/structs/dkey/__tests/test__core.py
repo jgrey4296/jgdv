@@ -84,6 +84,11 @@ class TestSingleDKey:
         obj2 = 21
         assert(not (obj1 == obj2))
 
+    def test_hash(self):
+        obj1 = DKey("blah", implicit=True, force=SingleDKey)
+        obj2 = "blah"
+        assert(hash(obj1) == hash(obj2))
+
 class TestMultiDKey:
 
     def test_sanity(self):
@@ -115,22 +120,24 @@ class TestMultiDKey:
         obj2 = 21
         assert(not (obj1 == obj2))
 
-
     def test_subkeys(self):
         obj = DKey("{first} {second} {third}")
         for sub in obj.keys():
             assert(isinstance(sub, SingleDKey))
 
-
     def test_anon(self):
         obj = DKey("{first} {second} {third}")
         assert(obj._anon == "{} {} {}")
-
 
     def test_anon_2(self):
         obj = DKey("{b}", mark=DKey.Mark.MULTI)
         assert(isinstance(obj, MultiDKey))
         assert(obj._anon == "{}")
+
+    def test_hash(self):
+        obj1 = DKey("{blah}", mark=DKey.Mark.MULTI)
+        obj2 = "{blah}"
+        assert(hash(obj1) == hash(obj2))
 
 class TestNonDKey:
 
@@ -163,6 +170,11 @@ class TestNonDKey:
         obj2 = 21
         assert(not (obj1 == obj2))
 
+    def test_hash(self):
+        obj1 = DKey("blah", implicit=False, force=NonDKey)
+        obj2 = "blah"
+        assert(hash(obj1) == hash(obj2))
+
 class TestIndirectDKey:
 
     def test_sanity(self):
@@ -172,7 +184,6 @@ class TestIndirectDKey:
         with pytest.raises(RuntimeError):
             IndirectDKey("blah", force=False)
 
-
     @pytest.mark.parametrize("name", ["blah", "blah_"])
     def test_basic(self, name):
         match DKey(name, force=IndirectDKey):
@@ -180,7 +191,6 @@ class TestIndirectDKey:
                 assert(True)
             case x:
                 assert(False), x
-
 
     @pytest.mark.parametrize("name", ["blah", "blah_"])
     def test_eq(self, name):
@@ -194,13 +204,11 @@ class TestIndirectDKey:
         obj2 = DKey(f"{name}_", implicit=True, force=IndirectDKey)
         assert(obj1 == obj2)
 
-
     @pytest.mark.parametrize("name", ["blah", "blah_"])
     def test_eq_str(self, name):
         obj1 = DKey(name, implicit=True, force=IndirectDKey)
         obj2 = name
         assert(obj1 == obj2)
-
 
     def test_eq_indirect(self):
         obj1 = DKey("blah", force=IndirectDKey)
@@ -211,3 +219,8 @@ class TestIndirectDKey:
         obj1 = DKey("blah", force=IndirectDKey)
         obj2 = 21
         assert(not (obj1 == obj2))
+
+    def test_hash(self):
+        obj1 = DKey("blah_", implicit=True, force=IndirectDKey)
+        obj2 = "blah_"
+        assert(hash(obj1) == hash(obj2))

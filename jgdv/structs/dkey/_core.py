@@ -57,7 +57,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class SingleDKey(DKeyBase, mark=DKeyMark_e.FREE):
+class SingleDKey(DKeyBase,   mark=DKeyMark_e.FREE):
     """
       A Single key with no extras.
       ie: {x}. not {x}{y}, or {x}.blah.
@@ -106,7 +106,7 @@ class SingleDKey(DKeyBase, mark=DKeyMark_e.FREE):
 
         return format(result, rem)
 
-class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
+class MultiDKey(DKeyBase,    mark=DKeyMark_e.MULTI, multi=True):
     """
       Multi keys allow 1+ explicit subkeys.
 
@@ -170,7 +170,7 @@ class MultiDKey(DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
     def exp_final_hook(self, val:ExpInst, opts) -> Maybe[ExpInst]:
         return val
 
-class NonDKey(DKeyBase, mark=DKeyMark_e.NULL):
+class NonDKey(DKeyBase,      mark=DKeyMark_e.NULL):
     """
       Just a string, not a key. But this lets you call no-ops for key specific methods
     It can coerce itself though
@@ -209,6 +209,8 @@ class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
       re_mark :
     """
 
+    __hash__                                            = str.__hash__
+    
     def __init__(self, data, multi=False, re_mark=None, **kwargs):
         kwargs.setdefault("fallback", Self)
         super().__init__(data, **kwargs)
