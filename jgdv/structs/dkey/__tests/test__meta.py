@@ -113,6 +113,19 @@ class TestDKeyMeta:
         with pytest.raises(ValueError):
             dkey.DKey("blah", unexpected=True)
 
+
+    def test_insistent_key_error(self):
+        with pytest.raises(TypeError):
+            dkey.DKey("blah", implicit=False, insist=True)
+
+
+    def test_insistent_key_success(self):
+        match dkey.DKey("blah", implicit=True, insist=True):
+            case dkey.DKey():
+                assert(True)
+            case x:
+                 assert(False), x
+
 class TestDKeySubclassing:
 
     def test_subclass_registration_conflict(self, save_registry):

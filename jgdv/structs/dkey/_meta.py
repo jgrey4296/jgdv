@@ -105,14 +105,29 @@ class DKeyMeta(type(str)):
         skips running cls.__init__, allowing cls.__new__ control
         (ie: Allows The DKey accessor t
         """
+        match kwargs:
+            case {"insist": bool() as insist}:
+                del kwargs['insist']
+            case _:
+                insist = False
+                
         # TODO maybe move dkey discrimination from dkey.__new__ to here
+        new_key = None
         match args:
             case [DKey() as x] if kwargs.get("mark", None) is None:
-                return x
+                new_key = x
             case [str()|DKey() as x]:
-                return cls.__new__(cls, *args, **kwargs)
+                new_key = cls.__new__(cls, *args, **kwargs)
             case x:
                 raise TypeError("Unknown type passed to construct dkey", x)
+            
+        match new_key:
+            case DKey() as x if insist and DKey.MarkOf(x) is DKeyMark_e.NULL:
+                raise TypeError("An insistent key was not built", x)
+            case DKey():
+                return new_key
+            case _:
+                raise TypeError("No key was built", args)
 
     def __instancecheck__(cls, instance):
         return any(x.__instancecheck__(instance) for x in {Key_p})
