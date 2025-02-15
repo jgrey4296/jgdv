@@ -108,6 +108,11 @@ class TestDKeyMeta:
     def test_isntance_check(self):
         assert(isinstance(dkey.SingleDKey, dkey.DKey))
 
+
+    def test_error_on_bad_kwargs(self):
+        with pytest.raises(ValueError):
+            dkey.DKey("blah", unexpected=True)
+
 class TestDKeySubclassing:
 
     def test_subclass_registration_conflict(self, save_registry):

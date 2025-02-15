@@ -284,7 +284,12 @@ class DKey(metaclass=DKeyMeta):
         # Build a str with the subtype_cls and data
         # (Has to be str.__new__ for reasons)
         result           = str.__new__(subtype_cls, data)
-        assert(not bool((kwkeys:=kwargs.keys() - DKeyMeta._expected_init_keys))), kwkeys
+        
+        match list(kwargs.keys() - DKeyMeta._expected_init_keys):
+            case []:
+                pass
+            case [*xs]:
+                raise ValueError("Key got unexpected kwargs", data, xs)
         result.__init__(data, **kwargs)
 
         return result
