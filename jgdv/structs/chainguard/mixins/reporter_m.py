@@ -37,7 +37,7 @@ from weakref import ref
 # ##-- end stdlib imports
 
 from jgdv import Maybe
-from jgdv.structs.chainguard import TomlTypes
+from jgdv.structs.chainguard._base import TomlTypes
 
 ##-- logging
 logging = logmod.getLogger(__name__)

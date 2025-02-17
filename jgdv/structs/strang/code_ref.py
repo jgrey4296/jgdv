@@ -43,7 +43,7 @@ from pydantic import field_validator, model_validator
 import importlib
 from importlib.metadata import EntryPoint
 from jgdv.structs.chainguard import ChainGuard
-from . import Strang
+from .strang import Strang
 from jgdv import Result
 
 class CodeRefMeta_e(enum.StrEnum):

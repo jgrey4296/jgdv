@@ -55,7 +55,6 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from jgdv import Maybe
-from jgdv.structs.chainguard import TomlTypes
 
 # ##-- end 1st party imports
 
@@ -65,6 +64,8 @@ from .mixins.access_m import super_get, super_set
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+
+type TomlTypes = str | int | float | bool | list['TomlTypes'] | dict[str,'TomlTypes'] | datetime.datetime
 
 class GuardBase(Mapping[str, TomlTypes]):
     """

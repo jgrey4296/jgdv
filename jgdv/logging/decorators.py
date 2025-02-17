@@ -27,7 +27,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 from jgdv import Maybe, Lambda
-from jgdv.decorators.base import DecoratorBase
+from jgdv.decorators import DecoratorBase
 
 ##-- logging
 logging = logmod.getLogger(__name__)

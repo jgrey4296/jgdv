@@ -24,9 +24,9 @@ from collections import ChainMap
 
 __all__     = ["GuardedAccessError", "ChainGuard", "load"]
 
-type TomlTypes = str | int | float | bool | list['TomlTypes'] | dict[str,'TomlTypes'] | datetime.datetime
 
 from .errors import GuardedAccessError
+from ._base import TomlTypes
 from .chainguard import ChainGuard
 
 load        = ChainGuard.load
