@@ -172,7 +172,7 @@ class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
 
     def expand(self, *args, **kwargs) -> Maybe:
         kwargs.setdefault("limit", self._max_expansions)
-        match self.local_expand(*args, **kwargs):
+        match self.local_expand(*args, *DKey._extra_sources, **kwargs):
             case ExpInst(val=val, literal=True):
                 return val
             case x:

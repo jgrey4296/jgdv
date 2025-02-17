@@ -242,9 +242,10 @@ class DKey(metaclass=DKeyMeta):
       DKey is the factory, but all DKeys are subclasses of DKeyBase,
       to allow control over __init__.
       """
-    Mark    : ClassVar[enum.Enum] = DKeyMark_e
-    ExpInst : ClassVar[type]      = ExpInst
-    __match_args = ("_mark",)
+    Mark           : ClassVar[enum.Enum]  = DKeyMark_e
+    ExpInst        : ClassVar[type]       = ExpInst
+    _extra_sources : Classvar[list[dict]] = []
+    __match_args                          = ("_mark",)
 
     def __class_getitem__(cls, name) -> type:
         return DKeyMeta.get_subtype(name, multi=True)
@@ -321,3 +322,9 @@ class DKey(metaclass=DKeyMeta):
                 return target._mark
             case _:
                 raise TypeError("Tried to retrieve a mark from an unknown type")
+
+            
+    @classmethod
+    def add_sources(cls, *sources):
+        """ register additional sources that are always included """
+        cls._extra_sources += sources

@@ -94,7 +94,7 @@ class DKeyExpansionDecorator(DataDecorator):
 
         def _method_action_expansions(_self, spec, state, *call_args, **kwargs):
             try:
-                expansions = [x(spec, state, *DKeyed._extra_sources) for x in getattr(meth, data_key)]
+                expansions = [x(spec, state) for x in getattr(meth, data_key)]
             except KeyError as err:
                 logging.warning("Action State Expansion Failure: %s", err)
                 return False
@@ -110,7 +110,7 @@ class DKeyExpansionDecorator(DataDecorator):
 
         def _fn_action_expansions(spec, state, *call_args, **kwargs):
             try:
-                expansions = [x(spec, state, *DKeyed._extra_sources) for x in getattr(fn, data_key)]
+                expansions = [x(spec, state) for x in getattr(fn, data_key)]
             except KeyError as err:
                 logging.warning("Action State Expansion Failure: %s", err)
                 return False
@@ -170,7 +170,6 @@ class DKeyed:
     """
 
     _extensions         : ClassVar[set[type]] = set()
-    _extra_sources      : ClassVar[list]      = []
     _decoration_builder : ClassVar[type]      = DKeyExpansionDecorator
 
     def __init_subclass__(cls):
@@ -186,11 +185,6 @@ class DKeyed:
                     setattr(DKeyed, x, y)
                 case _:
                     pass
-
-    @classmethod
-    def add_sources(cls, *sources):
-        """ register additional sources that are always included """
-        cls._extra_sources += sources
 
 class DKeyedMeta(DKeyed):
     """ Mixin for decorators that declare meta information,
