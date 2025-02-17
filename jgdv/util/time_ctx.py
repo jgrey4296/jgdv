@@ -4,8 +4,10 @@
 See EOF for license/metadata/notes as applicable
 """
 
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 import datetime
 import enum
 import functools as ftz
@@ -16,18 +18,18 @@ import re
 import time
 import types
 import weakref
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
+
+# ##-- end stdlib imports
+
+from jgdv import Maybe
+from typing import Any
+type Logger = logmod.Logger
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-type Logger = logmod.Logger
 
 class TimeCtx:
     """

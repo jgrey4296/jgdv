@@ -27,6 +27,7 @@ from pydantic import BaseModel, field_validator, model_validator
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
+from jgdv import Mixin
 from jgdv._abstract.protocols import Buildable_p, Location_p, ProtocolModelMeta
 from jgdv.structs.dkey import DKey, DKeyFormatter
 from jgdv.mixins.path_manip import PathManip_m
@@ -89,7 +90,8 @@ class LocationMeta_e(enum.StrEnum):
 
     default      = loc
 
-class Location(Strang, PathManip_m):
+@Mixin(PathManip_m)
+class Location(Strang):
     """ A Location is an abstraction higher than a path.
       ie: a path, with metadata.
 

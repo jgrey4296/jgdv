@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 
 # Imports:
@@ -40,7 +39,6 @@ logging = logmod.getLogger(__name__)
 MARKER       : Final[str]  = ".marker"
 walk_ignores : Final[list] = ['.git', '.DS_Store', "__pycache__"] # TODO use a .ignore file
 walk_halts   : Final[str]  = [".doot_ignore"]
-
 
 class PathManip_m:
     """

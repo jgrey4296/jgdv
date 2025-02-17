@@ -60,6 +60,7 @@ from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
 
+from jgdv import Proto
 from . import errors
 from .param_spec import HelpParam, ParamSpec, SeparatorParam
 from .parse_machine_base import ArgParser_p, ParamSource_p, ParseMachineBase
@@ -119,7 +120,8 @@ class ParseMachine(ParseMachineBase):
         else:
             return self.model.report()
 
-class CLIParser(ArgParser_p):
+@Proto(ArgParser_p)
+class CLIParser:
     """
     convert argv to tomlguard by:
     parsing each arg as toml,

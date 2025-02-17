@@ -24,11 +24,6 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-# ##-- 3rd party imports
-import decorator
-
-# ##-- end 3rd party imports
-
 # ##-- 1st party imports
 from jgdv._abstract.protocols import Decorator_p
 import jgdv.errors

@@ -3,7 +3,7 @@
 Provdes the Main ArgParser_p Protocol,
 and the ParseMachineBase StateMachine.
 
-ParseMachineBase descibes the statemachine to parse argument,
+ParseMachineBase descibes the state progression to parse arguments,
 while jgdv.cli.arg_parser.CLIParser adds the specific logic to states and transitions
 """
 
