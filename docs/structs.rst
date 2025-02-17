@@ -18,6 +18,33 @@ Especially:
 4. :doc:`_api/jgdv.structs.pathy`, a subtype of `Path <path_>`_ for disguishing directories from files at the type level.
 5. :doc:`_api/jgdv.structs.strang`, a Structured `str` subtype.
    
+Chainguard
+==========
+
+.. code:: python
+
+   # TODO
+
+DKey
+====
+
+.. code:: python
+
+   # TODO
+
+Locator
+=======
+
+.. code:: python
+
+   # TODO 
+
+Pathy
+=====
+
+.. code:: python
+
+   # TODO
 
 Strang
 ======

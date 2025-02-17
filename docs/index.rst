@@ -12,6 +12,12 @@ Introduction
 
 JGDV is my kitchen sink library.
 Things I keep writing that don't warrant a separate library get shoved in here.
+Of interest:
+
+#. :doc:`LogConfig <./logging>`_
+#. :doc:`Strang <./structs>`_
+#. :doc:`Chainguard <./structs>`_
+#. :doc: `Locator <./structs>`_
 
 
 .. _repo:

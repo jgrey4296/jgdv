@@ -1,6 +1,11 @@
 ## docs.toml -*- mode: toml -*-
 doot-version = "0.13"
 
+[[state]]
+address     = "127.0.0.1"
+port        = "8000"
+doc_builder = "html"
+env_name    = "doot-dev312"
 
 [[locations]]
 doc_src = "docs"
@@ -10,8 +15,6 @@ autodoc = "{doc_src}/_api"
 [[tasks.docs]]
 name    = "server"
 doc     = ["run a simple server in the built docs directory"]
-address = "127.0.0.1"
-port    = "8000"
 actions = [
     {do="dootle.actions.shell:ShellAction", args=["python", "-m", "http.server", "--directory", "{doc_out!p}", "--bind", "{address}", "{port}"], background=true}
 ]
@@ -20,12 +23,11 @@ actions = [
 name        = "build"
 doc         = ["build sphinx project documentation"]
 ctor        = "task"
-doc_builder = "html"
-env_name    = "doot-dev312"
-depends_on  = ["docs::_.api.gen"]
+# depends_on  = ["docs::_.api.gen"]
 setup       = [
     { do="dootle.python.mamba:MambaEnv", env_="env_name", update_="env"},
     { do="installed?", args=["sphinx-build"], env_="env"},
+    { do="installed?", args=["sphinx-apidoc"], env_="env"},
     { do="exists?", args=["{doc_src!p}/conf.py"] },
 ]
 actions = [
@@ -62,8 +64,9 @@ actions = [
 ]
 
 [[tasks.docs]]
-name = "_.autogen"
-doc = ["https://www.sphinx-doc.org/en/master/man/sphinx-autogen.html"]
+disabled = true
+name    = "_.autogen"
+doc     = ["https://www.sphinx-doc.org/en/master/man/sphinx-autogen.html"]
 actions = [
     { do="dootle.actions.shell:ShellAction", args=["sphinx-autogen", "-o", "{autodoc!p}", "{doc_src!p}/api.rst"] },
 ]
