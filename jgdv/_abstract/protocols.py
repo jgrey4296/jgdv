@@ -33,13 +33,12 @@ from pydantic import BaseModel
 
 # ##-- end 3rd party imports
 
-import typing
 
 # ##-- types
 # isort: off
 ProtoMeta       = type(Protocol)
 PydanticMeta    = type(BaseModel)
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
     type ChainGuard = Any
     type Maybe[T]   = None|T
     type Ctor[T]    = type(T) | Callable[[*Any], T]

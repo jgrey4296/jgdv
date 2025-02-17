@@ -17,41 +17,33 @@ import time
 import types
 import typing
 import weakref
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 from .core import DecoratorBase
-from types import resolve_bases, FunctionType
 
 # ##-- types
 # isort: off
-if typing.TYPE_CHECKING:
-   from jgdv import Maybe
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+from types import resolve_bases, FunctionType
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
 # isort: on
 # ##-- end types
@@ -66,6 +58,7 @@ PROTO_KWD : Final[str] = "_jgdv_protos"
 ABSMETHS  : Final[str] = "__abstractmethods__"
 IS_ABS    : Final[str] = "__isabstractmethod__"
 ##--| Funcs
+
 def check_protocol(cls):
     """ Decorator. Check the class implements all its methods / has no abstractmethods """
     checker = CheckProtocol()
@@ -79,10 +72,12 @@ class CheckProtocol(DecoratorBase):
 
     pass additional protocols when making the decorator,
     eg:
+
     @CheckProtocol(Proto1_p, Proto2_p, AbsClass...)
     class MyClass:
     pass
     """
+
     @staticmethod
     def _get_protos(cls) -> set[Protocol]:
         # From MRO
@@ -93,6 +88,7 @@ class CheckProtocol(DecoratorBase):
         # from JGDV Annotations
         protos += getattr(cls, PROTO_KWD, [])
         return set(protos)
+
     def __init__(self, *protos):
         super().__init__()
         self._protos = protos
@@ -108,9 +104,6 @@ class CheckProtocol(DecoratorBase):
                 return x.__isabstractmethod__
             case FunctionType() | property():
                 return False
-
-
-
 
     def _test_protocol(self, proto:Protocol, cls) -> list[str]:
         """ Returns a list of methods which are defined in the protocol, no where else in the mro """
@@ -146,6 +139,7 @@ class CheckProtocol(DecoratorBase):
             return cls
 
         raise NotImplementedError("Class has Abstract Methods", cls.__module__, cls.__name__, still_abstract)
+
 class Mixin(DecoratorBase):
     """ Decorator to Prepend Mixins into the decorated class.
     kwarg 'append'
@@ -183,8 +177,6 @@ class Mixin(DecoratorBase):
         except TypeError as err:
             raise TypeError(*err.args, new_mro) from None
 
-
-
 class Proto(CheckProtocol):
     """ Mixin to explicitly annotate a class with a set of protocols
     Protocols are annotated into cls._jgdv_protos : set[Protocol]
@@ -197,6 +189,7 @@ class Proto(CheckProtocol):
     class ClsName(Supers): ...
 
 """
+
     def __init__(self, *protos:Protocol, check=True):
         super().__init__()
         self._protos = protos or []

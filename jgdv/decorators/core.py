@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 # ##-- stdlib imports
-import abc
 import datetime
 import enum
 import functools as ftz
@@ -21,31 +20,6 @@ import time
 import types
 import typing
 import weakref
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Sequence,
-    Tuple,
-    Type,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -63,9 +37,27 @@ import jgdv.errors
 
 # ##-- types
 # isort: off
-if typing.TYPE_CHECKING:
-   from jgdv import Maybe
-   type Signature = inspect.Signature
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    type Signature = inspect.Signature
 
 # isort: on
 # ##-- end types
@@ -102,9 +94,9 @@ class _DecAnnotate_m:
     def _is_marked(self, target) -> bool:
         match target:
             case type():
-                return self._mark_key in target.__dict__ 
+                return self._mark_key in target.__dict__
             case _:
-                return self._mark_key in target.__dict__ 
+                return self._mark_key in target.__dict__
 
     def _apply_mark(self, *args:Callable) -> None:
         """ Mark the UNWRAPPED, original target as already decorated """

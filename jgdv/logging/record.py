@@ -28,7 +28,7 @@ from uuid import UUID, uuid1
 
 # ##-- typecheck imports
 # isort: off
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
    from jgdv import Maybe
 
 # isort: on
