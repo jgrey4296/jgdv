@@ -19,53 +19,39 @@ import time
 import types
 import urllib
 import weakref
-
-# from copy import deepcopy
-from dataclasses import InitVar, dataclass, field
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Self,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-# ##-- 3rd party imports
-from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
-# ##-- end 3rd party imports
+if TYPE_CHECKING:
+    from jgdv import Maybe, Rx
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    type UrlParseResult = urllib.parse.ParseResult
 
-# ##-- 1st party imports
-from jgdv import Maybe, Rx
-
-# ##-- end 1st party imports
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-type UrlParseResult = urllib.parse.ParseResult
 
 class Bookmark(BaseModel):
     url              : str

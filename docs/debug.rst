@@ -8,11 +8,10 @@ Debugging
 
 .. contents:: Contents
 
+The package :ref:`jgdv.debugging` provides two main classes,
+`SignalHandler` and `TraceBuilder`.
 
-Aliquam erat volutpat.  Nunc eleifend leo vitae magna.  In id erat non orci
-commodo lobortis.  Proin neque massa, cursus ut, gravida ut, lobortis eget,
-lacus.  Sed diam.  Praesent fermentum tempor tellus.  Nullam tempus.  Mauris ac
-felis vel velit tristique imperdiet.  Donec at pede.  Etiam vel neque nec dui
-dignissim bibendum.  Vivamus id enim.  Phasellus neque orci, porta a, aliquet
-quis, semper a, massa.  Phasellus purus.  Pellentesque tristique imperdiet
-tortor.  Nam euismod tellus id erat.
+`SignalHandler` traps SIGINT signals and handles them,
+rather than exit the program.
+While `TraceBuilder` manually builds a `Traceback` stack,
+in place of the overly verbose default `Exception` tracebacks.

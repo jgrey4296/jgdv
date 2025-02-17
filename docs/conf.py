@@ -11,7 +11,8 @@
 import os
 import sys
 import pathlib as pl
-sys.path.insert(0, pl.Path('../').resolve())
+local_mod = str(pl.Path('../').resolve())
+sys.path.insert(0, local_mod)
 
 # (Relative to this file):
 templates_path   = ['_templates']
@@ -25,57 +26,44 @@ html_js_files  = []
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['**/flycheck_*.py', "**/__tests/*"]
-
+exclude_patterns = ['**/flycheck_*.py', "**/__tests/*", '/obsolete/*', "README.md"]
 # -- Project information -----------------------------------------------------
 
 project   = 'jgdv'
 copyright = '2022, john'
 author    = 'john'
+release   = "0.3.2"
 
 # -- General configuration ---------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-extensions = ['sphinx.ext.doctest',
-              'sphinx.ext.autodoc',
-              'sphinx.ext.autosummary',
-              'sphinx.ext.napoleon',
-              'sphinx.ext.extlinks',
-              'sphinx_rtd_theme',
-              'myst_parser',
-              ]
-
-
-##-- autosummary
-autosummary_generate = True
-##-- end autosummary
-
-##-- autodoc
-autodoc_default_options = {
-    'members'       : True,
-    'undoc-members' : True,
-    # 'private-members': True,
-    # 'special-members': True,
-    'inherited-members': True,
-    'show-inheritance' : True,
-    }
-add_module_names = False
-autodoc_inherit_docstrings = True
-
-##-- end autodoc
+extensions = [
+    'sphinx.ext.doctest',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.extlinks',
+    'sphinx_rtd_theme',
+    'myst_parser',
+    "autoapi.extension",
+    "sphinx.ext.coverage",
+    "sphinx.ext.imgconverter",
+    "sphinx.ext.intersphinx",
+    "sphinx.ext.viewcode",
+    ]
 
 # -- Options for HTML output -------------------------------------------------
-
-html_theme         = 'sphinx_rtd_theme'
-
-##-- rtd options
 # https://sphinx-rtd-theme.readthedocs.io/en/stable/configuring.html
+html_theme         = "sphinx_rtd_theme"
+html_theme_options = {}
+html_sidebars      = {}
 
-html_theme_options = {
+
+html_theme_options.update({
     'logo_only'                   : False,
-    'display_version'             : True,
+    # 'display_version'             : True,
     'prev_next_buttons_location'  : 'bottom',
     'style_external_links'        : False,
     'vcs_pageview_mode'           : '',
@@ -87,12 +75,29 @@ html_theme_options = {
     'includehidden'               : True,
     'titles_only'                 : False
 
-}
+})
 
 ##-- end rtd options
 
 # -- Extension Options -------------------------------------------------
-
+# https://sphinx-autoapi.readthedocs.io/en/latest/reference/config.html
+autoapi_generate_api_docs = True
+autoapi_add_toctree_entry = True
+autoapi_type              = "python"
+autoapi_template_dir      = "_templates/autoapi"
+autoapi_root              = "autoapi"
+autoapi_dirs              = ['../jgdv']
+autoapi_file_patterns     = ["*.py", "*.pyi"]
+autoapi_ignore            = exclude_patterns
+autoapi_options           = [
+    'imported-members',
+    'members',
+    'undoc-members',
+    'private-members',
+    'special_members',
+    'show-inheritance',
+    # 'show-inheritance-diagram',
+    'show-module-summary',
+]
 
 # -- Imports --------------------------------------------------
-import jgdv

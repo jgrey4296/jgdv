@@ -9,10 +9,52 @@ Structs
 .. contents:: Contents
 
 
-Aliquam erat volutpat.  Nunc eleifend leo vitae magna.  In id erat non orci
-commodo lobortis.  Proin neque massa, cursus ut, gravida ut, lobortis eget,
-lacus.  Sed diam.  Praesent fermentum tempor tellus.  Nullam tempus.  Mauris ac
-felis vel velit tristique imperdiet.  Donec at pede.  Etiam vel neque nec dui
-dignissim bibendum.  Vivamus id enim.  Phasellus neque orci, porta a, aliquet
-quis, semper a, massa.  Phasellus purus.  Pellentesque tristique imperdiet
-tortor.  Nam euismod tellus id erat.
+:doc:`autoapi/jgdv/structs` provides some of the key classes of JGDV.
+Especially:
+
+1. :ref:`jgdv.structs.chainguard`, a type guarded failable accessor to nested mappings.
+2. :ref:`jgdv.structs.dkey`, a type guarded Key for getting values from dicts.
+3. :ref:`jgdv.structs.locator`, a Location/Path central store.
+4. :ref:`jgdv.structs.pathy`, a subtype of `Path <path_>`_ for disguishing directories from files at the type level.
+5. :ref:`jgdv.structs.strang`, a Structured `str` subtype.
+   
+Chainguard
+==========
+
+.. code:: python
+
+   # TODO
+
+DKey
+====
+
+.. code:: python
+
+   # TODO
+
+Locator
+=======
+
+.. code:: python
+
+   # TODO 
+
+Pathy
+=====
+
+.. code:: python
+
+   # TODO
+
+Strang
+======
+
+.. code:: python
+
+   example : Strang = Strang("head.meta.data::tail.value")
+   example[0:] == "head.meta.data"
+   example[1:] == "tail.value"
+   
+   
+.. Links:
+.. _path: https://docs.python.org/3/library/pathlib.html#pathlib.PurePath
