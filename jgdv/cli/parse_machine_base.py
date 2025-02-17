@@ -78,7 +78,7 @@ logging = logmod.getLogger(__name__)
 class ArgParser_p(Protocol):
     """
     A Single standard process point for turning the list of passed in args,
-    into a dict, into a tomlguard,
+    into a dict, into a chainguard,
     along the way it determines the cmds and tasks that have been chosne
     """
 

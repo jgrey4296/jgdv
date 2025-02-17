@@ -123,8 +123,6 @@ class ParseMachine(ParseMachineBase):
 @Proto(ArgParser_p)
 class CLIParser:
     """
-    convert argv to tomlguard by:
-    parsing each arg as toml,
 
     # {prog} {args} {cmd} {cmd_args}
     # {prog} {args} [{task} {tasks_args}] - implicit do cmd
