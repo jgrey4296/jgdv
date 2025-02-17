@@ -8,7 +8,7 @@ Debugging
 
 .. contents:: Contents
 
-The package :doc:`_api/jgdv.debugging` provides two main classes,
+The package :ref:`jgdv.debugging` provides two main classes,
 `SignalHandler` and `TraceBuilder`.
 
 `SignalHandler` traps SIGINT signals and handles them,

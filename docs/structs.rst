@@ -9,14 +9,14 @@ Structs
 .. contents:: Contents
 
 
-:doc:`_api/jgdv.structs` provides some of the key classes of JGDV.
+:doc:`autoapi/jgdv/structs` provides some of the key classes of JGDV.
 Especially:
 
-1. :doc:`_api/jgdv.structs.chainguard`, a type guarded failable accessor to nested mappings.
-2. :doc:`_api/jgdv.structs.dkey`, a type guarded Key for getting values from dicts.
-3. :doc:`_api/jgdv.structs.locator`, a Location/Path central store.
-4. :doc:`_api/jgdv.structs.pathy`, a subtype of `Path <path_>`_ for disguishing directories from files at the type level.
-5. :doc:`_api/jgdv.structs.strang`, a Structured `str` subtype.
+1. :ref:`jgdv.structs.chainguard`, a type guarded failable accessor to nested mappings.
+2. :ref:`jgdv.structs.dkey`, a type guarded Key for getting values from dicts.
+3. :ref:`jgdv.structs.locator`, a Location/Path central store.
+4. :ref:`jgdv.structs.pathy`, a subtype of `Path <path_>`_ for disguishing directories from files at the type level.
+5. :ref:`jgdv.structs.strang`, a Structured `str` subtype.
    
 Chainguard
 ==========

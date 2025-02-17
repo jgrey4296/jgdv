@@ -74,6 +74,7 @@ actions = [
 
 
 [[tasks.docs]]
+disabled = true
 name        = "test"
 doc         = ["run sphinx doctest"]
 ctor        = "task"

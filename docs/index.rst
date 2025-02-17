@@ -50,7 +50,8 @@ If you find a bug, bug me, unsurprisingly, on the `issue tracker <https://github
    testing
    util
    todos
-
+   conventions
+   
    genindex
    modindex
 

@@ -84,7 +84,7 @@ html_theme_options.update({
 autoapi_generate_api_docs = True
 autoapi_add_toctree_entry = True
 autoapi_type              = "python"
-autoapi_template_dir      = "_templates"
+autoapi_template_dir      = "_templates/autoapi"
 autoapi_root              = "autoapi"
 autoapi_dirs              = ['../jgdv']
 autoapi_file_patterns     = ["*.py", "*.pyi"]

@@ -9,7 +9,7 @@ Logging
 .. contents:: Contents
 
 
-:doc:`_api/jgdv.logging` provides a `JGDVLogConfig` which sets up
+:ref:`jgdv.logging` provides a `JGDVLogConfig` which sets up
 various loggers, using log specs able to be defined in `TOML`.
 Also provided are a `Formatter` for adding colour to stdout,
 some `Filter` classes, and a `StackFormatter_m` mixin, using `stackprinter`

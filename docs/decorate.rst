@@ -9,7 +9,7 @@ Decorators
 .. contents:: Contents
 
 
-:doc:`_api/jgdv.decorators` provides base classes for
+:ref:`jgdv.decorators` provides base classes for
 more easily creating reusable decorators.
 The core of this is the `DecoratorBase` class, which
 detects whether a decorator is being applied to a function, method,
