@@ -26,8 +26,7 @@ html_js_files  = []
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ['**/flycheck_*.py', "**/__tests/*"]
-
+exclude_patterns = ['**/flycheck_*.py', "**/__tests/*", '/obsolete/*', "README.md"]
 # -- Project information -----------------------------------------------------
 
 project   = 'jgdv'
@@ -64,7 +63,7 @@ html_sidebars      = {}
 
 html_theme_options.update({
     'logo_only'                   : False,
-    'display_version'             : True,
+    # 'display_version'             : True,
     'prev_next_buttons_location'  : 'bottom',
     'style_external_links'        : False,
     'vcs_pageview_mode'           : '',
@@ -89,16 +88,16 @@ autoapi_template_dir      = "_templates"
 autoapi_root              = "autoapi"
 autoapi_dirs              = ['../jgdv']
 autoapi_file_patterns     = ["*.py", "*.pyi"]
-autoapi_ignore            = ['*/__tests', '*/test_*.py', '/obsolete/*']
+autoapi_ignore            = exclude_patterns
 autoapi_options           = [
     'imported-members',
     'members',
-    # 'undoc-members',
+    'undoc-members',
     'private-members',
     'special_members',
     'show-inheritance',
     # 'show-inheritance-diagram',
-    # 'show-module-summary',
+    'show-module-summary',
 ]
 
 # -- Imports --------------------------------------------------
