@@ -76,7 +76,6 @@ class TestExpInst:
             case x:
                 assert(False), x
 
-
     def test_match_fail(self):
         match ExpInst("bloo", fallback="bloo"):
             case ExpInst(rec=True):
@@ -128,7 +127,6 @@ class TestExpansion:
             case x:
                 assert(False), x
 
-
     def test_double_recursive(self):
         """
         {test} -> {blah} -> {aweg}/{bloo} -> qqqq/{aweg} -> qqqq/qqqq
@@ -169,13 +167,11 @@ class TestExpansion:
         assert(obj.expand(state, limit=2) == "aweg")
         assert(obj.expand(state, limit=3) == "qqqq")
 
-
     @pytest.mark.skip("TODO")
     def test_additional_sources_recurse(self):
         """ see doot test_dkey.TestDKeyExpansion.test_indirect_wrapped_expansion
         """
         assert(False)
-
 
 class TestIndirection:
 
@@ -267,6 +263,7 @@ class TestIndirection:
                 assert(True)
             case x:
                 assert(False), x
+
     def test_soft_miss(self):
         """
         {key} -> state[key_:blah] -> {blah}
@@ -304,7 +301,6 @@ class TestIndirection:
                 assert(True)
             case x:
                 assert(False), x
-
 
 class TestMultiExpansion:
 
@@ -407,7 +403,6 @@ class TestMultiExpansion:
             case x:
                 assert(False), x
 
-
     def test_multikey_of_one(self):
         obj = DKey("{test}", mark=DKey.Mark.MULTI)
         assert(DKey.MarkOf(obj) is DKey.Mark.MULTI)
@@ -417,7 +412,6 @@ class TestMultiExpansion:
                 assert(True)
             case x:
                 assert(False), x
-
 
     def test_multikey_recursion(self):
         obj = DKey("{test}", mark=DKey.Mark.MULTI)
@@ -461,3 +455,39 @@ class TestCoercion:
         assert(obj._conv_params == "i")
         with pytest.raises(ValueError):
             obj.local_expand(state)
+
+class TestFallbacks:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_basic_fallback(self):
+        key = DKey("blah", implicit=True, fallback="aweg")
+        match key():
+            case "aweg":
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_fallback_typecheck(self):
+        key = DKey("blah", implicit=True, fallback="aweg", check=str)
+        match key():
+            case "aweg":
+                assert(True)
+            case x:
+                 assert(False), x
+
+    @pytest.mark.xfail
+    def test_fallback_typecheck_fail(self):
+        with pytest.raises(TypeError):
+            DKey("blah", implicit=True, fallback=24, check=str)
+
+
+    @pytest.mark.parametrize("ctor", [list, dict, set])
+    def test_fallback_type_factory(self, ctor):
+        key = DKey("blah", implicit=True, fallback=ctor)
+        match key():
+            case list()|dict()|set():
+                assert(True)
+            case x:
+                 assert(False), x

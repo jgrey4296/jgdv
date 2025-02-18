@@ -123,6 +123,9 @@ class DKeyLocalExpander_m:
         match kwargs.get("fallback", self._fallback):
             case None:
                 fallback = None
+            case type() as ctor:
+                x = ctor()
+                fallback = ExpInst(val=x, literal=True)
             case ExpInst() as x:
                 fallback = x
                 logging.debug("Fallback %s -> %s", self, fallback.val)
