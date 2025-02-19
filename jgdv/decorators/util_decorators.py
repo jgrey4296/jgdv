@@ -54,6 +54,14 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-class SideEffectFree(DecoratorBase):
+class NoSideEffects(DecoratorBase):
     """ TODO Mark a Target as not modifying external variables """
+    pass
+
+class CanRaise(DecoratorBase):
+    """ TODO mark a target as able to raise certain errors.
+    Non-exaustive, doesn't change runtime behaviour,
+    just to simplify documentation
+
+    """
     pass

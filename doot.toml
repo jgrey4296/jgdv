@@ -10,9 +10,6 @@ skip_default_plugins = false
 skip_plugin_search   = false
 empty_cmd            = "list"
 implicit_task_cmd    = "run"
-# default_task       = ""
-# constants_file     = ""
-# aliases_file       = ""
 
 [startup.plugins]
 # Allows for defining aliases

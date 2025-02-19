@@ -21,7 +21,7 @@ cache-dir      = ".temp/ruff_cache"
 # Enable pycodestyle (Symbol’s value as variable is void: E) and Pyflakes (Symbol’s value as variable is void: F) codes by default.
 select = ["E", "F", "W", "B"]
 
-ignore = [ "F401", "E402", "E501" ]
+ignore = [ "F401", "E402", "E501", "C409"]
 
 # Allow autofix for all enabled rules (when Symbol’s value as variable is void: --fix) is provided.
 fixable = [

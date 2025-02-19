@@ -30,6 +30,20 @@ class TestBaseGuard:
         basic = ChainGuard({"test": "blah"})
         assert(isinstance(basic, typing.Mapping))
 
+
+    def test_is_dict(self):
+        basic = ChainGuard({"test": "blah"})
+        assert(isinstance(basic, dict))
+
+
+    def test_match_as_dict(self):
+        match ChainGuard({"test": "blah"}):
+            case dict():
+                assert(True)
+            case x:
+                 assert(False), x
+
+
     def test_basic_access(self):
         basic = ChainGuard({"test": "blah"})
         assert(basic.test == "blah")

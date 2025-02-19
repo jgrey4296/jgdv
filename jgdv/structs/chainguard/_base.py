@@ -67,7 +67,7 @@ logging = logmod.getLogger(__name__)
 
 type TomlTypes = str | int | float | bool | list['TomlTypes'] | dict[str,'TomlTypes'] | datetime.datetime
 
-class GuardBase(Mapping[str, TomlTypes]):
+class GuardBase(Mapping[str, TomlTypes], dict):
     """
     Provides access to toml data (ChainGuard.load(apath))
     but as attributes (data.a.path.in.the.data)

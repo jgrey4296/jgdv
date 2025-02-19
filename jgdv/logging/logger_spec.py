@@ -89,7 +89,7 @@ class HandlerBuilder_m:
             case _ if IS_PRE_COMMIT:
                 # Always strip colour when in pre-commit
                 formatter = StripColourFormatter(fmt=self.format, style=self.style)
-            case _ if isinstance(handler, (logmod.FileHandler, l_handlers.RotatingFileHandler)):
+            case _ if isinstance(handler, logmod.FileHandler|l_handlers.RotatingFileHandler):
                 # Always strip colour when logging to a file
                 formatter = StripColourFormatter(fmt=self.format, style=self.style)
             case False:
