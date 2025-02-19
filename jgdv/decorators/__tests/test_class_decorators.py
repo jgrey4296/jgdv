@@ -101,6 +101,8 @@ class GoodAbsClass(AbsClass):
 class BadAbsClass(AbsClass):
     pass
 
+##--|
+
 class GoodInheritAbsProto(AbsProto_p):
 
     def blah(self) -> None:
@@ -111,6 +113,8 @@ class GoodInheritAbsProto(AbsProto_p):
 
 class BadInheritAbsProto(AbsProto_p):
     pass
+
+##--|
 
 class GoodInheritRawProto(RawProto_p):
 
@@ -124,6 +128,8 @@ class BadInheritRawProto(RawProto_p):
 
     def aweg(self):
         return 10
+
+##--|
 
 class GoodStructuralRawProto:
 
@@ -153,10 +159,9 @@ class Simple_m:
 class Second_m:
 
     def aweg(self):
-        return super(Second_m, self).bloo()
+        return super().bloo()
 
 ##-- end mixins
-
 
 class TestClassDecorator:
 
@@ -321,16 +326,48 @@ class TestProtoDecorator:
             case x:
                  assert(False), x
 
-
     def test_proto_check_fail(self):
 
         with pytest.raises(NotImplementedError):
+
             @Proto(RawProto_p, check=True)
             class Example:
                 val : ClassVar[int] = 25
 
                 def bloo(self):
                     return 10
+
+    def test_proto_on_type_alias(self):
+        type proto_alias = RawProto_p
+
+        @Proto(proto_alias, check=True)
+        class Example:
+            val : ClassVar[int] = 25
+
+            def bloo(self):
+                return 10
+
+            def blah(self):
+                return
+
+            def aweg(self):
+                return
+
+        assert(True)
+
+    def test_proto_on_proto(self):
+
+        with pytest.raises(TypeError) as ctx:
+
+            @Proto(RawProto_p)
+            class Example(Protocol):
+                pass
+
+        match ctx.value:
+            case TypeError(args=["Don't use @Proto to combine protocols, use normal inheritance", *_]):
+                assert(True)
+            case x:
+                 assert(False), x
 
 class TestCheckProtocolClass:
 
@@ -362,7 +399,6 @@ class TestCheckProtocolClass:
             dec(BadInheritAbsProto)
             assert(True)
 
-
     def test_raw_proto_class_success(self):
         assert(isinstance(GoodInheritRawProto, RawProto_p))
         dec = CheckProtocol()
@@ -391,8 +427,6 @@ class TestCheckProtocolClass:
             case x:
                  assert(False), x
 
-
-
     def test_raw_structural_proto_class_fail(self):
         assert(not issubclass(BadStructuralRawProto, RawProto_p))
         assert(not isinstance(BadStructuralRawProto, RawProto_p))
@@ -407,7 +441,88 @@ class TestCheckProtocolClass:
             case x:
                  assert(False), x
 
+class TestGenericProtocolChecking:
 
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_unparam_generic_proto_successs(self):
+
+        @runtime_checkable
+        class GenericProto_p[T](Protocol):
+            pass
+
+        @Proto(GenericProto_p)
+        class Impl:
+            pass
+
+        assert(True)
+
+    def test_param_generic_proto_success(self):
+
+        @runtime_checkable
+        class GenericProto_p[T](Protocol):
+            pass
+
+        @Proto(GenericProto_p[int])
+        class Impl:
+            pass
+
+        assert(True)
+
+    def test_aliased_param_generic_proto_success(self):
+
+        @runtime_checkable
+        class GenericProto_p[T](Protocol):
+            pass
+
+        type IntGenericProto_p = GenericProto_p[int]
+
+        @Proto(IntGenericProto_p)
+        class Impl:
+            pass
+
+        assert(True)
+
+    def test_unparam_generic_proto_fail(self):
+
+        @runtime_checkable
+        class GenericProto_p[T](Protocol):
+
+            def blah(self): ...
+
+        with pytest.raises(NotImplementedError):
+
+            @Proto(GenericProto_p)
+            class Impl:
+                pass
+
+    def test_param_generic_proto_fail(self):
+
+        @runtime_checkable
+        class GenericProto_p[T](Protocol):
+
+            def blah(self): ...
+
+        with pytest.raises(NotImplementedError):
+
+            @Proto(GenericProto_p[int])
+            class Impl:
+                pass
+
+    def test_alias_param_generic_proto_fail(self):
+
+        @runtime_checkable
+        class GenericProto_p[T](Protocol):
+
+            def blah(self): ...
+
+        type IntGenProto_p = GenericProto_p[int]
+        with pytest.raises(NotImplementedError):
+
+            @Proto(IntGenProto_p)
+            class Impl:
+                pass
 
 class TestCheckProtocolFunc:
 

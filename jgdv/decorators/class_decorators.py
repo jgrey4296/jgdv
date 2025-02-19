@@ -21,6 +21,7 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
+from jgdv.debugging import TraceBuilder
 from .core import DecoratorBase
 
 # ##-- types
@@ -28,14 +29,13 @@ from .core import DecoratorBase
 import abc
 import collections.abc
 from typing import TYPE_CHECKING, cast, assert_type, assert_never
-from typing import Generic, NewType
+from typing import Generic, NewType, TypeAliasType
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
-from types import resolve_bases, FunctionType
+from types import resolve_bases, FunctionType, MethodType
+
 if TYPE_CHECKING:
     from jgdv import Maybe
     from typing import Final
@@ -85,6 +85,7 @@ class CheckProtocol(DecoratorBase):
                   if issubclass(x, Protocol)
                   and x is not cls
                   and x is not Protocol]
+
         # from JGDV Annotations
         protos += getattr(cls, PROTO_KWD, [])
         return set(protos)
@@ -106,21 +107,48 @@ class CheckProtocol(DecoratorBase):
                 return False
 
     def _test_protocol(self, proto:Protocol, cls) -> list[str]:
-        """ Returns a list of methods which are defined in the protocol, no where else in the mro """
+        """ Returns a list of methods which are defined in the protocol,
+        no where else in the mro.
+        ie: they are unimplemented protocol requirements
+
+        Can handle type aliases, so long as they actually point to a protocol.
+        eg: type proto_alias = MyProtocol_p
+        where issubclass(MyProtocol_p, Protocol)
+        """
         result = []
-        for member in proto.__protocol_attrs__:
+        match proto:
+            case type() if issubclass(proto, Protocol):
+                members  = proto.__protocol_attrs__
+                qualname = proto.__qualname__
+            case TypeAliasType() if (origin:=getattr(proto.__value__, "__origin__", None)) and issubclass(origin, Protocol):
+                members = origin.__protocol_attrs__
+                qualname = origin.__qualname__
+            case TypeAliasType() if issubclass(proto.__value__, Protocol):
+                members = proto.__value__.__protocol_attrs__
+                qualname = proto.__value__.__qualname__
+            case x if (origin:=getattr(proto, "__origin__", None)) and issubclass(origin, Protocol):
+                members = origin.__protocol_attrs__
+                qualname = origin.__qualname__
+            case _:
+                raise TypeError("Checking a protocol... but it isnt' a protocol", proto)
+
+        for member in members:
             match getattr(cls, member, None):
                 case property():
                     pass
                 case None:
                     result.append(member)
-                case FunctionType() as meth if proto.__qualname__ in meth.__qualname__:
+                case FunctionType() as meth if qualname in meth.__qualname__:
                     # (as a class, the method isn't actually bound as a method yet, its still a function)
                     result.append(member)
                 case FunctionType():
                     pass
+                case MethodType() as meth  if qualname in meth.__func__.__qualname__:
+                    result.append(member)
+                case MethodType():
+                    pass
                 case x:
-                    raise TypeError("Unexpected Type in protocol checking", member, x, cls)
+                    raise TypeError("Unexpected Type in protocol checking", member, type(x), x, cls)
         else:
             return result
 
@@ -138,7 +166,10 @@ class CheckProtocol(DecoratorBase):
         if not bool(still_abstract):
             return cls
 
-        raise NotImplementedError("Class has Abstract Methods", cls.__module__, cls.__name__, still_abstract)
+        raise NotImplementedError("Class has Abstract Methods",
+                                  cls.__qualname__,
+                                  f"module:{cls.__module__}",
+                                  still_abstract).with_traceback(TraceBuilder()[2:])
 
 class Mixin(DecoratorBase):
     """ Decorator to Prepend Mixins into the decorated class.
@@ -171,14 +202,19 @@ class Mixin(DecoratorBase):
         bases = [*self._prepend_mixins, *ready_to_prepend.__mro__]
         new_mro = resolve_bases(bases)
         new_name = f"{cls.__qualname__}<WithMixins>"
+        match dict(ready_to_prepend.__dict__):
+            case {"model_fields": _} as namespace:
+                raise TypeError("Pydantic classes shouldn't be annotated or checked")
+            case dict() as namespace:
+                namespace["JGDV_Mixins"] = self._prepend_mixins[:]
         try:
-            custom = type(ready_to_prepend)(new_name, tuple(new_mro), dict(ready_to_prepend.__dict__))
+            custom = type(ready_to_prepend)(new_name, tuple(new_mro), namespace)
             return custom
         except TypeError as err:
             raise TypeError(*err.args, new_mro) from None
 
 class Proto(CheckProtocol):
-    """ Mixin to explicitly annotate a class with a set of protocols
+    """ Mixin to explicitly annotate a class as an implementer of a set of protocols
     Protocols are annotated into cls._jgdv_protos : set[Protocol]
 
     class ClsName(Supers*, P1, P1..., **kwargs):...
@@ -188,6 +224,10 @@ class Proto(CheckProtocol):
     @Protocols(P1, P2,...)
     class ClsName(Supers): ...
 
+
+    Protocol *definition* remains the typical way:
+    class Proto1(Protocol): ...
+    class ExtProto(Proto1, Protocol): ...
 """
 
     def __init__(self, *protos:Protocol, check=True):
@@ -196,6 +236,9 @@ class Proto(CheckProtocol):
         self._check = check
 
     def _wrap_class(self, cls:type):
+        if issubclass(cls, Protocol):
+            raise TypeError("Don't use @Proto to combine protocols, use normal inheritance", cls).with_traceback(TraceBuilder()[2:])
+
         new_name = f"{cls.__qualname__}<WithProtocols>"
         with_protos : dict = dict(cls.__dict__)
 
@@ -209,10 +252,11 @@ class Proto(CheckProtocol):
             if not self._check:
                 return custom
 
-            checker = CheckProtocol()
-            return checker(custom)
+            return super()._wrap_class(custom)
+        except NotImplementedError as err:
+            raise err.with_traceback(TraceBuilder()[2:]) from None
         except TypeError as err:
-            raise TypeError(*err.args, cls, self._protos) from None
+            raise TypeError(*err.args, cls, self._protos).with_traceback(TraceBuilder()[2:]) from None
 
     @staticmethod
     def get(cls:type) -> list[Protocol]:
