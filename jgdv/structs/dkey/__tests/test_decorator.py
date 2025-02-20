@@ -17,7 +17,7 @@ import pytest
 from jgdv import JGDVError
 from jgdv.structs.dkey import DKey, DKeyed
 from jgdv.structs.dkey import DKeyExpansionDecorator as DKexd
-from jgdv.decorators import _TargetType_e
+from jgdv.decorators import DForm_e
 from jgdv.structs.dkey.decorator import DKeyMetaDecorator, DKeyedMeta, DKeyedRetrieval
 
 logging = logmod.root
@@ -36,114 +36,114 @@ class TestDkeyDecorator:
         assert(isinstance(value, DKexd))
         assert(bool(value._data))
 
-    def test_verify_signature_method_head(self):
+    def test_validate_sig_method_head(self):
         dec   = DKexd([])
-        ttype = _TargetType_e.METHOD
+        ttype = DForm_e.METHOD
 
         def simple(self, spec, state):
             pass
 
         sig = dec._signature(simple)
-        dec._verify_signature(sig, ttype, [])
+        dec._validate_sig_h(sig, ttype, [])
         assert(True)
 
-    def test_verify_signature_method_head_fail(self):
+    def test_validate_sig_method_head_fail(self):
         dec   = DKexd([])
-        ttype = _TargetType_e.METHOD
+        ttype = DForm_e.METHOD
 
         def simple(self, spec, notstate):
             pass
 
         sig = dec._signature(simple)
         with pytest.raises(JGDVError):
-            dec._verify_signature(sig, ttype, [])
+            dec._validate_sig_h(sig, ttype, [])
 
-    def test_verify_signature_func_head(self):
+    def test_validate_sig_func_head(self):
         dec   = DKexd([])
-        ttype = _TargetType_e.FUNC
+        ttype = DForm_e.FUNC
 
         def simple(spec, state):
             pass
 
         sig = dec._signature(simple)
-        dec._verify_signature(sig, ttype, [])
+        dec._validate_sig_h(sig, ttype, [])
         assert(True)
 
-    def test_verify_signature_func_head_fail(self):
+    def test_validate_sig_func_head_fail(self):
         dec   = DKexd([])
-        ttype = _TargetType_e.FUNC
+        ttype = DForm_e.FUNC
 
         def simple(spec, notstate):
             pass
 
         sig = dec._signature(simple)
         with pytest.raises(JGDVError):
-            dec._verify_signature(sig, ttype, [])
+            dec._validate_sig_h(sig, ttype, [])
 
-    def test_verify_signature_method_tail(self):
+    def test_validate_sig_method_tail(self):
         dec   = DKexd([])
-        ttype = _TargetType_e.METHOD
+        ttype = DForm_e.METHOD
 
         def simple(self, spec, state, bloo, blee):
             pass
 
         sig = dec._signature(simple)
-        dec._verify_signature(sig, ttype, ["bloo", "blee"])
+        dec._validate_sig_h(sig, ttype, ["bloo", "blee"])
         assert(True)
 
-    def test_verify_signature_method_tail_fail(self):
+    def test_validate_sig_method_tail_fail(self):
         dec   = DKexd([])
-        ttype = _TargetType_e.METHOD
+        ttype = DForm_e.METHOD
 
         def simple(self, spec, state, bloo, blee):
             pass
 
         sig = dec._signature(simple)
         with pytest.raises(JGDVError):
-            dec._verify_signature(sig, ttype, ["bloo", "blah"])
+            dec._validate_sig_h(sig, ttype, ["bloo", "blah"])
 
-    def test_verify_signature_func_tail(self):
+    def test_validate_sig_func_tail(self):
         dec   = DKexd([])
-        ttype = _TargetType_e.FUNC
+        ttype = DForm_e.FUNC
 
         def simple(spec, state, bloo, blee):
             pass
 
         sig = dec._signature(simple)
-        dec._verify_signature(sig, ttype, ["bloo", "blee"])
+        dec._validate_sig_h(sig, ttype, ["bloo", "blee"])
         assert(True)
 
-    def test_verify_signature_func_tail_fail(self):
+    def test_validate_sig_func_tail_fail(self):
         dec   = DKexd([])
-        ttype = _TargetType_e.FUNC
+        ttype = DForm_e.FUNC
 
         def simple(spec, state, bloo, blee):
             pass
 
         sig = dec._signature(simple)
         with pytest.raises(JGDVError):
-            dec._verify_signature(sig, ttype, ["bloo", "blah"])
+            dec._validate_sig_h(sig, ttype, ["bloo", "blah"])
 
-    def test_verify_signature_incomplete_tail(self):
+    def test_validate_sig_incomplete_tail(self):
         dec   = DKexd([])
-        ttype = _TargetType_e.FUNC
+        ttype = DForm_e.FUNC
 
         def simple(spec, state, bloo, blee, blob):
             pass
 
         sig = dec._signature(simple)
-        dec._verify_signature(sig, ttype, ["blee", "blob"])
+        dec._validate_sig_h(sig, ttype, ["blee", "blob"])
         assert(True)
 
-    def test_verify_signature_skip_ignores(self):
+    def test_validate_sig_skip_ignores(self):
         dec   = DKexd([])
-        ttype = _TargetType_e.FUNC
+        ttype = DForm_e.FUNC
 
         def simple(spec, state, _bloo, blee_ex, blob):
             pass
 
         sig = dec._signature(simple)
-        dec._verify_signature(sig, ttype, ["awef", "aweg", "blob"])
+        dec._validate_sig_h(sig, ttype, ["awef", "aweg", "blob"])
         assert(True)
 
 class TestDKeyDecoratorExpansion:
@@ -162,7 +162,6 @@ class TestDKeyDecoratorExpansion:
 
     def test_mismatch_signature(self):
         with pytest.raises(JGDVError):
-
             @DKeyed.types("other")
             def simple(spec, state, basic):
                 assert(basic == "blah")

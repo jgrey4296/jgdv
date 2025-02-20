@@ -1,4 +1,4 @@
-## ruff.toml -*- mode: Conf[TOML] -*-
+## ruff.toml -*- mode: toml -*-
 # https://docs.astral.sh/ruff/configuration/
 
 # Extend the project settings, if theres a ruff section
@@ -18,7 +18,8 @@ target-version = "py312"
 cache-dir      = ".temp/ruff_cache"
 
 [lint]
-# Enable pycodestyle (Symbol’s value as variable is void: E) and Pyflakes (Symbol’s value as variable is void: F) codes by default.
+# Enable pycodestyle (Symbol’s value as variable is void: E)
+# and Pyflakes (Symbol’s value as variable is void: F) codes by default.
 select = ["E", "F", "W", "B"]
 
 ignore = [ "F401", "E402", "E501", "C409"]

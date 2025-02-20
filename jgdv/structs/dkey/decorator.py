@@ -27,10 +27,10 @@ from uuid import UUID, uuid1
 # ##-- 1st party imports
 from jgdv import Mixin
 from jgdv.decorators import (
-    DataDecorator,
+    DataDec,
+    MetaDec,
     DecoratorAccessor_m,
-    MetaDecorator,
-    _TargetType_e,
+    DForm_e,
 )
 from jgdv.structs.dkey import _errors as dkey_errs
 from jgdv.structs.dkey._meta import DKey
@@ -69,15 +69,16 @@ logging = logmod.getLogger(__name__)
 
 PARAM_IGNORES       : Final[list[str]]            = ["_", "_ex"]
 
-class DKeyMetaDecorator(MetaDecorator):
-    """ A Meta decorator that registers keys for input and output verification"""
+class DKeyMetaDecorator(MetaDec):
+    """ A Meta decorator that registers keys for input and output
+    verification"""
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("mark", "_dkey_meta_marked")
         kwargs.setdefault("data", "_dkey_meta_vals")
         super().__init__(*args, **kwargs)
 
-class DKeyExpansionDecorator(DataDecorator):
+class DKeyExpansionDecorator(DataDec):
     """
     Utility class for idempotently decorating actions with auto-expanded keys
 
@@ -89,7 +90,7 @@ class DKeyExpansionDecorator(DataDecorator):
         super().__init__(keys, **kwargs)
         self._param_ignores     : tuple[str, str] = ignores or PARAM_IGNORES
 
-    def _wrap_method(self, meth:Method) -> Method:
+    def _wrap_method_h(self, meth:Method) -> Method:
         data_key = self._data_key
 
         def _method_action_expansions(_self, spec, state, *call_args, **kwargs):
@@ -105,7 +106,7 @@ class DKeyExpansionDecorator(DataDecorator):
         # -
         return _method_action_expansions
 
-    def _wrap_fn(self, fn:Func) -> Func:
+    def _wrap_fn_h(self, fn:Func) -> Func:
         data_key = self._data_key
 
         def _fn_action_expansions(spec, state, *call_args, **kwargs):
@@ -121,12 +122,12 @@ class DKeyExpansionDecorator(DataDecorator):
         # -
         return _fn_action_expansions
 
-    def _verify_signature(self, sig:Signature, ttype:_TargetType_e, args:list[DKey]) -> None:
+    def _validate_sig_h(self, sig:Signature, form:DForm_e, args:Maybe[list[DKey]]=None) -> None:
         # Get the head args
-        match ttype:
-            case _TargetType_e.FUNC:
+        match form:
+            case DForm_e.FUNC:
                 head = ["spec", "state"]
-            case _TargetType_e.METHOD:
+            case DForm_e.METHOD:
                 head = ["self", "spec", "state"]
 
         params      = list(sig.parameters)
@@ -135,7 +136,7 @@ class DKeyExpansionDecorator(DataDecorator):
         # Check the head
         for x,y in zip(params, head, strict=False):
             if x != y:
-                raise dkey_errs.DecorationMismatch("Mismatch in signature head", x, y, ttype)
+                raise dkey_errs.DecorationMismatch("Mismatch in signature head", x, y, form)
 
         prefix_ig, suffix_ig = self._param_ignores
         # Then the tail, backwards, because the decorators are applied in reverse order
@@ -153,6 +154,7 @@ class DKeyExpansionDecorator(DataDecorator):
 
             if x != y:
                 raise dkey_errs.DecorationMismatch("Mismatch in signature tail", str(x), str(y))
+
 
 class DKeyed:
     """ Decorators for actions

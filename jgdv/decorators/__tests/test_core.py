@@ -51,19 +51,35 @@ from jgdv.decorators.core import (
     ANNOTATIONS_PREFIX,
     DATA_SUFFIX,
     MARK_SUFFIX,
-    DecoratorBase,
-    _TargetType_e,
+    Decorator,
+    MonotonicDec,
+    IdempotentDec,
+    MetaDec,
+    DataDec,
+    DForm_e,
 )
 
 # ##-- end 1st party imports
 
 logging = logmod.root
 
-class _TestUtils:
+class _Utils:
 
     @pytest.fixture(scope="function")
     def dec(self):
-        return DecoratorBase()
+        return Decorator()
+
+    @pytest.fixture(scope="function")
+    def mdec(self):
+
+        class MDec(MonotonicDec):
+            pass
+
+        return MDec()
+
+    @pytest.fixture(scope="function")
+    def idec(self):
+        return IdempotentDec()
 
     @pytest.fixture(scope="function")
     def a_class(self):
@@ -93,128 +109,209 @@ class _TestUtils:
 
         return simple
 
-class TestTargetTypeDiscrimination(_TestUtils):
+##--|
+
+class TestDFormDiscrimination(_Utils):
 
     def test_sanity(self):
         assert(True is not False)
 
     def test_is_fn(self, dec, a_fn):
-        assert(dec._target_type(a_fn) is _TargetType_e.FUNC)
+        match dec._discrim_form(a_fn):
+            case DForm_e.FUNC:
+                assert(True)
+            case x:
+                assert(False), x
 
     def test_is_instance_method(self, dec, a_class):
         inst = a_class()
-        assert(dec._target_type(inst.simple) is _TargetType_e.METHOD)
+        match dec._discrim_form(inst.simple):
+            case DForm_e.METHOD:
+                assert(True)
+            case x:
+                assert(False), x
 
     def test_is_method(self, dec, a_method):
-        assert(dec._target_type(a_method) is _TargetType_e.METHOD)
+        match dec._discrim_form(a_method):
+            case DForm_e.METHOD:
+                assert(True)
+            case x:
+                assert(False), x
 
     def test_is_class(self, dec, a_class):
-        assert(dec._target_type(a_class) is _TargetType_e.CLASS)
+        match dec._discrim_form(a_class):
+            case DForm_e.CLASS:
+                assert(True)
+            case x:
+                assert(False), x
 
-    def test_decorated_fn_retains_correct_type(self):
+    def test_instance(self, dec, a_class):
+        with pytest.raises(TypeError):
+            dec._discrim_form(a_class())
 
-        class Dec1(DecoratorBase):
-            pass
-
-        class Dec2(DecoratorBase):
-            pass
-
-        @Dec1()
-        @Dec2()
-        def testfn():
-            pass
-
-        assert(Dec1()._target_type(testfn) is _TargetType_e.FUNC)
-
-
-    def test_decorated_method_retains_correct_type(self):
-
-        class Dec1(DecoratorBase):
-            pass
-
-        class Dec2(DecoratorBase):
-            pass
-
-        class TestClass:
-            @Dec1()
-            @Dec2()
-            def testfn(self):
-                pass
-
-        assert(Dec1()._target_type(TestClass.testfn) is _TargetType_e.METHOD)
-
-class TestDecoratorBase(_TestUtils):
+class TestDecorator(_Utils):
 
     def test_sanity(self):
-        assert(True is True)
+        assert(True is not False) # noqa: PLR0133
 
     def test_basic_init(self, dec):
-        assert(dec._mark_key == f"{ANNOTATIONS_PREFIX}:{dec.__class__.__name__}")
-        assert(dec._data_key == f"{ANNOTATIONS_PREFIX}:{DATA_SUFFIX}")
+        mark = f"{ANNOTATIONS_PREFIX}:{dec.__class__.__name__}"
+        data = f"{ANNOTATIONS_PREFIX}:{DATA_SUFFIX}"
+        assert(dec._mark_key == mark)
+        assert(dec._data_key == data)
 
     @pytest.mark.parametrize("name", ["blah", "bloo", "blee"])
     def test_custom_prefix(self, name):
-        dec = DecoratorBase(prefix=name)
+        dec = Decorator(prefix=name)
         assert(dec._mark_key == f"{name}:{dec.__class__.__name__}")
         assert(dec._data_key == f"{name}:{DATA_SUFFIX}")
 
     @pytest.mark.parametrize("name", ["blah", "bloo", "blee"])
     def test_custom_mark(self, name):
-        dec = DecoratorBase(mark=name)
+        dec = Decorator(mark=name)
         assert(dec._mark_key == f"{ANNOTATIONS_PREFIX}:{name}")
         assert(dec._data_key == f"{ANNOTATIONS_PREFIX}:{DATA_SUFFIX}")
 
     @pytest.mark.parametrize("name", ["blah", "bloo", "blee"])
     def test_custom_data(self, name):
-        dec = DecoratorBase(data=name)
+        dec = Decorator(data=name)
         assert(dec._mark_key == f"{ANNOTATIONS_PREFIX}:{dec.__class__.__name__}")
         assert(dec._data_key == f"{ANNOTATIONS_PREFIX}:{name}")
 
+class TestMarking(_Utils):
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
     def test_mark_fn(self, dec, a_fn):
-        assert(not dec._is_marked(a_fn))
-        dec._apply_mark(a_fn)
-        assert(dec._is_marked(a_fn))
+        assert(not dec.is_marked(a_fn))
+        dec.apply_mark(a_fn)
+        assert(dec.is_marked(a_fn))
         assert(dec._mark_key in a_fn.__dict__)
         assert(dec._data_key not in a_fn.__dict__)
 
-    def test_mark_of_class_persists_to_instances(self, dec):
+    def test_mark_method(self, a_class, dec):
+        assert(not dec.is_marked(a_class))
+        assert(not dec.is_marked(a_class.simple))
+        dec.apply_mark(a_class.simple)
+        assert(dec.is_marked(a_class.simple))
 
-        class Basic:
+    def test_mark_method_doesnt_mark_class(self, a_class, dec):
+        assert(not dec.is_marked(a_class))
+        assert(not dec.is_marked(a_class.simple))
+        dec.apply_mark(a_class.simple)
+        assert(dec.is_marked(a_class.simple))
+        assert(not dec.is_marked(a_class))
 
-            @dec
-            def simple(self):
-                pass
+    def test_mark_method_survives_instantiation(self, a_class, dec):
+        assert(not dec.is_marked(a_class))
+        assert(not dec.is_marked(a_class.simple))
+        dec.apply_mark(a_class.simple)
+        obj = a_class()
+        assert(dec.is_marked(obj.simple))
 
-        instance = Basic()
-        assert(dec._is_marked(Basic.simple))
-        assert(dec._is_marked(instance.simple))
-        assert(dec._mark_key in Basic.simple.__dict__)
-        assert(dec._data_key in instance.simple.__dict__)
+    def test_mark_method_survives_subclassing(self, a_class, dec):
+        assert(not dec.is_marked(a_class))
+        assert(not dec.is_marked(a_class.simple))
+        dec.apply_mark(a_class.simple)
+        assert(dec.is_marked(a_class.simple))
 
-    def test_mark_of_class_survives_subclassing(self, dec):
-
-        class Basic:
-
-            @dec
-            def simple(self):
-                pass
-
-        class BasicSub(Basic):
+        class BasicSub(a_class):
             pass
 
-        instance = BasicSub()
-        assert(dec._is_marked(Basic.simple))
-        assert(dec._is_marked(instance.simple))
-        assert(dec._mark_key in Basic.simple.__dict__)
-        assert(dec._mark_key in BasicSub.simple.__dict__)
-        assert(dec._data_key in instance.simple.__dict__)
+        assert(dec.is_marked(BasicSub.simple))
 
-    def test_no_annotations(self, dec, a_fn):
-        assert(not bool(dec.get_annotations(a_fn)))
-        assert(dec._mark_key not in a_fn.__dict__)
-        assert(dec._data_key not in a_fn.__dict__)
+    def test_mark_class(self, a_class, dec):
+        assert(not dec.is_marked(a_class))
+        dec.apply_mark(a_class)
+        assert(dec.is_marked(a_class))
 
-    def test_unwrap_depth(self, dec):
+    def test_mark_class_survives_instantiation(self, a_class, dec):
+        assert(not dec.is_marked(a_class))
+        dec.apply_mark(a_class)
+        assert(dec.is_marked(a_class))
+        obj = a_class()
+        assert(dec.is_marked(obj))
+
+class TestAnnotation(_Utils):
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_fn_is_not_annotated(self, dec, a_fn):
+        assert(not dec.is_annotated(a_fn))
+
+    def test_method_is_not_annotated_(self, dec, a_method):
+        assert(not dec.is_annotated(a_method))
+
+    def test_class_is_not_annotated(self, dec, a_class):
+        assert(not dec.is_annotated(a_class))
+
+    def test_instance_is_not_annotated(self, dec, a_class):
+        obj = a_class()
+        assert(not dec.is_annotated(obj))
+
+class TestWrapping(_Utils):
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_fn_unwrap_default(self, mdec, a_fn):
+        assert(not mdec.is_marked(a_fn))
+        unwrapped = mdec._unwrap(a_fn)
+        assert(unwrapped is a_fn)
+
+    def test_method_unwrap_default(self, mdec, a_method):
+        assert(not mdec.is_marked(a_method))
+        unwrapped = mdec._unwrap(a_method)
+        assert(unwrapped is a_method)
+
+    def test_class_unwrap_default(self, mdec, a_class):
+        assert(not mdec.is_marked(a_class))
+        unwrapped = mdec._unwrap(a_class)
+        assert(unwrapped is a_class)
+
+    def test_fn_wrap(self, mdec, a_fn):
+        assert(not mdec.is_marked(a_fn))
+        decorated = mdec(a_fn)
+        assert(decorated is not a_fn)
+
+    def test_fn_unwrap(self, mdec, a_fn):
+        assert(not mdec.is_marked(a_fn))
+        decorated = mdec(a_fn)
+        unwrapped = mdec._unwrap(decorated)
+        assert(unwrapped is a_fn)
+        assert(unwrapped is not decorated)
+
+    def test_method_wrap(self, mdec, a_method):
+        assert(not mdec.is_marked(a_method))
+        decorated = mdec(a_method)
+        assert(decorated is not a_method)
+        assert(mdec.is_marked(a_method))
+        assert(mdec.is_marked(decorated))
+
+    def test_method_unwrap(self, mdec, a_method):
+        assert(not mdec.is_marked(a_method))
+        decorated = mdec(a_method)
+        unwrapped = mdec._unwrap(decorated)
+        assert(unwrapped is a_method)
+        assert(unwrapped is not decorated)
+
+    def test_class_wrap(self, mdec, a_class):
+        assert(not mdec.is_marked(a_class))
+        decorated = mdec(a_class)
+        assert(decorated is not a_class)
+        assert(mdec.is_marked(a_class))
+        assert(mdec.is_marked(decorated))
+
+    def test_class_unwrap(self, mdec, a_class):
+        assert(not mdec.is_marked(a_class))
+        decorated = mdec(a_class)
+        unwrapped = mdec._unwrap(decorated)
+        assert(unwrapped is not a_class)
+        assert(unwrapped is decorated)
+
+    def test_unwrap_depth_simple(self, dec):
 
         def simple():
             return 2
@@ -227,53 +324,161 @@ class TestDecoratorBase(_TestUtils):
         w3 = ftz.update_wrapper(lambda fn: fn(), w2)
         assert(dec._unwrapped_depth(w3) == 3)
 
-    def test_wrap_dict_update(self, dec, a_fn):
-        assert(not dec._is_marked(a_fn))
-        decorated = dec(a_fn)
-        assert(dec._is_marked(a_fn))
-        assert(decorated is not a_fn)
+##--|
 
-    def test_basic_wrap(self, dec, a_fn):
-        assert(not dec._is_marked(a_fn))
-        decorated = dec(a_fn)
-        assert(dec._is_marked(a_fn))
-        assert(decorated is not a_fn)
+class TestIdempotent(_Utils):
 
-    def test_basic_wrap_idempotent(self, dec, a_fn):
-        assert(not dec._is_marked(a_fn))
-        d1 = dec(a_fn)
-        d2 = dec(d1)
-        assert(dec._is_marked(a_fn))
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_mark_of_class_persists_to_instances(self, idec):
+
+        class Basic:
+
+            @idec
+            def simple(self):
+                pass
+
+        instance = Basic()
+        assert(idec.is_marked(Basic.simple))
+        assert(idec.is_marked(instance.simple))
+        assert(not idec.is_annotated(Basic.simple))
+        assert(not idec.is_annotated(instance.simple))
+
+    def test_fn_wrap_idempotent(self, idec, a_fn):
+        assert(not idec.is_marked(a_fn))
+        d1 = idec(a_fn)
+        d2 = idec(d1)
         assert(d1 is not a_fn)
         assert(d2 is not a_fn)
         assert(d2 is d1)
-        assert(dec._unwrapped_depth(d1) == dec._unwrapped_depth(d2))
+        assert(idec.is_marked(a_fn))
+        assert(idec.is_marked(d1))
+        assert(idec.is_marked(d2))
+        assert(idec._unwrapped_depth(d1) == idec._unwrapped_depth(d2))
 
-    def test_basic_unwrap(self, dec, a_fn):
-        decorated = dec(a_fn)
-        assert(decorated is not a_fn)
-        unwrapped = dec._unwrap(decorated)
-        assert(unwrapped is a_fn)
-        assert(unwrapped is not decorated)
+    def test_doesnt_annotate(self, idec):
+        assert(not bool(idec._build_annotations_h(None, [])))
 
-    def test_basic_wrap_fn_call(self, dec, a_fn, caplog):
-        with caplog.at_level(logmod.DEBUG):
-            assert("Calling Wrapped Fn" not in caplog.text)
-            a_fn()
-            assert("Calling Wrapped Fn" not in caplog.text)
-            decorated = dec(a_fn)
-            assert("Calling Wrapped Fn" not in caplog.text)
-            decorated()
-            assert("Calling Wrapped Fn" in caplog.text)
+class TestMonotonic(_Utils):
 
-    def test_basic_wrap_method_call(self, dec, a_class, caplog):
-        instance = a_class()
-        with caplog.at_level(logmod.DEBUG):
-            assert("Calling Wrapped Method" not in caplog.text)
-            instance.simple()
-            assert("Calling Wrapped Method" not in caplog.text)
-            decorated = dec(a_class.simple)
-            assert("Calling Wrapped Method" not in caplog.text)
-            decorated(instance)
-            assert("Calling Wrapped Method" in caplog.text)
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
+    def test_mark_of_class_persists_to_instances(self, mdec):
+
+        class Basic:
+
+            @mdec
+            def simple(self):
+                pass
+
+        instance = Basic()
+        assert(mdec.is_marked(Basic.simple))
+        assert(mdec.is_marked(instance.simple))
+        assert(mdec._mark_key in Basic.simple.__dict__)
+
+    def test_fn_retains_correct_type(self):
+
+        class Dec1(MonotonicDec):
+            pass
+
+        class Dec2(MonotonicDec):
+            pass
+
+        @Dec1()
+        @Dec2()
+        def testfn():
+            pass
+
+        match Dec1()._discrim_form(testfn):
+            case DForm_e.FUNC:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_method_retains_correct_type(self):
+
+        class Dec1(MonotonicDec):
+            pass
+
+        class Dec2(MonotonicDec):
+            pass
+
+        class TestClass:
+
+            @Dec1()
+            @Dec2()
+            def testfn(self):
+                pass
+
+        match Dec1()._discrim_form(TestClass.testfn):
+            case DForm_e.METHOD:
+                assert(True)
+            case x:
+                assert(False), x
+
+class TestMetaDecorator(_Utils):
+
+    @pytest.fixture(scope="function")
+    def a_meta_dec(self):
+        return MetaDec("example")
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_basic_init(self, a_meta_dec, dec):
+        assert(isinstance(a_meta_dec, Decorator))
+        assert(issubclass(a_meta_dec.__class__, Decorator))
+        assert(a_meta_dec._data == ["example"])
+
+    def test_basic_wrap_fn(self, a_meta_dec, a_fn):
+        assert(not a_meta_dec.is_annotated(a_fn))
+        wrapped = a_meta_dec(a_fn)
+        assert(wrapped is a_fn)
+        assert(a_meta_dec.get_annotations(wrapped) == ["example"])
+
+class TestDataDecorator(_Utils):
+
+    @pytest.fixture(scope="function")
+    def ddec(self):
+        return DataDec("aval")
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_basic(self, ddec, a_fn):
+        wrapped = ddec(a_fn)
+        assert(bool(ddec._build_annotations_h(None, [])))
+        assert(ddec.get_annotations(wrapped) == ["aval"])
+
+class TestClassDecoration(_Utils):
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_add_new_method(self):
+        """ Modify the decorated class"""
+
+        class ExDecorator(IdempotentDec):
+
+            def bmethod(self, val):
+                return val + self._val
+
+            def _wrap_class_h(self, target:cls):
+                # Gets the unbound method and binds it to the target
+                setattr(target, "bmethod", self.__class__.bmethod) # noqa: B010
+                return None
+
+        @ExDecorator()
+        class Basic:
+
+            def __init__(self, val=None):
+                self._val = val or 2
+
+            def amethod(self):
+                return 2
+
+        inst = Basic()
+        assert(inst.amethod() == 2)
+        assert(inst.bmethod(2) == 4)

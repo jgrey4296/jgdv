@@ -14,12 +14,12 @@ import warnings
 import pytest
 logging = logmod.root
 
+from jgdv import identity_fn
 from jgdv.structs.strang import Strang
 from jgdv.structs.strang.code_ref import CodeReference
-from jgdv import check_protocol
 
-EX_STR    : Final[str] = "fn::jgdv.decorators.class_decorators:check_protocol"
-NO_PREFIX : Final[str] = "jgdv.decorators.class_decorators:check_protocol"
+EX_STR    : Final[str] = "fn::jgdv:identity_fn"
+NO_PREFIX : Final[str] = "jgdv:identity_fn"
 
 class TestCodeReference:
 
@@ -51,11 +51,11 @@ class TestCodeReference:
 
     def test_module(self):
         ref = CodeReference(EX_STR)
-        assert(ref.module == "jgdv.decorators.class_decorators")
+        assert(ref.module == "jgdv")
 
     def test_value(self):
         ref = CodeReference(EX_STR)
-        assert(ref.value == "check_protocol")
+        assert(ref.value == "identity_fn")
 
     def test_import(self):
         ref      = CodeReference(EX_STR)
@@ -64,7 +64,7 @@ class TestCodeReference:
                 assert(False), x
             case x:
                 assert(callable(x))
-                assert(x == check_protocol)
+                assert(x == identity_fn)
 
     def test_import_module_fail(self):
         ref = CodeReference("cls::jgdv.taskSSSSS.base_task:DootTask")

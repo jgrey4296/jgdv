@@ -37,8 +37,6 @@ from typing import Generic, NewType, Any
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 ProtoMeta       = type(Protocol)
 PydanticMeta    = type(BaseModel)
@@ -296,30 +294,6 @@ class ExecutableTask(Protocol):
         pass
 
     def decrement_priority(self):
-        pass
-
-@runtime_checkable
-class Decorator_p(Protocol):
-
-    def __call__(self, target):
-        pass
-
-    def _wrap_method(self, meth) -> Callable:
-        pass
-
-    def _wrap_nf(self, fn) -> Callable:
-        pass
-
-    def _wrap_class(self, cls:type) -> type:
-        pass
-
-    def _is_marked(self, fn) -> bool:
-        pass
-
-    def _apply_mark(self, fn) -> Callable:
-        pass
-
-    def _update_annotations(self, fn) -> None:
         pass
 
 @runtime_checkable

@@ -27,7 +27,7 @@ type Rx                       = Pattern
 type RxStr                    = str
 type Ctor[T]                  = type[T] | Callable[[*Any], T]
 type Func[I,O]                = Callable[I,O]
-type Method[I,O]              = Callable[Self, I,O]
+type Method[I,O]              = MethodType[type, I,O]
 type Decorator                = Func[[Func],Func]
 type Lambda                   = LambdaType
 

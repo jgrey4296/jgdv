@@ -53,11 +53,13 @@ from jgdv.decorators.core import (
     ANNOTATIONS_PREFIX,
     DATA_SUFFIX,
     MARK_SUFFIX,
-    DecoratorBase,
-    _TargetType_e,
+    Decorator,
+    IdempotentDec,
+    MonotonicDec,
+    DForm_e,
 )
 
-from jgdv.decorators.class_decorators import Proto, Mixin, CheckProtocol, check_protocol
+from jgdv.decorators.proto import Proto
 # ##-- end 1st party imports
 
 logging = logmod.root
@@ -146,113 +148,6 @@ class BadStructuralRawProto:
 
 ##-- end implementations
 
-##-- mixins
-
-class Simple_m:
-
-    def blah(self):
-        return 2
-
-    def bloo(self):
-        return 4
-
-class Second_m:
-
-    def aweg(self):
-        return super().bloo()
-
-##-- end mixins
-
-class TestClassDecorator:
-
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
-
-    def test_basic_annotation(self):
-
-        class ExDecorator(DecoratorBase):
-
-            def add_annotations(self, fn, ttype:_TargetType_e):
-                setattr(fn, "jgtest", True) # noqa: B010
-
-        @ExDecorator()
-        class Basic:
-            pass
-
-        assert(Basic.jgtest)
-        assert(Basic().jgtest)
-
-    def test_add_new_method(self):
-
-        class ExDecorator(DecoratorBase):
-
-            def bmethod(self, val):
-                return val + self._val
-
-            def _wrap_class(self, target):
-                # Gets the unbound method and binds it to the target
-                setattr(target, "bmethod", self.__class__.bmethod) # noqa: B010
-
-        @ExDecorator()
-        class Basic:
-
-            def __init__(self, val=None):
-                self._val = val or 2
-
-            def amethod(self):
-                return 2
-
-        inst = Basic()
-        assert(inst.amethod() == 2)
-        assert(inst.bmethod(2) == 4)
-
-class TestMixinDecorator:
-
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
-
-    def test_basic(self):
-
-        @Mixin(Simple_m)
-        class Example:
-
-            def bloo(self):
-                return 10
-
-        obj = Example()
-        assert(obj.blah() == 2)
-        assert(obj.bloo() == 10)
-
-    def test_two_mixins(self):
-
-        @Mixin(Second_m, Simple_m)
-        class Example:
-
-            def bloo(self):
-                return 10
-
-        obj = Example()
-        assert(obj.blah() == 2)
-        assert(obj.bloo() == 10)
-        # Aweg->super()->Simple_m.bloo
-        assert(obj.aweg() == 4)
-
-    def test_append_mixin(self):
-
-        @Mixin(Second_m, append=[Simple_m])
-        class Example:
-            val : ClassVar[int] = 25
-
-            def bloo(self):
-                return 10
-
-        obj = Example()
-        assert(obj.blah() == 2)
-        assert(obj.bloo() == 10)
-        # Aweg->super()->Example.bloo
-        assert(obj.aweg() == 10)
-        assert(Example.val == 25)
-
 class TestProtoDecorator:
 
     def test_sanity(self):
@@ -329,7 +224,6 @@ class TestProtoDecorator:
     def test_proto_check_fail(self):
 
         with pytest.raises(NotImplementedError):
-
             @Proto(RawProto_p, check=True)
             class Example:
                 val : ClassVar[int] = 25
@@ -355,10 +249,9 @@ class TestProtoDecorator:
 
         assert(True)
 
-    def test_proto_on_proto(self):
+    def test_proto_on_protocol_fails(self):
 
         with pytest.raises(TypeError) as ctx:
-
             @Proto(RawProto_p)
             class Example(Protocol):
                 pass
@@ -369,77 +262,121 @@ class TestProtoDecorator:
             case x:
                  assert(False), x
 
-class TestCheckProtocolClass:
 
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
-
-    def test_abs_class_success(self):
-        assert(issubclass(GoodAbsClass, AbsClass))
-        dec = CheckProtocol()
-        dec(GoodAbsClass)
-        assert(True)
-
-    def test_abs_class_fail(self):
-        assert(issubclass(BadAbsClass, AbsClass))
-        dec = CheckProtocol()
-        with pytest.raises(NotImplementedError):
-            dec(BadAbsClass)
-
-    def test_abs_proto_class_success(self):
-        assert(isinstance(GoodInheritAbsProto, AbsProto_p))
-        dec = CheckProtocol()
-        dec(GoodInheritAbsProto)
-        assert(True)
-
-    def test_abs_proto_class_fail(self):
-        assert(issubclass(BadInheritAbsProto, AbsProto_p))
-        dec = CheckProtocol()
-        with pytest.raises(NotImplementedError):
-            dec(BadInheritAbsProto)
-            assert(True)
-
-    def test_raw_proto_class_success(self):
-        assert(isinstance(GoodInheritRawProto, RawProto_p))
-        dec = CheckProtocol()
-        dec(GoodInheritRawProto)
-        assert(True)
-
-    def test_raw_proto_class_fail(self):
-        assert(issubclass(BadInheritRawProto, RawProto_p))
-        dec = CheckProtocol()
-        with pytest.raises(NotImplementedError):
-            dec(BadInheritRawProto)
-            assert(True)
-
-    def test_raw_structural_proto_class_success(self):
+    def test_proto_annotations(self):
         assert(isinstance(GoodStructuralRawProto, RawProto_p))
-        dec = CheckProtocol(RawProto_p)
-        match dec(GoodStructuralRawProto):
-            case None:
-                assert(False)
-            case _:
+        @Proto(RawProto_p)
+        class Sub(GoodStructuralRawProto):
+            pass
+
+        match Proto.get(Sub):
+            case [x] if x == RawProto_p:
                 assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_proto_annotations_dont_travel_to_superclass(self):
+        assert(isinstance(GoodStructuralRawProto, RawProto_p))
+        @Proto(RawProto_p)
+        class Sub(GoodStructuralRawProto):
+            pass
 
         match Proto.get(GoodStructuralRawProto):
             case []:
                 assert(True)
             case x:
-                 assert(False), x
+                assert(False), x
+class TestCheckProtocolClass:
+
+    @pytest.fixture(scope="function")
+    def proto(self):
+        return Proto()
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_abs_class_success(self, proto):
+        assert(issubclass(GoodAbsClass, AbsClass))
+        proto.validate_protocols(GoodAbsClass)
+        assert(True)
+
+    def test_abs_class_fail(self, proto):
+        assert(issubclass(BadAbsClass, AbsClass))
+        with pytest.raises(NotImplementedError):
+            proto.validate_protocols(BadAbsClass)
+
+    def test_abs_proto_class_success(self, proto):
+        assert(isinstance(GoodInheritAbsProto, AbsProto_p))
+        proto.validate_protocols(GoodInheritAbsProto)
+        assert(True)
+
+    def test_abs_proto_class_fail(self, proto):
+        assert(issubclass(BadInheritAbsProto, AbsProto_p))
+        with pytest.raises(NotImplementedError):
+            proto.validate_protocols(BadInheritAbsProto)
+            assert(True)
+
+    def test_raw_proto_class_success(self, proto):
+        assert(isinstance(GoodInheritRawProto, RawProto_p))
+        proto.validate_protocols(GoodInheritRawProto)
+        assert(True)
+
+    def test_raw_proto_class_fail(self, proto):
+        assert(issubclass(BadInheritRawProto, RawProto_p))
+        with pytest.raises(NotImplementedError):
+            proto.validate_protocols(BadInheritRawProto)
+
+    def test_raw_structural_proto_class_success(self):
+        assert(isinstance(GoodStructuralRawProto, RawProto_p))
+        dec = Proto(RawProto_p)
+
+        class Sub(GoodStructuralRawProto):
+            pass
+
+        match dec(Sub):
+            case None:
+                assert(False)
+            case _:
+                assert(True)
+
+        match Proto.get(Sub):
+            case [x] if x == RawProto_p:
+                assert(True)
+            case x:
+                assert(False), x
+
+        match Proto.get(GoodStructuralRawProto):
+            case []:
+                assert(True)
+            case x:
+                assert(False), x
 
     def test_raw_structural_proto_class_fail(self):
         assert(not issubclass(BadStructuralRawProto, RawProto_p))
         assert(not isinstance(BadStructuralRawProto, RawProto_p))
-        dec = CheckProtocol(RawProto_p)
+        dec = Proto(RawProto_p)
         with pytest.raises(NotImplementedError):
-            dec(BadStructuralRawProto)
+            dec.validate_protocols(BadStructuralRawProto)
             assert(True)
 
-        match Proto.get(BadStructuralRawProto):
+
+    @pytest.mark.parametrize("cls", [GoodStructuralRawProto])
+    def test_get_protocols_empty(self, cls):
+        match Proto.get(cls):
             case []:
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    @pytest.mark.parametrize("cls", [GoodAbsClass, GoodInheritAbsProto, GoodInheritRawProto])
+    def test_get_protocols(self, cls):
+        match Proto.get(cls):
+            case list() as xs if bool(xs):
                  assert(True)
             case x:
-                 assert(False), x
+                 assert(False), (x, cls)
 
 class TestGenericProtocolChecking:
 
@@ -523,18 +460,3 @@ class TestGenericProtocolChecking:
             @Proto(IntGenProto_p)
             class Impl:
                 pass
-
-class TestCheckProtocolFunc:
-
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
-
-    def test_abs_class_success(self):
-        assert(issubclass(GoodAbsClass, AbsClass))
-        check_protocol(GoodAbsClass)
-        assert(True)
-
-    def test_abs_class_fail(self):
-        assert(issubclass(BadAbsClass, AbsClass))
-        with pytest.raises(NotImplementedError):
-            check_protocol(BadAbsClass)

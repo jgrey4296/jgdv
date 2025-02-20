@@ -7,6 +7,7 @@ from __future__ import annotations
 
 # ##-- stdlib imports
 import datetime
+import sys
 import enum
 import functools as ftz
 import itertools as itz
@@ -19,7 +20,9 @@ import weakref
 from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
-from .core import DecoratorBase
+from .core import IdempotentDec
+from jgdv.util.time_ctx import TimeCtx
+from jgdv.decorators.meta_decorator import MetaDecorator
 
 # ##-- types
 # isort: off
@@ -31,8 +34,6 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
     from jgdv import Maybe
@@ -42,6 +43,7 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    type Logger = logmod.Logger
 
 # isort: on
 # ##-- end types
@@ -54,14 +56,66 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-class NoSideEffects(DecoratorBase):
+class NoSideEffects(MetaDecorator):
     """ TODO Mark a Target as not modifying external variables """
     pass
 
-class CanRaise(DecoratorBase):
+class CanRaise(MetaDecorator):
     """ TODO mark a target as able to raise certain errors.
     Non-exaustive, doesn't change runtime behaviour,
     just to simplify documentation
 
     """
     pass
+
+
+class TrackTime(MetaDecorator):
+    """ Decorate a callable to track its timing """
+
+    def __init__(self, logger:Maybe[Logger]=None, level:Maybe[int|str]=None, entry:Maybe[str]=None, exit:Maybe[str]=None, **kwargs):
+        kwargs.setdefault("mark", "_timetrack_mark")
+        kwargs.setdefault("data", "_timetrack_data")
+        super().__init__([], **kwargs)
+        self._logger = logger
+        self._level  =  level
+        self._entry  = entry
+        self._exit   = exit
+
+    def wrap_fn[T](self, fn:T) -> T:
+        logger, enter, exit, level = self._logger, self._entry, self.exit, self.level
+
+        def track_time_wrapper(*args, **kwargs):
+            with TimeCtx(logger, enter, exit, level):
+                return fn(*args, **kwargs)
+
+        return track_time_wrapper
+
+    def wrap_method(self, fn):
+        return self._wrap_fn(fn)
+
+
+class Breakpoint(IdempotentDec):
+    """
+      Decorator to attach a breakpoint to a function, without pausing execution
+    """
+
+    def __call__(self, target):
+        raise NotImplementedError("needs RunningDebugger")
+        # # TODO handle repeats
+        # if args[0].breakpoint:
+
+        #     f_code = f.__code__
+        #     db = RunningDebugger()
+        #     # Ensure trace function is set
+        #     sys.settrace(db.trace_dispatch)
+        #     if not db.get_break(f_code.co_filename, f_code.co_firstlineno+2):
+        #         db.set_break(f_code.co_filename,
+        #                     f_code.co_firstlineno+2,
+        #                     True)
+        #     else:
+        #         bp = Breakpoint.bplist[f_code.co_filename,
+        #                             f_code.co_firstlineno+2][0]
+        #         bp.enable()
+
+
+        # return self._func(self, *args, **kwargs)
