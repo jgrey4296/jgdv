@@ -20,59 +20,83 @@ import time
 import types
 import typing
 import weakref
-from dataclasses import InitVar, dataclass, field
-from types import GenericAlias
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Self,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-# ##-- 3rd party imports
-from pydantic import BaseModel, Field, InstanceOf, field_validator, model_validator
-
-# ##-- end 3rd party imports
-
 # ##-- 1st party imports
-from jgdv import Maybe
-from jgdv._abstract.protocols import Buildable_p, ParamStruct_p, ProtocolModelMeta
 from jgdv.mixins.annotate import SubAnnotate_m
 from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
 
+from .._interface import FULLNAME_RE, END_SEP
 from jgdv.cli.errors import ArgParseError
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+from dataclasses import InitVar, dataclass, field
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+from .._interface import ParamStruct_p
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-NON_ASSIGN_PREFIX : Final[str] = "-"
-ASSIGN_PREFIX     : Final[str] = "--"
-END_SEP           : Final[str] = "--"
+class _ParamNameParser_m:
+    """ Parses a name into its component parts.
+
+    eg: --blah= -> {prefix:--, name:blah, assign:None}
+
+    """
+
+    @staticmethod
+    def _parse_name(name:str) -> Maybe[dict]:
+        match FULLNAME_RE.match(name):
+            case None:
+                return None
+            case re.Match() as matched:
+                matched = matched.groupdict()
+
+        result = {"name": matched['name'], "prefix":False}
+        match matched:
+            case {"pos": None|"", "prefix": None|""}:
+                result['prefix'] = 99
+            case {"pos": str() as x, "prefix":None}:
+                result['prefix'] = int(x)
+            case {"pos": None, "prefix":str() as x}:
+                result['prefix'] = x
+
+        match matched['assign']:
+            case None:
+                result['separator'] = False
+            case str() as x:
+                result['separator'] = x
+
+        pass
+        return result
+
+
 
 class _DefaultsBuilder_m:
 
@@ -80,7 +104,7 @@ class _DefaultsBuilder_m:
     def build_defaults(params:list[ParamStruct_p]) -> dict:
         result = {}
         for p in params:
-            assert(isinstance(p, ParamStruct_p))
+            assert(isinstance(p, ParamStruct_p)), repr(p)
             if p.name in result:
                 raise KeyError("Duplicate default key found", p, params)
             result.setdefault(*p.default_tuple())
@@ -127,6 +151,7 @@ class _ConsumerArg_m:
           ["-no-arg"], (if type=bool)
           """
         consumed, remaining = 0, args[offset:]
+        logging.debug("Trying to consume: %s : %s", self.name, remaining)
         try:
             match remaining:
                 case []:
@@ -150,12 +175,14 @@ class _ConsumerArg_m:
         Matches {self.prefix}{self.name}{separator} if an assignment
         """
         key, *_ = self._split_assignment(val)
-        return key in self.key_strs and key.startswith(str(self.prefix))
+        result = key in self.key_strs and key.startswith(str(self.prefix))
+        logging.debug("Matches Head: %s : %s = %s", self.name, val, result)
+        return result
 
     def next_value(self, args:list) -> tuple[str, list, int]:
         if self.positional or self.type_ is bool:
             return self.name, [args[0]], 1
-        if self.separator not in args[0]:
+        if self.separator and self.separator not in args[0]:
             return self.name, [args[1]], 2
 
         key, *vals = self._split_assignment(args[0])
@@ -185,8 +212,9 @@ class _ConsumerArg_m:
         return result
 
     def _split_assignment(self, val) -> list[str]:
-        return val.split(self.separator)
+        if self.separator:
+            return val.split(self.separator)
+        return [val]
 
     def _match_on_end(self, val) -> bool:
         return val == END_SEP
-

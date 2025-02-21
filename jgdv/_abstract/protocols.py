@@ -91,19 +91,6 @@ class StubStruct_p(Protocol):
         pass
 
 @runtime_checkable
-class ParamStruct_p(Protocol):
-    """ Base class for CLI param specs, for type matching
-    when 'maybe_consume' is given a list of strs,
-    and a dictionary,
-    it can match on the args,
-    and return an updated diction and a list of values it didn't consume
-
-    """
-
-    def maybe_consume(self, args:list[str], data:dict) -> tuple[list, dict]:
-        pass
-
-@runtime_checkable
 class SpecStruct_p(Protocol):
     """ Base class for specs, for type matching """
 

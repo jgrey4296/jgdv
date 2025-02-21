@@ -29,7 +29,7 @@ class TestToggleParam:
         assert(True is not False) # noqa: PLR0133
 
     def test_consume_toggle(self):
-        obj = ToggleParam.build({"name" : "test"})
+        obj = ToggleParam.model_validate({"name" : "test"})
         match obj.consume(["-test"]):
             case {"test": True,}, 1:
                 assert(True)
@@ -37,7 +37,7 @@ class TestToggleParam:
                 assert(False), x
 
     def test_consume_inverse_toggle(self):
-        obj = ToggleParam.build({"name" : "test"})
+        obj = ToggleParam.model_validate({"name" : "test"})
         assert(obj.default_value is False)
         match obj.consume(["-no-test"]):
             case {"test": False,}, 1:
@@ -46,7 +46,7 @@ class TestToggleParam:
                 assert(False), x
 
     def test_consume_short_toggle(self):
-        obj = ToggleParam.build({"name" : "test"})
+        obj = ToggleParam.model_validate({"name" : "test"})
         match obj.consume(["-t"]):
             case {"test": True,}, 1:
                 assert(True)
@@ -85,7 +85,7 @@ class TestKeyParam:
         assert(True is not False) # noqa: PLR0133
 
     def test_consume_key_value_str(self):
-        obj = KeyParam[str].build({"name" : "test"})
+        obj = KeyParam[str].model_validate({"name" : "test"})
         assert(obj.type_ is str)
         match obj.consume(["-test", "blah"]):
             case {"test":"blah"}, 2:
@@ -94,7 +94,7 @@ class TestKeyParam:
                 assert(False), x
 
     def test_consume_key_value_int(self):
-        obj = KeyParam[int].build({"name" : "test"})
+        obj = KeyParam[int].model_validate({"name" : "test"})
         assert(obj.type_ is int)
         match obj.consume(["-test", "20"]):
             case {"test":20}, 2:
@@ -103,7 +103,7 @@ class TestKeyParam:
                 assert(False), x
 
     def test_consume_key_value_fail(self):
-        obj = KeyParam[str].build({"name" : "test"})
+        obj = KeyParam[str].model_validate({"name" : "test"})
         match obj.consume(["-nottest", "blah"]):
             case None:
                 assert(True)
@@ -116,7 +116,7 @@ class TestRepeatableParam:
         assert(True is not False) # noqa: PLR0133
 
     def test_consume_list_single_value(self):
-        obj = RepeatableParam.build({"name" : "test", "type" : list})
+        obj = RepeatableParam.model_validate({"name" : "test", "type" : list})
         match obj.consume(["-test", "bloo"]):
             case {"test": ["bloo"]}, 2:
                 assert(True)
@@ -124,7 +124,7 @@ class TestRepeatableParam:
                 assert(False), x
 
     def test_consume_list_multi_key_val(self):
-        obj     = RepeatableParam.build({"name":"test"})
+        obj     = RepeatableParam.model_validate({"name":"test"})
         in_args = ["-test", "bloo", "-test", "blah", "-test", "bloo", "-not", "this"]
         match obj.consume(in_args):
             case {"test": ["bloo", "blah", "bloo"]}, 6:
@@ -133,7 +133,7 @@ class TestRepeatableParam:
                 assert(False), x
 
     def test_consume_set_multi(self):
-        obj = RepeatableParam[set].build({
+        obj = RepeatableParam[set].model_validate({
             "name"    : "test",
             "type"    : set,
             "default" : set,
@@ -146,7 +146,7 @@ class TestRepeatableParam:
                 assert(False), x
 
     def test_consume_str_multi_set_fail(self):
-        obj = RepeatableParam[set].build({
+        obj = RepeatableParam[set].model_validate({
             "name" : "test",
             "type" : str,
             "default" : "",
@@ -159,7 +159,7 @@ class TestRepeatableParam:
                 assert(False), x
 
     def test_consume_multi_assignment_fail(self):
-        obj     = RepeatableParam.build({"name":"test", "type":list, "default":list, "prefix":"--"})
+        obj     = RepeatableParam.model_validate({"name":"test", "type":list, "default":list, "prefix":"--"})
         in_args = ["--test=blah", "--test=bloo"]
         match obj.consume(in_args):
             case None:
@@ -167,16 +167,19 @@ class TestRepeatableParam:
             case _:
                 assert(False), x
 
+@pytest.mark.xfail
 class TestChoiceParam:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
+@pytest.mark.xfail
 class TestEntryParam:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
+@pytest.mark.xfail
 class TestConstrainedParam:
 
     def test_sanity(self):

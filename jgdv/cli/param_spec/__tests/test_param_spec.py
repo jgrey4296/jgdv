@@ -18,44 +18,57 @@ logging = logmod.root
 import pytest
 from jgdv.cli import ParseError
 from jgdv.cli.param_spec import ParamSpec
+from jgdv.cli.param_spec.positional import PositionalParam
+from .. import core
+from ..assignment import AssignParam
 import jgdv.cli.param_spec as Specs
 
-good_names = ("test", "blah", "bloo")
-bad_names  = ("-test", "blah=bloo")
+good_names = ("-test", "--blah", "+bloo")
+parse_test_vals = [("-test", "-", "test", core.KeyParam),
+                   ("--blah", "--", "blah", core.KeyParam),
+                   ("--bloo=", "--", "bloo", AssignParam),
+                   ("+aweg", "+", "aweg", core.ToggleParam),
+                   ]
+sorting_names   = ["-next", "<>another", "--test", "<2>other", "<1>diff",]
+correct_sorting = ["-next", "--test", "diff", "other", "another"]
+##--|
 
 class TestParamSpec:
 
     def test_sanity(self):
-        assert(True is not False)
-        test = ParamSpec[bool].build({"name":"Aweg"})
+        assert(True is not False) # noqa: PLR0133
 
     def test_paramspec(self):
         obj = ParamSpec.build({"name" : "test"})
         assert(isinstance(obj, Specs.ParamSpecBase))
 
-    @pytest.mark.parametrize("key", [*bad_names])
-    def test_key_validation_fail(self, key):
-        with pytest.raises(TypeError):
-            ParamSpec.build({"name": key})
+    @pytest.mark.parametrize(["full", "pre", "name", "subtype"], parse_test_vals)
+    def test_name_parse(self, full, pre, name, subtype):
+        obj = ParamSpec.build({"name" : full})
+        assert(isinstance(obj, Specs.ParamSpecBase))
+        assert(isinstance(obj, subtype))
+        assert(obj.name == name)
+        assert(obj.prefix == pre)
 
     @pytest.mark.parametrize("key", [*good_names])
     def test_match_on_head(self, key):
-        obj = ParamSpec.build({"name" : key})
-        assert(obj.matches_head(f"-{key}"))
-        assert(obj.matches_head(f"-{key[0]}"))
-        assert(obj.matches_head(f"-no-{key}"))
+        obj = ParamSpec.build({"name" : key, "type":bool})
+        assert(obj.matches_head(f"{obj.prefix}{obj.name}"))
+        assert(obj.matches_head(f"{obj.prefix}{obj.name[0]}"))
+        assert(obj.matches_head(f"{obj.prefix}no-{obj.name}"))
 
     @pytest.mark.parametrize("key", [*good_names])
     def test_match_on_head_assignments(self, key):
-        obj = ParamSpec.build({"name" : key, "prefix":"--"})
+        obj = ParamSpec.build({"name" : f"{key}="})
         assert(not obj.positional)
-        assert(obj.matches_head(f"--{key}=val"))
-        assert(obj.matches_head(f"--{key[0]}=val"))
+        assert(obj.matches_head(f"{obj.prefix}{obj.name}=val"))
+        assert(obj.matches_head(f"{obj.prefix}{obj.name[0]}=val"))
 
     @pytest.mark.parametrize("key", [*good_names])
     def test_match_on_head_fail(self, key):
-        obj = ParamSpec.build({"name" : key, "prefix":"--"})
-        assert(not obj.matches_head(key))
+        obj = ParamSpec.build({"name" : key})
+        assert(not isinstance(obj, AssignParam))
+        assert(obj.matches_head(key))
         assert(not obj.matches_head(f"{key}=blah"))
         assert(not obj.matches_head(f"-{key}=val"))
         assert(not obj.matches_head(f"-{key[0]}=val"))
@@ -69,29 +82,19 @@ class TestParamSpec:
             })
         assert(obj.positional is True)
 
-    @pytest.mark.parametrize(["key", "prefix"], zip(good_names, itz.cycle(["-", "--"])))
-    def test_short_key(self, key, prefix):
-        obj = ParamSpec.build({"name" : key, "prefix": prefix})
-        assert(obj.short == key[0])
-        match prefix:
-            case "--":
-                assert(obj.short_key_str == f"{prefix}{key[0]}")
-            case "-":
-                assert(obj.short_key_str == f"{prefix}{key[0]}")
+    @pytest.mark.parametrize("key", [*good_names])
+    def test_short_key(self, key):
+        obj = ParamSpec.build({"name" : key})
+        assert(obj.short == obj.name[0])
+        assert(obj.short_key_str == f"{obj.prefix}{obj.name[0]}")
 
     def test_sorting(self):
-        target_sort = ["test", "next", "another", "diff", "other"]
-        param_dicts = [
-            {"name":"next",    "prefix":"-"},
-            {"name":"another", "prefix": ""},
-            {"name":"test",    "prefix":"--"},
-            {"name":"other",   "prefix": 2},
-            {"name":"diff",    "prefix": 1},
-        ]
+        target_sort = correct_sorting
+        param_dicts = [{"name":x} for x in sorting_names]
         params = [ParamSpec.build(x) for x in param_dicts]
         s_params = sorted(params, key=ParamSpec.key_func)
         for x,y in zip(s_params, target_sort):
-            assert(x.name == y)
+            assert(x.key_str == y), s_params
 
 class TestParamSpecConsumption:
 
@@ -104,7 +107,8 @@ class TestParamSpecConsumption:
                 assert(False)
 
     def test_consume_with_offset(self):
-        obj = ParamSpec.build({"name" : "test", "type":"str"})
+        obj = ParamSpec.build({"name" : "-test"})
+        assert(obj.type_ is str)
         match obj.consume(["-test", "blah", "bloo", "-test", "aweg"], offset=3):
             case {"test": "aweg"}, 2:
                 assert(True)
@@ -119,9 +123,9 @@ class TestParamSpecDefaults:
     def test_build_defaults(self):
         param_dicts = [
             {"name":"test","default":"test"},
-            {"name":"next", "default":2},
-            {"name":"other", "default":list},
-            {"name":"another", "default":lambda: [1,2,3,4]},
+            {"name":"-next", "default":2},
+            {"name":"--other", "default":list},
+            {"name":"+another", "default":lambda: [1,2,3,4]},
         ]
         params = [ParamSpec.build(x) for x in param_dicts]
         result = ParamSpec.build_defaults(params)
@@ -154,10 +158,10 @@ class TestParamSpecDefaults:
 
         assert(ctx.value.args[-1] == ["next"])
 
-class TestParamSpecTypes:
+class TestParamSpecTypesExplicit:
 
     def test_sanity(self):
-        assert(True is not False)
+        assert(True is not False) # noqa: PLR0133
 
     def test_int(self):
         obj = ParamSpec.build({"name":"blah", "type":int})
@@ -174,8 +178,29 @@ class TestParamSpecTypes:
         assert(obj.type_ is list)
         assert(obj.default is list)
 
+    def test_type_fail(self):
+        with pytest.raises(TypeError):
+            ParamSpec(name="-blah", type=ParamSpec)
+
+    def test_type_build_fail(self):
+        with pytest.raises(TypeError):
+            ParamSpec.build({"name":"-blah", "type":ParamSpec})
+
+class TestParamSpecAnnotated:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_basic_annotation(self):
+        match ParamSpec[bool].build({"name":"Aweg"}):
+            case core.ToggleParam():
+                assert(True)
+            case x:
+                 assert(False), x
+
     def test_annotated(self):
-        obj = ParamSpec[str](name="blah")
+        sub = ParamSpec[str]
+        obj = sub(name="blah")
         assert(obj.type_ is str)
         assert(obj.default is '')
 
@@ -183,11 +208,3 @@ class TestParamSpecTypes:
         obj = ParamSpec[list[str]](name="blah")
         assert(obj.type_ is list)
         assert(obj.default is list)
-
-    def test_type_fail(self):
-        with pytest.raises(TypeError):
-            ParamSpec(name="blah", type=ParamSpec)
-
-    def test_type_build_fail(self):
-        with pytest.raises(TypeError):
-            ParamSpec.build({"name":"blah", "type":ParamSpec})

@@ -20,33 +20,6 @@ import time
 import types
 import typing
 import weakref
-from dataclasses import InitVar, dataclass, field
-from types import GenericAlias
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Self,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -57,28 +30,61 @@ from pydantic import BaseModel, Field, InstanceOf, field_validator, model_valida
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from jgdv import Maybe
-from jgdv._abstract.protocols import Buildable_p, ParamStruct_p, ProtocolModelMeta
+from jgdv import Proto
+from jgdv._abstract.protocols import ProtocolModelMeta
 from jgdv.mixins.annotate import SubAnnotate_m
 from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
 
 from jgdv.cli.errors import ArgParseError
-from ._mixins import _ConsumerArg_m, _DefaultsBuilder_m
+from .._interface import ParamStruct_p, DEFAULT_PREFIX
+from ._mixins import _ConsumerArg_m, _DefaultsBuilder_m, _ParamNameParser_m
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType, Any, Callable, Literal
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+    from typing import Final
+    from typing import ClassVar, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+from jgdv import Maybe
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-NON_ASSIGN_PREFIX : Final[str] = "-"
-ASSIGN_PREFIX     : Final[str] = "--"
-END_SEP           : Final[str] = "--"
+class _SortGroups_e(enum.IntEnum):
+    head      = 0
+    by_prefix = 10
+    by_pos    = 20
+    last      = 99
 
-PSpecMixins = [SubAnnotate_m, _ConsumerArg_m, _DefaultsBuilder_m]
-PSpecProtocols = [ParamStruct_p, Buildable_p]
+##--|
+PSpecMixins                    = [
+    SubAnnotate_m,
+    _ParamNameParser_m,
+    _ConsumerArg_m,
+    _DefaultsBuilder_m,
+]
 
-class ParamSpecBase(*PSpecMixins, BaseModel, *PSpecProtocols, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True):
+@Proto(ParamStruct_p)
+class ParamSpecBase(*PSpecMixins, BaseModel, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True, extra="allow"):
 
     """ Declarative CLI Parameter Spec.
 
@@ -103,35 +109,33 @@ class ParamSpecBase(*PSpecMixins, BaseModel, *PSpecProtocols, metaclass=Protocol
     default              : Any|Callable              = None
     desc                 : str                       = "An undescribed parameter"
     count                : int                       = 1
-    prefix               : int|str                   = NON_ASSIGN_PREFIX
-    separator            : str                       = "="
+    prefix               : int|str                   = DEFAULT_PREFIX
+    separator            : str|Literal[False]        = False
 
+    implicit             : bool                      = False
     _short               : Maybe[str]                = None
     _accumulation_types  : ClassVar[list[Any]]       = [int, list, set]
     _pad                 : ClassVar[int]             = 15
 
     _subtypes            : dict[type, type]          = {}
 
-    @classmethod
-    def build(cls:BaseModel, data:dict) -> ParamSpecBase:
-        return cls.model_validate(data)
 
     @staticmethod
     def key_func(x):
         """ Sort Parameters so:
-        -{prefix len} < name < positional < int positional < --help
+        -{prefix len} < name < int positional < positional < --help
 
         """
         match x.prefix:
             case _ if x.name == "help":
-                return (99, 99, x.prefix, x.name)
+                return (_SortGroups_e.last, 99, x.prefix, x.name)
             case str():
-                return (0, -len(x.prefix), x.prefix, x.name)
+                return (_SortGroups_e.by_prefix, len(x.prefix), x.prefix, x.name)
             case int() as p:
-                return (10, p, x.prefix, x.name)
+                return (_SortGroups_e.by_pos, p, x.prefix or 99, x.name)
 
     @field_validator("type_", mode="before")
-    def validate_type(cls, val):
+    def validate_type(cls, val:str|type) -> type:
         match val:
             case "int":
                 return int
@@ -143,12 +147,12 @@ class ParamSpecBase(*PSpecMixins, BaseModel, *PSpecProtocols, metaclass=Protocol
                 return str
             case "list":
                 return list
-            case x if x in [bool, str, list, set, float, int]:
-                return x
             case types.GenericAlias():
                 return val.__origin__
             case typing.Any:
                 return Any
+            case type() as x if not issubclass(x, ParamSpecBase):
+                return x
             case _:
                 raise TypeError("Bad Type for ParamSpec", val)
 
@@ -161,20 +165,20 @@ class ParamSpecBase(*PSpecMixins, BaseModel, *PSpecProtocols, metaclass=Protocol
                  return val
 
     @model_validator(mode="after")
-    def validate_model (self) -> Self:
-        # TODO extract prefix automatically from name
-        #
+    def validate_model(self) -> Self:
         match self.prefix:
             case str() if bool(self.prefix) and self.name.startswith(self.prefix):
                 raise TypeError("Prefix was found in the base name", self, self.prefix)
-            case str() if bool(self.prefix) and self.separator in self.name:
-                raise TypeError("Separator was found in the base name", self)
 
         match self._get_annotation():
             case None:
                 pass
             case x:
                 self.type_ = self.validate_type(x)
+
+
+        if self.type_ is bool and (override_type:=getattr(self.__class__, self.__class__._annotate_to, None)):
+            self.type_ = override_type
 
         match self.type_:
             case builtins.bool:
@@ -241,7 +245,10 @@ class ParamSpecBase(*PSpecMixins, BaseModel, *PSpecProtocols, metaclass=Protocol
             case _:
                 return True
 
-    def help_str(self):
+    def help_str(self, *, force=False):
+        if self.implicit and not force:
+            return ""
+
         match self.key_str:
             case None:
                 parts = [f"[{self.name}]"]

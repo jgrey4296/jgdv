@@ -22,30 +22,6 @@ import time
 import types
 import weakref
 from collections import ChainMap
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -58,7 +34,6 @@ from statemachine.states import States
 
 # ##-- 1st party imports
 from jgdv import Maybe
-from jgdv._abstract.protocols import ParamStruct_p
 from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
@@ -70,34 +45,34 @@ from .param_spec import (
     SeparatorParam,
 )
 
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+from ._interface import ParamStruct_p, ParamSource_p, ArgParser_p
+# isort: on
+# ##-- end types
+
  #-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-@runtime_checkable
-class ArgParser_p(Protocol):
-    """
-    A Single standard process point for turning the list of passed in args,
-    into a dict, into a chainguard,
-    along the way it determines the cmds and tasks that have been chosne
-    """
-
-    def _parse_fail_cond(self) -> bool:
-        raise NotImplementedError()
-
-    def _has_no_more_args_cond(self) -> bool:
-        raise NotImplementedError()
-
-@runtime_checkable
-class ParamSource_p(Protocol):
-
-    @property
-    def name(self) -> str:
-        raise NotImplementedError()
-
-    @property
-    def param_specs(self) -> list[ParamStruct_p]:
-        raise NotImplementedError()
 
 class ParseMachineBase(StateMachine):
     """ Base Implementaiton of an FSM for running a CLI arg parse.

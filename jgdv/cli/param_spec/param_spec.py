@@ -20,82 +20,164 @@ import time
 import types
 import typing
 import weakref
-from dataclasses import InitVar, dataclass, field
-from types import GenericAlias
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Self,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from pydantic import BaseModel, Field, InstanceOf, field_validator, model_validator
+from pydantic import BaseModel
 
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from jgdv import Maybe
-from jgdv._abstract.protocols import Buildable_p, ParamStruct_p, ProtocolModelMeta
-from jgdv.mixins.annotate import SubAnnotate_m
+from jgdv import Maybe, Proto
+from jgdv._abstract.protocols import Buildable_p
+from jgdv.mixins.annotate import SubAnnotate_m, Subclasser
 from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
 
 from jgdv.cli.errors import ArgParseError
+from ._mixins import _DefaultsBuilder_m, _ParamNameParser_m
 from ._base import ParamSpecBase
 from . import core
 from . import assignment
 from . import defaults
 from . import positional
 
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType, Any
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+from .._interface import ParamStruct_p
+# isort: on
+# ##-- end types
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-NON_ASSIGN_PREFIX : Final[str] = "-"
-ASSIGN_PREFIX     : Final[str] = "--"
-END_SEP           : Final[str] = "--"
 
-class ParamSpec(ParamSpecBase):
+@Proto(Buildable_p)
+class ParamSpec(SubAnnotate_m, _DefaultsBuilder_m, _ParamNameParser_m):
     """ A Top Level Access point for building param specs """
+    _override_type : ClassVar[type|str] = None
+
+    def __subclasscheck__(self, subclass):
+        return issubclass(subclass, ParamSpecBase)
+
+    def __instancecheck__(self, instance):
+        return isinstance(instance, ParamSpecBase)
+
+    @staticmethod
+    def _discrim_to_type(data:Maybe[type|str|tuple[str,type]]) -> Maybe[type]:
+        """
+        Determine what sort of parameter to use.
+        Literals: assign, position, "toggle"
+
+        Default: KEyParam
+
+        """
+        match data:
+            case type() as x if x is ParamSpec:
+                raise TypeError("Can't use ParamSpec as a param type, use an implementation")
+            case builtins.bool|"bool"|"toggle":
+                return core.ToggleParam
+            case "assign":
+                return assignment.AssignParam
+            case "position" | int():
+                return positional.PositionalParam
+            case "list"|"set":
+                return core.RepeatableParam
+            case builtins.list|builtins.set:
+                return core.RepeatableParam
+            case _:
+                return core.KeyParam
+
+    @staticmethod
+    def _discrim_data(data:dict) -> Maybe[type]:
+        """
+        Extract from data dict values to determine sort of param
+        """
+        match data:
+            case {"separator": str(), "type": "bool"|builtins.bool}:
+                raise ValueError("Don't use an assignment param for bools, use a toggle")
+            case {"separator": False, "prefix":False}:
+                type_param = ParamSpec._discrim_to_type("position")
+            case {"separator": str()}:
+                type_param = ParamSpec._discrim_to_type("assign")
+            case {"prefix":int() as x}:
+                type_param = ParamSpec._discrim_to_type(x)
+            case {"prefix": "+"}:
+                type_param = ParamSpec._discrim_to_type("toggle")
+            case {"type":x}:
+                type_param = ParamSpec._discrim_to_type(x)
+            case _:
+                type_param = ParamSpec._discrim_to_type(None)
+                ##--|
+        return type_param
+
+    @classmethod
+    def __class_getitem__(cls, *params):
+        """ Don't parameterize this ParamSpec accessor,
+        parameterize an implementation
+        """
+        match params:
+            case []:
+                return cls
+            case [x, *_]:
+                subtype = ParamSpec._discrim_to_type(x)
+                p_sub = subtype[x]
+                subdata = {"_override_type": p_sub,
+                           "__module__" : cls.__module__,
+                           }
+                new_ps = Subclasser.make_subclass(f"ParamSpec[{p_sub.__name__}]", cls, namespace=subdata)
+                assert(new_ps._override_type is p_sub)
+                return new_ps
+
+    def __new__(cls, *args, **kwargs):
+        return cls.build(*args, kwargs)
 
     @classmethod
     def build(cls:BaseModel, data:dict) -> ParamSpecBase:
-        match data:
-            case {"implicit":True}:
-                return core.ImplicitParam.model_validate(data)
-            case {"prefix":int()|None|""}:
-                return positional.PositionalParam.model_validate(data)
-            case {"prefix":x, "type":y} if x == ASSIGN_PREFIX and y in [bool, "bool"]:
-                return core.ToggleParam.model_validate(data)
-            case {"prefix":x} if x == ASSIGN_PREFIX:
-                return assignment.AssignParam.model_validate(data)
-            case {"type":"list"|"set"}:
-                return core.RepeatableParam.model_validate(data)
-            case {"type":"bool"}:
-                return core.ToggleParam.model_validate(data)
+        match cls._parse_name(data.get("name")):
+            case dict() as ns:
+                data.update(ns)
             case _:
-                return core.KeyParam.model_validate(data)
+                pass
+
+        match data:
+            case _ if cls._override_type:
+                type_param = cls._override_type
+            case dict():
+                type_param = ParamSpec._discrim_data(data)
+            case x:
+                raise TypeError("Unexpected data type", x)
+
+        match type_param:
+            case type() as t:
+                return t.model_validate(data)
+            case None:
+                raise TypeError("Couldn't determine type for data", data)
+
+
+    @classmethod
+    def key_func(cls, x):
+        return x.key_func(x)

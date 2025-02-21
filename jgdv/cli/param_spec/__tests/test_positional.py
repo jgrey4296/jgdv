@@ -26,7 +26,7 @@ bad_names  = ("-test", "blah=bloo")
 class TestPositionalSpecs:
 
     def test_consume_positional(self):
-        obj = Specs.PositionalParam.build({"name":"test", "prefix":1, "type":str})
+        obj = Specs.PositionalParam(**{"name":"test", "prefix":1, "type":str})
         assert(obj.positional)
         match obj.consume(["aweg", "blah"]):
             case {"test": "aweg"}, 1:
@@ -35,7 +35,7 @@ class TestPositionalSpecs:
                 assert(False), x
 
     def test_consume_positional_list(self):
-        obj = Specs.PositionalParam.build({
+        obj = Specs.PositionalParam(**{
             "name"       : "test",
             "type"       : list,
             "default"    : [],
@@ -49,7 +49,7 @@ class TestPositionalSpecs:
                 assert(False), x
 
     def test_consume_positional(self):
-        obj = Specs.PositionalParam.build({"name":"test", "prefix":1, "type":str})
+        obj = Specs.PositionalParam(**{"name":"test", "prefix":1, "type":str})
         assert(obj.positional)
         match obj.consume(["aweg", "blah"]):
             case {"test": "aweg"}, 1:
@@ -58,7 +58,7 @@ class TestPositionalSpecs:
                 assert(False), x
 
     def test_consume_positional_list(self):
-        obj = Specs.PositionalParam.build({
+        obj = Specs.PositionalParam(**{
             "name"       : "test",
             "type"       : list,
             "default"    : [],

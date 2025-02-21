@@ -6,7 +6,6 @@ from __future__ import annotations
 
 # ##-- stdlib imports
 import datetime
-
 import enum
 import functools as ftz
 import itertools as itz
@@ -16,32 +15,6 @@ import re
 import time
 import types
 from collections import ChainMap
-
-from dataclasses import InitVar, dataclass, field
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -54,36 +27,48 @@ from statemachine.states import States
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from jgdv import Maybe
-from jgdv._abstract.protocols import ParamStruct_p
+from jgdv import Proto
 from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
 
-from jgdv import Proto
 from . import errors
 from .param_spec import HelpParam, ParamSpec, SeparatorParam
-from .parse_machine_base import ArgParser_p, ParamSource_p, ParseMachineBase
+from .parse_machine_base import ParseMachineBase
+from ._interface import ParseResult_d, EXTRA_KEY, EMPTY_CMD
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+from dataclasses import InitVar, dataclass, field
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+from ._interface import ParamStruct_p, ArgParser_p, ParamSource_p
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-EMPTY_CMD       : Final[str]           = "_cmd_"
-EXTRA_KEY       : Final[str]           = "_extra_"
-NON_DEFAULT_KEY : Final[str]           = "_non_default_"
-DEFAULT_KEY     : Final[str]           = "_default_"
 HELP            : Final[ParamSpec]     = HelpParam()
 SEPERATOR       : Final[ParamSpec]     = SeparatorParam()
-
-@dataclass
-class ParseResult:
-    name        : str
-    args        : dict     = field(default_factory=dict)
-    non_default : set[str] = field(default_factory=set)
-
-    def to_dict(self) -> dict:
-        return {"name":self.name, "args":self.args, NON_DEFAULT_KEY:self.non_default}
 
 class ParseMachine(ParseMachineBase):
     """ Implemented Parse State Machine
@@ -133,10 +118,10 @@ class CLIParser:
     _head_specs       : list[ParamSpec]                        = []
     _cmd_specs        : dict[str, list[ParamSpec]]             = {}
     _subcmd_specs     : dict[str, tuple[str, list[ParamSpec]]] = {}
-    head_result       : Maybe[ParseResult]                     = None
-    cmd_result        : Maybe[ParseResult]                     = None
-    subcmd_results    : list[ParseResult]                      = []
-    extra_results     : ParseResult                            = ParseResult(EXTRA_KEY)
+    head_result       : Maybe[ParseResult_d]                     = None
+    cmd_result        : Maybe[ParseResult_d]                     = None
+    subcmd_results    : list[ParseResult_d]                      = []
+    extra_results     : ParseResult_d                            = ParseResult_d(EXTRA_KEY)
     _force_help        : bool                                   = False
 
     def __init__(self):
@@ -185,10 +170,10 @@ class CLIParser:
                 logging.info("No Subcmd Specs provided for parsing")
                 self._subcmd_specs = {}
 
-        self.head_result       : Maybe[ParseResult]                      = None
-        self.cmd_result        : Maybe[ParseResult]                      = None
-        self.subcmd_results    : list[ParseResult]                     = []
-        self.extra_results     : ParseResult                           = ParseResult(EXTRA_KEY)
+        self.head_result       : Maybe[ParseResult_d]                      = None
+        self.cmd_result        : Maybe[ParseResult_d]                      = None
+        self.subcmd_results    : list[ParseResult_d]                     = []
+        self.extra_results     : ParseResult_d                           = ParseResult_d(EXTRA_KEY)
         self._force_help       : bool                                  = False
 
     @ParseMachine.Cleanup.enter
@@ -215,11 +200,11 @@ class CLIParser:
         """ consume arguments for doot actual """
         logging.debug("Head Parsing: %s", self._remaining_args)
         if not bool(self._head_specs):
-            self.head_result = ParseResult(name=self._remaining_args.pop(0))
+            self.head_result = ParseResult_d(name=self._remaining_args.pop(0))
             return
         head_specs       = sorted(self._head_specs, key=ParamSpec.key_func)
         defaults : dict  = ParamSpec.build_defaults(head_specs)
-        self.head_result = ParseResult("_head_", defaults)
+        self.head_result = ParseResult_d("_head_", defaults)
         self._parse_params_unordered(self.head_result, head_specs)
 
     @ParseMachine.Cmd.enter
@@ -227,13 +212,13 @@ class CLIParser:
         """ consume arguments for the command being run """
         logging.debug("Cmd Parsing: %s", self._remaining_args)
         if not bool(self._cmd_specs):
-            self.cmd_result = ParseResult(EMPTY_CMD, {})
+            self.cmd_result = ParseResult_d(EMPTY_CMD, {})
             return
 
         # Determine cmd
         cmd_name = self._remaining_args[0]
         if cmd_name not in self._cmd_specs:
-            self.cmd_result = ParseResult(EMPTY_CMD, {})
+            self.cmd_result = ParseResult_d(EMPTY_CMD, {})
             return
 
         logging.info("Cmd matches: %s", cmd_name)
@@ -241,7 +226,7 @@ class CLIParser:
         # get its specs
         cmd_specs        = sorted(self._cmd_specs[cmd_name], key=ParamSpec.key_func)
         defaults : dict  = ParamSpec.build_defaults(cmd_specs)
-        self.cmd_result  = ParseResult(cmd_name, defaults)
+        self.cmd_result  = ParseResult_d(cmd_name, defaults)
         self._parse_params_unordered(self.cmd_result, cmd_specs)
 
     @ParseMachine.SubCmd.enter
@@ -267,7 +252,7 @@ class CLIParser:
                 case cmd_constraint, params if active_cmd in [cmd_constraint, EMPTY_CMD]:
                     sub_specs        = sorted(params, key=ParamSpec.key_func)
                     defaults : dict  = ParamSpec.build_defaults(sub_specs)
-                    sub_result       = ParseResult(sub_name, defaults)
+                    sub_result       = ParseResult_d(sub_name, defaults)
                     self._parse_params_unordered(sub_result, sub_specs)
                     self.subcmd_results.append(sub_result)
                 case _, _:
@@ -280,7 +265,7 @@ class CLIParser:
         logging.debug("Extra Parsing: %s", self._remaining_args)
         self._remaining_args = []
 
-    def _parse_params(self, res:ParseResult, params:list[ParamSpec]) -> None:
+    def _parse_params(self, res:ParseResult_d, params:list[ParamSpec]) -> None:
         for param in params:
             match param.consume(self._remaining_args):
                 case None:
@@ -291,9 +276,12 @@ class CLIParser:
                     res.args.update(data)
                     res.non_default.add(param.name)
 
-    def _parse_params_unordered(self, res:ParseResult, params:list[ParamSpec]):
+    def _parse_params_unordered(self, res:ParseResult_d, params:list[ParamSpec]):
+        logging.debug("Parsing Params Unordered: %s", params)
 
-        def consume_it(x):
+        def consume_it(x:ParamSpec):
+            # TODO refactor this as a partial
+            logging.debug("Consume it: %s", x.name)
             match x.consume(self._remaining_args):
                 case None:
                     raise errors.ParseError("Failed to consume", x.name)
@@ -314,6 +302,8 @@ class CLIParser:
                     remaining.remove(x)
                 case [*xs]:
                     raise errors.ParseError("Too many potential params", xs)
+        else:
+            logging.debug("Finished consuming non-positional")
 
         # Parse positional params
         remaining = [x for x in params if x.positional]
@@ -326,8 +316,8 @@ class CLIParser:
                     remaining.remove(x)
                 case [*xs]:
                     raise errors.ParseError("Too many potential params", xs)
-
-
+        else:
+            logging.debug("Finished Consuming Positional")
 
     def _parse_separator(self) -> bool:
         match SEPERATOR.consume(self._remaining_args):
@@ -346,11 +336,11 @@ class CLIParser:
                 cmd_result = self.cmd_result
             case True if self.cmd_result is None:
                 self.head_result.args['help'] = True
-                cmd_result = ParseResult(EMPTY_CMD)
+                cmd_result = ParseResult_d(EMPTY_CMD)
             case True if self.cmd_result.name == EMPTY_CMD:
-                cmd_result = ParseResult("help", {"target":None, "args": self.cmd_result.args}, self.cmd_result.non_default)
+                cmd_result = ParseResult_d("help", {"target":None, "args": self.cmd_result.args}, self.cmd_result.non_default)
             case True:
-                cmd_result = ParseResult("help", {"target":self.cmd_result.name, "args": self.cmd_result.args}, self.cmd_result.non_default)
+                cmd_result = ParseResult_d("help", {"target":self.cmd_result.name, "args": self.cmd_result.args}, self.cmd_result.non_default)
 
         result = {
             "head"  : self.head_result.to_dict() if self.head_result else {},

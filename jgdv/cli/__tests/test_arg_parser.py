@@ -16,10 +16,9 @@ from dataclasses import dataclass, field, InitVar
 ##-- end imports
 
 import pytest
-from jgdv.cli.arg_parser import ParseMachine, CLIParser, ParseResult
+from jgdv.cli.arg_parser import ParseMachine, CLIParser, ParseResult_d
 from jgdv.cli.param_spec import ParamSpec
 import jgdv.cli.param_spec as Specs
-
 logging = logmod.root
 
 @dataclass
@@ -28,11 +27,43 @@ class _ParamSource:
     param_specs : list[ParamSpec]
 
 
+class _utils:
+
+    @pytest.fixture(scope="function")
+    def a_source(self) -> _ParamSource:
+        obj = _ParamSource(name="testcmd",
+                           param_specs=[
+                               ParamSpec(name="-on", type=bool),
+                               ParamSpec(name="-val")
+                           ]
+                           )
+        return obj
+
+    @pytest.fixture(scope="function")
+    def b_source(self) -> _ParamSource:
+        obj = _ParamSource(name="blah",
+                           param_specs=[
+                               ParamSpec(name="-on",  type=bool),
+                               ParamSpec(name="-val", type=str)
+                           ]
+                           )
+        return obj
+
+    @pytest.fixture(scope="function")
+    def c_source(self) -> _ParamSource:
+        obj = _ParamSource(name="bloo",
+                           param_specs=[
+                               ParamSpec(name="-on", type=bool),
+                               ParamSpec(name="-val", type=str)
+                           ]
+                           )
+        return obj
+
+##--|
 class TestParseMachine:
 
     def test_sanity(self):
         assert(True is not False)
-
 
     def test_parse_empty(self):
         obj = ParseMachine()
@@ -42,7 +73,6 @@ class TestParseMachine:
             case x:
                 assert(False), x
 
-
     def test_parse_no_specs(self):
         obj = ParseMachine()
         match obj(["test", "blah"], head_specs=[], cmds=[], subcmds=[]):
@@ -51,37 +81,7 @@ class TestParseMachine:
             case x:
                 assert(False), x
 
-class TestParser:
-
-    @pytest.fixture(scope="function")
-    def a_source(self) -> _ParamSource:
-        obj = _ParamSource(name="testcmd",
-                           param_specs=[
-                               ParamSpec(name="on", type=bool),
-                               ParamSpec(name="val", type=str)
-                           ]
-                           )
-        return obj
-
-    @pytest.fixture(scope="function")
-    def b_source(self) -> _ParamSource:
-        obj = _ParamSource(name="blah",
-                           param_specs=[
-                               ParamSpec(name="on", type=bool),
-                               ParamSpec(name="val", type=str)
-                           ]
-                           )
-        return obj
-
-    @pytest.fixture(scope="function")
-    def c_source(self) -> _ParamSource:
-        obj = _ParamSource(name="bloo",
-                           param_specs=[
-                               ParamSpec(name="on", type=bool),
-                               ParamSpec(name="val", type=str)
-                           ]
-                           )
-        return obj
+class TestParser(_utils):
 
     def test_sanity(self):
         assert(True is not False)
@@ -108,12 +108,10 @@ class TestParser:
         obj.help_flagged()
         assert(not obj._force_help)
 
-
     def test_parse_empty(self, a_source):
         obj = CLIParser()
         obj._setup([], [Specs.LiteralParam(name="blah")], [a_source], [])
         obj._parse_head()
-
 
     def test_parse_head(self, a_source):
         obj = CLIParser()
@@ -126,13 +124,14 @@ class TestParser:
         obj = CLIParser()
         obj._setup(["testcmd", "-val", "aweg", "b","c"], [], [a_source], [])
         assert(bool(obj._cmd_specs))
+        pass
         obj._parse_cmd()
         assert(obj.cmd_result.name == "testcmd")
         match obj.cmd_result.args:
             case {"val": "aweg"}:
                 assert(True)
-            case _:
-                assert(False)
+            case x:
+                assert(False), x
 
     def test_parse_cmd_arg_same_as_subcmd(self, a_source):
         obj = CLIParser()
@@ -143,8 +142,8 @@ class TestParser:
         match obj.cmd_result.args:
             case {"val": "blah"}:
                 assert(True)
-            case _:
-                assert(False)
+            case x:
+                 assert(False), x
         assert(not bool(obj.subcmd_results))
 
     def test_parse_subcmd(self, a_source, b_source):
@@ -172,14 +171,14 @@ class TestParser:
         match obj.subcmd_results[0].args:
             case {"on": True}:
                 assert(True)
-            case _:
-                assert(False)
+            case x:
+                 assert(False), x
 
         match obj.subcmd_results[1].args:
             case {"on": False, "val": "lastval"}:
                 assert(True)
-            case _:
-                assert(False)
+            case x:
+                 assert(False), x
 
 class TestParseResultReport:
 
@@ -188,15 +187,14 @@ class TestParseResultReport:
 
     def test_report(self):
         obj = CLIParser()
-        obj.head_result = ParseResult(name="blah")
-        obj.cmd_result = ParseResult(name="bloo")
+        obj.head_result = ParseResult_d(name="blah")
+        obj.cmd_result = ParseResult_d(name="bloo")
         obj.subcmd_results = []
         match obj.report():
             case {"head": {"name":"blah"}, "cmd": {"name":"bloo"}}:
                 assert(True)
-            case _:
-                assert(False)
-
+            case x:
+                 assert(False), x
 
 class TestParseArgs:
 
@@ -211,39 +209,37 @@ class TestParseArgs:
         ]
         obj = CLIParser()
         obj._setup(["--aweg", "-on", "blah"], [],[],[])
-        result = ParseResult("test results")
+        result = ParseResult_d("test results")
         obj._parse_params(result, params)
         assert(result.args['aweg'] is True)
         assert(result.args['on'] is True)
         assert(result.args['val'] == "blah")
 
-
     def test_ordered_fails(self):
         params = [
-            ParamSpec.build({"prefix":"--", "name":"aweg", "type":"bool"}),
-            ParamSpec.build({"name":"on", "type":"bool"}),
-            ParamSpec.build({"prefix":1, "name":"val", "type":"str"}),
+            ParamSpec.build({"name":"--aweg", "type":"bool"}),
+            ParamSpec.build({"name":"-on", "type":"bool"}),
+            ParamSpec.build({"name":"<1>val", "type":"str"}),
         ]
         obj = CLIParser()
         # -on before --aweg
         obj._setup(["-on", "--aweg", "blah"], [],[],[])
-        result = ParseResult("test results")
+        result = ParseResult_d("test results")
         obj._parse_params(result, params)
         assert(result.args['on'])
         assert("aweg" not in result.args)
         assert(result.args['val'] == "--aweg")
 
-
     def test_unordered(self):
         params = [
-            ParamSpec.build({"prefix":"--", "name":"aweg", "type":"bool"}),
-            ParamSpec.build({"name":"on", "type":"bool"}),
-            ParamSpec.build({"prefix":1, "name":"val", "type":"str"}),
+            ParamSpec(**{"name":"--aweg", "type":"bool"}),
+            ParamSpec(**{"name":"-on", "type":"bool"}),
+            ParamSpec(**{"name":"<1>val", "type":"str"}),
         ]
         obj = CLIParser()
         # -on before --aweg
         obj._setup(["-on", "--aweg", "blah"], [],[],[])
-        result = ParseResult("test results")
+        result = ParseResult_d("test results")
         obj._parse_params_unordered(result, params)
         assert(result.args['on'])
         assert(result.args['aweg'])

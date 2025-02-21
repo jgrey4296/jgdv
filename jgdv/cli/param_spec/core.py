@@ -21,61 +21,54 @@ import types
 import typing
 import weakref
 from dataclasses import InitVar, dataclass, field
-from types import GenericAlias
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Self,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-# ##-- 3rd party imports
-from pydantic import BaseModel, Field, InstanceOf, field_validator, model_validator
-
-# ##-- end 3rd party imports
-
 # ##-- 1st party imports
 from jgdv import Maybe
-from jgdv._abstract.protocols import Buildable_p, ParamStruct_p, ProtocolModelMeta
 from jgdv.mixins.annotate import SubAnnotate_m
 from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
 
+from jgdv import Proto
 from jgdv.cli.errors import ArgParseError
 from ._base import ParamSpecBase
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType, Any, Callable
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+from pydantic import Field, InstanceOf
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, LiteralString
+    from typing import Never, Self, Any, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+from .._interface import ParamStruct_p
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-NON_ASSIGN_PREFIX : Final[str] = "-"
-ASSIGN_PREFIX     : Final[str] = "--"
-END_SEP           : Final[str] = "--"
 
-class ToggleParam(ParamSpecBase[bool]):
+class ToggleParam(ParamSpecBase): #[bool]):
+    """ A bool of -param or -not-param """
 
     def next_value(self, args:list) -> tuple[str, list, int]:
         head, *_ = args
@@ -85,6 +78,12 @@ class ToggleParam(ParamSpecBase[bool]):
             value = not self.default_value
 
         return self.name, [value], 1
+
+class RepeatToggleParam(ToggleParam):
+    """ TODO A repeatable toggle
+    eg: -verbose -verbose -verbose
+    """
+    pass
 
 class LiteralParam(ToggleParam):
     """
@@ -108,29 +107,35 @@ class LiteralParam(ToggleParam):
 
 class ImplicitParam(ParamSpecBase):
     """
-    A Parameter that is implicit, so doesn't give a help description unless forced to
+    A Parameter that is implicit, so doesn't give a help description unless
+    forced to
     """
 
     def help_str(self):
         return ""
 
 class KeyParam(ParamSpecBase):
-    """ TODO a param that is specified by a prefix key """
+    """ TODO a param that is specified by a prefix key
+    eg: -key val
+    """
+    type_ : InstanceOf[type] = Field(default=str, alias="type")
 
     def matches_head(self, val) -> bool:
         return val in self.key_strs
 
-    def get_next_value(self, args:list) -> tuple[list, int]:
+    def next_value(self, args:list) -> tuple[list, int]:
         """ get the value for a -key val """
         logging.debug("Getting Key/Value: %s : %s", self.name, args)
         match args:
             case [x, y, *_] if self.matches_head(x):
-                return str, [y], 2
+                return self.name, [y], 2
             case _:
                 raise ArgParseError("Failed to parse key")
 
 class RepeatableParam(KeyParam):
-    """ TODO a repeatable key param """
+    """ TODO a repeatable key param
+    -key val -key val2 -key val3
+    """
 
     type_ : InstanceOf[type] = Field(default=list, alias="type")
 
@@ -153,8 +158,11 @@ class RepeatableParam(KeyParam):
 
         return self.name, result, consumed
 
-class ChoiceParam(LiteralParam[str]):
-    """ TODO A param that must be from a choice of literals """
+class ChoiceParam(LiteralParam): # [str]):
+    """ TODO A param that must be from a choice of literals
+    eg: ChoiceParam([blah, bloo, blee]) : blah | bloo | blee
+
+    """
 
     def __init__(self, name, choices:list[str], **kwargs):
         super().__init__(name=name, **kwargs)
@@ -182,4 +190,3 @@ class ConstrainedParam(ParamSpecBase):
     eg: {name:amount, constraints={min=0, max=10}}
     """
     constraints : list[Any] = []
-

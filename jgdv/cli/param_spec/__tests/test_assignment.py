@@ -29,7 +29,7 @@ class TestAssignParam:
         assert(True is not False) # noqa: PLR0133
 
     def test_consume_assignment(self):
-        obj = AssignParam.build({"name" : "test", "type" : str, "prefix":"--"})
+        obj = AssignParam(**{"name" : "test"})
         in_args             = ["--test=blah", "other"]
         match obj.consume(in_args):
             case {"test":"blah"}, 1:
@@ -37,8 +37,18 @@ class TestAssignParam:
             case x:
                 assert(False), x
 
+
+    def test_consume_int(self):
+        obj = AssignParam(**{"name" : "test", "type":int})
+        in_args             = ["--test=2", "other"]
+        match obj.consume(in_args):
+            case {"test": 2}, 1:
+                assert(True)
+            case x:
+                assert(False), x
+
     def test_consume_assignment_wrong_prefix(self):
-        obj = AssignParam.build({"name" : "test"})
+        obj = AssignParam(**{"name" : "test"})
         match obj.consume(["-t=blah"]):
             case None:
                 assert(True)
