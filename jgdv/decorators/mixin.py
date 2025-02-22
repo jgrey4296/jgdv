@@ -23,7 +23,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 from jgdv.debugging import TraceBuilder
-from .core import MonotonicDec, IdempotentDec, Decorator
+from .core import MonotonicDec, IdempotentDec, Decorator, DataDec
 from ._interface import Decorable, Decorated, DForm_e
 from jgdv.mixins.annotate import Subclasser
 
@@ -77,8 +77,9 @@ class Mixin(MonotonicDec):
 
 """
 
-    def __init__(self, *mixins:type, allow_inheritance=False):
+    def __init__(self, *mixins:type, allow_inheritance=False, silent=False):
         super().__init__()
+        self._silent = silent
         try:
             index = mixins.index(None)
         except ValueError:
@@ -119,7 +120,33 @@ class Mixin(MonotonicDec):
                 new_mro = [*self._pre_mixins, x, *self._post_mixins, *xs]
             case _:
                 pass
-        new_name  = Subclasser.decorate_name(cls, "Mixins")
+        match self._silent:
+            case False:
+                new_name  = Subclasser.decorate_name(cls, "Mixins")
+            case True:
+                new_name = cls.__name__
         mixed     = Subclasser.make_subclass(new_name, cls, mro=new_mro)
         self.annotate_decorable(mixed)
         return mixed
+
+
+class DelayMixin(DataDec):
+    """ TODO A Decorator for annotating a class with mixins,
+    but delaying the construction of the True class until later,
+    using @MixinNow
+    """
+    pass
+
+class MixinNow(MonotonicDec):
+    """ TODO The trigger for delayed mixins.
+    After using @DelayMixin,
+    trigger the True class using this.
+
+    eg:
+    @MixinNow
+    @DelayMixin(m3, None, m4)
+    @DelayMixin(m1, m2)
+    class Blah:...
+
+    """
+    pass

@@ -161,7 +161,11 @@ class Subclasser:
                 pass
             case x:
                 raise TypeError("Unexpected namespace type", x)
-        return mcls(name, mro, namespace)
+        try:
+            return mcls(name, mro, namespace)
+        except TypeError as err:
+            err.add_note(str(mro))
+            raise err
 
     @staticmethod
     def _new_pydantic_class(name:str, cls:type, *, namespace:Maybe[dict]=None) -> type:
