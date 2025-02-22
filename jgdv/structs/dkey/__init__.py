@@ -1,5 +1,6 @@
 
-from ._meta import DKey, DKeyMark_e
+from ._interface import Key_p, DKeyMark_e
+from ._meta import DKey
 from ._base import DKeyBase
 from ._core import SingleDKey, MultiDKey, NonDKey, IndirectDKey
 from ._errors import DKeyError

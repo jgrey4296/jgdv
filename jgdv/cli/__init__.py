@@ -8,7 +8,6 @@ CLIParser implements the callbacks for the different states.
 ParamSpec's are descriptions of a single argument type, 
 combined with the parsing logic for that type.
 """
-from . import errors
 from .errors import ParseError
 from .arg_parser import ParseMachine
 from .parse_machine_base import ArgParser_p

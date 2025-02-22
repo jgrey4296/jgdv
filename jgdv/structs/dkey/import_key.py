@@ -28,12 +28,13 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from jgdv._abstract.protocols import Key_p, SpecStruct_p, Buildable_p
+from jgdv._abstract.protocols import SpecStruct_p, Buildable_p
 from jgdv.structs.strang import CodeReference
 
-from jgdv.structs.dkey._base import DKeyBase
-from jgdv.structs.dkey._core import SingleDKey, MultiDKey, NonDKey
-from jgdv.structs.dkey._meta import DKey, DKeyMark_e
+from ._base import DKeyBase
+from ._core import SingleDKey, MultiDKey, NonDKey
+from ._meta import DKey
+from ._interface import Key_p, DKeyMark_e
 
 # ##-- end 1st party imports
 

@@ -47,15 +47,16 @@ from weakref import ref
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv import Mixin
+from jgdv import Mixin, Proto
 from jgdv.mixins.path_manip import PathManip_m
 from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.dkey import DKey, MultiDKey, NonDKey, SingleDKey
 from jgdv.structs.dkey._parser import DKeyParser
 from jgdv.structs.dkey._expander import ExpInst
 
-from .location import Location, LocationMeta_e
+from .location import Location
 from .errors import DirAbsent, LocationError, LocationExpansionError
+from ._interface import Location_p, Locator_p, LocationMeta_e
 # ##-- end 1st party imports
 
 # ##-- types
@@ -91,9 +92,8 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 ##--| Vars
-CWD_MARKER      : Final[Ident]                = "__cwd"
 
-##--| Body 
+##--| Body
 class SoftFailMultiDKey(MultiDKey["soft.fail"], multi=True):
 
     def exp_pre_lookup_hook(self, sources, opts) -> list:
@@ -176,8 +176,8 @@ class _LocatorUtil_m:
         for k,v in extra.items():
             try:
                 raw[k] = Location(v)
-            except KeyError as err:
-                raise LocationError("Couldn't build a Location", k, v)
+            except KeyError:
+                raise LocationError("Couldn't build a Location", k, v) from None
 
         logging.debug("Registered New Locations: %s", ", ".join(new_keys))
         self._data = raw
@@ -318,6 +318,8 @@ class _LocatorAccess_m:
             case True:
                 return DKey(current, ctor=pl.Path, mark=DKey.Mark.MULTI)
 
+##--|
+@Proto(Locator_p)
 @Mixin(_LocatorAccess_m, _LocatorUtil_m, PathManip_m)
 class JGDVLocator:
     """

@@ -23,13 +23,13 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv._abstract.protocols import Key_p, SpecStruct_p, Buildable_p
+from jgdv._abstract.protocols import SpecStruct_p, Buildable_p
 from jgdv.structs.strang import CodeReference
 
-from jgdv.structs.dkey._base import DKeyBase
-from jgdv.structs.dkey._core import SingleDKey, MultiDKey, NonDKey
-from jgdv.structs.dkey._meta import DKey, DKeyMark_e
-
+from ._meta import DKey
+from ._base import DKeyBase
+from ._core import SingleDKey, MultiDKey, NonDKey
+from ._interface import Key_p, DKeyMark_e
 # ##-- end 1st party imports
 
 # ##-- types
@@ -60,11 +60,6 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-KEY_PATTERN        : Final[RxStr]                = "{(.+?)}"
-MAX_KEY_EXPANSIONS : Final[int]                  = 10
-
-ARGS_K              : Final[Ident]                = "args"
-KWARGS_K            : Final[Ident]                = "kwargs"
 
 class ArgsDKey(SingleDKey, mark=DKeyMark_e.ARGS):
     """ A Key representing the action spec's args """

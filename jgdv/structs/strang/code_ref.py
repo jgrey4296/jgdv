@@ -3,13 +3,14 @@
 
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
-# import abc
+# ##-- stdlib imports
 import datetime
 import enum
 import functools as ftz
+import importlib
 import itertools as itz
 import logging as logmod
 import pathlib as pl
@@ -17,20 +18,43 @@ import re
 import time
 import types
 import weakref
-from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping, Never,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
+from importlib.metadata import EntryPoint
 from uuid import UUID, uuid1
 
-##-- end builtin imports
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+from pydantic import field_validator, model_validator
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+from jgdv.structs.chainguard import ChainGuard
+from .strang import Strang
+from ._interface import CodeRefMeta_e
+# ##-- end 1st party imports
 
 # ##-- types
 # isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType, Any
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
 if TYPE_CHECKING:
-   from jgdv import Maybe
-   Enum = enum.Enum
+    from jgdv import Maybe, Result
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
 
 # isort: on
 # ##-- end types
@@ -38,22 +62,6 @@ if TYPE_CHECKING:
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-from pydantic import field_validator, model_validator
-import importlib
-from importlib.metadata import EntryPoint
-from jgdv.structs.chainguard import ChainGuard
-from .strang import Strang
-from jgdv import Result
-
-class CodeRefMeta_e(enum.StrEnum):
-    module  = "module"
-    cls     = "cls"
-    value   = "value"
-    fn      = "fn"
-
-    val     = "value"
-    default = fn
 
 class CodeReference(Strang):
     """
@@ -70,7 +78,7 @@ class CodeReference(Strang):
     _separator        : ClassVar[str]                      = "::"
     _tail_separator   : ClassVar[str]                      = ":"
     _body_types       : ClassVar[Any]                      = str
-    gmark_e           : ClassVar[Enum]                     = CodeRefMeta_e
+    gmark_e           : ClassVar[enum.Enum]                     = CodeRefMeta_e
 
     @classmethod
     def from_value(cls, value):
@@ -102,7 +110,6 @@ class CodeReference(Strang):
         self._body.append(slice(last_slice.start, last_slice.start + index))
         self._value_idx = slice(last_slice.start+index+1, last_slice.stop)
 
-
     def __init__(self, *, value:Maybe[type]=None, check:Maybe[type]=None, **kwargs):
         super().__init__(**kwargs)
         self._value = value
@@ -120,8 +127,6 @@ class CodeReference(Strang):
     def value(self) -> str:
         return str.__getitem__(self, self._value_idx)
 
-
-
     def __call__(self, *, check:type=Any, raise_error=False) -> Result[type, ImportError]:
         """ Tries to import and retrieve the reference,
         and casts errors to ImportErrors
@@ -134,7 +139,6 @@ class CodeReference(Strang):
             if raise_error:
                 raise err
             return err
-
 
     def _do_import(self, check):
         match self._value:

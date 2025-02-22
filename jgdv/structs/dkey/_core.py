@@ -22,10 +22,10 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv._abstract.protocols import Buildable_p, Key_p, SpecStruct_p
-from jgdv.structs.dkey._meta import DKey, DKeyMark_e, DKeyMeta
+from jgdv._abstract.protocols import SpecStruct_p
+from jgdv.structs.dkey._meta import DKey, DKeyMeta
 from jgdv.structs.dkey._base import DKeyBase
-from ._parser import INDIRECT_SUFFIX
+from ._interface import INDIRECT_SUFFIX, DKeyMark_e, Key_p
 from ._expander import ExpInst
 # ##-- end 1st party imports
 
@@ -38,8 +38,6 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Self
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
    from jgdv import Maybe
@@ -210,7 +208,7 @@ class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
     """
 
     __hash__                                            = str.__hash__
-    
+
     def __init__(self, data, multi=False, re_mark=None, **kwargs):
         kwargs.setdefault("fallback", Self)
         super().__init__(data, **kwargs)

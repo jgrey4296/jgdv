@@ -27,12 +27,13 @@ from pydantic import BaseModel, field_validator, model_validator
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from jgdv import Mixin
-from jgdv._abstract.protocols import Buildable_p, Location_p, ProtocolModelMeta
+from jgdv import Proto
 from jgdv.structs.dkey import DKey, DKeyFormatter
 from jgdv.mixins.path_manip import PathManip_m
 from jgdv.mixins.enum_builders import FlagsBuilder_m
 from jgdv.structs.strang import Strang
+
+from ._interface import Location_d, Location_p, WildCard_e, LocationMeta_e
 # ##-- end 1st party imports
 
 # ##-- types
@@ -61,37 +62,8 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class WildCard_e(enum.StrEnum):
-    """ Ways a path can have a wildcard. """
-    glob       = "*"
-    rec_glob   = "**"
-    select     = "?"
-    key        = "{"
-
-class LocationMeta_e(enum.StrEnum):
-    """ Available metadata attachable to a location """
-
-    location     = "location"
-    directory    = "directory"
-    file         = "file"
-
-    abstract     = "abstract"
-    artifact     = "artifact"
-    clean        = "clean"
-    earlycwd     = "earlycwd"
-    protect      = "protect"
-    expand       = "expand"
-    remote       = "remote"
-    partial      = "partial"
-
-    # Aliases
-    dir          = directory
-    loc          = location
-
-    default      = loc
-
-@Mixin(PathManip_m)
-class Location(Strang):
+@Proto(Location_p)
+class Location(Location_d, Strang):
     """ A Location is an abstraction higher than a path.
       ie: a path, with metadata.
 

@@ -1,7 +1,9 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 """
 
+
 """
+# ruff: noqa:
 
 # Imports:
 from __future__ import annotations
@@ -14,30 +16,24 @@ import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
-import string
 import time
 import types
-import weakref
+import collections
+import contextlib
+import hashlib
+from copy import deepcopy
 from uuid import UUID, uuid1
-
+from weakref import ref
+import atexit # for @atexit.register
+import faulthandler
 # ##-- end stdlib imports
-
-# ##-- 1st party imports
-from jgdv._abstract.protocols import SpecStruct_p, Buildable_p
-from jgdv.structs.strang import CodeReference
-
-from ._meta import DKey
-from ._base import DKeyBase
-from ._core import SingleDKey, MultiDKey, NonDKey
-from ._expander import ExpInst
-from ._interface import Key_p, DKeyMark_e
-# ##-- end 1st party imports
 
 # ##-- types
 # isort: off
 import abc
 import collections.abc
-from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
@@ -46,13 +42,15 @@ from typing import no_type_check, final, override, overload
 # from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
-    from jgdv import Maybe, Ident, RxStr, Rx
+    from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
 
 # isort: on
 # ##-- end types
@@ -61,17 +59,11 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class PathDKey(SingleDKey, mark=DKeyMark_e.PATH, conv="p"):
-    """
-    A Simple key that always expands to a path, and is then normalised
-    """
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._conv_params     = "p"
-        self._expansion_type  = pl.Path
-        self._typecheck       = pl.Path
-
-
-    def exp_final_hook(self, val:ExpInst, opts) -> Maybe[ExpInst]:
-        return ExpInst(val=pl.Path(val.val).resolve())
+# Vars:
+# Types for Annotating Pathy. eg: Pathy[File]
+Pure = NewType("Pure", None)
+Real = NewType("Real", None)
+File = NewType("File", None)
+Dir  = NewType("Dir", None)
+Wild = NewType("Wild", None)
+# Body:

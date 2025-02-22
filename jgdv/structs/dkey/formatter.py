@@ -29,12 +29,14 @@ import sh
 
 # ##-- 1st party imports
 from jgdv import Mixin
-from jgdv.structs.dkey._meta import DKey
-from jgdv.structs.dkey._parser import RawKey
-from jgdv._abstract.protocols import Key_p, SpecStruct_p
+from jgdv._abstract.protocols import SpecStruct_p
 from jgdv.util.chain_get import ChainedKeyGetter
 from jgdv.structs.chainguard import ChainGuard
-from jgdv.structs.dkey._expander import _DKeyFormatter_Expansion_m
+from ._meta import DKey
+from ._parser import RawKey
+from ._expander import _DKeyFormatter_Expansion_m
+
+from ._interface import Key_p, MAX_DEPTH, MAX_KEY_EXPANSIONS, FMT_PATTERN
 
 # ##-- end 1st party imports
 
@@ -66,11 +68,6 @@ if TYPE_CHECKING:
 ##-- logging
 logging = logmod.getLogger(__file__)
 ##-- end logging
-
-MAX_KEY_EXPANSIONS  : Final[int]                   = 200
-
-FMT_PATTERN         : Final[Rx]                    = re.compile("[wdi]+")
-MAX_DEPTH           : Final[int]                   = 10
 
 chained_get         : Func                         = ChainedKeyGetter.chained_get
 

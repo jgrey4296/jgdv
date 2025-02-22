@@ -32,10 +32,10 @@ from jgdv.decorators import (
     DecoratorAccessor_m,
     DForm_e,
 )
-from jgdv.structs.dkey import _errors as dkey_errs
-from jgdv.structs.dkey._meta import DKey
 from jgdv.structs.strang import CodeReference
-from .other_keys import ARGS_K, KWARGS_K
+from . import _errors as dkey_errs
+from ._meta import DKey
+from ._interface import ARGS_K, KWARGS_K, PARAM_IGNORES
 
 # ##-- end 1st party imports
 
@@ -66,8 +66,6 @@ if TYPE_CHECKING:
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-PARAM_IGNORES       : Final[list[str]]            = ["_", "_ex"]
 
 class DKeyMetaDecorator(MetaDec):
     """ A Meta decorator that registers keys for input and output
@@ -155,7 +153,6 @@ class DKeyExpansionDecorator(DataDec):
             if x != y:
                 raise dkey_errs.DecorationMismatch("Mismatch in signature tail", str(x), str(y))
 
-
 class DKeyed:
     """ Decorators for actions
 
@@ -234,7 +231,7 @@ class DKeyedRetrieval(DecoratorAccessor_m, DKeyed):
         """ mark an action as using raw type keys """
         keys = [DKey(x, implicit=True, mark=DKey.Mark.FREE, **kwargs) for x in args]
         return cls._build_decorator(keys)
-    
+
     @classmethod
     def toggles(cls, *args, **kwargs) -> Decorator:
         keys = [DKey(x, implicit=True, mark=DKey.Mark.FREE, ctor=bool, check=bool, **kwargs) for x in args]

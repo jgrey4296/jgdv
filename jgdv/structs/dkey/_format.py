@@ -28,14 +28,13 @@ import sh
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from jgdv.structs.dkey._meta import DKey, DKeyMark_e
-from jgdv.structs.dkey._parser import RawKey
-from jgdv._abstract.protocols import Key_p, SpecStruct_p
+from jgdv._abstract.protocols import SpecStruct_p
 from jgdv.util.chain_get import ChainedKeyGetter
 from jgdv.structs.chainguard import ChainGuard
-from jgdv.structs.dkey._expander import _DKeyFormatter_Expansion_m
-from ._parser import INDIRECT_SUFFIX
-
+from ._expander import _DKeyFormatter_Expansion_m
+from ._meta import DKey
+from ._parser import RawKey
+from ._interface import Key_p, DKeyMark_e, INDIRECT_SUFFIX, FMT_PATTERN
 # ##-- end 1st party imports
 
 # ##-- types
@@ -66,8 +65,6 @@ if TYPE_CHECKING:
 ##-- logging
 logging = logmod.getLogger(__file__)
 ##-- end logging
-
-FMT_PATTERN         : Final[Rx]                    = re.compile("[wdi]+")
 
 chained_get         : Func                         = ChainedKeyGetter.chained_get
 

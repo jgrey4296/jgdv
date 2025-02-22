@@ -28,6 +28,8 @@ import faulthandler
 import _string
 # ##-- end stdlib imports
 
+from ._interface import INDIRECT_SUFFIX
+
 # ##-- types
 # isort: off
 import abc
@@ -58,7 +60,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-INDIRECT_SUFFIX : Final[Ident]                = "_"
+
 # Body:
 
 class RawKey(BaseModel):

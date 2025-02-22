@@ -22,11 +22,11 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv._abstract.protocols import Key_p
 from jgdv.mixins.enum_builders import EnumBuilder_m
 from jgdv.mixins.annotate import SubAnnotate_m
 from ._parser import DKeyParser
 from ._expinst import ExpInst
+from ._interface import Key_p, DKeyMark_e
 # ##-- end 1st party imports
 
 # ##-- types
@@ -60,24 +60,6 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class DKeyMark_e(EnumBuilder_m, enum.StrEnum):
-    """
-      Enums for how to use/build a dkey
-
-    """
-    FREE     = "free"
-    PATH     = enum.auto() # -> pl.Path
-    INDIRECT = "indirect"
-    STR      = enum.auto() # -> str
-    CODE     = enum.auto() # -> coderef
-    IDENT    = enum.auto() # -> taskname
-    ARGS     = enum.auto() # -> list
-    KWARGS   = enum.auto() # -> dict
-    POSTBOX  = enum.auto() # -> list
-    NULL     = enum.auto() # -> None
-    MULTI    = enum.auto()
-
-    default  = FREE
 
 class DKeyMeta(type(str)):
     """

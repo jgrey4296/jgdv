@@ -13,8 +13,7 @@ import warnings
 
 import pytest
 
-from jgdv._abstract.protocols import Key_p
-from jgdv.structs.dkey import DKey
+from jgdv.structs.dkey import DKey, Key_p
 from jgdv.structs.dkey.path_key import PathDKey
 
 logging = logmod.root

@@ -77,15 +77,23 @@ class Mixin(MonotonicDec):
 
 """
 
-    def __init__(self, *mixins:type):
+    def __init__(self, *mixins:type, allow_inheritance=False):
         super().__init__()
         try:
             index = mixins.index(None)
+        except ValueError:
+            index = len(mixins)
+        finally:
             self._pre_mixins  = mixins[:index]
             self._post_mixins = mixins[index+1:]
-        except ValueError:
-            self._pre_mixins = mixins
-            self._post_mixins = []
+            if not allow_inheritance:
+                self._validate_mixins()
+
+
+    def _validate_mixins(self):
+        for x in itz.chain(self._pre_mixins, self._post_mixins):
+            if len(x.mro()) > 2:
+                raise TypeError("Can't Mixin a class that inherits anything", x)
 
     def _build_annotations_h(self, target:Decorable, current:list) -> Maybe[list]:
         """ Given a list of the current annotation list,

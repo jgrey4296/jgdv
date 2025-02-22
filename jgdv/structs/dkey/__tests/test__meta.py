@@ -20,7 +20,7 @@ from jgdv.structs.strang import CodeReference
 
 from jgdv.structs import dkey
 from jgdv.structs.dkey._meta import DKeyMeta
-from jgdv._abstract.protocols import Key_p
+from jgdv.structs.dkey._interface import Key_p
 
 @pytest.fixture(scope="function")
 def save_registry(mocker):

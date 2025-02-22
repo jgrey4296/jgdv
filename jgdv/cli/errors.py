@@ -26,7 +26,7 @@ from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
 from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
-from jgdv import JGDVError
+from jgdv.errors import JGDVError
 
 ##-- logging
 logging = logmod.getLogger(__name__)

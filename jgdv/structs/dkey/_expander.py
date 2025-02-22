@@ -34,12 +34,12 @@ import sh
 
 # ##-- 1st party imports
 from jgdv import identity_fn
-from jgdv._abstract.protocols import Buildable_p, Key_p, SpecStruct_p
-from jgdv.structs.dkey._meta import DKey, DKeyMark_e
+from jgdv._abstract.protocols import Buildable_p, SpecStruct_p
 from jgdv.structs.strang import CodeReference, Strang
 from jgdv.util.chain_get import ChainedKeyGetter
+from ._meta import DKey
 from ._expinst import ExpInst
-
+from ._interface import Key_p, DKeyMark_e, MAX_KEY_EXPANSIONS, DEFAULT_COUNT, PAUSE_COUNT, RECURSION_GUARD
 # ##-- end 1st party imports
 
 # ##-- types
@@ -71,13 +71,6 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-
-MAX_KEY_EXPANSIONS  : Final[int]                   = 200
-
-DEFAULT_COUNT       : Final[int]                   = 1
-PAUSE_COUNT         : Final[int]                   = 0
-RECURSION_GUARD     : Final[int]                   = 5
-
 chained_get         : Func                         = ChainedKeyGetter.chained_get
 
 # Body:

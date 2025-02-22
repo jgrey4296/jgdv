@@ -15,8 +15,7 @@ import pytest
 
 logging = logmod.root
 
-from jgdv._abstract.protocols import Key_p
-from jgdv.structs.dkey import DKey
+from jgdv.structs.dkey import DKey, Key_p
 from jgdv.structs.dkey.str_key import StrDKey
 
 

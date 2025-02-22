@@ -2,11 +2,11 @@
 """
 
 """
+# ruff: noqa: B019
 # Imports:
 from __future__ import annotations
 
 # ##-- stdlib imports
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -18,13 +18,6 @@ import re
 import time
 import types
 import weakref
-# from copy import deepcopy
-from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match, Self, Literal,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -33,25 +26,41 @@ from uuid import UUID, uuid1
 
 # ##-- end 3rd party imports
 
-from jgdv import *
+from jgdv import Proto, Mixin
 from . import errors
 from . import strang_mixins as s_mix
+from ._interface import FMT_PATTERN, SEP_DEFAULT, SUBSEP_DEFAULT, StrangMarker_e, UUID_RE, INST_K, GEN_K, STRGET, MARK_RE
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 logging.disabled = True
 ##-- end logging
 
-FMT_PATTERN    : Final[Rx]                 = re.compile("^(h?)(t?)(p?)")
-UUID_RE        : Final[Rx]                 = re.compile(r"<uuid(?::(.+?))?>")
-MARK_RE        : Final[Rx]                 = re.compile(r"\$(.+?)\$")
-SEP_DEFAULT    : Final[str]                = "::"
-SUBSEP_DEFAULT : Final[str]                = "."
-GEN_K          : Final[str]                = s_mix.GEN_K
-INST_K         : Final[str]                = s_mix.INST_K
-
-STRGET                                     = str.__getitem__
-StrangMarker_e                             = s_mix.StrangMarker_e
 
 class _StrangMeta(type(str)):
 
@@ -68,29 +77,31 @@ class _StrangMeta(type(str)):
         try:
             data = cls.pre_process(data, strict=kwargs.get("strict", False))
         except ValueError as err:
-            raise errors.StrangError("Pre-Strang Error", cls, err, data)
+            raise errors.StrangError("Pre-Strang Error", cls, err, data) from None
 
         obj  = str.__new__(cls, data)
         try:
             obj.__init__(*args, **kwargs)
         except ValueError as err:
-            raise errors.StrangError("Strang Init Error", cls, err, data)
+            raise errors.StrangError("Strang Init Error", cls, err, data) from None
 
         try:
             # TODO don't call process and post_process if given the metadata in kwargs
             obj._process()
         except ValueError as err:
-            raise errors.StrangError("Strang Process Error", cls, err, data)
+            raise errors.StrangError("Strang Process Error", cls, err, data) from None
 
         try:
             # TODO allow post-process to override and return a different object?
             obj._post_process()
         except ValueError as err:
-            raise errors.StrangError("Post-Strang Error:", cls, err)
+            raise errors.StrangError("Post-Strang Error:", cls, err) from None
 
         return obj
 
-class Strang(s_mix.Strang_m, str, metaclass=_StrangMeta):
+##--|
+@Mixin(s_mix.PreStrang_m, None, s_mix.PostStrang_m, allow_inheritance=True)
+class Strang(str, metaclass=_StrangMeta):
     """
       A Structured String Baseclass.
       A Normal str, but is parsed on construction to extract and validate

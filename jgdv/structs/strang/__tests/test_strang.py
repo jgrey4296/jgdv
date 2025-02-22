@@ -42,16 +42,16 @@ class TestStrangBase:
 
     def test_repr(self):
         obj = Strang("head::tail")
-        assert(repr(obj) == "<Strang: head::tail>")
+        assert(repr(obj) == "<Strang<+Mixins>: head::tail>")
 
     def test_repr_with_uuid(self):
         obj = Strang(f"head::tail.<uuid:{UUID_STR}>")
-        assert(repr(obj) == f"<Strang: head::tail.<uuid>>")
+        assert(repr(obj) == f"<Strang<+Mixins>: head::tail.<uuid>>")
 
 
     def test_repr_with_brace_val(self):
         obj = Strang("head::tail.{aval}.blah")
-        assert(repr(obj) == "<Strang: head::tail.{aval}.blah>")
+        assert(repr(obj) == "<Strang<+Mixins>: head::tail.{aval}.blah>")
 
     def test_needs_separator(self):
         with pytest.raises(StrangError):
@@ -136,6 +136,7 @@ class TestStrangCmp:
     def test_hash_uuid_fail(self):
         obj = Strang("head::tail.a.b.<uuid>")
         obj2 = Strang("head::tail.a.b.<uuid>")
+        assert(obj[1:-1] != obj2[1:-1])
         assert(hash(obj) != hash(obj2))
 
     def test_eq_to_str(self):

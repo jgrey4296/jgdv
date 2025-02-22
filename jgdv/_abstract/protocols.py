@@ -197,37 +197,6 @@ class Nameable_p(Protocol):
         pass
 
 @runtime_checkable
-class Key_p(Protocol):
-    """ The protocol for a Key, something that used in a template system"""
-
-    @property
-    def multi(self) -> bool: ...
-
-    def keys(self) -> list[Key_p]: ...
-
-    def redirect(self, spec=None) -> Key_p: ...
-
-    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[Key_p]=None, on_fail=Any, locs:Mapping=None, **kwargs) -> str: ...
-
-@runtime_checkable
-class Location_p(Protocol):
-    """ Something which describes a file system location,
-    with a possible identifier, and metadata
-    """
-    key                 : Maybe[str|Key_p]
-    path                : pl.Path
-    meta                : enum.EnumMeta
-
-    def check(self, data) -> bool:
-        pass
-
-    def exists(self) -> bool:
-        pass
-
-    def keys(self) -> set[str]:
-        pass
-
-@runtime_checkable
 class InstantiableSpecification_p(Protocol):
     """ A Specification that can be instantiated further """
 

@@ -26,8 +26,9 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv import Maybe, DateTime, TimeDelta
+from jgdv import DateTime, TimeDelta, Proto, Mixin
 from jgdv.mixins.annotate import SubRegistry_m
+from ._interface import Pure, Real, File, Dir, Wild
 
 # ##-- end 1st party imports
 
@@ -59,13 +60,6 @@ logging = logmod.getLogger(__name__)
 
 if sys.version_info.minor < 12:
     raise RuntimeError("Pathy needs 3.12+")
-
-# Types for Annotating Pathy. eg: Pathy[File]
-Pure = NewType("Pure", None)
-Real = NewType("Real", None)
-File = NewType("File", None)
-Dir  = NewType("Dir", None)
-Wild = NewType("Wild", None)
 
 class _PathyExpand_m:
     """ Mixin for normalizing the Paths """
@@ -119,7 +113,7 @@ class _PathyTime_m:
             case None:
                 return time < self.time_modified()
 
-
+##--|
 class Pathy(SubRegistry_m, annotate_to="pathy_type"):
     """
     The Main Accessor to Pathy.
@@ -170,7 +164,9 @@ class Pathy(SubRegistry_m, annotate_to="pathy_type"):
         self._key         = key
         self._meta.update(kwargs)
 
-class PathyPure(_PathyExpand_m, Pathy[Pure], pl.PurePath):
+##--|
+@Mixin(_PathyExpand_m)
+class PathyPure(Pathy[Pure], pl.PurePath):
     """
     A Pure Pathy, subclass of pathlib.PurePath with extra functionality
     """
@@ -238,7 +234,8 @@ class PathyPure(_PathyExpand_m, Pathy[Pure], pl.PurePath):
     def with_suffix(self, suffix):
         return Pathy[File](super().with_suffix(suffix))
 
-class PathyReal( _PathyTime_m, Pathy[Real], PathyPure, pl.Path):
+@Mixin(_PathyTime_m)
+class PathyReal(Pathy[Real], PathyPure, pl.Path):
     """
     The Pathy equivalent of pathlib.Path
     """
