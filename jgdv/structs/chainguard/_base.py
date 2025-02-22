@@ -18,56 +18,45 @@ import pathlib as pl
 import re
 import time
 import types
-
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-import typing
-import weakref
-from collections import ChainMap
-from collections.abc import ItemsView, KeysView, ValuesView
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-# ##-- 1st party imports
-from jgdv import Maybe
-
-# ##-- end 1st party imports
-
 from .errors import GuardedAccessError
 from .mixins.access_m import super_get, super_set
+from ._interface import TomlTypes
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from collections.abc import ItemsView, KeysView, ValuesView
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType, Mapping
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-type TomlTypes = str | int | float | bool | list['TomlTypes'] | dict[str,'TomlTypes'] | datetime.datetime
-
-class GuardBase(Mapping[str, TomlTypes], dict):
+class GuardBase(dict):
     """
     Provides access to toml data (ChainGuard.load(apath))
     but as attributes (data.a.path.in.the.data)

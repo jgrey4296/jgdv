@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 # ##-- stdlib imports
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -27,8 +26,7 @@ from uuid import UUID, uuid1
 ##-- end builtin imports
 
 # ##-- 1st party imports
-from jgdv import Maybe
-from jgdv.structs.chainguard._base import TomlTypes
+from .._interface import TomlTypes
 
 # ##-- end 1st party imports
 
@@ -42,8 +40,6 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
     from jgdv import Maybe

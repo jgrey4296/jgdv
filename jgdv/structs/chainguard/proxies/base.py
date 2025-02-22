@@ -7,7 +7,6 @@
 from __future__ import annotations
 
 # ##-- stdlib imports
-import collections
 import contextlib
 import datetime
 import enum
@@ -22,7 +21,6 @@ import time
 import types
 import weakref
 from copy import deepcopy
-from dataclasses import InitVar, dataclass, field
 from time import sleep
 from uuid import UUID, uuid1
 from weakref import ref
