@@ -21,57 +21,50 @@ import types
 import weakref
 from sys import stderr, stdout
 import warnings
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv import Maybe
 from jgdv.logging.colour_format import ColourFormatter, StripColourFormatter
-from jgdv.logging.logger_spec import LoggerSpec, LogLevel_e
+from jgdv.logging.logger_spec import LoggerSpec
 from jgdv.structs.chainguard import ChainGuard
 from .logger import JGDVLogger
 
+from._interface import PRINTER_NAME, SUBPRINTERS, LogLevel_e
 # ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from ._interface import Logger
+
+##--|
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-type Logger = logmod.Logger
-
-PRINTER_NAME : Final[str] = "_printer_"
 env          : dict       = os.environ
-SUBPRINTERS  : Final[list[str]]= [
-    "fail", "header", "help",
-    "report", "sleep", "success",
-    "setup", "shutdown"
-    ]
-
 stream_initial_spec  : Final[LoggerSpec] = LoggerSpec.build({
     "name"           : logmod.root.name,
     "level"          : "trace",
@@ -88,7 +81,7 @@ printer_initial_spec : Final[LoggerSpec] = LoggerSpec.build({
     "propagate"      : False,
     })
 
-
+##--|
 class JGDVLogConfig:
     """ Utility class to setup [stdout, stderr, file] logging.
       Also creates a 'printer' logger, so instead of using `print`,

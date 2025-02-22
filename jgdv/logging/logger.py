@@ -46,7 +46,7 @@ if TYPE_CHECKING:
 # isort: on
 # ##-- end types
 
-from .enums import LogLevel_e
+from ._interface import LogLevel_e
 
 ##-- logging
 logging = logmod.getLogger(__name__)

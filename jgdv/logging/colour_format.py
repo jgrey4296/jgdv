@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
-# from https://alexandra-zaharia.github.io/posts/make-your-own-custom-color-formatter-with-python-logging/
+"""
+see https://alexandra-zaharia.github.io/posts/make-your-own-custom-color-formatter-with-python-logging/
+"""
 # Imports:
 from __future__ import annotations
 
@@ -15,30 +17,6 @@ import re
 import warnings
 from collections import defaultdict
 from string import Formatter
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -83,8 +61,33 @@ except ImportError:
 
 # ##-- end 3rd party imports
 
-from jgdv import Maybe
+from jgdv import Proto, Mixin
 from .stack_format import StackFormatter_m
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+
+# isort: on
+# ##-- end types
 
 class SimpleLogColour:
     """ Utility class for wrapping strings with specific colours """
@@ -108,7 +111,8 @@ class SimpleLogColour:
     def red(s):
         return LEVEL_MAP['red'] + str(s) + COLOUR_RESET
 
-class ColourFormatter(StackFormatter_m, logging.Formatter):
+@Mixin(StackFormatter_m)
+class ColourFormatter(logging.Formatter):
     """
     Stream Formatter for logging, enables use of colour sent to console
 
@@ -145,7 +149,8 @@ class ColourFormatter(StackFormatter_m, logging.Formatter):
 
         return log_colour + super().format(record) + COLOUR_RESET
 
-class StripColourFormatter(StackFormatter_m, logging.Formatter):
+@Mixin(StackFormatter_m)
+class StripColourFormatter(logging.Formatter):
     """
     Force Colour Command codes to be stripped out of a string.
     Useful for when you redirect printed strings with colour

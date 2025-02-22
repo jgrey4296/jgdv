@@ -16,22 +16,43 @@ import re
 import time
 import types
 import weakref
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
-from jgdv import Maybe, RxStr
 import stackprinter
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+
+if TYPE_CHECKING:
+    from jgdv import Maybe, RxStr
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+
+# isort: on
+# ##-- end types
 
 # Global Vars:
 
 # Body:
 
-class StackFormatter_m(logmod.Formatter):
+class StackFormatter_m:
     """ A Mixin Error formatter, adapted from stackprinter's docs
     Formats the error stack as just the lines, not with src
 
@@ -56,7 +77,6 @@ class StackFormatter_m(logmod.Formatter):
         lines = [x for x in msg.splitlines() if bool(x)]
         indented = [f"{self.indent_str}{line}\n" for line in lines[-self.source_height:]]
         return "".join(indented)
-
 
     def formatStack(self, stack_info):
         return super().formatStack(stack_info)

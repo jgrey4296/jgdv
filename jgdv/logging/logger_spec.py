@@ -20,39 +20,42 @@ import time
 import types
 import weakref
 from sys import stderr, stdout
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generator,
-                    Generic, Iterable, Iterator, Mapping, Match,
-                    MutableMapping, Protocol, Sequence, Tuple, TypeAlias,
-                    TypeGuard, TypeVar, cast, final, overload,
-                    runtime_checkable)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-# ##-- 3rd party imports
-from pydantic import (BaseModel, Field, ValidationError, field_validator,
-                      model_validator)
-
-# ##-- end 3rd party imports
-
 # ##-- 1st party imports
-from jgdv import Maybe, RxStr
-from jgdv.logging.colour_format import ColourFormatter, StripColourFormatter
+from jgdv import Proto, Mixin
 from jgdv._abstract.protocols import Buildable_p, ProtocolModelMeta
+from .colour_format import ColourFormatter, StripColourFormatter
 from jgdv.structs.chainguard import ChainGuard
 from .filter import BlacklistFilter, WhitelistFilter
-from .enums import LogLevel_e
+from ._interface import LogLevel_e, MAX_FILES, TARGETS
 
 # ##-- end 1st party imports
 
 # ##-- types
 # isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType, Any
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 if TYPE_CHECKING:
-   from jgdv import Maybe
-   type Logger                      = logmod.Logger
-   type Formatter                   = logmod.Formatter
-   type Handler                     = logmod.Handler
-
+    from jgdv import Maybe, RxStr
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from ._interface import Handler, Logger, Formatter
+##--|
+from jgdv import Maybe
 # isort: on
 # ##-- end types
 
@@ -62,8 +65,6 @@ logging = logmod.getLogger(__name__)
 
 env           : dict             = os.environ
 IS_PRE_COMMIT : Final[bool]      = "PRE_COMMIT" in env
-MAX_FILES     : Final[int]       = 5
-TARGETS       : Final[list[str]] = ["file", "stdout", "stderr", "rotate", "pass"]
 
 class HandlerBuilder_m:
     """
@@ -133,7 +134,10 @@ class HandlerBuilder_m:
         assert(formatter is not None)
         return handler, formatter
 
-class LoggerSpec(BaseModel, HandlerBuilder_m, Buildable_p, metaclass=ProtocolModelMeta):
+##--|
+
+@Proto(Buildable_p)
+class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
     """
       A Spec for toml defined logging control.
       Allows user to name a logger, set its level, format,

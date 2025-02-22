@@ -108,7 +108,7 @@ class Mixin(MonotonicDec):
     def _validate_target_h(self, target:Decorable, form:DForm_e, args:Maybe[list]=None) -> None:
         match target:
             case type() if hasattr(target, "model_fields"):
-                raise TypeError("Pydantic classes shouldn't be annotated or checked", target)
+                raise TypeError("Pydantic classes shouldn't be extended", target)
             case type():
                 pass
             case _:
