@@ -22,10 +22,6 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-# ##-- 3rd party imports
-from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
-
-# ##-- end 3rd party imports
 
 # ##-- 1st party imports
 from jgdv.files.bookmarks.bookmark import Bookmark
@@ -42,8 +38,7 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
     from jgdv import Maybe
