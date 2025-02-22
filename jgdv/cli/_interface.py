@@ -114,3 +114,15 @@ class ParamSource_p(Protocol):
     @property
     def param_specs(self) -> list[ParamStruct_p]:
         raise NotImplementedError()
+
+
+@runtime_checkable
+class CLIParamProvider_p(Protocol):
+    """
+      Things that can provide parameter specs for CLI parsing
+    """
+
+    @classmethod
+    def param_specs(cls) -> list[ParamStruct_p]:
+        """  make class parameter specs  """
+        pass

@@ -131,17 +131,6 @@ class TomlStubber_p(Protocol):
         pass
 
 @runtime_checkable
-class CLIParamProvider_p(Protocol):
-    """
-      Things that can provide parameter specs for CLI parsing
-    """
-
-    @classmethod
-    def param_specs(cls) -> list[ParamStruct_p]:
-        """  make class parameter specs  """
-        pass
-
-@runtime_checkable
 class ActionGrouper_p(Protocol):
     """ For things have multiple named groups of actions """
 
