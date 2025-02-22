@@ -50,6 +50,20 @@ class TestParamSpec:
         assert(obj.name == name)
         assert(obj.prefix == pre)
 
+
+    def test_name_parse_complex(self):
+        obj = ParamSpec.build({"name" : "--group-by"})
+        assert(isinstance(obj, Specs.ParamSpecBase))
+        assert(obj.name == "group-by")
+        assert(obj.prefix == "--")
+
+
+    def test_name_parse_complex_assign(self):
+        obj = ParamSpec.build({"name" : "--group-by="})
+        assert(isinstance(obj, Specs.ParamSpecBase))
+        assert(obj.name == "group-by")
+        assert(obj.prefix == "--")
+
     @pytest.mark.parametrize("key", [*good_names])
     def test_match_on_head(self, key):
         obj = ParamSpec.build({"name" : key, "type":bool})

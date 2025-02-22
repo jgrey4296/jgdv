@@ -61,7 +61,7 @@ logging = logmod.getLogger(__name__)
 # Vars:
 DEFAULT_PREFIX    : Final[str]  = "-"
 END_SEP           : Final[str]  = "--"
-FULLNAME_RE       : Final[Rx]   = re.compile(r"(?:<(?P<pos>\d*)>|(?P<prefix>\W+))?(?P<name>\w+)(?P<assign>=)?")
+FULLNAME_RE       : Final[Rx]   = re.compile(r"(?:<(?P<pos>\d*)>|(?P<prefix>\W+))?(?P<name>.+?)(?P<assign>=)?$")
 
 EMPTY_CMD         : Final[str]  = "_cmd_"
 EXTRA_KEY         : Final[str]  = "_extra_"
