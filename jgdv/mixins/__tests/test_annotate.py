@@ -5,14 +5,15 @@
 # Imports
 from __future__ import annotations
 
-# ##-- stdlib imports
+##-- stdlib imports
 import logging as logmod
 import pathlib as pl
 from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
                     TypeVar, cast)
 import warnings
-# ##-- stdlib imports
+
+##-- end stdlib imports
 
 import pytest
 from jgdv.mixins.annotate import SubAnnotate_m, SubRegistry_m
@@ -31,6 +32,7 @@ class BasicSub(BasicEx):
 class BasicTargeted(SubAnnotate_m, AnnotateTo="blah"):
     pass
 
+##--|
 class TestAnnotateMixin:
 
     def test_sanity(self):
@@ -58,6 +60,7 @@ class TestAnnotateRegistry:
         assert(True is not False)
 
     def test_registry(self):
+
         class BasicReg(SubRegistry_m):
             pass
 

@@ -27,6 +27,7 @@ from uuid import UUID, uuid1
 # ##-- 1st party imports
 import jgdv.errors
 from jgdv.debugging import TraceBuilder
+from jgdv.mixins.annotate import Subclasser
 # ##-- end 1st party imports
 
 # ##-- types
@@ -39,7 +40,6 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-from types import resolve_bases
 if TYPE_CHECKING:
     from jgdv import Maybe, Either, Method, Func
     from typing import Final
@@ -199,26 +199,6 @@ class _DecWrap_m:
                                           assigned=self._wrapper_assignments,
                                           updated=self._wrapper_updates)
 
-    def _new_class(self, name:str, cls:type, *, namespace:Maybe[dict]=None, mro:Maybe[tuple]=None) -> type:
-        """
-        Dynamically creates a new class
-        """
-        mcls = type(cls)
-        match mro:
-            case None:
-                mro = tuple(resolve_bases(cls.mro()))
-            case tuple():
-                mro = tuple(resolve_bases(mro))
-            case list():
-                mro = tuple(resolve_bases(mro))
-        ##--|
-        match namespace:
-            case None:
-                namespace = mcls.__prepare__(name, mro)
-            case dict():
-                pass
-        return mcls(name, mro, namespace)
-
 class _DecInspect_m:
 
     def _signature(self, target:Decorable) -> Signature:
@@ -271,7 +251,7 @@ class _DecoratorHooks_m:
 
     def _wrap_class_h(self, cls:type) -> Maybe[Decorated]:
         """ Override this to decorate a class """
-        return self._new_class("DefaultWrappedClass", cls)
+        return Subclasser.make_subclass("DefaultWrappedClass", cls)
 
     def _validate_target_h(self, target:Decorable, form:DForm_e, args:Maybe[list]=None) -> None:
         """ Abstract class for specialization.

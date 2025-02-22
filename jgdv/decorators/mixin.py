@@ -25,6 +25,7 @@ from uuid import UUID, uuid1
 from jgdv.debugging import TraceBuilder
 from .core import MonotonicDec, IdempotentDec, Decorator
 from ._interface import Decorable, Decorated, DForm_e
+from jgdv.mixins.annotate import Subclasser
 
 # ##-- types
 # isort: off
@@ -111,6 +112,6 @@ class Mixin(MonotonicDec):
             case _:
                 pass
         new_name  = f"{cls.__qualname__}<+Mixins>"
-        mixed     = self._new_class(new_name, cls, mro=new_mro)
+        mixed     = Subclasser.make_subclass(new_name, cls, mro=new_mro)
         self.annotate_decorable(mixed)
         return mixed

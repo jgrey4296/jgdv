@@ -21,6 +21,7 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
+from jgdv.mixins.annotate import Subclasser
 from .core import MonotonicDec, IdempotentDec, Decorator
 
 # ##-- types
@@ -28,7 +29,7 @@ from .core import MonotonicDec, IdempotentDec, Decorator
 import abc
 import collections.abc
 from typing import TYPE_CHECKING, cast, assert_type, assert_never
-from typing import Generic, NewType, TypeAliasType
+from typing import Generic, NewType, TypeAliasType, _GenericAlias
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
@@ -60,7 +61,7 @@ IS_ABS       : Final[str] = "__isabstractmethod__"
 
 ##--| Body
 
-class _CheckProtocol_m:
+class CheckProtocols:
     """ A Class Decorator to ensure a class has no abc.abstractmethod's
     or unimplemented protocol members
 
@@ -72,18 +73,25 @@ class _CheckProtocol_m:
     pass
     """
 
-    def _get_protos(self, target:type) -> set[Protocol]:
+    def get_protos(target:type) -> set[Protocol]:
+        """ Get the protocols of a type from its mro and annotations """
         # From MRO
-        protos = [x for x in target.__mro__
-                  if issubclass(x, Protocol|abc.ABC)
-                  and x is not target
-                  and x is not Protocol]
+        protos = []
+        for x in target.mro():
+            match x:
+                case _ if x in [Protocol,Generic, target, object]:
+                    pass
+                case TypeAliasType() if issubclass(x.__value__, Protocol):
+                    protos.append(x)
+                case _ if issubclass(target, Protocol|abc.ABC):
+                    protos.append(x)
+                case _:
+                    pass
 
-        # from JGDV Annotations
-        protos += self.get_annotations(target)
+        protos += getattr(target, PROTO_SUFFIX, [])
         return set(protos)
 
-    def _test_method(self, cls:type, name:str) -> bool:
+    def test_method(cls:type, name:str) -> bool:
         """ return True if the named method is abstract still """
         if name == ABSMETHS:
             return False
@@ -95,7 +103,7 @@ class _CheckProtocol_m:
             case FunctionType() | property():
                 return False
 
-    def _test_protocol(self, proto:Protocol, cls) -> list[str]:
+    def test_protocol(proto:Protocol, cls) -> list[str]:
         """ Returns a list of methods which are defined in the protocol,
         no where else in the mro.
         ie: they are unimplemented protocol requirements
@@ -104,6 +112,7 @@ class _CheckProtocol_m:
         eg: type proto_alias = MyProtocol_p
         where issubclass(MyProtocol_p, Protocol)
         """
+
         result = []
         # Get the members of the protocol/abc
         match proto:
@@ -112,15 +121,6 @@ class _CheckProtocol_m:
                 qualname = proto.__qualname__
             case type() if issubclass(proto, abc.ABC):
                 return []
-            case TypeAliasType() if (origin:=getattr(proto.__value__, "__origin__", None)) and issubclass(origin, Protocol):
-                members = origin.__protocol_attrs__
-                qualname = origin.__qualname__
-            case TypeAliasType() if issubclass(proto.__value__, Protocol):
-                members = proto.__value__.__protocol_attrs__
-                qualname = proto.__value__.__qualname__
-            case x if (origin:=getattr(proto, "__origin__", None)) and issubclass(origin, Protocol):
-                members = origin.__protocol_attrs__
-                qualname = origin.__qualname__
             case _:
                 raise TypeError("Checking a protocol... but it isnt' a protocol", proto)
 
@@ -145,18 +145,18 @@ class _CheckProtocol_m:
         else:
             return result
 
-    def validate_protocols(self, cls:type) -> type:
+    def validate_protocols(cls:type, *, protos:Maybe[list[Protocol]]) -> type:
         still_abstract = set()
         for meth in getattr(cls, ABSMETHS, []):
-            if self._test_method(cls, meth):
+            if CheckProtocols.test_method(cls, meth):
                 still_abstract.add(meth)
         ##--|
-        for proto in self._get_protos(cls):
-            still_abstract.update(self._test_protocol(proto, cls))
-        ##--|
-        for proto in self._protos:
-            still_abstract.update(self._test_protocol(proto, cls))
-        ##--|
+        for proto in CheckProtocols.get_protos(cls):
+            still_abstract.update(CheckProtocols.test_protocol(proto, cls))
+            ##--|
+        for proto in protos or []:
+            still_abstract.update(CheckProtocols.test_protocol(proto, cls))
+            ##--|
         if not bool(still_abstract):
             return cls
 
@@ -165,7 +165,7 @@ class _CheckProtocol_m:
                                   f"module:{cls.__module__}",
                                   still_abstract)
 
-class Proto(_CheckProtocol_m, MonotonicDec):
+class Proto(MonotonicDec):
     """ Decorator to explicitly annotate a class as an implementer of a set of protocols
     Protocols are annotated into cls._jgdv_protos : set[Protocol]
 
@@ -185,8 +185,24 @@ class Proto(_CheckProtocol_m, MonotonicDec):
 
     def __init__(self, *protos:Protocol, check=True):
         super().__init__(data=PROTO_SUFFIX)
-        self._protos = protos or []
-        self._check = check
+        self._protos : list = []
+        self._check  : bool = check
+        for x in protos:
+            match x:
+                case TypeAliasType() if isinstance(x.__value__, _GenericAlias):
+                    x = x.__value__.__origin__
+                case TypeAliasType():
+                    x = x.__value__
+                case _GenericAlias():
+                    x = x.__origin__
+                case _:
+                    pass
+
+            match x:
+                case _ if issubclass(x, Protocol):
+                    self._protos.append(x)
+                case x:
+                     raise TypeError("Tried to attach a non-protocol to a class", x)
 
     def _validate_target_h(self, target:Decorable, form:DForm_e, args:Maybe[list]=None) -> None:
         match target:
@@ -200,22 +216,24 @@ class Proto(_CheckProtocol_m, MonotonicDec):
     def _wrap_class_h(self, cls:type) -> Maybe[type]:
         """ """
         new_name = f"{cls.__qualname__}<+Protocols>"
-        namespace : dict = dict(cls.__dict__)
 
         self.annotate_decorable(cls)
-        match namespace.get(PROTO_SUFFIX, None):
-            case None:
-                namespace[PROTO_SUFFIX] = set([*self._get_protos(cls), *self._protos])
+        protos = CheckProtocols.get_protos(cls)
+        protos.update(self._protos)
+        match getattr(cls, PROTO_SUFFIX, None):
+            case None | []:
+                pass
             case [*xs]:
-                namespace[PROTO_SUFFIX] = set([*xs, *self._protos])
+                protos.update(xs)
         try:
-            customized = self._new_class(new_name, cls, namespace=namespace)
+            customized = Subclasser.make_subclass(new_name, cls)
         except TypeError as err:
-            raise TypeError(*err.args, cls, self._protos) from None
+            raise TypeError(*err.args, cls, self._protos, protos) from None
 
+        setattr(customized, PROTO_SUFFIX, list(protos))
         match self._check:
             case True:
-                self.validate_protocols(customized)
+                CheckProtocols.validate_protocols(customized, protos=self._protos)
             case _:
                 pass
         ##--|
@@ -227,7 +245,12 @@ class Proto(_CheckProtocol_m, MonotonicDec):
         updated += [x for x in self._protos if x not in current]
         return updated
 
+
     @staticmethod
     def get(cls:type) -> list[Protocol]:
         """ Get a List of protocols the class is annotated with """
-        return list(Proto()._get_protos(cls))
+        return list(CheckProtocols.get_protos(cls))
+
+    @staticmethod
+    def validate_protocols(cls:type, *protos:Protocol):
+        return CheckProtocols.validate_protocols(cls, protos=protos)

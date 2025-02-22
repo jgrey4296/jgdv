@@ -26,12 +26,13 @@ from uuid import UUID, uuid1
 import abc
 import collections.abc
 from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, NewType, _caller
+from typing import TypeAliasType
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+from types import resolve_bases
+from pydantic import BaseModel, create_model
 
 if TYPE_CHECKING:
    from jgdv import Maybe
@@ -51,6 +52,89 @@ logging = logmod.getLogger(__name__)
 
 AnnotateKWD      : Final[str] = "annotate_to"
 AnnotationTarget : Final[str] = "_typevar"
+
+class Subclasser:
+
+    @staticmethod
+    def make_annotated_subclass(cls, *params) -> type:
+        """ Make a subclass of cls,
+        annotated to have params in cls[cls._annotate_to]
+        """
+        match params:
+            case [NewType() as param]:
+                p_str = param.__name__
+            case [TypeAliasType() as param]:
+                p_str = param.__value__.__name__
+            case [type() as param]:
+                p_str = param.__name__
+            case [str() as param]:
+                p_str = param
+            case [param]:
+                p_str = str(param)
+            case [param, *params]:
+                raise NotImplementedError("Multi Param Annotation not supported yet")
+            case _:
+                raise ValueError("Bad param value for making an annotated subclass", params)
+
+
+        # Get the module definer 3 frames up.
+        # So not make_annotated_subclass, or __class_getitem__, but where the subclass is created
+        def_mod = _caller(3)
+        subname = f"{cls.__name__}[{p_str}]"
+        subdata = {cls._annotate_to : param,
+                   "__module__" : def_mod,
+                   }
+        sub = Subclasser.make_subclass(subname, cls, namespace=subdata)
+        setattr(sub, cls._annotate_to, param)
+        return sub
+
+    @staticmethod
+    def make_subclass(name:str, cls:type, *, namespace:Maybe[dict]=None, mro:Maybe[tuple]=None) -> type:
+        """
+        Build a dynamic subclass of cls, with name,
+        possibly with a maniplated mro and internal namespace
+        """
+        if (ispydantic:=issubclass(cls, BaseModel)) and mro is not None:
+                raise NotImplementedError("Extending pydantic classes with a new mro is not implemented")
+        elif ispydantic:
+            sub = Subclasser._new_pydantic_class(name, cls, namespace=namespace)
+            return sub
+        else:
+            sub = Subclasser._new_std_class(name, cls, namespace=namespace, mro=mro)
+            return sub
+
+    @staticmethod
+    def _new_std_class(name:str, cls:type, *, namespace:Maybe[dict]=None, mro:Maybe[tuple]=None) -> type:
+        """
+        Dynamically creates a new class
+        """
+        assert(not issubclass(cls, BaseModel)), cls
+        mcls = type(cls)
+        match mro:
+            case None:
+                mro = cls.mro()
+            case tuple() | list():
+                mro = mro
+            case x:
+                raise TypeError("Unexpected mro type", x)
+        ##--|
+        mro = tuple(resolve_bases(mro))
+        match namespace:
+            case None:
+                namespace = mcls.__prepare__(name, mro)
+            case dict():
+                namespace = mcls.__prepare__(name, mro) | namespace
+            case x:
+                raise TypeError("Unexpected namespace type", x)
+        return mcls(name, mro, namespace)
+
+    @staticmethod
+    def _new_pydantic_class(name:str, cls:type, *, namespace:Maybe[dict]=None) -> type:
+        assert(issubclass(cls, BaseModel)), cls
+        sub = create_model(name, __base__=cls)
+        for x,y in (namespace or {}).items():
+            setattr(sub, x, y)
+        return sub
 
 class SubAnnotate_m:
     """
@@ -90,40 +174,13 @@ class SubAnnotate_m:
             case []:
                 return cls
             case _:
-                return cls._make_subclass(*params)
+                return Subclasser.make_annotated_subclass(cls, *params)
 
     @classmethod
     def _get_annotation(cls) -> Maybe[str]:
         return getattr(cls, cls._annotate_to, None)
 
-    @classmethod
-    def _make_subclass(cls, *params) -> type:
-        match params:
-            case [NewType() as param]:
-                p_str = param.__name__
-            case [type() as param]:
-                p_str = param.__name__
-            case [str() as param]:
-                p_str = param
-            case [param]:
-                p_str = str(param)
-            case [param, *params]:
-                raise NotImplementedError("Multi Param Annotation not supported yet")
-            case _:
-                raise ValueError("Bad param value for making an annotated subclass", params)
 
-        # Get the module definer 3 frames up.
-        # So not _make_subclass, or __class_getitem__, but where the subclass is created
-        def_mod = _caller(3)
-        subname = f"{cls.__name__}[{p_str}]"
-        subdata = {cls._annotate_to : param,
-                   "__module__"     : def_mod,
-                   "__supertype__"  : cls,
-                   "__qualname__"   : f"{def_mod}.{subname}"
-                   }
-        sub = type(subname, (cls,), subdata)
-        setattr(sub, cls._annotate_to, param)
-        return sub
 
 class SubRegistry_m(SubAnnotate_m):
     """ Create Subclasses in a registry

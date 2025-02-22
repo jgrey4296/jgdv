@@ -329,16 +329,11 @@ class TestCheckProtocolClass:
 
     def test_raw_structural_proto_class_success(self):
         assert(isinstance(GoodStructuralRawProto, RawProto_p))
-        dec = Proto(RawProto_p)
+        assert(not RawProto_p in GoodStructuralRawProto.mro())
 
+        @Proto(RawProto_p)
         class Sub(GoodStructuralRawProto):
             pass
-
-        match dec(Sub):
-            case None:
-                assert(False)
-            case _:
-                assert(True)
 
         match Proto.get(Sub):
             case [x] if x == RawProto_p:
@@ -355,9 +350,9 @@ class TestCheckProtocolClass:
     def test_raw_structural_proto_class_fail(self):
         assert(not issubclass(BadStructuralRawProto, RawProto_p))
         assert(not isinstance(BadStructuralRawProto, RawProto_p))
-        dec = Proto(RawProto_p)
+        assert(not RawProto_p in BadStructuralRawProto.mro())
         with pytest.raises(NotImplementedError):
-            dec.validate_protocols(BadStructuralRawProto)
+            Proto.validate_protocols(BadStructuralRawProto, RawProto_p)
             assert(True)
 
 
