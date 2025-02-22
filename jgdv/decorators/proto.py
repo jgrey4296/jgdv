@@ -83,7 +83,7 @@ class CheckProtocols:
                     pass
                 case TypeAliasType() if issubclass(x.__value__, Protocol):
                     protos.append(x)
-                case _ if issubclass(target, Protocol|abc.ABC):
+                case x if issubclass(x, Protocol|abc.ABC):
                     protos.append(x)
                 case _:
                     pass
@@ -138,7 +138,7 @@ class CheckProtocols:
                     pass
                 case MethodType() as meth  if qualname in meth.__func__.__qualname__:
                     result.append(member)
-                case MethodType():
+                case MethodType() | ftz.cached_property():
                     pass
                 case x:
                     raise TypeError("Unexpected Type in protocol checking", member, type(x), x, cls)
@@ -238,12 +238,10 @@ class Proto(MonotonicDec):
         ##--|
         return customized
 
-
     def _build_annotations_h(self, target:Decorable, current:list) -> Maybe[list]:
         updated = current[:]
         updated += [x for x in self._protos if x not in current]
         return updated
-
 
     @staticmethod
     def get(cls:type) -> list[Protocol]:
