@@ -16,7 +16,7 @@ import warnings
 ##-- end stdlib imports
 
 import pytest
-from jgdv.mixins.annotate import SubAnnotate_m, SubRegistry_m
+from jgdv.mixins.annotate import SubAnnotate_m, SubRegistry_m, Subclasser
 
 # Logging:
 logging = logmod.root
@@ -33,6 +33,7 @@ class BasicTargeted(SubAnnotate_m, AnnotateTo="blah"):
     pass
 
 ##--|
+
 class TestAnnotateMixin:
 
     def test_sanity(self):
@@ -74,3 +75,60 @@ class TestAnnotateRegistry:
         assert(BasicReg[float] is not BasicReg[int])
         assert(int in BasicReg._registry)
         assert(BasicReg._registry is BasicSubReg._registry)
+
+class TestSubClasser:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_decorate_name_noop(self):
+        target = BasicEx.__name__
+        match Subclasser.decorate_name(BasicEx):
+            case str() as x if x == target:
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_decorate_name_with_extras(self):
+        target = f"{BasicEx.__name__}<+test>"
+        match Subclasser.decorate_name(BasicEx, "test"):
+            case str() as x if x == target:
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_redecorate_name_with_extras(self):
+        target = f"{BasicEx.__name__}<+test>"
+        curr = BasicEx.__name__
+        for i in range(10):
+            curr = Subclasser.decorate_name(curr, "test")
+            assert(curr == target)
+
+
+    def test_multi_decorate(self):
+        target = f"{BasicEx.__name__}<+blah+test>"
+        curr = BasicEx.__name__
+        for i in range(10):
+            curr = Subclasser.decorate_name(curr, "test", "blah")
+            assert(curr == target)
+
+
+    def test_decorate_param(self):
+        target = f"{BasicEx.__name__}[bool]"
+        curr = BasicEx.__name__
+        for i in range(10):
+            curr = Subclasser.decorate_name(curr, params="bool")
+            assert(curr == target)
+
+
+    def test_decorate_name_override_param(self):
+        target = f"{BasicEx.__name__}[int]"
+        curr = Subclasser.decorate_name(BasicEx.__name__, params="bool")
+        over = Subclasser.decorate_name(BasicEx.__name__, params="int")
+        assert(over == target)
+
+
+    def test_decorate_extras_and_params(self):
+        target = f"{BasicEx.__name__}<+test>[int]"
+        curr = Subclasser.decorate_name(BasicEx.__name__, "test", params="int")
+        assert(curr == target)

@@ -192,7 +192,15 @@ class TestParamSpecAnnotated:
         assert(True is not False) # noqa: PLR0133
 
     def test_basic_annotation(self):
-        match ParamSpec[bool].build({"name":"Aweg"}):
+        match ParamSpec[bool]:
+            case x if issubclass(x, ParamSpec):
+                assert(x._override_type is not None)
+                assert(ParamSpec._override_type is None)
+                accessor = x
+            case x:
+                 assert(False), x
+
+        match accessor.build({"name":"Aweg"}):
             case core.ToggleParam():
                 assert(True)
             case x:

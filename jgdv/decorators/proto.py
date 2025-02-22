@@ -215,8 +215,7 @@ class Proto(MonotonicDec):
 
     def _wrap_class_h(self, cls:type) -> Maybe[type]:
         """ """
-        new_name = f"{cls.__qualname__}<+Protocols>"
-
+        new_name = Subclasser.decorate_name(cls, "Protocols")
         self.annotate_decorable(cls)
         protos = CheckProtocols.get_protos(cls)
         protos.update(self._protos)

@@ -30,7 +30,7 @@ from pydantic import BaseModel
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from jgdv import Maybe, Proto
+from jgdv import Maybe, Proto, Mixin
 from jgdv._abstract.protocols import Buildable_p
 from jgdv.mixins.annotate import SubAnnotate_m, Subclasser
 from jgdv.structs.chainguard import ChainGuard
@@ -74,9 +74,9 @@ from .._interface import ParamStruct_p
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
 @Proto(Buildable_p)
-class ParamSpec(SubAnnotate_m, _DefaultsBuilder_m, _ParamNameParser_m):
+@Mixin(None, SubAnnotate_m, _DefaultsBuilder_m, _ParamNameParser_m)
+class ParamSpec:
     """ A Top Level Access point for building param specs """
     _override_type : ClassVar[type|str] = None
 
@@ -145,10 +145,11 @@ class ParamSpec(SubAnnotate_m, _DefaultsBuilder_m, _ParamNameParser_m):
             case [x, *_]:
                 subtype = ParamSpec._discrim_to_type(x)
                 p_sub = subtype[x]
+                new_name = Subclasser.decorate_name(cls, f"{p_sub.__name__}")
                 subdata = {"_override_type": p_sub,
                            "__module__" : cls.__module__,
                            }
-                new_ps = Subclasser.make_subclass(f"ParamSpec[{p_sub.__name__}]", cls, namespace=subdata)
+                new_ps = Subclasser.make_subclass(new_name, cls, namespace=subdata)
                 assert(new_ps._override_type is p_sub)
                 return new_ps
 

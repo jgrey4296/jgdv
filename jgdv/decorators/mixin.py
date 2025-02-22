@@ -111,7 +111,7 @@ class Mixin(MonotonicDec):
                 new_mro = [*self._pre_mixins, x, *self._post_mixins, *xs]
             case _:
                 pass
-        new_name  = f"{cls.__qualname__}<+Mixins>"
+        new_name  = Subclasser.decorate_name(cls, "Mixins")
         mixed     = Subclasser.make_subclass(new_name, cls, mro=new_mro)
         self.annotate_decorable(mixed)
         return mixed

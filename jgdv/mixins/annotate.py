@@ -35,7 +35,7 @@ from types import resolve_bases
 from pydantic import BaseModel, create_model
 
 if TYPE_CHECKING:
-   from jgdv import Maybe
+   from jgdv import Maybe, Rx
    from typing import Final
    from typing import ClassVar, Any, LiteralString
    from typing import Never, Self, Literal
@@ -52,6 +52,7 @@ logging = logmod.getLogger(__name__)
 
 AnnotateKWD      : Final[str] = "annotate_to"
 AnnotationTarget : Final[str] = "_typevar"
+AnnotateRx       : Final[Rx]  = re.compile(r"(?P<name>\w+)(?:<(?P<extras>.*?)>)?(?:\[(?P<params>.*?)\])?")
 
 class Subclasser:
 
@@ -76,17 +77,49 @@ class Subclasser:
             case _:
                 raise ValueError("Bad param value for making an annotated subclass", params)
 
-
         # Get the module definer 3 frames up.
         # So not make_annotated_subclass, or __class_getitem__, but where the subclass is created
         def_mod = _caller(3)
-        subname = f"{cls.__name__}[{p_str}]"
-        subdata = {cls._annotate_to : param,
-                   "__module__" : def_mod,
-                   }
+        subname = Subclasser.decorate_name(cls, params=p_str)
+        subdata = {
+            cls._annotate_to : param,
+            "__module__" : def_mod,
+        }
         sub = Subclasser.make_subclass(subname, cls, namespace=subdata)
         setattr(sub, cls._annotate_to, param)
         return sub
+
+    @staticmethod
+    def decorate_name(cls:str|type, *vals:str, params:Maybe[str]=None) -> str:
+        match cls:
+            case type():
+                cls = cls.__name__
+            case str():
+                pass
+            case x:
+                raise TypeError("Unexpected name decoration target", x)
+
+        if not bool(vals) and not params:
+            return cls
+
+        extras_str, params_str  = "", ""
+        set_extras = set(vals)
+
+        match AnnotateRx.match(cls):
+            case None:
+                raise ValueError("Couldn't even match the cls name", cls)
+            case re.Match() as x:
+                set_extras.update((x['extras'] or "").split("+"))
+                params_str = params or x['params'] or ""
+
+        set_extras = {x for x in set_extras if bool(x)}
+        if bool(set_extras):
+            extras_str = "+".join(sorted(set_extras))
+            extras_str = f"<+{extras_str}>"
+        if bool(params_str):
+            params_str = f"[{params_str}]"
+
+        return f"{x['name']}{extras_str}{params_str}"
 
     @staticmethod
     def make_subclass(name:str, cls:type, *, namespace:Maybe[dict]=None, mro:Maybe[tuple]=None) -> type:
@@ -121,9 +154,11 @@ class Subclasser:
         mro = tuple(resolve_bases(mro))
         match namespace:
             case None:
-                namespace = mcls.__prepare__(name, mro)
+                # namespace = mcls.__prepare__(name, mro)
+                namespace = {}
             case dict():
-                namespace = mcls.__prepare__(name, mro) | namespace
+                # namespace = mcls.__prepare__(name, mro) | namespace
+                pass
             case x:
                 raise TypeError("Unexpected namespace type", x)
         return mcls(name, mro, namespace)
@@ -179,8 +214,6 @@ class SubAnnotate_m:
     @classmethod
     def _get_annotation(cls) -> Maybe[str]:
         return getattr(cls, cls._annotate_to, None)
-
-
 
 class SubRegistry_m(SubAnnotate_m):
     """ Create Subclasses in a registry
