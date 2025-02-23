@@ -59,6 +59,7 @@ logging = logmod.getLogger(__name__)
 MIXIN_KWD : Final[str] = "_jgdv_mixins"
 ABSMETHS  : Final[str] = "__abstractmethods__"
 IS_ABS    : Final[str] = "__isabstractmethod__"
+NAME_MOD  : Final[str] = "M"
 ##--| Funcs
 
 ##--| Body
@@ -80,6 +81,7 @@ class Mixin(MonotonicDec):
     def __init__(self, *mixins:type, allow_inheritance=False, silent=False):
         super().__init__()
         self._silent = silent
+        self._name_mod = NAME_MOD
         try:
             index = mixins.index(None)
         except ValueError:
@@ -122,7 +124,7 @@ class Mixin(MonotonicDec):
                 pass
         match self._silent:
             case False:
-                new_name  = Subclasser.decorate_name(cls, "Mixins")
+                new_name  = Subclasser.decorate_name(cls, self._name_mod)
             case True:
                 new_name = cls.__name__
         mixed     = Subclasser.make_subclass(new_name, cls, mro=new_mro)

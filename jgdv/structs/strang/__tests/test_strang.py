@@ -2,14 +2,16 @@
 """
 
 """
+
 from __future__ import annotations
 
 import uuid
 import logging as logmod
 import pathlib as pl
-from typing import (Any, Annotated, Callable, ClassVar, Generic, Iterable, Iterator,
-                    Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
+from typing import (Any, Annotated, ClassVar, Generic, TypeAlias,
                     TypeVar, cast)
+from re import Match
+from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping, Sequence
 import warnings
 import pytest
 from random import randint
@@ -42,16 +44,16 @@ class TestStrangBase:
 
     def test_repr(self):
         obj = Strang("head::tail")
-        assert(repr(obj) == "<Strang<+Mixins>: head::tail>")
+        assert(repr(obj) == "<Strang<+M>: head::tail>")
 
     def test_repr_with_uuid(self):
         obj = Strang(f"head::tail.<uuid:{UUID_STR}>")
-        assert(repr(obj) == f"<Strang<+Mixins>: head::tail.<uuid>>")
+        assert(repr(obj) == f"<Strang<+M>: head::tail.<uuid>>")
 
 
     def test_repr_with_brace_val(self):
         obj = Strang("head::tail.{aval}.blah")
-        assert(repr(obj) == "<Strang<+Mixins>: head::tail.{aval}.blah>")
+        assert(repr(obj) == "<Strang<+M>: head::tail.{aval}.blah>")
 
     def test_needs_separator(self):
         with pytest.raises(StrangError):

@@ -57,6 +57,7 @@ logging = logmod.getLogger(__name__)
 PROTO_SUFFIX : Final[str] = "protocols"
 ABSMETHS     : Final[str] = "__abstractmethods__"
 IS_ABS       : Final[str] = "__isabstractmethod__"
+NAME_MOD     : Final[str] = "P"
 ##--| Funcs
 
 ##--| Body
@@ -187,6 +188,7 @@ class Proto(MonotonicDec):
         super().__init__(data=PROTO_SUFFIX)
         self._protos : list = []
         self._check  : bool = check
+        self._name_mod = NAME_MOD
         for x in protos:
             match x:
                 case TypeAliasType() if isinstance(x.__value__, _GenericAlias):
@@ -215,7 +217,7 @@ class Proto(MonotonicDec):
 
     def _wrap_class_h(self, cls:type) -> Maybe[type]:
         """ """
-        new_name = Subclasser.decorate_name(cls, "Protocols")
+        new_name = Subclasser.decorate_name(cls, self._name_mod)
         self.annotate_decorable(cls)
         protos = CheckProtocols.get_protos(cls)
         protos.update(self._protos)

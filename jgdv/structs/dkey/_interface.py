@@ -3,7 +3,7 @@
 
 
 """
-# ruff: noqa:
+# ruff: noqa: N801
 
 # Imports:
 from __future__ import annotations
@@ -42,13 +42,14 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    from jgdv import Maybe
+    from jgdv import Maybe, Rx, Ident, RxStr
     from typing import Final
-    from typing import ClassVar, Any, LiteralString
+    from typing import ClassVar, LiteralString
     from typing import Never, Self, Literal
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from ._meta import DKey
 
 ##--|
 
@@ -112,4 +113,35 @@ class Key_p(Protocol):
 
     def redirect(self, spec=None) -> Key_p: ...
 
-    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:list[Key_p]=None, on_fail=Any, locs:Mapping=None, **kwargs) -> str: ...
+    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:Maybe[list[Key_p]]=None, on_fail=Any, locs:Maybe[Mapping]=None, **kwargs) -> str: ...  # noqa: ANN003
+
+##--|
+class ExpInst_d:
+    """ The lightweight holder of expansion instructions, passed through the
+    expander mixin.
+    Uses slots to make it as lightweight as possible
+
+    """
+    __slots__ = "convert", "fallback", "lift", "literal", "rec", "total_recs", "val"
+
+    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+        match kwargs:
+            case {"val": ExpInst_d() }:
+                msg = "Nested ExpInst_d"
+                raise TypeError(msg, val)
+            case {"val": val}:
+                self.val        = val
+            case x:
+                 msg = "ExpInst_d's must have a val"
+                 raise ValueError(msg)
+
+        self.convert    = kwargs.get("convert", None)
+        self.fallback   = kwargs.get("fallback", None)
+        self.lift       = kwargs.get("lift", False)
+        self.literal    = kwargs.get("literal", False)
+        self.rec        = kwargs.get("rec", -1)
+        self.total_recs = kwargs.get("total_recs", 1)
+
+    def __repr__(self) -> str:
+        lit = "(Lit)" if self.literal else ""
+        return f"<ExpInst_d:{lit} {self.val!r} / {self.fallback!r} (R:{self.rec},L:{self.lift},C:{self.convert})>"

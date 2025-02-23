@@ -30,7 +30,7 @@ select = [
 
 ]
 
-ignore = [ "F401", "E402", "E501", "C409"]
+ignore = [ "F401", "E402", "E501", "C409", "PLW0120"]
 
 # Allow autofix for all enabled rules (when Symbol’s value as variable is void: --fix) is provided.
 fixable = [

@@ -23,14 +23,12 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv._abstract.protocols import SpecStruct_p, Buildable_p
 from jgdv.structs.strang import CodeReference
 
 from ._meta import DKey
 from ._base import DKeyBase
 from ._core import SingleDKey, MultiDKey, NonDKey
-from ._expander import ExpInst
-from ._interface import Key_p, DKeyMark_e
+from ._interface import DKeyMark_e, ExpInst_d
 # ##-- end 1st party imports
 
 # ##-- types
@@ -42,8 +40,6 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
     from jgdv import Maybe, Ident, RxStr, Rx
@@ -53,7 +49,9 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
-
+##--|
+from jgdv._abstract.protocols import SpecStruct_p, Buildable_p
+from ._interface import Key_p
 # isort: on
 # ##-- end types
 
@@ -73,5 +71,5 @@ class PathDKey(SingleDKey, mark=DKeyMark_e.PATH, conv="p"):
         self._typecheck       = pl.Path
 
 
-    def exp_final_hook(self, val:ExpInst, opts) -> Maybe[ExpInst]:
-        return ExpInst(val=pl.Path(val.val).resolve())
+    def exp_final_hook(self, val:ExpInst_d, opts) -> Maybe[ExpInst_d]:
+        return ExpInst_d(val=pl.Path(val.val).resolve())

@@ -23,13 +23,12 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from jgdv import identity_fn, Proto, Mixin
-from jgdv._abstract.protocols import Buildable_p, SpecStruct_p
 from jgdv.mixins.annotate import SubAnnotate_m
 from jgdv.structs.dkey._meta import DKey, DKeyMark_e, DKeyMeta
 from jgdv.structs.dkey._format import DKeyFormatting_m
 
-from jgdv.structs.dkey._expander import DKeyLocalExpander_m, ExpInst
-from ._interface import Key_p
+from jgdv.structs.dkey._expander import DKeyLocalExpander_m
+from ._interface import ExpInst_d
 # ##-- end 1st party imports
 
 # ##-- types
@@ -41,6 +40,7 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Any,
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
+from ._interface import Key_p
 
 if TYPE_CHECKING:
    from jgdv import Maybe, M_, Rx, Ident, Ctor, FmtStr, CHECKTYPE
@@ -50,6 +50,7 @@ if TYPE_CHECKING:
    from typing import TypeGuard
    from collections.abc import Iterable, Iterator, Callable, Generator
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+   from jgdv._abstract.protocols import SpecStruct_p
 
    type KeyMark = DKeyMark_e|str
 
@@ -161,7 +162,7 @@ class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
     def expand(self, *args, **kwargs) -> Maybe:
         kwargs.setdefault("limit", self._max_expansions)
         match self.local_expand(*args, *DKey._extra_sources, **kwargs):
-            case ExpInst(val=val, literal=True):
+            case ExpInst_d(val=val, literal=True):
                 return val
             case _:
                 return None

@@ -38,7 +38,6 @@ import pathlib as pl
 import re
 import typing
 from copy import deepcopy
-from dataclasses import InitVar, dataclass, field, replace
 from re import Pattern
 from collections import defaultdict, deque
 from uuid import UUID, uuid1
@@ -50,9 +49,7 @@ from weakref import ref
 from jgdv import Mixin, Proto
 from jgdv.mixins.path_manip import PathManip_m
 from jgdv.structs.chainguard import ChainGuard
-from jgdv.structs.dkey import DKey, MultiDKey, NonDKey, SingleDKey
-from jgdv.structs.dkey._parser import DKeyParser
-from jgdv.structs.dkey._expander import ExpInst
+from jgdv.structs.dkey import DKey, MultiDKey, NonDKey, SingleDKey, ExpInst_d
 
 from .location import Location
 from .errors import DirAbsent, LocationError, LocationExpansionError
@@ -68,8 +65,6 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Any
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
    from jgdv import Maybe, Stack, Queue
@@ -86,9 +81,6 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-# If CLI:
-# logging = logmod.root
-# logging.setLevel(logmod.NOTSET)
 ##-- end logging
 
 ##--| Vars
@@ -100,11 +92,11 @@ class SoftFailMultiDKey(MultiDKey["soft.fail"], multi=True):
         """ Expands subkeys, to be merged into the main key"""
         targets = []
         for key in self.keys():
-            targets.append([ExpInst(val=key, fallback=f"{key:w}")] )
+            targets.append([ExpInst_d(val=key, fallback=f"{key:w}")] )
         else:
             if not bool(targets):
-                targets.append([ExpInst(val=f"{self}"),
-                                ExpInst(val=f"{self}", literal=True)])
+                targets.append([ExpInst_d(val=f"{self}"),
+                                ExpInst_d(val=f"{self}", literal=True)])
             return targets
 
 class _LocatorGlobal:
@@ -120,7 +112,7 @@ class _LocatorGlobal:
         return len(_LocatorGlobal._global_locs)
 
     @staticmethod
-    def peek() -> None|"JGDVLocator":
+    def peek() -> None|JGDVLocator:
         match _LocatorGlobal._global_locs:
             case []:
                 return None
@@ -128,11 +120,11 @@ class _LocatorGlobal:
                 return x
 
     @staticmethod
-    def push(locs):
+    def push(locs) -> None:
         _LocatorGlobal._global_locs.append(locs)
 
     @staticmethod
-    def pop() -> None|"JGDVLocator":
+    def pop() -> None|JGDVLocator:
         match _LocatorGlobal._global_locs:
             case []:
                 return None
@@ -140,15 +132,15 @@ class _LocatorGlobal:
                 _LocatorGlobal._global_locs = xs
                 return x
 
-    def __get__(self, obj, objtype=None):
+    def __get__(self, obj, objtype=None) -> JGDVLocator:
         """ use the descriptor protocol to make a pseudo static-variable
         https://docs.python.org/3/howto/descriptor.html
         """
         return _LocatorGlobal.peek()
 
-class _LocatorUtil_m:
+class _LocatorUtil_m:  # noqa: N801
 
-    def update(self, extra:dict|ChainGuard|Location|JGDVLocator, strict=True) -> Self:
+    def update(self, extra:dict|ChainGuard|Location|JGDVLocator, *, strict=True) -> Self:
         """
           Update the registered locations with a dict, chainguard, or other dootlocations obj.
 
@@ -164,20 +156,23 @@ class _LocatorUtil_m:
             case JGDVLocator():
                 return self.update(extra._data, strict=strict)
             case _:
-                raise TypeError("Tried to update locations with unknown type", extra)
+                msg = "Tried to update locations with unknown type"
+                raise TypeError(msg, extra)
 
         raw          = dict(self._data.items())
         base_keys    = set(raw.keys())
         new_keys     = set(extra.keys())
         conflicts    = (base_keys & new_keys)
         if strict and bool(conflicts):
-            raise LocationError("Strict Location Update conflicts", conflicts)
+            msg = "Strict Location Update conflicts"
+            raise LocationError(msg, conflicts)
 
         for k,v in extra.items():
             try:
                 raw[k] = Location(v)
             except KeyError:
-                raise LocationError("Couldn't build a Location", k, v) from None
+                msg = "Couldn't build a Location"
+                raise LocationError(msg, k, v) from None
 
         logging.debug("Registered New Locations: %s", ", ".join(new_keys))
         self._data = raw
@@ -206,10 +201,11 @@ class _LocatorUtil_m:
         """ Ensure the values passed in are registered locations,
           error with DirAbsent if they aren't
         """
-        missing = set(x for x in values if x not in self)
+        missing = {x for x in values if x not in self}
 
         if strict and bool(missing):
-            raise DirAbsent("Ensured Locations are missing for %s : %s", task, missing)
+            msg = "Ensured Locations are missing for %s : %s"
+            raise DirAbsent(msg, task, missing)
 
         return missing
 
@@ -228,7 +224,8 @@ class _LocatorUtil_m:
             case pl.Path():
                 return self._normalize(path, root=self.root)
             case _:
-                raise TypeError("Bad type to normalize", path)
+                msg = "Bad type to normalize"
+                raise TypeError(msg, path)
 
     def norm(self, path) -> pl.Path:
         return self.normalize(path)
@@ -241,7 +238,7 @@ class _LocatorUtil_m:
         # TODO
         pass
 
-class _LocatorAccess_m:
+class _LocatorAccess_m:  # noqa: N801
 
     def get(self, key, fallback:Maybe[pl.Path]=None) -> Maybe[pl.Path]:
         """
@@ -256,13 +253,15 @@ class _LocatorAccess_m:
             case str() as x:
                 fallback =  pl.Path(x)
             case x:
-                raise TypeError("Fallback needs to be a path", x)
+                msg = "Fallback needs to be a path"
+                raise TypeError(msg, x)
 
         match self.access(key):
             case Location() as x:
                 return x.path
             case None if fallback is None:
-                raise KeyError("Failed to Access", key)
+                msg = "Failed to Access"
+                raise KeyError(msg, key)
             case None if fallback:
                 return fallback
             case None:
@@ -286,7 +285,8 @@ class _LocatorAccess_m:
         coerced : DKey = self._coerce_key(key, strict=strict)
         match coerced.expand(self):
             case None if strict:
-                raise KeyError("Strict Expansion of Location failed", key)
+                msg = "Strict Expansion of Location failed"
+                raise KeyError(msg, key)
             case None:
                 return None
             case pl.Path() as x if norm:
@@ -294,7 +294,8 @@ class _LocatorAccess_m:
             case pl.Path() as x:
                 return x
             case x:
-                raise TypeError("Unknown response when expanding Location", key, x)
+                msg = "Unknown Response When Expanding Location"
+                raise TypeError(msg, key, x)
 
     def _coerce_key(self, key:Location|DKey|str|pl.Path, *, strict=False) -> DKey:
         """ Coerces a key to a MultiDKey for expansion using DKey's expansion mechanism,
@@ -310,7 +311,8 @@ class _LocatorAccess_m:
             case pl.Path():
                 current = str(key)
             case _:
-                raise TypeError("Can't perform initial coercion of key", key)
+                msg = "Can't perform initial coercion of key"
+                raise TypeError(msg, key)
 
         match strict:
             case False:
@@ -347,7 +349,7 @@ class JGDVLocator:
 
     def __init__(self, root:pl.Path):
         self._root    : pl.Path()                 = root.expanduser().resolve()
-        self._data    : dict[str, Location]       = dict()
+        self._data    : dict[str, Location]       = {}
         self._loc_ctx : Maybe[JGDVLocator]      = None
         match self.Current:
             case None:
@@ -364,7 +366,7 @@ class JGDVLocator:
 
     def __repr__(self):
         keys = ", ".join(iter(self))
-        return f"<JGDVLocator ({_LocatorGlobal.stacklen()}) : {str(self.root)} : ({keys})>"
+        return f"<JGDVLocator ({_LocatorGlobal.stacklen()}) : {self.root!s} : ({keys})>"
 
     def __getattr__(self, key:str) -> Location:
         """
@@ -372,7 +374,8 @@ class JGDVLocator:
           eg: locs.temp
           """
         if key.startswith("__") or key.endswith("__"):
-            raise AttributeError("Location Access Fail", key)
+            msg = "Location Access Fail"
+            raise AttributeError(msg, key)
 
         match self.access(key):
             case Location() as x:
@@ -410,7 +413,7 @@ class JGDVLocator:
         new_obj = JGDVLocator(new_root or self._root)
         return new_obj.update(self)
 
-    def __enter__(self) -> Any:
+    def __enter__(self) -> JGDVLocator:
         """ replaces the global doot.locs with this locations obj,
         and changes the system root to wherever this locations obj uses as root
         """

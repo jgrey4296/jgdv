@@ -30,6 +30,13 @@ match JGDVLocator.Current:
 def simple() -> JGDVLocator:
     return JGDVLocator(pl.Path.cwd())
 
+@pytest.fixture(scope="function")
+def wrap_locs():
+    logging.debug("Activating temp locs")
+    with JGDVLocator(pl.Path.cwd()) as temp:
+        yield temp
+##--|
+
 class TestLocator:
 
     def test_initial(self):
@@ -98,10 +105,44 @@ class TestLocator:
         simple._clear()
         assert("a" not in simple)
 
-
     @pytest.mark.xfail
     def test_metacheck(self, simple):
         assert(False)
+
+class TestLocatorExpansion:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_expansion_attr(self, wrap_locs):
+        wrap_locs.update({"todo_bib": "file::>~/github/bibliography/in_progress/todo.bib"})
+        match wrap_locs.todo_bib:
+            case Location() as x:
+                assert(x.path == pl.Path("~/github/bibliography/in_progress/todo.bib"))
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_expansion_item(self, wrap_locs):
+        wrap_locs.update({"todo_bib": "file::>~/github/bibliography/in_progress/todo.bib"})
+        match wrap_locs['{todo_bib}']:
+            case pl.Path() as x:
+                assert(x == pl.Path("~/github/bibliography/in_progress/todo.bib").expanduser().resolve())
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_expansion_no_key(self, wrap_locs):
+        wrap_locs.update({"todo_bib": "file::>~/github/bibliography/in_progress/todo.bib"})
+        match wrap_locs['todo_bib']:
+            case pl.Path() as x:
+                assert(x == pl.Path("todo_bib").resolve())
+                assert(True)
+            case x:
+                 assert(False), x
+        
 
 class TestLocatorUtils:
 
@@ -170,4 +211,3 @@ class TestLocatorGlobal:
 
         assert(_LocatorGlobal.stacklen() == 1)
         assert(JGDVLocator.Current is initial_loc)
-

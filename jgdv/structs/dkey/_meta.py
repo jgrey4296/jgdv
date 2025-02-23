@@ -8,7 +8,6 @@ from __future__ import annotations
 
 # ##-- stdlib imports
 import datetime
-import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
@@ -25,25 +24,24 @@ from uuid import UUID, uuid1
 from jgdv.mixins.enum_builders import EnumBuilder_m
 from jgdv.mixins.annotate import SubAnnotate_m, Subclasser
 from ._parser import DKeyParser
-from ._expinst import ExpInst
-from ._interface import Key_p, DKeyMark_e, RAWKEY_ID, FORCE_ID, DEFAULT_DKEY_KWARGS
+from ._interface import DKeyMark_e, RAWKEY_ID, FORCE_ID, DEFAULT_DKEY_KWARGS, ExpInst_d
 # ##-- end 1st party imports
 
 # ##-- types
 # isort: off
 import abc
 import collections.abc
-from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, ClassVar
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
 from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
-from jgdv import Maybe
+from ._interface import Key_p
 
 if TYPE_CHECKING:
-   from jgdv import Ident
+   from jgdv import Maybe, Ident, Ctor
+   import enum
    from typing import Final
    from typing import ClassVar, Any, LiteralString
    from typing import Never, Self, Literal
@@ -53,6 +51,8 @@ if TYPE_CHECKING:
    from string import Formatter
 
    type KeyMark = DKeyMark_e|str
+
+
 # isort: on
 # ##-- end types
 
@@ -77,7 +77,7 @@ class DKeyMeta(type(str)):
     # Use the default str hash method
     _expected_init_keys : ClassVar[list[str]]          = DEFAULT_DKEY_KWARGS[:]
 
-    def __call__(cls, *args, **kwargs):
+    def __call__(cls:Ctor[DKey], *args, **kwargs) -> DKey:
         """ Runs on class instance creation
         skips running cls.__init__, allowing cls.__new__ control
         (ie: Allows The DKey accessor t
@@ -87,7 +87,7 @@ class DKeyMeta(type(str)):
                 del kwargs['insist']
             case _:
                 insist = False
-                
+
         # TODO maybe move dkey discrimination from dkey.__new__ to here
         new_key = None
         match args:
@@ -96,20 +96,23 @@ class DKeyMeta(type(str)):
             case [str()|DKey() as x]:
                 new_key = cls.__new__(cls, *args, **kwargs)
             case x:
-                raise TypeError("Unknown type passed to construct dkey", x)
-            
+                msg = "Unknown type passed to construct dkey"
+                raise TypeError(msg, x)
+
         match new_key:
             case DKey() as x if insist and DKey.MarkOf(x) is DKeyMark_e.NULL:
-                raise TypeError("An insistent key was not built", x)
+                msg = "An insistent key was not built"
+                raise TypeError(msg, x)
             case DKey():
                 return new_key
             case _:
-                raise TypeError("No key was built", args)
+                msg = "No key was built"
+                raise TypeError(msg, args)
 
-    def __instancecheck__(cls, instance):
+    def __instancecheck__(cls, instance) -> bool:
         return any(x.__instancecheck__(instance) for x in {Key_p})
 
-    def __subclasscheck__(cls, sub):
+    def __subclasscheck__(cls, sub) -> bool:
         if cls is DKey:
             bases = [DKeyMeta.get_subtype(DKeyMark_e.NULL),
                      DKeyMeta.get_subtype(DKeyMark_e.FREE),
@@ -140,9 +143,11 @@ class DKeyMeta(type(str)):
         ctor = None
         match mark:
             case None:
-                raise ValueError("Mark has to be a value")
+                msg = "Mark has to be a value"
+                raise ValueError(msg)
             case DKeyMark_e() as x if x is DKeyMark_e.MULTI and not multi:
-                raise ValueError("Mark is MULTI but multi=False")
+                msg = "Mark is MULTI but multi=False"
+                raise ValueError(msg)
             case str()|DKeyMark_e() as x if multi:
                 ctor = DKeyMeta._multi_registry.get(x, None)
                 ctor = ctor or DKeyMeta._single_registry.get(x, None)
@@ -150,7 +155,8 @@ class DKeyMeta(type(str)):
                 ctor = DKeyMeta._single_registry.get(x, None)
 
         if ctor is None:
-            raise ValueError("Couldn't find a ctor for mark", mark)
+            msg = "Couldn't find a ctor for mark"
+            raise ValueError(msg, mark)
 
         return ctor
 
@@ -166,7 +172,8 @@ class DKeyMeta(type(str)):
         logging.debug("Registering: %s : %s", mark, ctor)
         match mark:
             case None:
-                raise ValueError("Can't register when the mark is None", ctor)
+                msg = "Can't register when the mark is None"
+                raise ValueError(msg, ctor)
             case DKeyMark_e():
                 pass
             case str():
@@ -184,7 +191,8 @@ class DKeyMeta(type(str)):
 
         match target.get(mark, None):
             case type() as curr if not issubclass(ctor, curr):
-                raise ValueError("DKey Registry conflict", curr, ctor, mark)
+                msg = "DKey Registry conflict"
+                raise ValueError(msg, curr, ctor, mark)
             case _:
                 target[mark] = ctor
 
@@ -192,9 +200,11 @@ class DKeyMeta(type(str)):
             case None:
                 return
             case str() if len(conv) > 1:
-                raise ValueError("conversion parameters for DKey's can't be more than a single char")
+                msg = "Conversion Parameters For Dkey's Can't Be More Than A Single Char"
+                raise ValueError(msg)
             case str() if DKeyMeta._conv_registry.get(conv, mark) != mark :
-                raise ValueError("Conversion param conflict", conv, DKeyMeta._conv_registry[conv])
+                msg = "Conversion Param Conflict"
+                raise ValueError(msg, conv, DKeyMeta._conv_registry[conv])
             case str():
                 DKeyMeta._conv_registry[conv] = mark
 
@@ -219,10 +229,10 @@ class DKey(metaclass=DKeyMeta):
       DKey is the factory, but all DKeys are subclasses of DKeyBase,
       to allow control over __init__.
       """
-    Mark           : ClassVar[enum.Enum]  = DKeyMark_e
-    ExpInst        : ClassVar[type]       = ExpInst
-    _extra_sources : Classvar[list[dict]] = []
-    __match_args                          = ("_mark",)
+    Mark             : ClassVar[enum.Enum]  = DKeyMark_e
+    ExpInst          : ClassVar[type]       = ExpInst_d
+    _extra_sources   : ClassVar[list[dict]] = []
+    __match_args                            = ("_mark",)
 
     def __class_getitem__(cls, name) -> type:
         return DKeyMeta.get_subtype(name, multi=True)
@@ -254,7 +264,8 @@ class DKey(metaclass=DKeyMeta):
                 kw_mark      = kwargs.get("mark", None)
                 conv_mark = DKeyMeta._conv_registry.get(x.conv, None)
                 if (kw_mark and conv_mark):
-                    raise ValueError("Kwd Mark/Conversion Conflict", kw_mark, conv_mark)
+                    msg = "Kwd Mark/Conversion Conflict"
+                    raise ValueError(msg, kw_mark, conv_mark)
                 mark = kw_mark or conv_mark or DKeyMark_e.FREE
 
                 # so truncate to just the exact key
@@ -279,18 +290,19 @@ class DKey(metaclass=DKeyMeta):
         # Build a str with the subtype_cls and data
         # (Has to be str.__new__ for reasons)
         result           = str.__new__(subtype_cls, data)
-        
+
         match list(kwargs.keys() - DKeyMeta._expected_init_keys - subtype_cls._extra_kwargs):
             case []:
                 pass
             case [*xs]:
-                raise ValueError("Key got unexpected kwargs", data, xs)
+                msg = "Key got unexpected kwargs"
+                raise ValueError(msg, data, xs)
         result.__init__(data, **kwargs)
 
         return result
 
     @staticmethod
-    def MarkOf(target:DKey) -> KeyMark:
+    def MarkOf(target:DKey) -> KeyMark:  # noqa: N802
         """ Get the mark of the key type or instance """
         match target:
             case DKey():
@@ -298,10 +310,11 @@ class DKey(metaclass=DKeyMeta):
             case type() if issubclass(target, DKey):
                 return target._mark
             case _:
-                raise TypeError("Tried to retrieve a mark from an unknown type")
+                msg = "Tried to retrieve a mark from an unknown type"
+                raise TypeError(msg)
 
-            
+
     @classmethod
-    def add_sources(cls, *sources):
+    def add_sources(cls, *sources) -> None:
         """ register additional sources that are always included """
         cls._extra_sources += sources

@@ -12,7 +12,6 @@ import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
-import pathlib as pl
 import re
 import time
 import types
@@ -22,11 +21,9 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv._abstract.protocols import SpecStruct_p
 from jgdv.structs.dkey._meta import DKey, DKeyMeta
 from jgdv.structs.dkey._base import DKeyBase
-from ._expander import ExpInst
-from ._interface import INDIRECT_SUFFIX, DKeyMark_e, Key_p, RAWKEY_ID
+from ._interface import INDIRECT_SUFFIX, DKeyMark_e, RAWKEY_ID, ExpInst_d
 # ##-- end 1st party imports
 
 # ##-- types
@@ -40,13 +37,16 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+   import pathlib as pl
    from jgdv import Maybe
    from typing import Final
    from typing import ClassVar, Any, LiteralString
-   from typing import Never, Self, Literal
+   from typing import Never, Literal
    from typing import TypeGuard
    from collections.abc import Iterable, Iterator, Callable, Generator
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+   from jgdv._abstract.protocols import SpecStruct_p
+   from ._interface import Key_p
 
 # isort: on
 # ##-- end types
@@ -61,16 +61,18 @@ class SingleDKey(DKeyBase,   mark=DKeyMark_e.FREE):
       ie: {x}. not {x}{y}, or {x}.blah.
     """
 
-    def __init__(self, data, **kwargs):
+    def __init__(self, data, **kwargs) -> None:
         super().__init__(data, **kwargs)
         match kwargs.get(RAWKEY_ID, None):
             case [x]:
                 self._set_params(fmt=kwargs.get("fmt", None) or x.format,
                                  conv=kwargs.get("conv", None) or x.conv)
             case None | []:
-                raise ValueError("A Single Key has no raw key data")
+                msg = "A Single Key has no raw key data"
+                raise ValueError(msg)
             case [*xs]:
-                raise ValueError("A Single Key got multiple raw key data", xs)
+                msg = "A Single Key got multiple raw key data"
+                raise ValueError(msg, xs)
 
     def _set_params(self, *, fmt:Maybe[str]=None, conv:Maybe[str]=None) -> None:
         """ str formatting and conversion parameters.
@@ -117,7 +119,7 @@ class SingleDKey(DKeyBase,   mark=DKeyMark_e.FREE):
             result = f"{result}{INDIRECT_SUFFIX}"
 
         if wrap:
-            result = "".join(["{", result, "}"])
+            result = "".join(["{", result, "}"])  # noqa: FLY002
 
         return format(result, rem)
 
@@ -130,13 +132,14 @@ class MultiDKey(DKeyBase,    mark=DKeyMark_e.MULTI, multi=True):
 
     """
 
-    def __init__(self, data:str|pl.Path, **kwargs):
+    def __init__(self, data:str|pl.Path, **kwargs) -> None:
         super().__init__(data, **kwargs)
         match kwargs.get(RAWKEY_ID, None):
             case [*xs]:
                 self._subkeys = xs
             case None | []:
-                raise ValueError("Tried to build a multi key with no subkeys", data)
+                msg = "Tried to build a multi key with no subkeys"
+                raise ValueError(msg, data)
 
         # remove the names for the keys, to allow expanding positionally
         self._anon       = "".join(x.anon() for x in self._subkeys)
@@ -160,29 +163,29 @@ class MultiDKey(DKeyBase,    mark=DKeyMark_e.MULTI, multi=True):
     def multi(self) -> bool:
         return True
 
-    def __contains__(self, other):
+    def __contains__(self, other) -> bool:
          return other in self.keys()
 
-    def exp_pre_lookup_hook(self, sources, opts) -> list[list[ExpInst]]:
+    def exp_pre_lookup_hook(self, sources, opts) -> list[list[ExpInst_d]]:
         """ Lift subkeys to expansion instructions """
         targets = []
         for key in self.keys():
-            targets.append([ExpInst(val=key, fallback=None)])
+            targets.append([ExpInst_d(val=key, fallback=None)])
         else:
             return targets
 
-    def exp_flatten_hook(self, vals:list[ExpInst], opts) -> Maybe[ExpInst]:
+    def exp_flatten_hook(self, vals:list[ExpInst_d], opts) -> Maybe[ExpInst_d]:
         flat : list[str] = []
         for x in vals:
             match x:
-                case ExpInst(val=IndirectDKey() as k):
+                case ExpInst_d(val=IndirectDKey() as k):
                     flat.append(f"{k:wi}")
-                case ExpInst(val=x):
+                case ExpInst_d(val=x):
                     flat.append(str(x))
         else:
-            return ExpInst(self._anon.format(*flat), literal=True)
+            return ExpInst_d(val=self._anon.format(*flat), literal=True)
 
-    def exp_final_hook(self, val:ExpInst, opts) -> Maybe[ExpInst]:
+    def exp_final_hook(self, val:ExpInst_d, opts) -> Maybe[ExpInst_d]:
         return val
 
 class NonDKey(DKeyBase,      mark=DKeyMark_e.NULL):
@@ -191,10 +194,11 @@ class NonDKey(DKeyBase,      mark=DKeyMark_e.NULL):
     It can coerce itself though
     """
 
-    def __init__(self, data, **kwargs):
+    def __init__(self, data, **kwargs) -> None:
         super().__init__(data, **kwargs)
         if (fb:=kwargs.get('fallback', None)) is not None and fb != self:
-            raise ValueError("NonKeys can't have a fallback, did you mean to use an explicit key?", self)
+            msg = "NonKeys can't have a fallback, did you mean to use an explicit key?"
+            raise ValueError(msg, self)
         self.nonkey = True
 
     def __format__(self, spec) -> str:
@@ -204,17 +208,18 @@ class NonDKey(DKeyBase,      mark=DKeyMark_e.NULL):
     def format(self, fmt) -> str:
         return format(self, fmt)
 
-    def local_expand(self, *args, **kwargs) -> Maybe[ExpInst]:
-        val = ExpInst(str(self))
+    def local_expand(self, *args, **kwargs) -> Maybe[ExpInst_d]:
+        val = ExpInst_d(val=str(self))
         match self.exp_coerce_result(val, kwargs):
             case None if (fallback:=kwargs.get("fallback")) is not None:
-                return ExpInst(fallback, literal=True)
+                return ExpInst_d(val=fallback, literal=True)
             case None:
                 return self._fallback
-            case ExpInst() as x:
+            case ExpInst_d() as x:
                 return x
             case x:
-                raise TypeError("Nonkey coercion didn't return an ExpInst", x)
+                msg = "Nonkey coercion didn't return an ExpInst_d"
+                raise TypeError(msg, x)
 
 class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
     """
@@ -226,22 +231,22 @@ class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
 
     __hash__                                            = str.__hash__
 
-    def __init__(self, data, multi=False, re_mark=None, **kwargs):
+    def __init__(self, data, multi=False, re_mark=None, **kwargs) -> None:
         kwargs.setdefault("fallback", Self)
         super().__init__(data, **kwargs)
         self.multi_redir      = multi
         self.re_mark          = re_mark
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         match other:
             case str() if other.endswith(INDIRECT_SUFFIX):
                 return f"{self:i}" == other
             case _:
                 return super().__eq__(other)
 
-    def exp_pre_lookup_hook(self, sources, opts) -> list[list[ExpInst]]:
+    def exp_pre_lookup_hook(self, sources, opts) -> list[list[ExpInst_d]]:
         return [[
-            ExpInst(f"{self:i}", lift=True),
-            ExpInst(f"{self:d}", convert=False),
-            ExpInst(self._fallback, literal=True, convert=False),
+            ExpInst_d(val=f"{self:i}", lift=True),
+            ExpInst_d(val=f"{self:d}", convert=False),
+            ExpInst_d(val=self._fallback, literal=True, convert=False),
         ]]
