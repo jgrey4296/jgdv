@@ -51,8 +51,6 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Self
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
    from jgdv import Maybe, M_, Func, RxStr, Rx, Ident, FmtStr
@@ -198,6 +196,7 @@ class DKeyLocalExpander_m:
 
         def lookup_target(target:list[ExpInst]) -> Maybe[ExpInst]:
             """
+            TODO move this and use a partial
             Handle lookup instructions:
             pass thorugh DKeys and (DKey, ..)
             lift (str(), True, fallback)
@@ -220,7 +219,8 @@ class DKeyLocalExpander_m:
                         pass
                     case str() as x if lift:
                         logging.debug("Lifting Result to Key: %r", x)
-                        return ExpInst(DKey(x, implicit=True), fallback=fallback, lift=True)
+                        lifted = DKey(x, implicit=True, fallback=fallback)
+                        return ExpInst(lifted, fallback=lifted, lift=False)
                     case pl.Path() as x:
                         match DKey(str(x)):
                             case DKey(nonkey=True) as y:
@@ -275,9 +275,9 @@ class DKeyLocalExpander_m:
                             return [ExpInst(as_key, literal=True)]
                         case None:
                             return []
-                        case x if lift:
-                             x.convert = False
-                             result.append(x)
+                        case exp if lift:
+                             exp.convert = False
+                             result.append(exp)
                         case exp:
                             result.append(exp)
                 case ExpInst(val=str() as key, rec=rec, fallback=fallback, lift=lift):
@@ -353,6 +353,8 @@ class DKeyLocalExpander_m:
     def exp_check_result(self, val:ExpInst, opts) -> None:
         pass
 
+##--|
+##-- formatter
 class _DKeyFormatter_Expansion_m:
     """
     A Mixin for  DKeyFormatter, to expand keys without recursion
@@ -462,3 +464,5 @@ class _DKeyFormatter_Expansion_m:
                 return DKey(x)
             case x:
                 return x
+
+##-- end formatter

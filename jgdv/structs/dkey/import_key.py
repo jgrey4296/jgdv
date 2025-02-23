@@ -74,4 +74,4 @@ class ImportDKey(SingleDKey, mark=DKeyMark_e.CODE, conv="c"):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._expansion_type  = CodeReference
-        self._typecheck = CodeReference
+        self._typecheck       = CodeReference

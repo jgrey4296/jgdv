@@ -302,6 +302,22 @@ class TestIndirection:
             case x:
                 assert(False), x
 
+
+    def test_indirect_prefers_indirect_over_direct(self):
+        """
+        {key_} -> state[key_:val, key:val2] -> {val}
+        """
+        obj = DKey("test_", implicit=True)
+        assert(obj._mark is DKey.Mark.INDIRECT)
+        state = {"test_": "blah", "test": "aweg"}
+        match obj.local_expand(state):
+            case ExpInst(val=DKey() as k) if str(k) == "blah":
+                assert(True)
+            case x:
+                assert(False), x
+
+
+
 class TestMultiExpansion:
 
     def test_sanity(self):
@@ -481,7 +497,6 @@ class TestFallbacks:
     def test_fallback_typecheck_fail(self):
         with pytest.raises(TypeError):
             DKey("blah", implicit=True, fallback=24, check=str)
-
 
     @pytest.mark.parametrize("ctor", [list, dict, set])
     def test_fallback_type_factory(self, ctor):
