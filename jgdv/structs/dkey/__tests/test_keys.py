@@ -17,9 +17,8 @@ import warnings
 import pytest
 # ##-- end 3rd party imports
 
-from jgdv.structs.dkey import DKey
-from jgdv.structs.dkey._base import DKeyBase
-from jgdv.structs.dkey._core import SingleDKey, MultiDKey, NonDKey, IndirectDKey
+from jgdv.structs.dkey import DKey, DKeyBase
+from jgdv.structs.dkey.keys import SingleDKey, MultiDKey, NonDKey, IndirectDKey
 
 # ##-- types
 # isort: off

@@ -24,11 +24,10 @@ from uuid import UUID, uuid1
 # ##-- 1st party imports
 from jgdv import identity_fn, Proto, Mixin
 from jgdv.mixins.annotate import SubAnnotate_m
-from jgdv.structs.dkey._meta import DKey, DKeyMark_e, DKeyMeta
-from jgdv.structs.dkey._format import DKeyFormatting_m
-
-from jgdv.structs.dkey._expander import DKeyLocalExpander_m
-from ._interface import ExpInst_d
+from .meta import DKey, DKeyMark_e, DKeyMeta
+from .format import DKeyFormatting_m
+from .expander import DKeyLocalExpander_m
+from .._interface import ExpInst_d
 # ##-- end 1st party imports
 
 # ##-- types
@@ -40,7 +39,7 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Any,
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-from ._interface import Key_p
+from .._interface import Key_p
 
 if TYPE_CHECKING:
    from jgdv import Maybe, M_, Rx, Ident, Ctor, FmtStr, CHECKTYPE

@@ -36,8 +36,8 @@ import sh
 from jgdv import identity_fn
 from jgdv.structs.strang import CodeReference, Strang
 from jgdv.util.chain_get import ChainedKeyGetter
-from ._meta import DKey
-from ._interface import DKeyMark_e, MAX_KEY_EXPANSIONS, DEFAULT_COUNT, PAUSE_COUNT, RECURSION_GUARD, ExpInst_d
+from .meta import DKey
+from .._interface import DKeyMark_e, MAX_KEY_EXPANSIONS, DEFAULT_COUNT, PAUSE_COUNT, RECURSION_GUARD, ExpInst_d
 # ##-- end 1st party imports
 
 # ##-- types
@@ -49,7 +49,7 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Self
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, overload
-from ._interface import Key_p
+from .._interface import Key_p
 
 if TYPE_CHECKING:
    from jgdv import Maybe, M_, Func, RxStr, Rx, Ident, FmtStr

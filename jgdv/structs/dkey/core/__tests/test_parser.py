@@ -17,7 +17,7 @@ import warnings
 import pytest
 # ##-- end 3rd party imports
 
-from jgdv.structs.dkey._parser import RawKey, DKeyParser
+from jgdv.structs.dkey.core.parser import RawKey, DKeyParser
 
 # ##-- types
 # isort: off

@@ -33,8 +33,8 @@ from jgdv.decorators import (
     DForm_e,
 )
 from jgdv.structs.strang import CodeReference
-from . import _errors as dkey_errs
-from ._meta import DKey
+from .core import errors as dkey_errs
+from .core.meta import DKey
 from ._interface import ARGS_K, KWARGS_K, PARAM_IGNORES
 
 # ##-- end 1st party imports

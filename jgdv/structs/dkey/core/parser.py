@@ -28,7 +28,7 @@ import faulthandler
 import _string
 # ##-- end stdlib imports
 
-from ._interface import INDIRECT_SUFFIX
+from .._interface import INDIRECT_SUFFIX
 
 # ##-- types
 # isort: off

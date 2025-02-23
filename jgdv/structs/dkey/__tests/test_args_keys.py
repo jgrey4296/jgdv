@@ -16,7 +16,7 @@ import pytest
 logging = logmod.root
 
 from jgdv.structs.dkey import DKey, Key_p
-from jgdv.structs.dkey.other_keys import ArgsDKey, KwargsDKey
+from jgdv.structs.dkey.args_keys import ArgsDKey, KwargsDKey
 
 
 IMP_KEY_BASES               : Final[list[str]]           = ["bob", "bill", "blah", "other", "23boo", "aweg2531", "awe_weg", "aweg-weji-joi"]

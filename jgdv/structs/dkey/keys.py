@@ -21,8 +21,8 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv.structs.dkey._meta import DKey, DKeyMeta
-from jgdv.structs.dkey._base import DKeyBase
+from .core.meta import DKey, DKeyMeta
+from .core.base import DKeyBase
 from ._interface import INDIRECT_SUFFIX, DKeyMark_e, RAWKEY_ID, ExpInst_d
 # ##-- end 1st party imports
 

@@ -32,11 +32,11 @@ from jgdv import Mixin
 from jgdv._abstract.protocols import SpecStruct_p
 from jgdv.util.chain_get import ChainedKeyGetter
 from jgdv.structs.chainguard import ChainGuard
-from ._meta import DKey
-from ._parser import RawKey
-from ._expander import _DKeyFormatter_Expansion_m
+from .meta import DKey
+from .parser import RawKey
+from .expander import _DKeyFormatter_Expansion_m
 
-from ._interface import Key_p, MAX_DEPTH, MAX_KEY_EXPANSIONS, FMT_PATTERN
+from .._interface import Key_p, MAX_DEPTH, MAX_KEY_EXPANSIONS, FMT_PATTERN
 
 # ##-- end 1st party imports
 

@@ -25,9 +25,9 @@ from uuid import UUID, uuid1
 # ##-- 1st party imports
 from jgdv.structs.strang import CodeReference
 
-from ._meta import DKey
-from ._base import DKeyBase
-from ._core import SingleDKey, MultiDKey, NonDKey
+from .core.meta import DKey
+from .core.base import DKeyBase
+from .keys import SingleDKey, MultiDKey, NonDKey
 from ._interface import DKeyMark_e, ExpInst_d
 # ##-- end 1st party imports
 

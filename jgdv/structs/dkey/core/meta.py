@@ -23,8 +23,8 @@ from uuid import UUID, uuid1
 # ##-- 1st party imports
 from jgdv.mixins.enum_builders import EnumBuilder_m
 from jgdv.mixins.annotate import SubAnnotate_m, Subclasser
-from ._parser import DKeyParser
-from ._interface import DKeyMark_e, RAWKEY_ID, FORCE_ID, DEFAULT_DKEY_KWARGS, ExpInst_d
+from .parser import DKeyParser
+from .._interface import DKeyMark_e, RAWKEY_ID, FORCE_ID, DEFAULT_DKEY_KWARGS, ExpInst_d
 # ##-- end 1st party imports
 
 # ##-- types
@@ -37,7 +37,7 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
-from ._interface import Key_p
+from .._interface import Key_p
 
 if TYPE_CHECKING:
    from jgdv import Maybe, Ident, Ctor

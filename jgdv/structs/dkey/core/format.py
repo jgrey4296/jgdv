@@ -31,10 +31,10 @@ import sh
 from jgdv._abstract.protocols import SpecStruct_p
 from jgdv.util.chain_get import ChainedKeyGetter
 from jgdv.structs.chainguard import ChainGuard
-from ._expander import _DKeyFormatter_Expansion_m
-from ._meta import DKey
-from ._parser import RawKey
-from ._interface import Key_p, DKeyMark_e, INDIRECT_SUFFIX, FMT_PATTERN
+from .expander import _DKeyFormatter_Expansion_m
+from .meta import DKey
+from .parser import RawKey
+from .._interface import Key_p, DKeyMark_e, INDIRECT_SUFFIX, FMT_PATTERN
 # ##-- end 1st party imports
 
 # ##-- types
