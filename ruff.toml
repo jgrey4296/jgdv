@@ -20,7 +20,15 @@ cache-dir      = ".temp/ruff_cache"
 [lint]
 # Enable pycodestyle (Symbol’s value as variable is void: E)
 # and Pyflakes (Symbol’s value as variable is void: F) codes by default.
-select = ["E", "F", "W", "B"]
+select = [
+       "E", "F", "W", "B", "N", "UP",
+       "YTT", "ANN", "BLE", "FBT", "A",
+       "COM", "CPY", "C4", "DTZ", "EM",
+       "FA", "ISC", "ICN", "TCH", "ARG",
+       "PTH", "ERA", "PL", "TRY", "FLY",
+       "RUF"
+
+]
 
 ignore = [ "F401", "E402", "E501", "C409"]
 
