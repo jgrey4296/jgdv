@@ -39,7 +39,7 @@ format="{levelname:<8} : {message}"
 
 [logging.file]
 level        = "trace"
-filter       = ["jgdv"]
+filter       = []
 target       = "rotate"
 format       = "{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})"
 filename_fmt = "doot.log"
