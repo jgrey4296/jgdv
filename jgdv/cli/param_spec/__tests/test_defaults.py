@@ -28,12 +28,24 @@ class TestHelpParam:
     def test_sanity(self):
         assert(True is not False)
 
+    @pytest.mark.skip
+    def test_todo(self):
+        pass
+
 class TestVerboseParam:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
+    @pytest.mark.skip
+    def test_todo(self):
+        pass
+
 class TestSeparatorParam:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
+
+    @pytest.mark.skip
+    def test_todo(self):
+        pass

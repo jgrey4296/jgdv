@@ -34,3 +34,7 @@ class TestStrKey:
 
     def test_mark(self):
         assert(DKey.MarkOf(StrDKey) is DKey.Mark.STR)
+
+    @pytest.mark.skip
+    def test_todo(self):
+        pass

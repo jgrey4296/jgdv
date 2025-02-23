@@ -482,6 +482,11 @@ class TestStrangFormatting:
         obj = Strang("group.blah::body.a.b.c")
         assert(f"{obj:b}" == "body.a.b.c")
 
+
+    @pytest.mark.skip
+    def test_todo(self):
+        pass
+
 class TestStrangAnnotation:
 
     def test_sanity(self):
