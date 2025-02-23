@@ -168,11 +168,15 @@ class DKeyParser:
         if implicit:
             format_string = "".join(["{", format_string, "}"])
 
-        for x in _string.formatter_parser(format_string):
-            yield self.make_param(*x)
+        try:
+            for x in _string.formatter_parser(format_string):
+                yield self.make_param(*x)
+        except ValueError as err:
+            yield self.make_param(format_string, "","","")
+
 
     def make_param(self, *args):
         return RawKey(prefix=args[0],
-                                      key=args[1] or "",
-                                      format=args[2] or "",
-                                      conv=args[3] or "")
+                      key=args[1] or "",
+                      format=args[2] or "",
+                      conv=args[3] or "")

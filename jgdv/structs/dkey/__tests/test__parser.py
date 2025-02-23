@@ -129,3 +129,49 @@ class TestRawKey:
                 assert(True)
             case x:
                 assert(False), (x, x.direct(), out)
+
+
+
+
+class TestParser:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_empty(self):
+        match next(DKeyParser().parse("blah")):
+            case RawKey():
+                assert(x.prefix == "blah")
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_key(self):
+        match next(DKeyParser().parse("{blah}")):
+            case RawKey() as x:
+                assert(x.prefix == "")
+                assert(x.key == "blah")
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_impicit(self):
+        match next(DKeyParser().parse("blah", implicit=True)):
+            case RawKey() as x:
+                assert(x.prefix == "")
+                assert(x.key == "blah")
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_open_brace(self):
+        match next(DKeyParser().parse("{blah")):
+            case RawKey() as x:
+                assert(x.key == "")
+                assert(x.prefix == "{blah")
+                assert(True)
+            case x:
+                 assert(False), x
