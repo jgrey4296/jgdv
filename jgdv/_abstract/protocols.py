@@ -259,27 +259,3 @@ class FailHandler_p(Protocol):
     def handle_failure(self, err:Exception, *args, **kwargs) -> Maybe[Any]:
         pass
 
-@runtime_checkable
-class PreProcessed_p(Protocol):
-    """ Protocol for things like Strang,
-    which preprocess the initialisation data before even __new__ is called.
-
-    Is used in a metatype.__call__ as:
-    cls._pre_process(...)
-    obj = cls.__new__(...)
-    obj.__init__(...)
-    obj._process()
-    obj._post_process()
-    return obj
-
-    """
-
-    @classmethod
-    def _pre_process(cls, data:Any, *, strict=False) -> Any:
-        pass
-
-    def _process(self) -> None:
-        pass
-
-    def _post_process(self) -> None:
-        pass

@@ -88,8 +88,35 @@ class CodeRefMeta_e(enum.StrEnum):
     default = fn
 
 ##--|
+@runtime_checkable
 class Strang_p(Protocol):
     pass
 
+@runtime_checkable
 class Importable_p(Protocol):
     pass
+
+@runtime_checkable
+class PreInitProcessed_p(Protocol):
+    """ Protocol for things like Strang,
+    whose metaclass preprocess the initialisation data before even __new__ is called.
+
+    Is used in a metatype.__call__ as:
+    cls._pre_process(...)
+    obj = cls.__new__(...)
+    obj.__init__(...)
+    obj._process()
+    obj._post_process()
+    return obj
+
+    """
+
+    @classmethod
+    def _pre_process(cls, data:Any, *, strict=False) -> Any:
+        pass
+
+    def _process(self) -> None:
+        pass
+
+    def _post_process(self) -> None:
+        pass

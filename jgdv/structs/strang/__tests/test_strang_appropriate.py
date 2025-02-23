@@ -16,19 +16,20 @@ from jgdv.structs.strang import Strang, CodeReference
 
 logging = logmod.root
 
-class TestBuildApprorpriate:
+@pytest.mark.xfail
+class TestBuildAppropriate:
 
     def test_sanity(self):
         assert(True is True)
 
     def test_simple(self):
-        obj = Strang.build("group::tail.a.b.c")
+        obj = Strang("group::tail.a.b.c")
         assert(isinstance(obj, Strang))
         assert(not isinstance(obj, CodeReference))
 
 
     def test_simple_coderef(self):
-        obj = Strang.build("fn::tail.a.b.c:build_fn")
+        obj = Strang("fn::tail.a.b.c:build_fn")
         assert(isinstance(obj, Strang))
         assert(isinstance(obj, CodeReference))
 

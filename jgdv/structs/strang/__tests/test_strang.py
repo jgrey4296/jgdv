@@ -575,6 +575,6 @@ class TestStrangAnnotation:
         assert(isinstance(ref, Strang))
         assert(isinstance(ref, StrangSub))
 
-        obj = Strang.build("group::tail.a.b.c")
+        obj = Strang("group::tail.a.b.c")
         assert(isinstance(obj, Strang))
         assert(not isinstance(obj, StrangSub))

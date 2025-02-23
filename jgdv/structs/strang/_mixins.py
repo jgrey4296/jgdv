@@ -55,6 +55,112 @@ logging = logmod.getLogger(__name__)
 logging.disabled = True
 ##-- end logging
 
+class _Strang_cmp_m:
+
+    def __hash__(self):
+        return str.__hash__(str(self))
+
+    def __eq__(self, other):
+        match other:
+            case _Strang_cmp_m():
+                return hash(self) == hash(other)
+            case str() if self._separator in other:
+                return hash(self) == hash(other)
+            case str():
+                return hash(self[1:]) == hash(other)
+
+    def __lt__(self, other:str|Self) -> bool:
+        match other:
+            case _Strang_cmp_m() | str() if not len(self) < len(other):
+                return False
+            case _Strang_cmp_m():
+                pass
+            case _:
+                raise NotImplementedError()
+
+        if not self[0:] == other[0:]:
+            return False
+
+        for x,y in zip(self.body(), other.body(), strict=False):
+            if x != y:
+                return False
+
+        return True
+
+    def __le__(self, other) -> bool:
+        return hash(self) == hash(other) or (self < other)
+
+class _Strang_test_m:
+
+    def is_uniq(self) -> bool:
+        """ utility method to test if this name refers to a name with a UUID """
+        return INST_K in self.metadata
+
+    def is_head(self) -> bool:
+        return self.bmark_e.head in self
+
+    def __contains__(self, other) -> bool:
+        """ test for conceptual containment of names
+        other(a.b.c) ∈ self(a.b) ?
+        ie: self < other
+        """
+        match other:
+            case self.bmark_e() | UUID():
+                return other in self._body_meta
+            case self.gmark_e():
+                return other in self._group_meta
+            case str():
+                return other in str(self)
+            case _ if self.gmark_e is None:
+                return False
+            case _:
+                return False
+
+class _Strang_format_m:
+
+    def _format_subval(self, val, no_expansion:bool=False) -> str:
+        match val:
+            case str():
+                return val
+            case UUID() if no_expansion:
+                return "<uuid>"
+            case UUID():
+                return f"<uuid:{val}>"
+            case _:
+                raise TypeError("Unknown body type", val)
+
+    def _expanded_str(self, *, stop:Maybe[int]=None):
+        """ Create a str of the Strang with gen uuid's replaced with actual uuids """
+        group = self[0:]
+        body = []
+        for val in self.body()[:stop]:
+            match val:
+                case str():
+                    body.append(val)
+                case UUID():
+                    body.append(f"<uuid:{val}>")
+                case _:
+                    raise TypeError("Unknown body type", val)
+
+        body_str = self._subjoin(body)
+        return f"{group}{self._separator}{body_str}"
+
+    def __format__(self, spec) -> str:
+        """ format additions for strangs:
+          {strang:g} = print only the group
+          {strang:b} = print only the body
+
+          """
+        match spec:
+            case "g":
+                return self[0:]
+            case "b":
+                return self[1:]
+            case _:
+                return super().__format__(spec)
+
+##--|
+
 class _Strang_validation_m:
 
     @classmethod
@@ -110,41 +216,6 @@ class _Strang_validation_m:
     def _post_process(self) -> None:
         """ Abstract no-op to do additional post-processing extraction of metadata """
         pass
-
-class _Strang_cmp_m:
-
-    def __hash__(self):
-        return str.__hash__(str(self))
-
-    def __eq__(self, other):
-        match other:
-            case _Strang_cmp_m():
-                return hash(self) == hash(other)
-            case str() if self._separator in other:
-                return hash(self) == hash(other)
-            case str():
-                return hash(self[1:]) == hash(other)
-
-    def __lt__(self, other:str|Self) -> bool:
-        match other:
-            case _Strang_cmp_m() | str() if not len(self) < len(other):
-                return False
-            case _Strang_cmp_m():
-                pass
-            case _:
-                raise NotImplementedError()
-
-        if not self[0:] == other[0:]:
-            return False
-
-        for x,y in zip(self.body(), other.body(), strict=False):
-            if x != y:
-                return False
-
-        return True
-
-    def __le__(self, other) -> bool:
-        return hash(self) == hash(other) or (self < other)
 
 class _Strang_subgen_m:
     """ Operations Mixin for manipulating TaskNames """
@@ -217,75 +288,8 @@ class _Strang_subgen_m:
         """Pop off to the top marker """
         return self.pop(top=True)
 
-class _Strang_test_m:
-
-    def is_uniq(self) -> bool:
-        """ utility method to test if this name refers to a name with a UUID """
-        return INST_K in self.metadata
-
-    def is_head(self) -> bool:
-        return self.bmark_e.head in self
-
-    def __contains__(self, other) -> bool:
-        """ test for conceptual containment of names
-        other(a.b.c) ∈ self(a.b) ?
-        ie: self < other
-        """
-        match other:
-            case self.bmark_e() | UUID():
-                return other in self._body_meta
-            case self.gmark_e():
-                return other in self._group_meta
-            case str():
-                return other in str(self)
-            case _ if self.gmark_e is None:
-                return False
-            case _:
-                return False
-
-class _Strang_format_m:
-
-    def _format_subval(self, val, no_expansion:bool=False) -> str:
-        match val:
-            case str():
-                return val
-            case UUID() if no_expansion:
-                return "<uuid>"
-            case UUID():
-                return f"<uuid:{val}>"
-            case _:
-                raise TypeError("Unknown body type", val)
-
-    def _expanded_str(self, *, stop:Maybe[int]=None):
-        """ Create a str of the Strang with gen uuid's replaced with actual uuids """
-        group = self[0:]
-        body = []
-        for val in self.body()[:stop]:
-            match val:
-                case str():
-                    body.append(val)
-                case UUID():
-                    body.append(f"<uuid:{val}>")
-                case _:
-                    raise TypeError("Unknown body type", val)
-
-        body_str = self._subjoin(body)
-        return f"{group}{self._separator}{body_str}"
-
-    def __format__(self, spec) -> str:
-        """ format additions for strangs:
-          {strang:g} = print only the group
-          {strang:b} = print only the body
-
-          """
-        match spec:
-            case "g":
-                return self[0:]
-            case "b":
-                return self[1:]
-            case _:
-                return super().__format__(spec)
 ##--|
+
 class PostStrang_m(_Strang_validation_m,
                    _Strang_subgen_m,
                    SubAnnotate_m):

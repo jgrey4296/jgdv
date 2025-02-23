@@ -28,7 +28,7 @@ from uuid import UUID, uuid1
 
 from jgdv import Proto, Mixin
 from . import errors
-from . import strang_mixins as s_mix
+from . import _mixins as s_mix
 from ._interface import FMT_PATTERN, SEP_DEFAULT, SUBSEP_DEFAULT, StrangMarker_e, UUID_RE, INST_K, GEN_K, STRGET, MARK_RE
 
 # ##-- types
@@ -61,8 +61,31 @@ logging = logmod.getLogger(__name__)
 logging.disabled = True
 ##-- end logging
 
+class StrangBuilder_m:
 
-class _StrangMeta(type(str)):
+    @staticmethod
+    def build(data, *args, **kwargs) -> Strang:
+        """ Build an appropriate Strang subclass else a Strang,
+        goes from newest to oldest
+        eg: For when you might have a Location or a Name, and want to try to build both
+        """
+        for sub in StrangMeta._forms[::-1]:
+            if sub._typevar is not None:
+                # Skip annotated types for now
+                continue
+            try:
+                return sub(data, *args, strict=True, **kwargs)
+            except (errors.StrangError, ValueError, KeyError):
+                pass
+        else:
+            return Strang(data, *args, **kwargs)
+##--|
+
+class StrangMeta(type(str)):
+    """ A Metaclass for Strang
+    It runs the pre-processsing and post-processing on the constructed str
+    to turn it into a strang
+    """
 
     _forms : list[type] = []
 
@@ -100,8 +123,9 @@ class _StrangMeta(type(str)):
         return obj
 
 ##--|
+
 @Mixin(s_mix.PreStrang_m, None, s_mix.PostStrang_m, allow_inheritance=True)
-class Strang(str, metaclass=_StrangMeta):
+class Strang(str, metaclass=StrangMeta):
     """
       A Structured String Baseclass.
       A Normal str, but is parsed on construction to extract and validate
@@ -121,26 +145,9 @@ class Strang(str, metaclass=_StrangMeta):
     bmark_e           : ClassVar[enum.Enum]              = StrangMarker_e
     gmark_e           : ClassVar[enum.Enum|Literal[int]] = int
 
-    @staticmethod
-    def build(data, *args, **kwargs) -> Strang:
-        """ Build an appropriate Strang subclass else a Strang,
-        goes from newest to oldest
-        eg: For when you might have a Location or a Name, and want to try to build both
-        """
-        for sub in _StrangMeta._forms[::-1]:
-            if sub._typevar is not None:
-                # Skip annotated types for now
-                continue
-            try:
-                return sub(data, *args, strict=True, **kwargs)
-            except (errors.StrangError, ValueError, KeyError):
-                pass
-        else:
-            return Strang(data, *args, **kwargs)
-
     @classmethod
     def __init_subclass__(cls, *args, **kwargs):
-        _StrangMeta._forms.append(cls)
+        StrangMeta._forms.append(cls)
 
     def _post_process(self) -> None:
         """
@@ -271,7 +278,6 @@ class Strang(str, metaclass=_StrangMeta):
     @ftz.cache
     def shape(self) -> tuple[int, int]:
         return (len(self._group), len(self._body))
-
 
     def uuid(self) -> Maybe[UUID]:
         if bool(uuids:=[x for x in self._body_meta if isinstance(x, UUID)]):
