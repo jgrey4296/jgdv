@@ -25,8 +25,8 @@ from uuid import UUID, uuid1
 from jgdv._abstract.protocols import SpecStruct_p
 from jgdv.structs.dkey._meta import DKey, DKeyMeta
 from jgdv.structs.dkey._base import DKeyBase
-from ._interface import INDIRECT_SUFFIX, DKeyMark_e, Key_p
 from ._expander import ExpInst
+from ._interface import INDIRECT_SUFFIX, DKeyMark_e, Key_p, RAWKEY_ID
 # ##-- end 1st party imports
 
 # ##-- types
@@ -63,7 +63,7 @@ class SingleDKey(DKeyBase,   mark=DKeyMark_e.FREE):
 
     def __init__(self, data, **kwargs):
         super().__init__(data, **kwargs)
-        match kwargs.get(DKeyMeta._rawkey_id, None):
+        match kwargs.get(RAWKEY_ID, None):
             case [x]:
                 self._set_params(fmt=kwargs.get("fmt", None) or x.format,
                                  conv=kwargs.get("conv", None) or x.conv)
@@ -71,6 +71,23 @@ class SingleDKey(DKeyBase,   mark=DKeyMark_e.FREE):
                 raise ValueError("A Single Key has no raw key data")
             case [*xs]:
                 raise ValueError("A Single Key got multiple raw key data", xs)
+
+    def _set_params(self, *, fmt:Maybe[str]=None, conv:Maybe[str]=None) -> None:
+        """ str formatting and conversion parameters.
+        These only make sense for single keys, as they need to be wrapped.
+        see: https://docs.python.org/3/library/string.html#format-string-syntax
+        """
+        match fmt:
+            case None:
+                pass
+            case str() if bool(fmt):
+                self._fmt_params = fmt
+
+        match conv:
+            case None:
+                pass
+            case str() if bool(conv):
+                self._conv_params = conv
 
     def __format__(self, spec:str) -> str:
         """
@@ -115,7 +132,7 @@ class MultiDKey(DKeyBase,    mark=DKeyMark_e.MULTI, multi=True):
 
     def __init__(self, data:str|pl.Path, **kwargs):
         super().__init__(data, **kwargs)
-        match kwargs.get(DKeyMeta._rawkey_id, None):
+        match kwargs.get(RAWKEY_ID, None):
             case [*xs]:
                 self._subkeys = xs
             case None | []:
@@ -214,8 +231,6 @@ class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
         super().__init__(data, **kwargs)
         self.multi_redir      = multi
         self.re_mark          = re_mark
-        self._expansion_type  = DKey
-        self._typecheck       = DKey | list[DKey]
 
     def __eq__(self, other):
         match other:

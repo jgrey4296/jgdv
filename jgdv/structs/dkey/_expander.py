@@ -276,8 +276,8 @@ class DKeyLocalExpander_m:
                         case None:
                             return []
                         case exp if lift:
-                             exp.convert = False
-                             result.append(exp)
+                            exp.convert = False
+                            result.append(exp)
                         case exp:
                             result.append(exp)
                 case ExpInst(val=str() as key, rec=rec, fallback=fallback, lift=lift):

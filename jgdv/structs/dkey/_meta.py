@@ -23,10 +23,10 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from jgdv.mixins.enum_builders import EnumBuilder_m
-from jgdv.mixins.annotate import SubAnnotate_m
+from jgdv.mixins.annotate import SubAnnotate_m, Subclasser
 from ._parser import DKeyParser
 from ._expinst import ExpInst
-from ._interface import Key_p, DKeyMark_e
+from ._interface import Key_p, DKeyMark_e, RAWKEY_ID, FORCE_ID, DEFAULT_DKEY_KWARGS
 # ##-- end 1st party imports
 
 # ##-- types
@@ -75,12 +75,7 @@ class DKeyMeta(type(str)):
     _parser             : ClassVar[Formatter]             = DKeyParser()
 
     # Use the default str hash method
-    _rawkey_id          : ClassVar[str]                = "_rawkeys"
-    _force_type_id      : ClassVar[str]                = "force"
-    _expected_init_keys : ClassVar[list[str]]          = ["ctor", "check", "mark", "fallback",
-                                                          "max_exp", "fmt", "help", "force",
-                                                          "implicit", "conv", _rawkey_id,
-                                                          ]
+    _expected_init_keys : ClassVar[list[str]]          = DEFAULT_DKEY_KWARGS[:]
 
     def __call__(cls, *args, **kwargs):
         """ Runs on class instance creation
@@ -237,23 +232,23 @@ class DKey(metaclass=DKeyMeta):
         # put the rawkey data into _rawkey_id to save on reparsing later
         multi_key = kwargs.get("mark", None) in DKeyMeta._multi_registry
         # Use passed in keys if they are there
-        if not (raw_keys:=kwargs.get(DKeyMeta._rawkey_id, None)):
+        if not (raw_keys:=kwargs.get(RAWKEY_ID, None)):
             raw_keys = DKeyMeta.extract_raw_keys(data, implicit=kwargs.get("implicit", False))
 
         match raw_keys:
             case [x] if not bool(x) and bool(x.prefix) and not multi_key:
                 # No key found
                 mark = DKeyMark_e.NULL
-                kwargs[DKeyMeta._rawkey_id] = [x]
+                kwargs[RAWKEY_ID] = [x]
             case [x] if multi_key:
                 mark = kwargs.get("mark", DKeyMark_e.MULTI)
-                kwargs[DKeyMeta._rawkey_id ] = [x]
+                kwargs[RAWKEY_ID] = [x]
             case [x] if not bool(x.prefix) and x.is_indirect():
                 # One Key_ found with no extra text
                 mark = DKeyMark_e.INDIRECT
                 # so truncate to just the exact key
                 data = x.indirect()
-                kwargs[DKeyMeta._rawkey_id ] = [x]
+                kwargs[RAWKEY_ID] = [x]
             case [x] if not bool(x.prefix):
                 # one key, no extra text
                 kw_mark      = kwargs.get("mark", None)
@@ -264,19 +259,19 @@ class DKey(metaclass=DKeyMeta):
 
                 # so truncate to just the exact key
                 data = x.direct()
-                kwargs[DKeyMeta._rawkey_id ] = [x]
+                kwargs[RAWKEY_ID] = [x]
             case [*xs]:
                 # Multiple keys found
                 mark = kwargs.get("mark", DKeyMark_e.MULTI)
-                kwargs[DKeyMeta._rawkey_id] = xs
+                kwargs[RAWKEY_ID] = xs
                 multi_key = True
 
 
         # Choose the sub-ctor
-        match kwargs.get(DKeyMeta._force_type_id, None):
+        match kwargs.get(FORCE_ID, None):
             case type() as x:
                 # sub type has been forced
-                del kwargs[DKeyMeta._force_type_id]
+                del kwargs[FORCE_ID]
                 subtype_cls = x
             case None:
                 subtype_cls       : type = DKeyMeta.get_subtype(mark, multi=multi_key)

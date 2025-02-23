@@ -60,17 +60,26 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-ARGS_K              : Final[Ident]     = "args"
 DEFAULT_COUNT       : Final[int]       = 0
 FMT_PATTERN         : Final[Rx]        = re.compile("[wdi]+")
 INDIRECT_SUFFIX     : Final[Ident]     = "_"
 KEY_PATTERN         : Final[RxStr]     = "{(.+?)}"
-KWARGS_K            : Final[Ident]     = "kwargs"
 MAX_DEPTH           : Final[int]       = 10
 MAX_KEY_EXPANSIONS  : Final[int]       = 200
 PAUSE_COUNT         : Final[int]       = 0
 RECURSION_GUARD     : Final[int]       = 5
 PARAM_IGNORES       : Final[list[str]] = ["_", "_ex"]
+
+RAWKEY_ID           : Final[str]       = "_rawkeys"
+FORCE_ID            : Final[str]       = "force"
+ARGS_K              : Final[Ident]     = "args"
+KWARGS_K            : Final[Ident]     = "kwargs"
+
+DEFAULT_DKEY_KWARGS : Final[list[str]] = [
+    "ctor", "check", "mark", "fallback",
+    "max_exp", "fmt", "help", FORCE_ID,
+    "implicit", "conv", RAWKEY_ID,
+    ]
 # Body:
 
 class DKeyMark_e(EnumBuilder_m, enum.StrEnum):

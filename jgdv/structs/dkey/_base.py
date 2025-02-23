@@ -86,23 +86,24 @@ class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
     _conv_params        : Maybe[FmtStr]                 = None
     _help               : Maybe[str]                    = None
 
-    _extra_kwargs       : ClassVar[set[str]]           = set()
+    _extra_kwargs       : ClassVar[set[str]]            = set()
     __hash__                                            = str.__hash__
 
     def __init_subclass__(cls, *, mark:M_[KeyMark]=None, conv:M_[str]=None, multi:bool=False):
         """ Registered the subclass as a DKey and sets the Mark enum this class associates with """
         super().__init_subclass__()
         cls._mark        = mark or cls._mark
-        cls._conv_params = conv or cls._conv_params
         match cls._mark:
             case None:
                 logging.info("No Mark to Register Key Subtype: %s", cls)
             case x:
-                DKeyMeta.register_key_type(cls, x, conv=cls._conv_params, multi=multi)
+                DKeyMeta.register_key_type(cls, x, conv=conv, multi=multi)
 
     def __new__(cls, *args, **kwargs):
         """ Blocks creation of DKey's except through DKey itself,
           unless 'force=True' kwarg (for testing).
+
+        (this can work because key's are str's with an extended init)
         """
         raise RuntimeError("Don't build DKey subclasses directly. use DKey(..., force=CLS) if you must")
 
@@ -142,19 +143,6 @@ class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
                 self._help = help
 
         return self
-
-    def _set_params(self, *, fmt:Maybe[str]=None, conv:Maybe[str]=None) -> None:
-        match fmt:
-            case None:
-                pass
-            case str() if bool(fmt):
-                self._fmt_params = fmt
-
-        match conv:
-            case None:
-                pass
-            case str() if bool(conv):
-                self._conv_params = conv
 
     def keys(self) -> list[Key_p]:
         """ Get subkeys of this key. by default, an empty list.
