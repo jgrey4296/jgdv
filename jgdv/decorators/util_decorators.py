@@ -20,9 +20,9 @@ import weakref
 from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
-from .core import IdempotentDec
+from jgdv.debugging import TraceBuilder
+from .core import IdempotentDec, MetaDec, MonotonicDec
 from jgdv.util.time_ctx import TimeCtx
-from jgdv.decorators.meta_decorator import MetaDecorator
 
 # ##-- types
 # isort: off
@@ -36,7 +36,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    from jgdv import Maybe
+    from jgdv import Maybe, Either
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
@@ -56,11 +56,11 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-class NoSideEffects(MetaDecorator):
+class NoSideEffects(MetaDec):
     """ TODO Mark a Target as not modifying external variables """
     pass
 
-class CanRaise(MetaDecorator):
+class CanRaise(MetaDec):
     """ TODO mark a target as able to raise certain errors.
     Non-exaustive, doesn't change runtime behaviour,
     just to simplify documentation
@@ -69,7 +69,7 @@ class CanRaise(MetaDecorator):
     pass
 
 
-class TrackTime(MetaDecorator):
+class TrackTime(MetaDec):
     """ Decorate a callable to track its timing """
 
     def __init__(self, logger:Maybe[Logger]=None, level:Maybe[int|str]=None, entry:Maybe[str]=None, exit:Maybe[str]=None, **kwargs):
@@ -101,8 +101,8 @@ class Breakpoint(IdempotentDec):
 
     def __call__(self, target):
         raise NotImplementedError("needs RunningDebugger")
-        # # TODO handle repeats
-        # if args[0].breakpoint:
+    # # TODO handle repeats
+    # if args[0].breakpoint:
 
         #     f_code = f.__code__
         #     db = RunningDebugger()
@@ -119,3 +119,68 @@ class Breakpoint(IdempotentDec):
 
 
         # return self._func(self, *args, **kwargs)
+
+
+class DoMaybe(MonotonicDec):
+    """ Make a fn or method propagate None's """
+
+    def _wrap_method_h(self, meth):
+
+        def _prop_maybe(_self, fst, *args, **kwargs) -> Maybe:
+            match fst:
+                case None:
+                    return None
+                case x:
+                    return meth(_self, fst, *args, **kwargs)
+
+        return _prop_maybe
+
+    def _wrap_fn_h(self, fn):
+
+        def _prop_maybe(fst, *args, **kwargs) -> Maybe:
+            match fst:
+                case None:
+                    return None
+                case x:
+                    try:
+                        return fn(fst, *args, **kwargs)
+                    except Exception as err:
+                        err.with_traceback(TraceBuilder[2:])
+                        raise
+
+
+        return _prop_maybe
+
+
+class DoEither(MonotonicDec):
+    """ Either do the fn/method, or propagate the error """
+
+    def _wrap_method_h(self, meth):
+
+        def _prop_either(_self, fst, *args, **kwargs) -> Either:
+            match fst:
+                case Exception() as err:
+                    return err
+                case x:
+                    try:
+                        return meth(_self, fst, *args, **kwargs)
+                    except Exception as err:
+                        err.with_traceback(TraceBuilder[2:])
+                        return err
+
+        return _prop_maybe
+
+    def _wrap_fn_h(self, fn):
+
+        def _prop_either(fst, *args, **kwargs) -> Either:
+            match fst:
+                case Exception() as err:
+                    return err
+                case x:
+                    try:
+                        return fn(fst, *args, **kwargs)
+                    except Exception as err:
+                        err.with_traceback(TraceBuilder[2:])
+                        return err
+
+        return _prop_either

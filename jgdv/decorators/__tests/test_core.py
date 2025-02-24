@@ -178,6 +178,49 @@ class TestDecorator(_Utils):
         assert(dec._mark_key == f"{ANNOTATIONS_PREFIX}:{dec.__class__.__name__}")
         assert(dec._data_key == f"{ANNOTATIONS_PREFIX}:{name}")
 
+
+    def test_decorating_without_instantiation(self):
+
+        class SimpleDec(Decorator):
+
+            def __init__(self, extra=None):
+                super().__init__()
+                self._extra = extra or []
+
+            def __call__(self, target):
+                def simple_wrapped(*args, **kwargs):
+                    return [*target(*args, **kwargs), 2, *self._extra]
+
+                return simple_wrapped
+
+        @SimpleDec
+        def test_fn():
+            return [1]
+
+        assert(test_fn() == [1,2])
+
+
+    def test_decorating_with_instantiation(self):
+
+        class SimpleDec(Decorator):
+
+            def __init__(self, extra=None):
+                super().__init__()
+                self._extra = extra or []
+
+            def __call__(self, target):
+                def simple_wrapped(*args, **kwargs):
+                    return [*target(*args, **kwargs), 2, *self._extra]
+
+                return simple_wrapped
+
+        @SimpleDec(extra=[3,4,5])
+        def test_fn():
+            return [1]
+
+        assert(test_fn() == [1, 2, 3, 4, 5])
+
+
 class TestMarking(_Utils):
 
     def test_sanity(self):

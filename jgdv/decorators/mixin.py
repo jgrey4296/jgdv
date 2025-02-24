@@ -24,7 +24,7 @@ from uuid import UUID, uuid1
 
 from jgdv.debugging import TraceBuilder
 from .core import MonotonicDec, IdempotentDec, Decorator, DataDec
-from ._interface import Decorable, Decorated, DForm_e
+from ._interface import Decorated
 from jgdv.mixins.annotate import Subclasser
 
 # ##-- types
@@ -40,6 +40,7 @@ from typing import no_type_check, final, override, overload
 from types import resolve_bases, FunctionType, MethodType
 
 if TYPE_CHECKING:
+    from ._interface import Decorable, DForm_e
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -78,7 +79,9 @@ class Mixin(MonotonicDec):
 
 """
 
-    def __init__(self, *mixins:type, allow_inheritance=False, silent=False):
+    needs_args = True
+
+    def __init__(self, *mixins:type, allow_inheritance:bool=False, silent:bool=False) -> None:
         super().__init__()
         self._silent = silent
         self._name_mod = NAME_MOD
@@ -93,10 +96,11 @@ class Mixin(MonotonicDec):
                 self._validate_mixins()
 
 
-    def _validate_mixins(self):
+    def _validate_mixins(self) -> None:
         for x in itz.chain(self._pre_mixins, self._post_mixins):
-            if len(x.mro()) > 2:
-                raise TypeError("Can't Mixin a class that inherits anything", x)
+            if len(x.mro()) > 2:  # noqa: PLR2004
+                msg = "Can't Mixin a class that inherits anything"
+                raise TypeError(msg, x)
 
     def _build_annotations_h(self, target:Decorable, current:list) -> Maybe[list]:
         """ Given a list of the current annotation list,
@@ -110,13 +114,15 @@ class Mixin(MonotonicDec):
     def _validate_target_h(self, target:Decorable, form:DForm_e, args:Maybe[list]=None) -> None:
         match target:
             case type() if hasattr(target, "model_fields"):
-                raise TypeError("Pydantic classes shouldn't be extended", target)
+                msg = "Pydantic classes shouldn't be extended"
+                raise TypeError(msg, target)
             case type():
                 pass
             case _:
-                raise TypeError("Unexpected type passed for mixin annotation", target)
+                msg = "Unexpected type passed for mixin annotation"
+                raise TypeError(msg, target)
 
-    def _wrap_class_h(self, cls):
+    def _wrap_class_h(self, cls:Decorable) -> Decorated:
         match cls.mro():
             case [x, *xs]:
                 new_mro = [*self._pre_mixins, x, *self._post_mixins, *xs]

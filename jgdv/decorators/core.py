@@ -229,13 +229,13 @@ class _DecInspect_m:
 class _DecoratorHooks_m:
     """ The main hooks used to actually specify the decoration """
 
-    def _wrap_method_h(self, fn:Func) -> Decorated:
+    def _wrap_method_h(self, meth:Func) -> Decorated:
         """ Override this to add a decoration function to method """
         dec_name = self.dec_name()
 
         def _default_method_wrapper(_self, *args, **kwargs):
-            logging.debug("Calling Wrapped Method: %s of %s", fn.__qualname__, dec_name)
-            return fn(_self, *args, **kwargs)
+            logging.debug("Calling Wrapped Method: %s of %s", meth.__qualname__, dec_name)
+            return meth(_self, *args, **kwargs)
 
         return _default_method_wrapper
 
@@ -285,9 +285,31 @@ class Decorator(_DecoratorCombined_m, Decorator_p):
     The abstract Superclass of Decorators
     A subclass implements '_decoration_logic'
     """
-    Form : ClassVar[enum.EnumMeta] = DForm_e
+    Form       : ClassVar[enum.EnumMeta] = DForm_e
+    needs_args : ClassVar[bool]          = False
 
-    def __init__(self, prefix:Maybe[str]=None, mark:Maybe[str]=None, data:Maybe[str]=None):
+
+    def __new__(cls, *args, **kwargs):
+        """ If called on a callable, create a new decorator and decorate,
+        otherwise create the new object
+        """
+        match args:
+            case []:
+                obj = super().__new__(cls)
+                obj.__init__(*args, **kwargs)
+                return obj
+            case [x, *_] if callable(x) and not cls.needs_args:
+                obj = super().__new__(cls)
+                obj.__init__(*args[1:], **kwargs)
+                return obj(args[0])
+            case _:
+                obj = super().__new__(cls)
+                obj.__init__(*args, **kwargs)
+                return obj
+
+
+    def __init__(self, *args, prefix:Maybe[str]=None, mark:Maybe[str]=None, data:Maybe[str]=None):
+        # Ignores any args
         # TODO use strangs for mark and data key
         self._annotation_prefix   : str              = prefix  or ANNOTATIONS_PREFIX
         self._mark_suffix         : str              = mark    or self.__class__.__name__

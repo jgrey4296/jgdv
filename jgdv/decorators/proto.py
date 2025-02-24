@@ -183,6 +183,7 @@ class Proto(MonotonicDec):
 
     class ExtProto(Proto1, Protocol): ...
     """
+    needs_args = True
 
     def __init__(self, *protos:Protocol, check=True):
         super().__init__(data=PROTO_SUFFIX)
