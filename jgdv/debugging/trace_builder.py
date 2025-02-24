@@ -68,6 +68,11 @@ class TraceBuilder:
     raise Exception().with_traceback(tb[:])
     """
 
+
+    def __class_getitem__(cls, item) -> TracebackType:
+        tbb = cls()
+        return tbb[item]
+
     def __init__(self, *, chop_self=True):
         self.frames : list[FrameType] = []
         self._get_frames()
