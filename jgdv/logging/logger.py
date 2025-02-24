@@ -110,7 +110,8 @@ class JGDVLogger(logmod.getLoggerClass()):
         """
         A factory method which can be overridden in subclasses to create
         specialized LogRecords.
-        args: name, level, fn, lno, msg, args, exc_info, func=None, extra=None, sinfo=None
+        args: name, level, fn, lno, msg, args, exc_info,
+        kwargs: func=None, extra=None, sinfo=None
         """
         args = list(args)
         msg_total = []

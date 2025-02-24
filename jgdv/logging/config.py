@@ -246,7 +246,7 @@ class JGDVLogConfig:
 
         builtins.print = intercepted
 
-    def subprinter(self, *names) -> Logger:
+    def subprinter(self, *names, prefix:Maybe[str]=None) -> Logger:
         """ Get a subprinter of the printer logger.
           The First name needs to be a registered subprinter.
           Additional names are unconstrained
@@ -261,5 +261,7 @@ class JGDVLogConfig:
         current = base
         for name in names:
             current = current.getChild(name)
-
-        return current
+        else:
+            if prefix:
+                current.set_prefixes(prefix)
+            return current

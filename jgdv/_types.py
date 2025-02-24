@@ -14,7 +14,7 @@ from __future__ import annotations
 from types import UnionType, GenericAlias, MethodType, LambdaType
 from typing import (Any, Callable, Generator, Never, TypeGuard, Self)
 from uuid import UUID, uuid1
-from re import Pattern
+from re import Pattern, Match
 import datetime
 from weakref import ref
 from jgdv._abstract import protocols
@@ -22,8 +22,10 @@ from jgdv._abstract import protocols
 type VerStr                   = str # A Version String
 type Ident                    = str # Unique Identifier Strings
 type FmtStr                   = str # Format Strings like 'blah {val} bloo'
+type FmtSpec                  = str # Format and conversion parameters. eg: 'blah {val:<9!r}' would be ':<10!r'
 type FmtKey                   = str # Names of Keys in a FmtStr
 type Rx                       = Pattern
+type RxMatch                  = Match
 type RxStr                    = str
 type Ctor[T]                  = type[T] | Callable[[*Any], T]
 type Func[I,O]                = Callable[I,O]
