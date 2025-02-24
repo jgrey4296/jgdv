@@ -29,9 +29,7 @@ import sh
 
 # ##-- 1st party imports
 from jgdv._abstract.protocols import SpecStruct_p
-from jgdv.util.chain_get import ChainedKeyGetter
 from jgdv.structs.chainguard import ChainGuard
-from .expander import _DKeyFormatter_Expansion_m
 from .meta import DKey
 from .parser import RawKey
 from .._interface import Key_p, DKeyMark_e, INDIRECT_SUFFIX, FMT_PATTERN
@@ -46,8 +44,6 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 from jgdv import Maybe
 
 if TYPE_CHECKING:
@@ -66,9 +62,8 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__file__)
 ##-- end logging
 
-chained_get         : Func                         = ChainedKeyGetter.chained_get
 
-class DKeyFormatting_m:
+class DKeyFormatting_m:  # noqa: N801
     """ General formatting for dkeys """
 
     def __format__(self, spec:str) -> str:
@@ -99,7 +94,7 @@ class DKeyFormatting_m:
             result = f"{result}{INDIRECT_SUFFIX}"
 
         if wrap:
-            result = "".join(["{", result, "}"])
+            result = "".join(["{", result, "}"])  # noqa: FLY002
 
         return format(result, rem)
 

@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 # ##-- stdlib imports
+import builtins
 import datetime
 import functools as ftz
 import itertools as itz
@@ -208,6 +209,24 @@ class DKeyMeta(type(str)):
             case str():
                 DKeyMeta._conv_registry[conv] = mark
 
+
+    @staticmethod
+    def mark_alias(val:Any) -> Maybe[DKeyMark_e]:
+        """ aliases for marks """
+        match val:
+            case DKeyMark_e() | str():
+                return val
+            case builtins.str:
+                return DKeyMark_e.STR
+            case builtins.list:
+                return DKeyMark_e.ARGS
+            case builtins.dict:
+                return DKeyMark_e.KWARGS
+            case None:
+                return DKeyMark_e.NULL
+            case x:
+                return None
+
 class DKey(metaclass=DKeyMeta):
     """ A facade for DKeys and variants.
       Implements __new__ to create the correct key type, from a string, dynamically.
@@ -293,13 +312,13 @@ class DKey(metaclass=DKeyMeta):
 
         match list(kwargs.keys() - DKeyMeta._expected_init_keys - subtype_cls._extra_kwargs):
             case []:
-                pass
+                result.__init__(data, **kwargs)
+                return result
             case [*xs]:
                 msg = "Key got unexpected kwargs"
                 raise ValueError(msg, data, xs)
-        result.__init__(data, **kwargs)
-
-        return result
+            case x:
+                raise TypeError(type(x))
 
     @staticmethod
     def MarkOf(target:DKey) -> KeyMark:  # noqa: N802

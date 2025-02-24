@@ -23,6 +23,7 @@ from uuid import UUID, uuid1
 # ##-- 1st party imports
 from .core.meta import DKey, DKeyMeta
 from .core.base import DKeyBase
+from .core.expander import Expander
 from ._interface import INDIRECT_SUFFIX, DKeyMark_e, RAWKEY_ID, ExpInst_d
 # ##-- end 1st party imports
 
@@ -166,7 +167,7 @@ class MultiDKey(DKeyBase,    mark=DKeyMark_e.MULTI, multi=True):
     def __contains__(self, other) -> bool:
          return other in self.keys()
 
-    def exp_pre_lookup_hook(self, sources, opts) -> list[list[ExpInst_d]]:
+    def exp_pre_lookup_h(self, sources, opts) -> list[list[ExpInst_d]]:
         """ Lift subkeys to expansion instructions """
         targets = []
         for key in self.keys():
@@ -174,7 +175,10 @@ class MultiDKey(DKeyBase,    mark=DKeyMark_e.MULTI, multi=True):
         else:
             return targets
 
-    def exp_flatten_hook(self, vals:list[ExpInst_d], opts) -> Maybe[ExpInst_d]:
+    def exp_flatten_h(self, vals:list[ExpInst_d], opts) -> Maybe[ExpInst_d]:
+        """ Flatten the multi-key expansion into a single string,
+        by using the anon-format str
+        """
         flat : list[str] = []
         for x in vals:
             match x:
@@ -184,9 +188,6 @@ class MultiDKey(DKeyBase,    mark=DKeyMark_e.MULTI, multi=True):
                     flat.append(str(x))
         else:
             return ExpInst_d(val=self._anon.format(*flat), literal=True)
-
-    def exp_final_hook(self, val:ExpInst_d, opts) -> Maybe[ExpInst_d]:
-        return val
 
 class NonDKey(DKeyBase,      mark=DKeyMark_e.NULL):
     """
@@ -208,15 +209,16 @@ class NonDKey(DKeyBase,      mark=DKeyMark_e.NULL):
     def format(self, fmt) -> str:
         return format(self, fmt)
 
-    def local_expand(self, *args, **kwargs) -> Maybe[ExpInst_d]:
+    def expand(self, *args, **kwargs) -> Maybe:
+        """ A Non-key just needs to be coerced into the correct str format """
         val = ExpInst_d(val=str(self))
-        match self.exp_coerce_result(val, kwargs):
+        match Expander.coerce_result(val, kwargs, source=self):
             case None if (fallback:=kwargs.get("fallback")) is not None:
                 return ExpInst_d(val=fallback, literal=True)
             case None:
                 return self._fallback
             case ExpInst_d() as x:
-                return x
+                return x.val
             case x:
                 msg = "Nonkey coercion didn't return an ExpInst_d"
                 raise TypeError(msg, x)
@@ -244,9 +246,11 @@ class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
             case _:
                 return super().__eq__(other)
 
-    def exp_pre_lookup_hook(self, sources, opts) -> list[list[ExpInst_d]]:
+    def exp_pre_lookup_h(self, sources, opts) -> list[list[ExpInst_d]]:
+        """ Lookup the indirect version, the direct version, then use the fallback """
+        fallback = opts.get("fallback", self._fallback) or self
         return [[
             ExpInst_d(val=f"{self:i}", lift=True),
             ExpInst_d(val=f"{self:d}", convert=False),
-            ExpInst_d(val=self._fallback, literal=True, convert=False),
+            ExpInst_d(val=fallback, literal=True, convert=False),
         ]]

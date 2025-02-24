@@ -41,8 +41,6 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
     from jgdv import Maybe, Ident, RxStr, Rx
@@ -64,33 +62,35 @@ logging = logmod.getLogger(__name__)
 class ArgsDKey(SingleDKey, mark=DKeyMark_e.ARGS):
     """ A Key representing the action spec's args """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._expansion_type  = list
         self._typecheck = list
 
     def expand(self, *sources, **kwargs) -> list:
+        """ args are simple, just get the first specstruct's args value """
         for source in sources:
             if not isinstance(source, SpecStruct_p):
                 continue
 
             return source.args
-
-        return []
+        else:
+            return []
 
 class KwargsDKey(SingleDKey, mark=DKeyMark_e.KWARGS):
     """ A Key representing all of an action spec's kwargs """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._expansion_type  = dict
         self._typecheck = dict
 
     def expand(self, *sources, fallback=None, **kwargs) -> dict:
+        """ kwargs are easy, just get the first specstruct's kwargs value """
         for source in sources:
             if not isinstance(source, SpecStruct_p):
                 continue
 
             return source.kwargs
-
-        return fallback or dict()
+        else:
+            return fallback or {}

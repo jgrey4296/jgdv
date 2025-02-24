@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 # ruff: noqa: N801
 
@@ -102,6 +101,7 @@ class DKeyMark_e(EnumBuilder_m, enum.StrEnum):
 
     default  = FREE
 ##--|
+
 @runtime_checkable
 class Key_p(Protocol):
     """ The protocol for a Key, something that used in a template system"""
@@ -115,7 +115,39 @@ class Key_p(Protocol):
 
     def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:Maybe[list[Key_p]]=None, on_fail=Any, locs:Maybe[Mapping]=None, **kwargs) -> str: ...  # noqa: ANN003
 
+@runtime_checkable
+class Expandable_p(Protocol):
+    """ An expandable, like a DKey,
+    uses these hooks to customise the expansion
+    """
+    type LookupList = list[list[ExpInst_d]]
+    type LitFalse   = Literal[False]
+
+    def expand(self, *args, **kwargs) -> Maybe:
+        pass
+
+    def exp_extra_sources_h(self) -> Maybe[list]:
+        pass
+
+    def exp_pre_lookup_h(self, sources, opts) -> Maybe[LookupList]:
+        pass
+
+    def exp_pre_recurse_h(self, vals:list[ExpInst_d], sources, opts) -> Maybe[list[ExpInst_d]]:
+        pass
+
+    def exp_flatten_h(self, vals:list[ExpInst_d], opts) -> Maybe[LitFalse|ExpInst_d]:
+        pass
+
+    def exp_coerce_h(self, val:ExpInst_d, opts) -> Maybe[ExpInst_d]:
+        pass
+    def exp_final_h(self, val:ExpInst_d, opts) -> Maybe[LitFalse|ExpInst_d]:
+        pass
+
+    def exp_check_result_h(self, val:ExpInst_d, opts) -> None:
+        pass
+
 ##--|
+
 class ExpInst_d:
     """ The lightweight holder of expansion instructions, passed through the
     expander mixin.
@@ -126,14 +158,18 @@ class ExpInst_d:
 
     def __init__(self, **kwargs) -> None:  # noqa: ANN003
         match kwargs:
-            case {"val": ExpInst_d() }:
+            case {"val": ExpInst_d() as val }:
                 msg = "Nested ExpInst_d"
                 raise TypeError(msg, val)
             case {"val": val}:
                 self.val        = val
             case x:
                  msg = "ExpInst_d's must have a val"
-                 raise ValueError(msg)
+                 raise ValueError(msg, x)
+
+        if bool((extra:=kwargs.keys() - ExpInst_d.__slots__)):
+            msg = "Unexpected kwargs given to ExpInst_d"
+            raise ValueError(msg, extra)
 
         self.convert    = kwargs.get("convert", None)
         self.fallback   = kwargs.get("fallback", None)

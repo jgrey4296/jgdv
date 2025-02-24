@@ -19,6 +19,7 @@ logging = logmod.root
 from jgdv.structs.strang import CodeReference
 
 from jgdv.structs import dkey
+from jgdv.structs.dkey._interface import DKeyMark_e
 from jgdv.structs.dkey.core.meta import DKeyMeta
 from jgdv.structs.dkey._interface import Key_p
 
@@ -44,6 +45,10 @@ class TestDKeyMark:
         assert("path" in dkey.DKeyMark_e)
         assert("indirect" in dkey.DKeyMark_e)
         assert("blah" not in dkey.DKeyMark_e)
+
+
+    def test_mark_aliases(self):
+        assert(DKeyMeta.mark_alias(DKeyMark_e.FREE) is DKeyMark_e.FREE)
 
 class TestDKeyMeta:
 

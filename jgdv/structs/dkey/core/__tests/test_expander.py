@@ -95,8 +95,8 @@ class TestExpansion:
     def test_basic(self):
         obj = DKey("test", implicit=True)
         state = {"test": "blah"}
-        match obj.local_expand(state):
-            case ExpInst_d(val="blah", literal=True):
+        match obj.expand(state):
+            case "blah":
                 assert(True)
             case x:
                 assert(False), x
@@ -104,7 +104,7 @@ class TestExpansion:
     def test_basic_fail(self):
         obj = DKey("aweg", implicit=True)
         state = {"test": "blah"}
-        match obj.local_expand(state):
+        match obj.expand(state):
             case None:
                 assert(True)
             case x:
@@ -113,8 +113,8 @@ class TestExpansion:
     def test_nonkey_expansion(self):
         obj = DKey("aweg")
         state = {"test": "blah"}
-        match obj.local_expand(state):
-            case ExpInst_d(val="aweg", literal=True):
+        match obj.expand(state):
+            case "aweg":
                 assert(True)
             case x:
                 assert(False), x
@@ -125,8 +125,8 @@ class TestExpansion:
         """
         obj = DKey("test", implicit=True)
         state = {"test": "{blah}", "blah": "bloo"}
-        match obj.local_expand(state):
-            case ExpInst_d(val="bloo"):
+        match obj.expand(state):
+            case "bloo":
                 assert(True)
             case x:
                 assert(False), x
@@ -137,8 +137,8 @@ class TestExpansion:
         """
         obj = DKey("test", implicit=True)
         state = {"test": "{blah}", "blah": "{aweg}/{bloo}", "aweg":"qqqq", "bloo":"{aweg}"}
-        match obj.local_expand(state):
-            case ExpInst_d(val="qqqq/qqqq"):
+        match obj.expand(state):
+            case "qqqq/qqqq":
                 assert(True)
             case x:
                 assert(False), x
@@ -146,8 +146,8 @@ class TestExpansion:
     def test_coerce_type(self):
         obj = DKey("test", implicit=True, ctor=pl.Path)
         state = {"test": "blah"}
-        match obj.local_expand(state):
-            case ExpInst_d(val=pl.Path()):
+        match obj.expand(state):
+            case pl.Path():
                 assert(True)
             case x:
                 assert(False), x
@@ -155,8 +155,8 @@ class TestExpansion:
     def test_check_type(self):
         obj = DKey("test", implicit=True, ctor=pl.Path)
         state = {"test": pl.Path("blah")}
-        match obj.local_expand(state):
-            case ExpInst_d(val=pl.Path()):
+        match obj.expand(state):
+            case pl.Path():
                 assert(True)
             case x:
                 assert(False), x
@@ -188,8 +188,8 @@ class TestIndirection:
         """
         obj = DKey("test", implicit=True)
         state = {"test": "blah"}
-        match obj.local_expand(state):
-            case ExpInst_d(val="blah"):
+        match obj.expand(state):
+            case "blah":
                 assert(True)
             case x:
                 assert(False), x
@@ -200,8 +200,8 @@ class TestIndirection:
         """
         obj = DKey("test", implicit=True)
         state = {"test": "blah", "test_":"aweg"}
-        match obj.local_expand(state):
-            case ExpInst_d(val="blah"):
+        match obj.expand(state):
+            case "blah":
                 assert(True)
             case x:
                 assert(False), x
@@ -212,7 +212,7 @@ class TestIndirection:
         """
         obj = DKey("test", implicit=True)
         state = {}
-        match obj.local_expand(state):
+        match obj.expand(state):
             case None:
                 assert(True)
             case x:
@@ -224,8 +224,8 @@ class TestIndirection:
         """
         obj = DKey("test", implicit=True)
         state = {}
-        match obj.local_expand(state, fallback=25):
-            case ExpInst_d(val=25):
+        match obj.expand(state, fallback=25):
+            case 25:
                 assert(True)
             case x:
                 assert(False), x
@@ -236,8 +236,8 @@ class TestIndirection:
         """
         obj = DKey("test", fallback=25, implicit=True)
         state = {}
-        match obj.local_expand(state):
-            case ExpInst_d(val=25):
+        match obj.expand(state):
+            case 25:
                 assert(True)
             case x:
                 assert(False), x
@@ -248,8 +248,8 @@ class TestIndirection:
         """
         obj = DKey("test", fallback=10, implicit=True)
         state = {}
-        match obj.local_expand(state, fallback=25):
-            case ExpInst_d(val=25):
+        match obj.expand(state, fallback=25):
+            case 25:
                 assert(True)
             case x:
                 assert(False), x
@@ -261,8 +261,8 @@ class TestIndirection:
         obj = DKey("test_", implicit=True)
         assert(obj._mark is DKey.Mark.INDIRECT)
         state = {}
-        match obj.local_expand(state):
-            case ExpInst_d(val=DKey() as k) if k == "test_":
+        match obj.expand(state):
+            case DKey() as k if k == "test_":
                 assert(k._mark is DKey.Mark.INDIRECT)
                 assert(True)
             case x:
@@ -274,8 +274,8 @@ class TestIndirection:
         """
         obj = DKey("test", implicit=True)
         state = {"test_": "blah"}
-        match obj.local_expand(state):
-            case ExpInst_d(val=DKey() as x) if x == "blah":
+        match obj.expand(state):
+            case DKey() as k if k == "blah":
                 assert(True)
             case x:
                 assert(False), x
@@ -287,8 +287,8 @@ class TestIndirection:
         obj = DKey("test_", implicit=True)
         assert(obj._mark is DKey.Mark.INDIRECT)
         state = {"test": "blah"}
-        match obj.local_expand(state):
-            case ExpInst_d(val=str() as x) if str(x) == "blah":
+        match obj.expand(state):
+            case "blah":
                 assert(True)
             case x:
                 assert(False), x
@@ -300,8 +300,8 @@ class TestIndirection:
         obj = DKey("test_", implicit=True)
         assert(obj._mark is DKey.Mark.INDIRECT)
         state = {"test_": "blah"}
-        match obj.local_expand(state):
-            case ExpInst_d(val=DKey() as k) if str(k) == "blah":
+        match obj.expand(state):
+            case "blah":
                 assert(True)
             case x:
                 assert(False), x
@@ -313,8 +313,8 @@ class TestIndirection:
         obj = DKey("test_", implicit=True)
         assert(obj._mark is DKey.Mark.INDIRECT)
         state = {"test_": "blah", "test": "aweg"}
-        match obj.local_expand(state):
-            case ExpInst_d(val=DKey() as k) if str(k) == "blah":
+        match obj.expand(state):
+            case "blah":
                 assert(True)
             case x:
                 assert(False), x
@@ -328,8 +328,8 @@ class TestMultiExpansion:
         obj = DKey("{test} {test}")
         assert(DKey.MarkOf(obj) is DKey.Mark.MULTI)
         state = {"test": "blah"}
-        match obj.local_expand(state):
-            case ExpInst_d(val="blah blah"):
+        match obj.expand(state):
+            case "blah blah":
                 assert(True)
             case x:
                 assert(False), x
@@ -338,8 +338,8 @@ class TestMultiExpansion:
         obj = DKey("{test}/{test}", ctor=pl.Path)
         assert(DKey.MarkOf(obj) is DKey.Mark.MULTI)
         state = {"test": "blah"}
-        match obj.local_expand(state):
-            case ExpInst_d(val=pl.Path()):
+        match obj.expand(state):
+            case pl.Path():
                 assert(True)
             case x:
                 assert(False), x
@@ -349,8 +349,8 @@ class TestMultiExpansion:
         assert(DKey.MarkOf(obj) is DKey.Mark.MULTI)
         assert(obj.keys()[0]._conv_params == "p")
         state = {"test": "blah"}
-        match obj.local_expand(state):
-            case ExpInst_d(val=str() as x):
+        match obj.expand(state):
+            case str() as x:
                 assert(x == str(pl.Path.cwd() / "blah/blah"))
                 assert(True)
             case x:
@@ -361,8 +361,8 @@ class TestMultiExpansion:
         assert(DKey.MarkOf(obj) is DKey.Mark.MULTI)
         assert(obj.keys()[0]._conv_params == "p")
         state = {"test": "blah"}
-        match obj.local_expand(state):
-            case ExpInst_d(val=str() as x):
+        match obj.expand(state):
+            case str() as x:
                 assert(x == "".join([str(pl.Path.cwd() / "blah"),
                                     " : ",
                                     str(pl.Path.cwd() / "blah")]))
@@ -374,7 +374,7 @@ class TestMultiExpansion:
         obj = DKey("{test}/{aweg}")
         assert(DKey.MarkOf(obj) is DKey.Mark.MULTI)
         state = {"test": "blah"}
-        match obj.local_expand(state):
+        match obj.expand(state):
             case None:
                 assert(True)
             case x:
@@ -384,8 +384,8 @@ class TestMultiExpansion:
         obj = DKey("{test}/{aweg}")
         assert(DKey.MarkOf(obj) is DKey.Mark.MULTI)
         state = {"test": "blah", "aweg_":"test"}
-        match obj.local_expand(state):
-            case ExpInst_d(val="blah/blah"):
+        match obj.expand(state):
+            case "blah/blah":
                 assert(True)
             case x:
                 assert(False), x
@@ -394,8 +394,8 @@ class TestMultiExpansion:
         obj = DKey("{test}/{aweg_}")
         assert(DKey.MarkOf(obj) is DKey.Mark.MULTI)
         state = {"test": "blah", "aweg_":"test"}
-        match obj.local_expand(state):
-            case ExpInst_d(val="blah/blah"):
+        match obj.expand(state):
+            case "blah/blah":
                 assert(True)
             case x:
                 assert(False), x
@@ -404,8 +404,8 @@ class TestMultiExpansion:
         obj = DKey("{test}/{aweg_}")
         assert(DKey.MarkOf(obj) is DKey.Mark.MULTI)
         state = {"test": "blah", "aweg":"test"}
-        match obj.local_expand(state):
-            case ExpInst_d(val="blah/test"):
+        match obj.expand(state):
+            case "blah/test":
                 assert(True)
             case x:
                 assert(False), x
@@ -414,8 +414,8 @@ class TestMultiExpansion:
         obj = DKey("{test}/{aweg_}")
         assert(DKey.MarkOf(obj) is DKey.Mark.MULTI)
         state = {"test": "blah"}
-        match obj.local_expand(state):
-            case ExpInst_d(val="blah/{aweg_}"):
+        match obj.expand(state):
+            case "blah/{aweg_}":
                 assert(True)
             case x:
                 assert(False), x
@@ -424,8 +424,8 @@ class TestMultiExpansion:
         obj = DKey("{test}", mark=DKey.Mark.MULTI)
         assert(DKey.MarkOf(obj) is DKey.Mark.MULTI)
         state = {"test": "{blah}", "blah": "blah/{aweg_}"}
-        match obj.local_expand(state):
-            case ExpInst_d(val="blah/{aweg_}"):
+        match obj.expand(state):
+            case "blah/{aweg_}":
                 assert(True)
             case x:
                 assert(False), x
@@ -434,8 +434,8 @@ class TestMultiExpansion:
         obj = DKey("{test}", mark=DKey.Mark.MULTI)
         assert(DKey.MarkOf(obj) is DKey.Mark.MULTI)
         state = {"test": "{test}", "blah": "blah/{aweg_}"}
-        match obj.local_expand(state, limit=10):
-            case ExpInst_d(val=str() as x) if x == "test":
+        match obj.expand(state, limit=10):
+            case "test":
                 assert(True)
             case x:
                 assert(False), x
@@ -449,8 +449,8 @@ class TestCoercion:
         obj = DKey("{test!p}")
         state = {"test": "blah"}
         assert(obj._conv_params == "p")
-        match obj.local_expand(state):
-            case ExpInst_d(val=pl.Path()):
+        match obj.expand(state):
+            case pl.Path():
                 assert(True)
             case x:
                 assert(False), x
@@ -459,9 +459,8 @@ class TestCoercion:
         obj = DKey("{test!i}")
         state = {"test": "25"}
         assert(obj._conv_params == "i")
-        match obj.local_expand(state):
-            case ExpInst_d(val=int() as x):
-                assert(x == 25)
+        match obj.expand(state):
+            case 25:
                 assert(True)
             case x:
                 assert(False), x
@@ -471,7 +470,7 @@ class TestCoercion:
         state = {"test": "blah"}
         assert(obj._conv_params == "i")
         with pytest.raises(ValueError):
-            obj.local_expand(state)
+            obj.expand(state)
 
 class TestFallbacks:
 

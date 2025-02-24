@@ -30,13 +30,12 @@ import sh
 # ##-- 1st party imports
 from jgdv import Mixin
 from jgdv._abstract.protocols import SpecStruct_p
-from jgdv.util.chain_get import ChainedKeyGetter
 from jgdv.structs.chainguard import ChainGuard
+from ._getter import ChainGetter as CG  # noqa: N817
 from .meta import DKey
 from .parser import RawKey
-from .expander import _DKeyFormatter_Expansion_m
 
-from .._interface import Key_p, MAX_DEPTH, MAX_KEY_EXPANSIONS, FMT_PATTERN
+from .._interface import Key_p, MAX_DEPTH, MAX_KEY_EXPANSIONS, FMT_PATTERN, DEFAULT_COUNT, PAUSE_COUNT
 
 # ##-- end 1st party imports
 
@@ -49,8 +48,6 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 from jgdv import Maybe
 
 if TYPE_CHECKING:
@@ -69,16 +66,15 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__file__)
 ##-- end logging
 
-chained_get         : Func                         = ChainedKeyGetter.chained_get
 
-class _DKeyFormatterEntry_m:
+class _DKeyFormatterEntry_m:  # noqa: N801
     """ Mixin to make DKeyFormatter a singleton with static access
 
       and makes the formatter a context manager, to hold the current data sources
       """
     _instance     : ClassVar[Self]      = None
 
-    sources       : list                = []
+    sources       : list                = []  # noqa: RUF012
     fallback      : Any                 = None
 
     rec_remaining : int                 = MAX_KEY_EXPANSIONS
@@ -87,7 +83,7 @@ class _DKeyFormatterEntry_m:
     _original_key : str|Key_p           = None
 
     @classmethod
-    def Parse(cls, key:Key_p|pl.Path) -> tuple(bool, list[RawKey]):
+    def Parse(cls, key:Key_p|pl.Path) -> tuple(bool, list[RawKey]):  # noqa: N802
         """ Use the python c formatter parser to extract keys from a string
           of form (prefix, key, format, conversion)
 
@@ -106,20 +102,21 @@ class _DKeyFormatterEntry_m:
             match key:
                 case str() | Key_p():
                     # formatter.parse returns tuples of (literal, key, format, conversion)
-                    result = list(RawKey(prefix=x[0],
-                                              key=x[1] or "",
-                                              format=x[2] or "",
-                                              conv=x[3] or "")
-                                  for x in cls._instance.parse(key))
+                    result = [RawKey(prefix=x[0],
+                                     key=x[1] or "",
+                                     format=x[2] or "",
+                                     conv=x[3] or "")
+                              for x in cls._instance.parse(key)]
                     non_key_text = any(bool(x.prefix) for x in result)
-                    return non_key_text, [x for x in result]
+                    return non_key_text, result
                 case _:
-                    raise TypeError("Unknown type found", key)
+                    msg = "Unknown type found"
+                    raise TypeError(msg, key)
         except ValueError:
             return True, []
 
     @classmethod
-    def expand(cls, key:Key_p, *, sources=None, max=None, **kwargs) -> Maybe[Any]:
+    def expand(cls, key:Key_p, *, sources=None, max=None, **kwargs) -> Maybe[Any]:  # noqa: A002
         """ static method to a singleton key formatter """
         if not cls._instance:
             cls._instance = cls()
@@ -139,7 +136,8 @@ class _DKeyFormatterEntry_m:
         assert(isinstance(key, DKey))
 
         if kwargs.get("fallback", None):
-            raise ValueError("Fallback values for redirection should be part of key construction", key)
+            msg = "Fallback values for redirection should be part of key construction"
+            raise ValueError(msg, key)
         with cls._instance(key=key, sources=sources, rec=1, intent="redirect") as fmt:
             result = fmt._try_redirection(key)
             logging.debug("Redirection Result: %s", result)
@@ -179,7 +177,8 @@ class _DKeyFormatterEntry_m:
         logging.debug("--> (%s) Context for: %s", self._intent, self._original_key)
         logging.debug("Using Sources: %s", self.sources)
         if self._depth > MAX_DEPTH:
-            raise RecursionError("Hit Max Formatter Depth", self._depth)
+            msg = "Hit Max Formatter Depth"
+            raise RecursionError(msg, self._depth)
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
@@ -193,6 +192,119 @@ class _DKeyFormatterEntry_m:
         return
 
 
+class _DKeyFormatter_Expansion_m:  # noqa: N801
+    """
+    A Mixin for  DKeyFormatter, to expand keys without recursion
+    """
+
+    def _expand(self, key:Key_p, *, fallback=None, count=DEFAULT_COUNT) -> Maybe[Any]:
+        """
+          Expand the key, returning fallback if it fails,
+          counting each loop as `count` attempts
+
+        """
+        if not isinstance(key, Key_p):
+            msg = "Key needs to be a jgdv.protocols.Key_p"
+            raise TypeError(msg)
+        current : DKey = key
+        last    : set[str] = set()
+
+        while 0 < self.rec_remaining and str(current) not in last:
+            logging.debug("--- Loop (%s:%s) [%s] : %s", self._depth, MAX_KEY_EXPANSIONS - self.rec_remaining, key, repr(current))
+            self.rec_remaining -= count
+            last.add(str(current))
+            match current:
+                case sh.Command():
+                    break
+                case Key_p() if current._mark is DKey.Mark.NULL:
+                     continue
+                case Key_p() if current.multi:
+                    current = self._multi_expand(current)
+                case Key_p():
+                    redirected = self._try_redirection(current)[0]
+                    current    = self._single_expand(redirected) or current
+                case _:
+                    break
+
+        match current:
+            case None:
+                current = fallback or key._fallback
+            case x if str(x) == str(key):
+                current = fallback or key._fallback
+            case _:
+                pass
+
+        if current is not None:
+            logging.debug("Running Expansion Hook: (%s) -> (%s)", key, current)
+            exp_val = key._expansion_type(current)
+            key.cent_check_expansion(exp_val)
+            current = key._expansion_hook(exp_val)
+
+        logging.debug("Expanded (%s) -> (%s)", key, current)
+        return current
+
+    def _multi_expand(self, key:Key_p) -> str:
+        """
+        expand a multi key,
+        by formatting the anon key version using a sequence of expanded subkeys,
+        this allows for duplicate keys to be used differenly in a single multikey
+        """
+        logging.debug("multi(%s)", key)
+        logging.debug("----> %s", key.keys())
+        expanded_keys   = [ str(self._expand(x, fallback=f"{x:w}", count=PAUSE_COUNT)) for x in key.keys() ]
+        expanded        = self.format(key._anon, *expanded_keys)
+        logging.debug("<---- %s", key.keys())
+        return DKey(expanded)
+
+    def _try_redirection(self, key:Key_p) -> list[Key_p]:
+        """ Try to redirect a key if necessary,
+          if theres no redirection, return the key as a direct key
+          """
+        key_str = f"{key:i}"
+        match CG.get(key_str, *self.sources, *[x for x in key.extra_sources() if x not in self.sources]):
+            case list() as ks:
+                logging.debug("(%s -> %s -> %s)", key, key_str, ks)
+                return [DKey(x, implicit=True) for x in ks]
+            case Key_p() as k:
+                logging.debug("(%s -> %s -> %s)", key, key_str, k)
+                return [k]
+            case str() as k:
+                logging.debug("(%s -> %s -> %s)", key, key_str, k)
+                return [DKey(k, implicit=True)]
+            case None if key._mark is DKey.Mark.INDIRECT and isinstance(key._fallback, str|DKey):
+                logging.debug("%s -> %s -> %s (fallback)", key, key_str, key._fallback)
+                return [DKey(key._fallback, implicit=True)]
+            case None:
+                logging.debug("(%s -> %s -> Ø)", key, key_str)
+                return [key]
+            case _:
+                msg = "Reached an unknown response path for redirection"
+                raise TypeError(msg, key)
+
+    def _single_expand(self, key:Key_p, fallback=None) -> Maybe[Any]:
+        """
+          Expand a single key up to {rec_remaining} times
+        """
+        assert(isinstance(key, Key_p))
+        logging.debug("solo(%s)", key)
+        match CG.get(key, *self.sources, *[x for x in key.extra_sources() if x not in self.sources], fallback=fallback):
+            case None:
+                return None
+            case Key_p() as x:
+                return x
+            case x if self.rec_remaining == 0:
+                return x
+            case str() as x if key._mark is DKey.Mark.PATH:
+                return DKey(x, mark=DKey.Mark.PATH)
+            case str() as x if x == key:
+                # Got the key back, wrap it and don't expand it any more
+                return "{%s}" % x  # noqa: UP031
+            case str() | pl.Path() as x:
+                return DKey(x)
+            case x:
+                return x
+
+##--|
 @Mixin(_DKeyFormatter_Expansion_m, _DKeyFormatterEntry_m)
 class DKeyFormatter(string.Formatter):
     """
@@ -209,10 +321,10 @@ class DKeyFormatter(string.Formatter):
             case str():
                 fmt = key
             case pl.Path():
-                # result = str(ftz.reduce(pl.Path.joinpath, [self.vformat(x, args, kwargs) for x in fmt.parts], pl.Path()))
                 raise NotImplementedError()
             case _:
-                raise TypeError("Unrecognized expansion type", fmt)
+                msg = "Unrecognized expansion type"
+                raise TypeError(msg, fmt)
 
         result = self.vformat(fmt, args, kwargs)
         return result
@@ -237,7 +349,8 @@ class DKeyFormatter(string.Formatter):
             case "a":
                 return ascii(value)
             case _:
-                raise ValueError("Unknown conversion specifier {0!s}".format(conversion))
+                msg = f"Unknown conversion specifier {conversion!s}"
+                raise ValueError(msg)
 
     @staticmethod
     def format_field(val, spec) -> str:
@@ -257,7 +370,6 @@ class DKeyFormatter(string.Formatter):
             result = f"{result}_"
 
         if wrap:
-            # result = "".join(["{", result, "}"])
-            result = "{%s}" % result
+            result = "{%s}" % result  # noqa: UP031
 
         return format(result, remaining)

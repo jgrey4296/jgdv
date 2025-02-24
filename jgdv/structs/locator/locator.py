@@ -88,7 +88,7 @@ logging = logmod.getLogger(__name__)
 ##--| Body
 class SoftFailMultiDKey(MultiDKey["soft.fail"], multi=True):
 
-    def exp_pre_lookup_hook(self, sources, opts) -> list:
+    def exp_pre_lookup_h(self, sources, opts) -> list:
         """ Expands subkeys, to be merged into the main key"""
         targets = []
         for key in self.keys():

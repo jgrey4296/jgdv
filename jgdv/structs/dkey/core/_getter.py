@@ -24,7 +24,8 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from jgdv._abstract.protocols import SpecStruct_p
-
+from .._interface import ExpInst_d
+from .meta import DKey
 # ##-- end 1st party imports
 
 # ##-- types
@@ -36,8 +37,6 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
    from jgdv import Maybe
@@ -56,7 +55,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class ChainedKeyGetter:
+class ChainGetter:
     """
       The core logic to turn a key into a value.
       Doesn't perform repeated expansions.
@@ -65,7 +64,7 @@ class ChainedKeyGetter:
     """
 
     @staticmethod
-    def chained_get(key:str, *sources:dict|SpecStruct_p|JGDVLocator, fallback=None) -> Maybe[Any]:
+    def get(key:str, *sources:dict|SpecStruct_p|JGDVLocator, fallback:Maybe=None) -> Maybe[Any]:
         """
         Get a key's value from an ordered sequence of potential sources.
         Try to get {key} then {key_} in order of sources passed in
@@ -85,9 +84,55 @@ class ChainedKeyGetter:
                     params      = source.params
                     replacement = params.get(key, fallback)
                 case _:
-                    raise TypeError("Unknown Type in chained_get", source)
+                    msg = "Unknown Type in get"
+                    raise TypeError(msg, source)
 
             if replacement is not fallback:
                 return replacement
 
         return fallback
+
+
+
+    @staticmethod
+    def lookup(target:list[ExpInst_d], sources:list)-> Maybe[ExpInst_d]:
+        """
+        Handle lookup instructions:
+        pass thorugh DKeys and (DKey, ..)
+        lift (str(), True, fallback)
+        don't lift (str(), False, fallback)
+
+        """
+        for spec in target:
+            match spec:
+                case ExpInst_d(val=DKey()):
+                    return spec
+                case ExpInst_d(literal=True):
+                    return spec
+                case ExpInst_d(val=str() as key, lift=lift, fallback=fallback):
+                    pass
+                case x:
+                    msg = "Unrecognized lookup spec"
+                    raise TypeError(msg, x)
+
+            match ChainGetter.get(key, *sources):
+                case None:
+                    pass
+                case str() as x if lift:
+                    logging.debug("Lifting Result to Key: %r", x)
+                    lifted = DKey(x, implicit=True, fallback=fallback)
+                    return ExpInst_d(val=lifted, fallback=lifted, lift=False)
+                case pl.Path() as x:
+                    match DKey(str(x)):
+                        case DKey(nonkey=True) as y:
+                            return ExpInst_d(val=y, rec=0)
+                        case y:
+                            return ExpInst_d(val=y, fallback=fallback)
+                case str() as x:
+                    match DKey(x):
+                        case DKey(nonkey=True) as y:
+                            return ExpInst_d(val=y, rec=0)
+                        case y:
+                            return ExpInst_d(val=y, fallback=fallback)
+                case x:
+                    return ExpInst_d(val=x, fallback=fallback)
