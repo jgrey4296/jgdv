@@ -119,3 +119,7 @@ class GuardBase(dict):
                 return val
             case _:
                 raise TypeError()
+
+
+    def update(self, *args):
+        raise NotImplementedError("ChainGuards are immutable")

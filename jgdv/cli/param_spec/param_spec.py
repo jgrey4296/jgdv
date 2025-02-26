@@ -158,6 +158,7 @@ class ParamSpec:
 
     @classmethod
     def build(cls:BaseModel, data:dict) -> ParamSpecBase:
+        data = dict(data)
         match cls._parse_name(data.get("name")):
             case dict() as ns:
                 data.update(ns)
