@@ -77,14 +77,14 @@ SUBPRINTERS  : Final[list[str]]= [
 
 default_stdout : Final[dict] = {
     "name"           : logmod.root.name,
-    "level"          : "trace",
+    "level"          : "user",
     "target"         : "stdout",
     "format"         : "{levelname}  : INIT : {message}",
     "style"          : "{",
     }
 default_printer : Final[dict] = {
     "name"           : PRINTER_NAME,
-    "level"          : "trace",
+    "level"          : "user",
     "target"         : "stdout",
     "format"         : "{name}({levelname}) : {message}",
     "style"          : "{",

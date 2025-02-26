@@ -76,7 +76,7 @@ class MLSingleton(MetalordCore):
                 obj.__init__(*args, **kwargs)
                 return obj
             case _ if not hasattr(cls, "__inst"):
-                logging.info("Creating Singleton %s", cls.__name__)
+                logging.debug("Creating Singleton %s", cls.__name__)
                 obj = object.__new__(cls)
                 obj.__init__(**kwargs)
                 setattr(cls, "__inst", obj)

@@ -183,16 +183,16 @@ class JGDVLogConfig(metaclass=MLSingleton):
                     for name in {x for x in acceptable_names if x not in subprint_data}:
                         match LoggerSpec.build(spec_data, name=name, base=basename):
                             case None:
-                                print(f"Could not build LoggerSpec for {name}")
+                                logging.warning(f"Could not build LoggerSpec for {name}")
                             case LoggerSpec() as spec:
                                 self.activate_spec(spec)
                 case (str() as name, _) if name not in acceptable_names:
-                    print("Unknown Subprinter mentioned in config: ", name)
+                    logging.warning("Unknown Subprinter mentioned in config: ", name)
                     pass
                 case (str() as name, bool()|ChainGuard()|dict() as spec_data):
                     match LoggerSpec.build(spec_data, name=name, base=basename):
                         case None:
-                            print(f"Could not build LoggerSpec for {name}")
+                            logging.warning(f"Could not build LoggerSpec for {name}")
                         case LoggerSpec() as spec:
                             self.activate_spec(spec)
                 case _:
@@ -207,7 +207,7 @@ class JGDVLogConfig(metaclass=MLSingleton):
         for key,data in extras.items():
             match LoggerSpec.build(data, name=key):
                 case None:
-                    print(f"Could not build LoggerSpec for {key}")
+                    logging.warning(f"Could not build LoggerSpec for {key}")
                 case LoggerSpec() as spec:
                     self.activate_spec(spec)
 
@@ -229,7 +229,7 @@ class JGDVLogConfig(metaclass=MLSingleton):
                 pass
             case LoggerSpec() as x if override:
                 x.clear()
-                self._register[fullname] = target
+                self._registry[fullname] = target
                 target.apply()
             case LoggerSpec():
                 pass
@@ -253,11 +253,13 @@ class JGDVLogConfig(metaclass=MLSingleton):
         stream_spec       = LoggerSpec.build(config.on_fail({}).logging.stream(),  name=LoggerSpec.RootName)
         print_spec        = LoggerSpec.build(config.on_fail({}).logging.printer(), name=API.PRINTER_NAME)
 
-        self.activate_spec(file_spec)
-        self.activate_spec(stream_spec)
-        self.activate_spec(print_spec)
+        self.activate_spec(file_spec, override=True)
+        self.activate_spec(stream_spec, override=True)
+        self.activate_spec(print_spec, override=True)
         self._setup_print_children(config)
         self._setup_logging_extra(config)
+
+        self.is_setup = True
 
     def set_level(self, level:int|str) -> None:
         """ Set the active logging level """

@@ -57,6 +57,7 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging = logmod.getLogger(__name__)
+logging.disabled = True
 ##-- end logging
 
 # Vars:
@@ -90,33 +91,33 @@ class MetalordCore(type):
     @classmethod
     def __prepare__(mcls:type, name:str, bases:tuple, **kwargs) -> dict:
         """ Class Definition preparation of namespace """
-        logging.warning("Metalord Prepare: %s %s %s", name, bases, kwargs)
+        logging.debug("Metalord Prepare: %s %s %s", name, bases, kwargs)
         return super().__prepare__(name, bases, **kwargs)
 
     def __new__(mcls:type, name:str, bases:tuple, namespace:dict, **kwargs) -> type:
         """ Class Definition Object creation
         Equivalent to type(name, bases, namespace)
         """
-        logging.warning("Metalord new: %s %s %s %s %s", mcls, name, bases, namespace, kwargs)
+        logging.debug("Metalord new: %s %s %s %s %s", mcls, name, bases, namespace, kwargs)
         return super().__new__(mcls, name, bases, dict(namespace), **kwargs)
 
     def __init__(cls, name, bases:tuple, namespace:dict, **kwargs):
         """ Class Definition initialisation """
-        logging.warning("Metalord init: %s %s %s %s %s", cls, name, bases, namespace, kwargs)
+        logging.debug("Metalord init: %s %s %s %s %s", cls, name, bases, namespace, kwargs)
         super().__init__(name, bases, namespace, **kwargs)
 
     def __call__(cls, *args, **kwargs):
         """ Class Instance creation
         """
-        logging.warning("Metalord Call: %s %s %s", cls, args, kwargs)
+        logging.debug("Metalord Call: %s %s %s", cls, args, kwargs)
         obj = cls.__new__(cls, *args, **kwargs)
         obj.__init__(*args, **kwargs)
         return obj
 
     def __instancecheck__(self, instance) -> bool:
-        logging.warning("Metalord instance check: %s %s", self, instance)
+        logging.debug("Metalord instance check: %s %s", self, instance)
         return super().__instancecheck__(instance)
 
     def __subclasscheck__(self, subclass) -> bool:
-        logging.warning("Metalord subclass check: %s %s", self, subclass)
+        logging.debug("Metalord subclass check: %s %s", self, subclass)
         return super().__subclasscheck__(subclass)
