@@ -67,17 +67,33 @@ LOGDEC_PRE    : Final[str]       = "__logcall__"
 PRINTER_NAME  : Final[str]       = "_printer_"
 MAX_FILES     : Final[int]       = 5
 TARGETS       : Final[list[str]] = [
-    "file", "stdout", "stderr", "rotate", "pass"
+    "file", "stdout", "stderr", "rotate", "pass",
 ]
 SUBPRINTERS  : Final[list[str]]= [
     "fail", "header", "help",
     "report", "sleep", "success",
-    "setup", "shutdown"
+    "setup", "shutdown",
     ]
 
+default_stdout : Final[dict] = {
+    "name"           : logmod.root.name,
+    "level"          : "user",
+    "target"         : "stdout",
+    "format"         : "{levelname}  : INIT : {message}",
+    "style"          : "{",
+    }
+default_printer : Final[dict] = {
+    "name"           : PRINTER_NAME,
+    "level"          : "user",
+    "target"         : "stdout",
+    "format"         : "{name}({levelname}) : {message}",
+    "style"          : "{",
+    "propagate"      : False,
+    }
+default_print_file : Final[str] = "print.log"
 # Body:
 
-class LogLevel_e(enum.IntEnum):
+class LogLevel_e(enum.IntEnum):  # noqa: N801
     """ My Preferred Loglevel names """
     error     = logmod.ERROR   # Total Failures
     user      = logmod.WARNING # User Notification
@@ -85,14 +101,14 @@ class LogLevel_e(enum.IntEnum):
     detail    = logmod.DEBUG   # Exact values
     bootstrap = logmod.NOTSET  # Startup before configuration
 ##--|
-class LogConfig_p(Protocol):
+class LogConfig_p(Protocol):  # noqa: N801
     """ TODO """
 
-    def setup(self, config:ChainGuard):
+    def setup(self, config:ChainGuard) -> None:
         pass
 
-    def set_level(self, level:int|str):
+    def set_level(self, level:int|str) -> None:
         pass
 
-    def subprinter(self, *names) -> Logger:
+    def subprinter(self, *names:str) -> Logger:
         pass

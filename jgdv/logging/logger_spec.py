@@ -8,7 +8,6 @@ from __future__ import annotations
 
 # ##-- stdlib imports
 import datetime
-import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
@@ -30,7 +29,7 @@ from jgdv._abstract.protocols import Buildable_p, ProtocolModelMeta
 from .colour_format import ColourFormatter, StripColourFormatter
 from jgdv.structs.chainguard import ChainGuard
 from .filter import BlacklistFilter, WhitelistFilter
-from ._interface import LogLevel_e, MAX_FILES, TARGETS
+from . import _interface as API  # noqa: N812
 
 # ##-- end 1st party imports
 
@@ -46,6 +45,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 if TYPE_CHECKING:
+    import enum
     from jgdv import Maybe, RxStr
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -53,7 +53,7 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
-    from ._interface import Handler, Logger, Formatter
+    from ._interface import Handler, Formatter
 ##--|
 from jgdv import Maybe
 # isort: on
@@ -66,7 +66,7 @@ logging = logmod.getLogger(__name__)
 env           : dict             = os.environ
 IS_PRE_COMMIT : Final[bool]      = "PRE_COMMIT" in env
 
-class HandlerBuilder_m:
+class HandlerBuilder_m:  # noqa: N801
     """
     Loggerspec Mixin for building handlers
     """
@@ -81,7 +81,7 @@ class HandlerBuilder_m:
         return logmod.FileHandler(path, mode='w')
 
     def _build_rotatinghandler(self, path:pl.Path) -> Handler:
-        handler = l_handlers.RotatingFileHandler(path, backupCount=MAX_FILES)
+        handler = l_handlers.RotatingFileHandler(path, backupCount=API.MAX_FILES)
         handler.doRollover()
         return handler
 
@@ -158,15 +158,16 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
     colour                     : bool|str                    = False
     verbosity                  : int                         = 0
     target                     : Maybe[str|list[str|pl.Path]]= None # stdout | stderr | file
-    filename_fmt               : Maybe[str]                  = "%Y-%m-%d::%H:%M.log"
-    propagate                  : Maybe[bool]                 = False
-    clear_handlers             : bool                        = False
-    style                      : str                         = "{"
-    nested                     : list[LoggerSpec]            = []
-    prefix                     : Maybe[str]                  = None
-
-    RootName                   : ClassVar[str]               = "root"
-    levels                     : ClassVar[enum.IntEnum]      = LogLevel_e
+    filename_fmt               : Maybe[str]                      = "%Y-%m-%d::%H:%M.log"
+    propagate                  : Maybe[bool]                     = False
+    clear_handlers             : bool                            = False
+    style                      : str                             = "{"
+    nested                     : list[LoggerSpec]                = []
+    prefix                     : Maybe[str]                      = None
+    _logger                    : Maybe[API.Logger]               = None
+    _applied                   : bool                            = False
+    RootName                   : ClassVar[str]                   = "root"
+    levels                     : ClassVar[enum.IntEnum]          = API.LogLevel_e
 
     @staticmethod
     def build(data:bool|list|dict, **kwargs) -> LoggerSpec:
@@ -215,9 +216,9 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
     @field_validator("target")
     def _validate_target(cls, val):
         match val:
-            case [*xs] if all(x in TARGETS for x in xs):
+            case [*xs] if all(x in API.TARGETS for x in xs):
                 return val
-            case str() if val in TARGETS:
+            case str() if val in API.TARGETS:
                 return val
             case pl.Path():
                 return val
@@ -232,18 +233,25 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
             case "%" | "{" | "$":
                 return val
             case _:
-                raise ValueError("Logger Style Needs to be in [{,%,$]", val)
+                raise ValueError("API.Logger Style Needs to be in [{,%,$]", val)
 
     @ftz.cached_property
     def fullname(self) -> str:
         if self.base is None:
             return self.name
-        return "{}.{}".format(self.base, self.name)
+        return f"{self.base}.{self.name}"
 
-    def apply(self, *, onto:Maybe[Logger]=None) -> Logger:
+    def apply(self, *, onto:Maybe[API.Logger]=None) -> API.Logger:
         """ Apply this spec (and nested specs) to the relevant logger """
+        match onto:
+            case None if self._logger is not None:
+                return self.get()
+            case None:
+                logger = self.get()
+            case API.Logger():
+                logger = onto
+
         handler_pairs : list[tuple[logmod.Handler, logmod.Formatter]] = []
-        logger           = self.get()
         logger.propagate = self.propagate
         logger.setLevel(logmod._nameToLevel.get("NOTSET", 0))
         if self.disabled:
@@ -298,11 +306,12 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
             if not bool(logger.handlers):
                 logger.setLevel(self.level)
                 logger.propagate = True
+
+            self._applied = True
             return logger
 
-    def get(self) -> Logger:
-        logger = logmod.getLogger(self.fullname)
-        return logger
+    def get(self) -> API.Logger:
+        return logmod.getLogger(self.fullname)
 
     def clear(self):
         """ Clear the handlers for the logger referenced """
