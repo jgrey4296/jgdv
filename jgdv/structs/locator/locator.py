@@ -86,6 +86,7 @@ logging = logmod.getLogger(__name__)
 ##--| Vars
 
 ##--| Body
+
 class SoftFailMultiDKey(MultiDKey["soft.fail"], multi=True):
 
     def exp_pre_lookup_h(self, sources, opts) -> list:
@@ -321,6 +322,7 @@ class _LocatorAccess_m:  # noqa: N801
                 return DKey(current, ctor=pl.Path, mark=DKey.Mark.MULTI)
 
 ##--|
+
 @Proto(Locator_p)
 @Mixin(_LocatorAccess_m, _LocatorUtil_m, PathManip_m)
 class JGDVLocator:
@@ -403,6 +405,12 @@ class JGDVLocator:
                 return key in self._data
             case _:
                 return NotImplemented
+
+    def __bool__(self) -> bool:
+        return bool(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
 
     def __iter__(self) -> Generator[str]:
         """ Iterate over the registered location names """

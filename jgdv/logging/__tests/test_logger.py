@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 
 """
@@ -7,14 +6,12 @@
 # Imports
 from __future__ import annotations
 
-# ##-- stdlib imports
 import logging as logmod
 import pathlib as pl
 from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
                     Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
                     TypeVar, cast)
 import warnings
-# ##-- stdlib imports
 
 import pytest
 from jgdv.logging.logger import JGDVLogger
@@ -37,10 +34,8 @@ class TestJGDVLogger:
         yield
         logmod.setLoggerClass(orig)
 
-
-    
     def test_sanity(self):
-        assert(True is True)
+        assert(True is not False) # noqa: PLR0133
 
     def test_basic(self):
         logger = JGDVLogger("basic")
@@ -54,7 +49,6 @@ class TestJGDVLogger:
         assert(hasattr(logger, "error"))
         assert(hasattr(logger, "critical"))
 
-
     def test_non_default_fail(self):
         logger = JGDVLogger("basic")
         with pytest.raises(AttributeError):
@@ -62,7 +56,6 @@ class TestJGDVLogger:
 
         with pytest.raises(AttributeError):
             logger.blah
-
 
     def test_non_default_success(self, install, caplog):
         with caplog.at_level(logmod.DEBUG):
@@ -73,7 +66,6 @@ class TestJGDVLogger:
 
         assert("blah" in caplog.messages)
 
-
     def test_non_default_getitem(self, install, caplog):
         with caplog.at_level(logmod.DEBUG):
             logger = logmod.getLogger("basic")
@@ -82,7 +74,6 @@ class TestJGDVLogger:
             logger['trace']("blah")
 
         assert("blah" in caplog.messages)
-
 
     def test_prefix(self, install, caplog):
         with caplog.at_level(logmod.DEBUG):
@@ -97,9 +88,9 @@ class TestJGDVLogger:
         assert("> qqqq" in caplog.messages)
         assert("aweg" in caplog.messages)
 
-
     def test_callable_prefix(self, install, caplog):
         count = 0
+
         def the_prefix():
             nonlocal count
             count += 1

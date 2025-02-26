@@ -164,6 +164,7 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
     style                      : str                         = "{"
     nested                     : list[LoggerSpec]            = []
     prefix                     : Maybe[str]                  = None
+    _logger                    : Maybe[Logger]               = None
 
     RootName                   : ClassVar[str]               = "root"
     levels                     : ClassVar[enum.IntEnum]      = LogLevel_e
@@ -242,8 +243,15 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
 
     def apply(self, *, onto:Maybe[Logger]=None) -> Logger:
         """ Apply this spec (and nested specs) to the relevant logger """
+        match onto:
+            case None if self._logger is not None:
+                return self.get()
+            case None:
+                logger = self.get()
+            case Logger():
+                logger = onto
+
         handler_pairs : list[tuple[logmod.Handler, logmod.Formatter]] = []
-        logger           = self.get()
         logger.propagate = self.propagate
         logger.setLevel(logmod._nameToLevel.get("NOTSET", 0))
         if self.disabled:
@@ -301,8 +309,10 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
             return logger
 
     def get(self) -> Logger:
-        logger = logmod.getLogger(self.fullname)
-        return logger
+        if self._logger is None:
+            self._logger = logmod.getLogger(self.fullname)
+
+        return self._logger
 
     def clear(self):
         """ Clear the handlers for the logger referenced """

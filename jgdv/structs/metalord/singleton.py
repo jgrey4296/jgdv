@@ -69,4 +69,16 @@ class MLSingleton(MetalordCore):
     TODO Metaclass for enforcing singletons
 
     """
-    pass
+    def __call__(cls, *args:Any, **kwargs:Any):
+        match kwargs:
+            case {"force_new": True}:
+                obj = object.__new__(cls)
+                obj.__init__(*args, **kwargs)
+                return obj
+            case _ if not hasattr(cls, "__inst"):
+                logging.info("Creating Singleton %s", cls.__name__)
+                obj = object.__new__(cls)
+                obj.__init__(**kwargs)
+                setattr(cls, "__inst", obj)
+
+        return getattr(cls, "__inst")
