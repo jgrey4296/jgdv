@@ -91,14 +91,16 @@ class DKeyMeta(type(str)):
 
         # TODO maybe move dkey discrimination from dkey.__new__ to here
         new_key = None
-        match args:
+        match list(args):
             case [DKey() as x] if kwargs.get("mark", None) is None:
                 new_key = x
+            case [pl.Path()  as x]:
+                new_key = cls.__new__(cls, str(x), **kwargs)
             case [str()|DKey() as x]:
                 new_key = cls.__new__(cls, *args, **kwargs)
             case x:
                 msg = "Unknown type passed to construct dkey"
-                raise TypeError(msg, x)
+                raise TypeError(msg, type(x), repr(x))
 
         match new_key:
             case DKey() as x if insist and DKey.MarkOf(x) is DKeyMark_e.NULL:

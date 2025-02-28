@@ -92,6 +92,8 @@ class StrangMeta(type(str)):
     def __call__(cls, data, *args, **kwargs):
         """ Overrides normal str creation to allow passing args to init """
         match data:
+            case pl.Path():
+                data = str(data)
             case cls():
                 data = str(data)
             case _:

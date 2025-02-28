@@ -8,7 +8,6 @@ from __future__ import annotations
 
 # ##-- stdlib imports
 import datetime
-import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
@@ -47,6 +46,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 TimeDelta = datetime.timedelta
 if TYPE_CHECKING:
+   import enum
    from jgdv import Maybe
    from typing import Final
    from typing import ClassVar, Any, LiteralString
@@ -92,7 +92,7 @@ class Location(Location_d, Strang):
     bmark_e             : ClassVar[enum.Enum]  = WildCard_e
 
     @classmethod
-    def pre_process(cls, data:str|pl.Path, *, strict=False):
+    def pre_process(cls, data:str|pl.Path, *, strict:bool=False) -> Any:  # noqa: ANN401
         match data:
             case Strang():
                 pass
@@ -108,7 +108,7 @@ class Location(Location_d, Strang):
                 pass
         return super().pre_process(data, strict=strict)
 
-    def _post_process(self):
+    def _post_process(self) -> None:
         max_body         = len(self._body)
         self._body_meta  = [None for x in range(max_body)]
         self._group_meta = set()
@@ -148,11 +148,11 @@ class Location(Location_d, Strang):
 
         return self
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._group_meta = None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         body = self[1:]
         cls = self.__class__.__name__
         return f"<{cls}: {self[0:]}{self._separator}{body}>"
@@ -234,18 +234,18 @@ class Location(Location_d, Strang):
         logging.debug("%s and %s match", self, other)
         return True
 
-    @ftz.cached_property
+    @property
     def path(self) -> pl.Path:
         return pl.Path(self[1:])
 
-    @ftz.cached_property
+    @property
     def body_parent(self) -> list[Location._body_type]:
         if self.gmark_e.file in self:
             return self.body()[:-1]
 
         return self.body()
 
-    @ftz.cached_property
+    @property
     def stem(self) -> Maybe[str|tuple[Location.bmark_e, str]]:
         """ Return the stem, or a tuple describing how it is a wildcard """
         if self.gmark_e.file not in self._group_meta:
@@ -263,7 +263,7 @@ class Location(Location_d, Strang):
 
         return elem
 
-    def ext(self, *, last=False) -> Maybe[str|tuple[Location.bmark_e, str]]:
+    def ext(self, *, last:bool=False) -> Maybe[str|tuple[Location.bmark_e, str]]:
         """ return the ext, or a tuple of how it is a wildcard.
         returns nothing if theres no extension,
         returns all suffixes if there are multiple, or just the last if last=True
@@ -288,7 +288,7 @@ class Location(Location_d, Strang):
             case ext:
                 return ext
 
-    @ftz.cached_property
+    @property
     def keys(self):
         raise NotImplementedError()
 
