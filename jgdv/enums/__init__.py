@@ -28,7 +28,6 @@ class LoopControl_e(enum.Enum):
     def loop_no_set(cls):
         return  {cls.no, cls.noBut, False, None}
 
-
 class CurrentState_e(enum.Enum):
     """
       Enumeration of the different states a task can be in.
@@ -55,3 +54,30 @@ class ActionResult_e(enum.Enum):
     FAIL     = enum.auto()
     SKIP     = enum.auto()
     HALT     = enum.auto()
+
+class TaskPolicyEnum(enum.Flag):
+    """
+      Combinable Policy Types:
+      breaker  : fails fast
+      bulkhead : limits extent of problem and continues
+      retry    : trys to do the action again to see if its resolved
+      timeout  : waits then fails
+      cache    : reuses old results
+      fallback : uses defined alternatives
+      cleanup  : uses defined cleanup actions
+      debug    : triggers pdb
+      pretend  : pretend everything went fine
+      accept   : accept the failure
+
+      breaker will overrule bulkhead
+    """
+    BREAKER  = enum.auto()
+    BULKHEAD = enum.auto()
+    RETRY    = enum.auto()
+    TIMEOUT  = enum.auto()
+    CACHE    = enum.auto()
+    FALLBACK = enum.auto()
+    CLEANUP  = enum.auto()
+    DEBUG    = enum.auto()
+    PRETEND  = enum.auto()
+    ACCEPT   = enum.auto()
