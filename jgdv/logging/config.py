@@ -239,8 +239,7 @@ class JGDVLogConfig(metaclass=MLSingleton):
     def setup(self, config:ChainGuard, *, force:bool=False) -> None:
         """ a setup that uses config values """
         if self.is_setup and not force:
-            msg = "Logging is already set up"
-            raise ValueError(msg)
+            warnings.warn("Logging Is Already Set Up")
 
         if config is None:
             msg = "Config data has not been configured"
