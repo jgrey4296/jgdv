@@ -5,4 +5,5 @@ with a TOML formatted spec.
 
 """
 
+from ._interface import LogLevel_e
 from .config import JGDVLogConfig

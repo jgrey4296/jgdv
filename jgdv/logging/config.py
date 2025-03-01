@@ -282,7 +282,7 @@ class JGDVLogConfig(metaclass=MLSingleton):
           The First name needs to be a registered subprinter.
           Additional names are unconstrained
         """
-        base = self._printer_initial_spec.get()
+        base = self._registry[API.PRINTER_NAME].get()
         if not bool(names) or names == (None,):
             return base
 
