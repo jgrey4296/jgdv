@@ -4,6 +4,202 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [1.0.0] - 2025-03-01
+
+### Features
+
+- Sub_many fn
+- Safe_import to coderef
+- Tagfile comments
+- Failhandler_p
+- Zip/compression mixin
+- Trace helper
+- Branch 'feature.guarded_chain'
+- Initial key code
+- Initial location code
+- Initial str struct name
+- Initial locations pass
+- Debugging signal handler and trace builder
+- Strang functionality
+- Add Strang annotations
+- Branch 'feature.strang'
+- Strict preprocessing for strangs
+- Initial cli code
+- Param spec
+- Param spec type annotation
+- Param spec subclasses
+- Branch 'features.cli'
+- Basic Location implementation
+- Enum mixin and bump to py3.12
+- 312 types
+- Pathy
+- Type aliases
+- Pathy joining
+- Pathy contain, format, expand
+- Pathy time comparison
+- Pathy walking
+- Branch 'feature.312'
+- Verstr and lambda types
+- Paramspec type tests
+- Stackprinter to formatting
+- Multi enum checking for locations
+- Additional errors for cli parsing
+- Chainguard fallback(none) test
+- Prelude
+- Logging decorators
+- Logger extension
+- Log spec as bool
+- Mut/NoMut types
+- Tests for core dkeys
+- Prefer local expansion for dkeys
+- Merge branch 'feature.alt.expander'
+- Initial decorators code
+- CheckProtocol
+- @Mixin and @WithProto
+- Merge branch 'features.decorators'
+- Stdlib path refactor
+- Positional matching for pathy
+- Merge branch 'feature.pathy'
+- Test for unexpected dkey args
+- DKeyed add_sources method
+- Dkey insistence
+- Dkey extra kwargs for subclasses
+- Release to conf
+- Versioning tasks
+- Custom templates
+- Merge branch 'docs'
+- Fallback factorys for dkey expansion
+- Error traceback item control
+- Traceback control in decorators
+- @Mixin(..., allow_inheritance=bool, silent=bool)
+- Todo tests
+- Dkeyparser tests
+- Class getitem to TraceBuilder
+- Decorator __new__ and DoMaybe
+- Plugin_selector
+- Metalord stub
+- Singleton
+- Merge branch 'feature.metalord'
+- Policy enum
+
+### Bug Fixes
+
+- Typo
+- Typo
+- Strang metaclass
+- Tests
+- Strang with_head behaviour
+- Strang
+- Oversights of refactor
+- Chainguard to behave like dict for iter
+- Param spec sorting
+- Arg parsing forced help
+- Arg parsing head --help
+- Missing exc_info handling
+- Positional params
+- Dkeyformatter parse semantics
+- Coercion bugs
+- Location building
+- Extra sources recursion
+- DKeyed.redirects
+- Forced multikeys
+- Indirect key hashing
+- Dkey expansion check
+- Dkeyed.add_sources -> dkey.add_sources
+- Import
+- Imports
+- Path mod
+- Autoapi dir
+- Typo and handling cached_property
+- Param spec name parsing
+- Indirect key expansion
+- Key expansion conversion
+- Logging
+- Chainguard update mutability fail
+
+### Dependencies
+
+- Version 0.3.2 -> 1.0.0
+
+### Refactoring
+
+- Docs
+- Branch 'docs' into linux-main
+- Tagfile and substitutionfile
+- Tags files
+- Tag splitting into update method
+- Coderef
+- Remove mentions of doot from dkey
+- Simplify import structure
+- Location imports
+- Decorator
+- Decorators
+- Decorators, with tests
+- Time tracking decorator
+- Struct str
+- Strang to jgdv.structs.strang
+- Codereference to use strang
+- Locations to use Strang
+- Post_process to be local to strang subtype
+- Weakrefs in global locations store
+- Obsolete name module
+- Guarded_chain -> chainguard
+- Tomlguard -> chainguard
+- Strang format methods
+- Location metadata
+- Strang subclassing
+- Arg parser
+- Repl stub
+- Uncecessary parts of argparser_p
+- Param specs
+- Parse machine to separate file
+- Types
+- Errors
+- Logging to have style control
+- Dkey decorator accessors to classmethods
+- Jgdv formatters
+- Locations expansion logic
+- Dkey expansion
+- Decorators
+- Arg parsing to handle unordered args
+- Errors
+- Dkey
+- Path expansion tests from strang to dkey
+- Indirect key to core
+- Base expansion
+- Expansion class names, KeyMark
+- Locations -> locator
+- Expansion to use ExpInst
+- Param_spec into module
+- Obsolete
+- Annotate
+- Pathy types enum -> NewTypes
+- Class decorators
+- Key expansion
+- DKey.ExpInst and DKey.Mark
+- DKeyMark_e.REDIRECT and TASK
+- DKeyed auto registration
+- Decorator _mod_class -> _wrap_class
+- Docs
+- Doot build task
+- Decorators
+- Cli params
+- @mixin and @proto
+- Annotation naming
+- Interface definitions
+- ChainGuard interface
+- Logging interface
+- Files interface
+- Cli interface
+- ExpInst -> _interface.ExpInst_d
+- Dkey module to have .core
+- Strang interface
+- Dkey
+
+### [Merge]
+
+- Branch 'linux-main'
+
 ## [0.3.2] - 2024-09-12
 
 ### Dependencies
