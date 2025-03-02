@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [1.0.1] - 2025-03-02
+
+### Bug Fixes
+
+- Bad import
+
+### Dependencies
+
+- Version 1.0.0 -> 1.0.1
+
 ## [1.0.0] - 2025-03-01
 
 ### Features

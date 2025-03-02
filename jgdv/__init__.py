@@ -4,7 +4,7 @@ JGDV, my kitchen sink library.
 
 
 """
-__version__ = "1.0.0"
+__version__ = "1.0.1"
 
 from . import prelude
 from ._types import *
