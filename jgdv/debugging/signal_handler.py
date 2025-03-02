@@ -4,7 +4,6 @@
 """
 
 # Imports:
-##-- builtin imports
 from __future__ import annotations
 
 # ##-- stdlib imports
@@ -51,14 +50,6 @@ from typing import (
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
-
-# ##-- 3rd party imports
-##-- lib imports
-import more_itertools as mitz
-
-# ##-- end 3rd party imports
-
-##-- end builtin imports
 
 ##-- logging
 logging    = logmod.getLogger(__name__)
