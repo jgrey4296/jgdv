@@ -146,10 +146,11 @@ class CodeReference(Strang):
                 try:
                     mod = importlib.import_module(self.module)
                     curr = getattr(mod, self.value)
-                except ModuleNotFoundError:
-                    raise ImportError("Attempted import failed, module not found", str(self), self.module) from None
-                except AttributeError:
-                    raise ImportError("Attempted import failed, attribute not found", str(self), self.value) from None
+                except ModuleNotFoundError as err:
+                    err.add_note(f"Origin: {self}")
+                    raise
+                except AttributeError as err:
+                    raise ImportError("Attempted import failed, attribute not found", str(self), self.value, err.args) from None
                 else:
                     self._value = curr
             case _:
