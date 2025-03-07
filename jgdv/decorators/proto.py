@@ -18,7 +18,6 @@ import types
 import typing
 import weakref
 from uuid import UUID, uuid1
-
 # ##-- end stdlib imports
 
 from jgdv.mixins.annotate import Subclasser

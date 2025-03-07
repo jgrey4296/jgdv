@@ -22,11 +22,6 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-# ##-- 3rd party imports
-from pydantic import BaseModel
-
-# ##-- end 3rd party imports
-
 # ##-- types
 # isort: off
 import abc
@@ -38,8 +33,6 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 
-ProtoMeta       = type(Protocol)
-PydanticMeta    = type(BaseModel)
 if TYPE_CHECKING:
     from typing import Final
     from typing import ClassVar, LiteralString
@@ -50,6 +43,7 @@ if TYPE_CHECKING:
     type ChainGuard = Any
     type Maybe[T]   = None|T
     type Ctor[T]    = type(T) | Callable[[*Any], T]
+    type Logger     = logmod.Logger
 
 # isort: on
 # ##-- end types
@@ -57,16 +51,6 @@ if TYPE_CHECKING:
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-class ProtocolModelMeta(ProtoMeta, PydanticMeta):
-    """ Use as the metaclass for pydantic models which are explicit Protocol implementers
-
-      eg:
-
-      class Example(BaseModel, ExampleProtocol, metaclass=ProtocolModelMeta):...
-
-    """
-    pass
 
 @runtime_checkable
 class ArtifactStruct_p(Protocol):
@@ -259,3 +243,16 @@ class FailHandler_p(Protocol):
     def handle_failure(self, err:Exception, *args, **kwargs) -> Maybe[Any]:
         pass
 
+@runtime_checkable
+class Visitor_p(Protocol):
+
+    def visit(self, **kwargs) -> Any:
+        pass
+
+
+@runtime_checkable
+class DILogger_p(Protocol):
+    """ Protocol for classes with a dependency injectable logger """
+
+    def logger(self) -> Logger:
+        pass

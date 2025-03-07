@@ -61,6 +61,7 @@ class ChainGetter:
       Doesn't perform repeated expansions.
 
       tries sources in order.
+    TODO replace this with collections.ChainMap ?
     """
 
     @staticmethod

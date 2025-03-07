@@ -22,7 +22,7 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-from jgdv import Maybe
+from jgdv._types import Maybe
 from typing import Any
 type Logger = logmod.Logger
 

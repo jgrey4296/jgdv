@@ -25,7 +25,8 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from jgdv import Proto, Mixin
-from jgdv._abstract.protocols import Buildable_p, ProtocolModelMeta
+from jgdv._abstract.protocols import Buildable_p
+from jgdv._abstract.pydantic_proto import ProtocolModelMeta
 from .colour_format import ColourFormatter, StripColourFormatter
 from jgdv.structs.chainguard import ChainGuard
 from .filter import BlacklistFilter, WhitelistFilter

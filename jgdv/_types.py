@@ -11,61 +11,76 @@ and `Maybe[T]`, `Result[T, E]`, `Either[L, R]`.
 # Imports:
 from __future__ import annotations
 
-from types import UnionType, GenericAlias, MethodType, LambdaType
-from typing import (Any, Callable, Generator, Never, TypeGuard, Self)
+from collections.abc import Callable, Generator, Hashable, Iterable, Iterator, KeysView, ItemsView, ValuesView
+from collections import deque
+import types
+from typing import (Any, Never, TypeGuard, Self, Annotated, final)
 from uuid import UUID, uuid1
+from packaging.version import Version
+from packaging.specifiers import SpecifierSet
 from re import Pattern, Match
 import datetime
 from weakref import ref
-from jgdv._abstract import protocols
 
-type VerStr                   = str # A Version String
-type Ident                    = str # Unique Identifier Strings
-type FmtStr                   = str # Format Strings like 'blah {val} bloo'
-type FmtSpec                  = str # Format and conversion parameters. eg: 'blah {val:<9!r}' would be ':<10!r'
+##--| Strings
+type VerStr                   = Annotated[str, Version] # A Version String
+type VerSpecStr               = Annotated[str, SpecifierSet]
+type Ident                    = Annotated[str, UUID] # Unique Identifier Strings
+type FmtStr                   = Annotated[str, None] # Format Strings like 'blah {val} bloo'
+type FmtSpec                  = Annotated[str, None] # Format and conversion parameters. eg: 'blah {val:<9!r}' would be ':<10!r'
 type FmtKey                   = str # Names of Keys in a FmtStr
+type RxStr                    = Annotated[str, Pattern]
+type Char                     = Annotated[str, lambda x: len(x) == 1]
+
+##--|
 type Rx                       = Pattern
 type RxMatch                  = Match
-type RxStr                    = str
+
+##--| Constructors, Methods, Functions
 type Ctor[T]                  = type[T] | Callable[[*Any], T]
 type Func[I,O]                = Callable[I,O]
-type Method[I,O]              = MethodType[type, I,O]
+type Method[I,O]              = types.MethodType[type, I,O]
 type Decorator                = Func[[Func],Func]
-type Lambda                   = LambdaType
+type Lambda                   = types.LambdaType
 
-# Containers:
+##--| Containers
 type Weak[T]                  = ref[T]
 type Stack[T]                 = list[T]
 type Fifo[T]                  = list[T]
-type Queue[T]                 = list[T]
+type Queue[T]                 = deque[T]
 type Lifo[T]                  = list[T]
 type Vector[T]                = list[T]
-type Mut[T]                   = T
-type NoMut[T]                 = T
+
+##--| Util types
+type VList[T]                 = T | list[T]
+type Mut[T]                   = Annotated[T, "Mutable"]
+type NoMut[T]                 = Annotated[T, "Immutable"]
 
 type Maybe[T]                 = T | None
 type Result[T, E:Exception]   = T | E
 type Either[L, R]             = L | R
 type SubOf[T]                 = TypeGuard[T]
 
-# Shorthands
-type M_[T]                    = T | None
-type R_[T, E:Exception]       = T | E
-type E_[L, R]                 = L | R
+##--| Shorthands
+type M_[T]                    = Maybe[T]
+type R_[T, E:Exception]       = Result[T,E]
+type E_[L, R]                 = Either[L,R]
 
-# TODO : Make These subtypes of int that are 0<=x
-type Depth              = int
-type Seconds            = int
-
-
+##--| Numbers
+type Depth              = Annotated[int, lambda x: 0 <= x]
+type Seconds            = Annotated[int, lambda x: 0 <= x]
 type DateTime           = datetime.datetime
 type TimeDelta          = datetime.timedelta
 
-type CHECKTYPE          = Maybe[type|GenericAlias|UnionType]
+##--| Dicts
+type DictKeys           = KeysView
+type DictItems          = ItemsView
+type DictVals           = ValuesView
 
-type DictKeys           = type({}.keys())
-type DictItems          = type({}.items())
-type DictVals           = type({}.values())
+##--| Tracebacks and code
+type Traceback = types.TracebackType
+type Frame     = types.FrameType
 
-
-# TODO: traceback and code types
+##--| Misc
+type Module = types.ModuleType
+type CHECKTYPE          = Maybe[type|types.GenericAlias|types.UnionType]

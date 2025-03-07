@@ -14,7 +14,6 @@ import warnings
 
 import pytest
 
-from jgdv._types import *
 from jgdv.structs.pathy import Pathy, Pure, Real, File, Dir
 import jgdv.structs.pathy.pathy as Pth
 

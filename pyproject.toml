@@ -22,6 +22,7 @@ dependencies   = [
                "sh >= 2.1.0",
                "stackprinter >= 0.2.0",
                "sty >= 1.0.6",
+               "packaging",
                
 ]
 

@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 __all__ = ["Signature", "Decorable", "Decorated", "DForm_e", "Decorator_p"]
 
 ##--| Util Types
-from jgdv import Func, Method
+from jgdv._types import Func, Method
 
 ##--| Primary Types
 type Signature   = inspect.Signature
