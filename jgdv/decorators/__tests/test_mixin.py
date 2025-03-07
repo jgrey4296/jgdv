@@ -167,7 +167,7 @@ class TestMixinDecorator:
 
     def test_pre_super_chain_decorated(self):
 
-        @Mixin(m1, m2, m3)
+        @Mixin(m1, m2, m3, None)
         class PreChainTop(ChainBase):
 
             def vals(self) -> list:
@@ -210,8 +210,8 @@ class TestMixinDecorator:
 
     def test_multi_dec_super_chain(self):
 
-        @Mixin(m1)
-        @Mixin(None, m2, m3)
+        @Mixin(m1, None)
+        @Mixin(m2, m3)
         class PostChainTop(ChainBase):
 
             def vals(self) -> list:

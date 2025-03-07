@@ -66,15 +66,15 @@ NAME_MOD  : Final[str] = "M"
 ##--| Body
 
 class Mixin(MonotonicDec):
-    """ Decorator to Prepend Mixins into the decorated class.
+    """ Decorator to App/Prepend Mixins into the decorated class.
     'None' is used to separate pre and post mixins
 
     class ClsName(mixins, Supers, Protocols, metaclass=MCls, **kwargs):...
 
     into:
 
-    @Mixin(*ms)
     @Protocols(*ps)
+    @Mixin(*ms, None)
     class ClsName(Supers): ...
 
 """
@@ -88,17 +88,17 @@ class Mixin(MonotonicDec):
         try:
             index = mixins.index(None)
         except ValueError:
-            index = len(mixins)
+            index = 0
         finally:
-            self._pre_mixins  = mixins[:index]
-            self._post_mixins = mixins[index+1:]
+            self._pre_mixins  = [x for x in mixins[:index] if x is not None]
+            self._post_mixins = [x for x in mixins[index:] if x is not None]
             if not allow_inheritance:
                 self._validate_mixins()
 
 
     def _validate_mixins(self) -> None:
         for x in itz.chain(self._pre_mixins, self._post_mixins):
-            if len(x.mro()) > 2:  # noqa: PLR2004
+            if len(x.mro()) > 3:  # noqa: PLR2004
                 msg = "Can't Mixin a class that inherits anything"
                 raise TypeError(msg, x)
 
