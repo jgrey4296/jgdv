@@ -65,6 +65,8 @@ class TagFile(BaseModel):
     ^{tag} {sep} {count}$
 
     cls.read can be used to change the {sep}
+
+    # TODO use a collections.Counter
     """
 
     counts       : dict[str, int]        = defaultdict(lambda: 0)

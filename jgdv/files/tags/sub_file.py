@@ -139,6 +139,11 @@ class SubstitutionFile(TagFile):
                         self._inc(key, amnt=val)
                 case (str() as key, int() | str() as counts): # tag and count
                     self._inc(key, amnt=int(counts))
+                case (str() as key, list() as subs): # tag and subs
+                    norm_key  = self._inc(key, amnt=1)
+                    norm_subs = [normed for x in subs if (normed:=self.norm_tag(x)) is not None]
+                    self.update({x:1 for x in norm_subs}) # Add to normal counts too
+                    self.substitutions[norm_key].update(norm_subs)
                 case (str() as key, int() | str() as counts, *subs): # Tag, count, subs
                     norm_key  = self._inc(key, amnt=int(counts))
                     norm_subs = [normed for x in subs if (normed:=self.norm_tag(x)) is not None]
