@@ -12,7 +12,6 @@ import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
-import pathlib as pl
 import re
 import time
 import types
@@ -22,6 +21,7 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
+from . import _interface as API  # noqa: N812
 # ##-- types
 # isort: off
 import abc
@@ -32,11 +32,11 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
 from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
-from jgdv import Rx
+from jgdv import Rx  # noqa: TC001
 
 if TYPE_CHECKING:
+    import pathlib as pl
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -52,12 +52,6 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-TAG_NORM     : Final[Rx]         = re.compile(" +")
-SEP          : Final[str]        = " : "
-EXT          : Final[str]        = ".tags"
-NORM_REPLACE : Final[str]        = "_"
-COMMENT      : Final[str]        = "%%"
-
 class TagFile(BaseModel):
     """ A Basic TagFile holds the counts for each tag use
 
@@ -70,52 +64,56 @@ class TagFile(BaseModel):
     """
 
     counts       : dict[str, int]        = defaultdict(lambda: 0)
-    sep          : str                   = SEP
-    ext          : str                   = EXT
-    norm_replace : str                   = NORM_REPLACE
-    norm_regex   : Rx                    = TAG_NORM
-    comment      : str                   = COMMENT
+    sep          : str                   = API.SEP
+    ext          : str                   = API.EXT
+    norm_replace : str                   = API.NORM_REPLACE
+    norm_regex   : Rx                    = API.TAG_NORM
+    comment      : str                   = API.COMMENT
 
     @classmethod
-    def read(cls, fpath:pl.Path, **kwargs) -> TagFile:
+    def read(cls, fpath:pl.Path, **kwargs:dict) -> TagFile:
         obj = cls(**{x:y for x,y in kwargs.items() if y is not None})
         for i, line in enumerate(fpath.read_text().split("\n")):
             try:
                 obj.update(line)
             except Exception as err:
                 logging.warning("Failure Tag Read: (l:%s) : %s : %s : (file: %s)", i, err, line, fpath)
+                raise
 
         return obj
 
     @field_validator("norm_regex", mode="before")
-    def _validate_regex(cls, val):
+    def _validate_regex(cls, val:str|Rx) -> Rx:  # noqa: N805
         match val:
             case str():
                 return re.compile(val)
             case re.Pattern():
                 return val
             case _:
-                raise TypeError("Bad norm_regex provided")
+                msg = "Bad norm_regex provided"
+                raise TypeError(msg)
 
     @field_validator("counts", mode="before")
-    def _validate_counts(cls, val):
+    def _validate_counts(cls, val:dict) -> dict:  # noqa: N805
         counts = defaultdict(lambda: 0)
         match val:
             case dict():
                 counts.update(val)
+            case x:
+                raise TypeError(type(x))
         return counts
 
     @model_validator(mode="after")
-    def _normalize_counts(self):
+    def _normalize_counts(self) -> Self:
         orig = self.counts
         self.counts = defaultdict(lambda: 0)
         self.counts.update({self.norm_tag(x):y for x,y in orig.items()})
         return self
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator:
         return iter(self.counts)
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Export the counts, 1 entry per line, as:
         `key` : `value`
@@ -127,20 +125,20 @@ class TagFile(BaseModel):
             all_lines.append(self.sep.join([key, str(self.counts[key])]))
         return "\n".join(all_lines)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f"<{self.__class__.__name__}: {len(self)}>"
 
-    def __iadd__(self, values:TagFile|str|dict|set):
+    def __iadd__(self, values:TagFile|str|dict|set) -> Self:
         """  merge tags, updating their counts as well. """
         return self.update(values)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.counts)
 
-    def __contains__(self, value):
+    def __contains__(self, value:str) -> bool:
         return self.norm_tag(value) in self.counts
 
-    def _inc(self, key, *, amnt=1) -> Maybe[str]:
+    def _inc(self, key:str, *, amnt:int=1) -> Maybe[str]:
         norm_key = self.norm_tag(key)
         if not bool(norm_key):
             return None
@@ -171,8 +169,8 @@ class TagFile(BaseModel):
     def to_set(self) -> set[str]:
         return set(self.counts.keys())
 
-    def get_count(self, tag) -> int:
+    def get_count(self, tag:str) -> int:
         return self.counts[self.norm_tag(tag)]
 
-    def norm_tag(self, tag) -> str:
+    def norm_tag(self, tag:str) -> str:
         return self.norm_regex.sub(self.norm_replace, tag).strip()

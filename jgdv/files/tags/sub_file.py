@@ -22,7 +22,8 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-from .tag_file import SEP, TagFile
+from ._interface import SEP
+from .tag_file import TagFile
 
 # ##-- types
 # isort: off
@@ -63,9 +64,9 @@ class SubstitutionFile(TagFile):
 
     sep           : str                  = SEP
     ext           : str                  = EXT
-    substitutions : dict[str, set[str]]  = defaultdict(set)
+    substitutions : dict[str, set[str]]  = defaultdict(set)  # noqa: RUF012
 
-    def __str__(self):
+    def __str__(self) -> str:
         """
         Export the substitutions, 1 entry per line, as:
         `key` : `counts` : `substitution`
@@ -80,7 +81,7 @@ class SubstitutionFile(TagFile):
 
         return "\n".join(all_lines)
 
-    def __getitem__(self, key) -> set[str]:
+    def __getitem__(self, key:str) -> set[str]:
         """ Gets the substitutions for a key """
         return self.sub(key)
 
@@ -108,16 +109,16 @@ class SubstitutionFile(TagFile):
         result = set()
         for val in values:
             result.update(self.sub(val))
+        else:
+            return result
 
-        return result
-
-    def has_sub(self, value) -> bool:
+    def has_sub(self, value:str) -> bool:
         normed = self.norm_tag(value)
         if normed != value:
             return True
         return bool(self.substitutions.get(normed, None))
 
-    def update(self, *values:str|Tuple|dict|SubstitutionFile|TagFile|set) -> Self:
+    def update(self, *values:str|tuple|dict|SubstitutionFile|TagFile|set) -> Self:
         """
         Overrides TagFile.update to handle tuples of (tag, count, replacements*)
         """

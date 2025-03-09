@@ -37,11 +37,11 @@ type Rx                       = Pattern
 type RxMatch                  = Match
 
 ##--| Constructors, Methods, Functions
-type Ctor[T]                  = type[T] | Callable[[*Any], T]
-type Func[I,O]                = Callable[I,O]
-type Method[I,O]              = types.MethodType[type, I,O]
-type Decorator                = Func[[Func],Func]
-type Lambda                   = types.LambdaType
+type Ctor[T]                   = type[T] | Callable[[*Any], T]
+type Func                      = Callable
+type Method[I,O]               = types.MethodType[type, I,O]
+type Decorator                 = Func[[Func],Func]
+type Lambda                    = types.LambdaType
 
 ##--| Containers
 type Weak[T]                  = ref[T]
