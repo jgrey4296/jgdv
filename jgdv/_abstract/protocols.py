@@ -2,17 +2,15 @@
 """
 
 """
-
+# ruff: noqa: N801
 # Imports:
 from __future__ import annotations
 
 # ##-- stdlib imports
 import datetime
-import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
-import pathlib as pl
 import re
 import time
 import types
@@ -34,6 +32,8 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    import pathlib as pl
+    import enum
     from typing import Final
     from typing import ClassVar, LiteralString
     from typing import Never, Self, Literal
@@ -56,14 +56,14 @@ logging = logmod.getLogger(__name__)
 class ArtifactStruct_p(Protocol):
     """ Base class for artifacts, for type matching """
 
-    def exists(self, *, data=None) -> bool:
+    def exists(self, *, data=None) -> bool:  # noqa: ANN001
         pass
 
 @runtime_checkable
 class UpToDate_p(Protocol):
     """ For things (often artifacts) which might need to have actions done if they were created too long ago """
 
-    def is_stale(self, *, other:Any=None) -> bool:
+    def is_stale(self, *, other:Any=None) -> bool:  # noqa: ANN401
         """ Query whether the task's artifacts have become stale and need to be rebuilt"""
         pass
 
@@ -93,13 +93,13 @@ class TomlStubber_p(Protocol):
         pass
 
     @classmethod
-    def stub_class(cls, stub:StubStruct_p):
+    def stub_class(cls, stub:StubStruct_p) -> None:
         """
         Specialize a StubStruct_p to describe this class
         """
         pass
 
-    def stub_instance(self, stub:StubStruct_p):
+    def stub_instance(self, stub:StubStruct_p) -> None:
         """
           Specialize a StubStruct_p with the settings of this specific instance
         """
@@ -140,7 +140,7 @@ class Buildable_p(Protocol):
     """
 
     @staticmethod
-    def build(*args) -> Self:
+    def build(*args:Any) -> Self:  # noqa: ANN401
         pass
 
 @runtime_checkable
@@ -150,23 +150,23 @@ class Factory_p[T](Protocol):
     """
 
     @classmethod
-    def build(cls:Ctor[T], *args, **kwargs) -> T:
+    def build(cls:Ctor[T], *args:Any, **kwargs:Any) -> T:  # noqa: ANN401
         pass
 
 @runtime_checkable
 class Nameable_p(Protocol):
     """ The core protocol of something use as a name """
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         pass
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other:Nameable_p) -> bool:
         pass
 
-    def __lt__(self, other) -> bool:
+    def __lt__(self, other:Nameable_p) -> bool:
         pass
 
-    def __contains__(self, other) -> bool:
+    def __contains__(self, other:Nameable_p) -> bool:
         pass
 
 @runtime_checkable
@@ -176,7 +176,7 @@ class InstantiableSpecification_p(Protocol):
     def instantiate_onto(self, data:Maybe[Self]) -> Self:
         pass
 
-    def make(self):
+    def make(self) -> Self:
         pass
 
 @runtime_checkable
@@ -185,7 +185,7 @@ class ExecutableTask(Protocol):
       instead of using their default logic
     """
 
-    def setup(self):
+    def setup(self) -> None:
         """ """
         pass
 
@@ -193,11 +193,11 @@ class ExecutableTask(Protocol):
         """ For expanding a job into tasks """
         pass
 
-    def execute(self):
+    def execute(self) -> None:
         """ For executing a task """
         pass
 
-    def teardown(self):
+    def teardown(self) -> None:
         """ For Cleaning up the task """
         pass
 
@@ -209,20 +209,20 @@ class ExecutableTask(Protocol):
         """ Optional but recommended """
         pass
 
-    def execute_action(self):
+    def execute_action(self) -> None:
         """ For executing a single action """
         pass
 
     def current_status(self) -> enum.Enum:
         pass
 
-    def force_status(self, status:enum.Enum):
+    def force_status(self, status:enum.Enum) -> None:
         pass
 
     def current_priority(self) -> int:
         pass
 
-    def decrement_priority(self):
+    def decrement_priority(self) -> None:
         pass
 
 @runtime_checkable
@@ -240,15 +240,14 @@ class Persistent_p(Protocol):
 @runtime_checkable
 class FailHandler_p(Protocol):
 
-    def handle_failure(self, err:Exception, *args, **kwargs) -> Maybe[Any]:
+    def handle_failure(self, err:Exception, *args:Any, **kwargs:Any) -> Maybe[Any]:  # noqa: ANN401
         pass
 
 @runtime_checkable
 class Visitor_p(Protocol):
 
-    def visit(self, **kwargs) -> Any:
+    def visit(self, **kwargs:Any) -> Any:  # noqa: ANN401
         pass
-
 
 @runtime_checkable
 class DILogger_p(Protocol):

@@ -58,6 +58,7 @@ type NoMut[T]                 = Annotated[T, "Immutable"]
 
 type Maybe[T]                 = T | None
 type Result[T, E:Exception]   = T | E
+type Result[T]                = T | Exception
 type Either[L, R]             = L | R
 type SubOf[T]                 = TypeGuard[T]
 
@@ -82,5 +83,5 @@ type Traceback = types.TracebackType
 type Frame     = types.FrameType
 
 ##--| Misc
-type Module = types.ModuleType
-type CHECKTYPE          = Maybe[type|types.GenericAlias|types.UnionType]
+type Module    = types.ModuleType
+type CHECKTYPE = Maybe[type|types.GenericAlias|types.UnionType]
