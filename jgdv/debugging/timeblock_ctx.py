@@ -22,6 +22,9 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
+import jgdv
+from jgdv import Proto
+
 ##-- types
 # isort: off
 import abc
@@ -52,11 +55,14 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class TimeCtx:
+@Proto(jgdv.protos.DILogger_p)
+class TimeBlock_ctx:
     """
     A Simple Timer Ctx class to log how long things take
     Give it a logger, a message, and a level.
     The message doesn't do any interpolation
+
+    eg: With TimeBlock():...
 
     """
     start_time   : Maybe[float]

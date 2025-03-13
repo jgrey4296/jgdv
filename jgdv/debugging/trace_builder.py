@@ -31,11 +31,10 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
-from types import TracebackType, FrameType
+from types import TracebackType
 
 if TYPE_CHECKING:
+    from jgdv import Maybe, Traceback, Frame
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
@@ -51,7 +50,8 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 if not hasattr(sys, "_getframe"):
-    raise ImportError("Can't use TraceBuilder on this system, there is no sys._getframe")
+        msg = "Can't use TraceBuilder on this system, there is no sys._getframe"
+        raise ImportError(msg)
 
 ##--|
 class TraceBuilder:
@@ -69,24 +69,25 @@ class TraceBuilder:
     """
 
 
-    def __class_getitem__(cls, item) -> TracebackType:
+    def __class_getitem__(cls, item:slice) -> Traceback:
         tbb = cls()
         return tbb[item]
 
-    def __init__(self, *, chop_self=True):
-        self.frames : list[FrameType] = []
+    def __init__(self, *, chop_self:bool=True) -> None:
+        self.frames : list[Frame] = []
         self._get_frames()
         if chop_self:
             self.frames = self.frames[2:]
 
-    def __getitem__(self, val=None) -> TracebackType:
+    def __getitem__(self, val:Maybe[slice]=None) -> Traceback:
         match val:
             case None:
                 return self.to_tb()
             case slice() | int():
                 return self.to_tb(self.frames[val])
             case _:
-                raise TypeError("Bad value passed to TraceHelper", val)
+                msg = "Bad value passed to TraceHelper"
+                raise TypeError(msg, val)
 
     def _get_frames(self) -> None:
         """ from https://stackoverflow.com/questions/27138440
@@ -95,15 +96,15 @@ class TraceBuilder:
         depth = 0
         while True:
             try:
-                frame : FrameType = sys._getframe(depth)
+                frame : Frame = sys._getframe(depth)
                 depth += 1
             except ValueError:
                 break
             else:
                 self.frames.append(frame)
 
-    def to_tb(self, frames=None) -> TracebackType:
-        top = None
+    def to_tb(self, frames:Maybe[list[Frame]]=None) -> Traceback:
+        top    = None
         frames = frames or self.frames
         for frame in frames:
             top = TracebackType(top, frame,
