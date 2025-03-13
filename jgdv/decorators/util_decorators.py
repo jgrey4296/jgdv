@@ -22,7 +22,7 @@ from uuid import UUID, uuid1
 
 from jgdv.debugging import TraceBuilder
 from .core import IdempotentDec, MetaDec, MonotonicDec
-from jgdv.util.time_ctx import TimeCtx
+from jgdv.debugging import TimeBlock_ctx
 
 # ##-- types
 # isort: off
@@ -36,7 +36,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    from jgdv import Maybe, Either
+    from jgdv import Maybe, Either, Method, Func
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
@@ -68,11 +68,10 @@ class CanRaise(MetaDec):
     """
     pass
 
-
 class TrackTime(MetaDec):
     """ Decorate a callable to track its timing """
 
-    def __init__(self, logger:Maybe[Logger]=None, level:Maybe[int|str]=None, entry:Maybe[str]=None, exit:Maybe[str]=None, **kwargs):
+    def __init__(self, logger:Maybe[Logger]=None, level:Maybe[int|str]=None, entry:Maybe[str]=None, exit:Maybe[str]=None, **kwargs:Any) -> None:  # noqa: A002, ANN401
         kwargs.setdefault("mark", "_timetrack_mark")
         kwargs.setdefault("data", "_timetrack_data")
         super().__init__([], **kwargs)
@@ -81,26 +80,26 @@ class TrackTime(MetaDec):
         self._entry  = entry
         self._exit   = exit
 
-    def wrap_fn[T](self, fn:T) -> T:
-        logger, enter, exit, level = self._logger, self._entry, self.exit, self.level
+    def wrap_fn[I, O](self, fn:Func[I, O]) -> Func[I, O]:
+        logger, enter, exit, level = self._logger, self._entry, self.exit, self.level  # noqa: A001
 
-        def track_time_wrapper(*args, **kwargs):
-            with TimeCtx(logger=logger, enter_msg=enter, exit_msg=exit, level=level):
+        def track_time_wrapper(*args:Any, **kwargs:Any) -> O:  # noqa: ANN401
+            with TimeBlock_ctx(logger=logger, enter_msg=enter, exit_msg=exit, level=level):
                 return fn(*args, **kwargs)
 
         return track_time_wrapper
 
-    def wrap_method(self, fn):
+    def wrap_method[I, O](self, fn:Method[I, O]) -> Method[I, O]:
         return self._wrap_fn(fn)
-
 
 class Breakpoint(IdempotentDec):
     """
       Decorator to attach a breakpoint to a function, without pausing execution
     """
 
-    def __call__(self, target):
-        raise NotImplementedError("needs RunningDebugger")
+    def __call__(self, target:Callable) -> Any:  # noqa: ANN401
+        msg = "needs RunningDebugger"
+        raise NotImplementedError(msg)
     # # TODO handle repeats
     # if args[0].breakpoint:
 
@@ -117,69 +116,65 @@ class Breakpoint(IdempotentDec):
         #                             f_code.co_firstlineno+2][0]
         #         bp.enable()
 
-
         # return self._func(self, *args, **kwargs)
-
 
 class DoMaybe(MonotonicDec):
     """ Make a fn or method propagate None's """
 
-    def _wrap_method_h(self, meth):
+    def _wrap_method_h[I, O](self, meth:Method[I, O]) -> Method[I, Maybe[O]]:
 
-        def _prop_maybe(_self, fst, *args, **kwargs) -> Maybe:
+        def _prop_maybe(_self, fst, *args:Any, **kwargs:Any) -> Maybe[O]:  # noqa: ANN001, ANN401
             match fst:
                 case None:
                     return None
                 case x:
-                    return meth(_self, fst, *args, **kwargs)
+                    return meth(_self, x, *args, **kwargs)
 
         return _prop_maybe
 
-    def _wrap_fn_h(self, fn):
+    def _wrap_fn_h[I, O](self, fn:Func[I, O]) -> Func[I, Maybe[O]]:
 
-        def _prop_maybe(fst, *args, **kwargs) -> Maybe:
+        def _prop_maybe(fst:Any, *args:Any, **kwargs:Any) -> Maybe[O]:  # noqa: ANN401
             match fst:
                 case None:
                     return None
                 case x:
                     try:
-                        return fn(fst, *args, **kwargs)
+                        return fn(x, *args, **kwargs)
                     except Exception as err:
                         err.with_traceback(TraceBuilder[2:])
                         raise
 
-
         return _prop_maybe
-
 
 class DoEither(MonotonicDec):
     """ Either do the fn/method, or propagate the error """
 
-    def _wrap_method_h(self, meth):
+    def _wrap_method_h[I:Any, O:Any](self, meth:Method[I, O]) -> Method[I, Either[O]]:
 
-        def _prop_either(_self, fst, *args, **kwargs) -> Either:
+        def _prop_either(_self:Any, fst:Any, *args:Any, **kwargs:Any) -> Either[O]:  # noqa: ANN401
             match fst:
                 case Exception() as err:
                     return err
                 case x:
                     try:
-                        return meth(_self, fst, *args, **kwargs)
-                    except Exception as err:
+                        return meth(_self, x, *args, **kwargs)
+                    except Exception as err:  # noqa: BLE001
                         err.with_traceback(TraceBuilder[2:])
                         return err
 
-        return _prop_maybe
+        return _prop_either
 
-    def _wrap_fn_h(self, fn):
+    def _wrap_fn_h[I:Any, O:Any](self, fn:Func[I, O]) -> Func[I, Either[O]]:
 
-        def _prop_either(fst, *args, **kwargs) -> Either:
+        def _prop_either(fst:Any, *args:Any, **kwargs:Any) -> Either[O]:  # noqa: ANN401
             match fst:
                 case Exception() as err:
                     return err
                 case x:
                     try:
-                        return fn(fst, *args, **kwargs)
-                    except Exception as err:
+                        return fn(x, *args, **kwargs)
+                    except Exception as err:  # noqa: BLE001
                         err.with_traceback(TraceBuilder[2:])
                         return err
 
