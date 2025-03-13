@@ -85,7 +85,7 @@ class TrackTime(MetaDec):
         logger, enter, exit, level = self._logger, self._entry, self.exit, self.level
 
         def track_time_wrapper(*args, **kwargs):
-            with TimeCtx(logger, enter, exit, level):
+            with TimeCtx(logger=logger, enter_msg=enter, exit_msg=exit, level=level):
                 return fn(*args, **kwargs)
 
         return track_time_wrapper

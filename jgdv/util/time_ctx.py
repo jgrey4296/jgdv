@@ -16,15 +16,13 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
 import weakref
 from typing import Any
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-
-# ##-- types
+##-- types
 # isort: off
 import abc
 import collections.abc
@@ -36,7 +34,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    from jgdv import Maybe
+    from jgdv import Maybe, Traceback
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
@@ -48,7 +46,7 @@ if TYPE_CHECKING:
 ##--|
 
 # isort: on
-# ##-- end types
+##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -61,22 +59,37 @@ class TimeCtx:
     The message doesn't do any interpolation
 
     """
+    start_time   : Maybe[float]
+    end_time     : Maybe[float]
+    elapsed_time : Maybe[float]
 
-    def __init__(self, logger:Logger=None, entry_msg:Maybe[str]=None, exit_msg:Maybe[str]=None, level:Maybe[int|str]=None) -> None:
-        self._start_time = None
-        self._logger     = logger or logging
-        self._level      = level or 10
-        self._entry_msg  = entry_msg or "Starting Timer"
-        self._exit_msg   = exit_msg  or "Time Elapsed"
+    def __init__(self, *, logger:Maybe[Logger|False]=None, enter_msg:Maybe[str]=None, exit_msg:Maybe[str]=None, level:Maybe[int|str]=None) -> None:
+        self.start_time      = None
+        self.end_time        = None
+        self.elapsed_time    = None
+        self._level          = level or 10
+        self._enter_msg      = enter_msg or "Starting Timer"
+        self._exit_msg       = exit_msg  or "Time Elapsed"
 
-    def __enter__(self) -> Any:  # noqa: ANN401
-        self._logger.log(self._level, self._entry_msg)
-        self._start_time = time.perf_counter()
-        return
+        match logger:
+            case False:
+                self._logger = logmod.getLogger("null")
+                self._logger.propagate = False
+                pass
+            case logmod.Logger() as l:
+                self._logger = l
+            case _:
+                self._logger = logging
 
-    def __exit__(self, exc_type:Any, exc_value:Any, exc_traceback:Any) -> bool:  # noqa: ANN401
-        end = time.perf_counter()
-        elapsed = end - self._start_time
-        self._logger.log(self._level, "%s : %s", self._exit_msg, f"{elapsed:0.4f} Seconds")
+
+    def __enter__(self) -> Self:
+        self._logger.log(self._level, self._enter_msg)
+        self.start_time = time.perf_counter()
+        return self
+
+    def __exit__(self, exc_type:Maybe[type], exc_value:Maybe, exc_traceback:Maybe[Traceback]) -> bool:
+        self.end_time = time.perf_counter()
+        self.elapsed_time = self.end_time - self.start_time
+        self._logger.log(self._level, "%s : %s", self._exit_msg, f"{self.elapsed_time:0.4f} Seconds")
         # return False to reraise errors
         return False
