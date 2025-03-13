@@ -1,4 +1,5 @@
 ## pyproject.toml -*- mode: toml -*-
+
 [project]
 name            = "jgdv"
 version         = "1.0.1"
@@ -23,7 +24,7 @@ dependencies   = [
                "stackprinter >= 0.2.0",
                "sty >= 1.0.6",
                "packaging",
-               
+
 ]
 
 [project.optional-dependencies]
@@ -37,10 +38,8 @@ test = [
      "pytest >= 8.3.0",
      "pytest-cov >= 6.0.0",
      "pytest-mock >= 3.14.0",
-     
 
 ]
-
 
 ##-- urls
 [project.urls]
@@ -89,36 +88,16 @@ include    = ["jgdv*"]
 
 # Tools #######################################################################
 
-##-- pyright
-[tool.pyright]
-# strict = jgdv.*
-verboseOutput               = true
-typeCheckingMode            = "strict"
-pythonVersion               = "3.10"
-
-reportUnusedImport          = false
-reportAssertAlwaysTrue      = "information"
-reportMissingParameterType  = "warning"
-reportMissingTypeArgument   = "warning"
-reportMissingTypeStubs      = "warning"
-reportUnknownMemberType     = "warning"
-reportUnknownParameterType  = "information"
-reportUnknownVariableType   = "warning"
-reportUnnecessaryCast       = "information"
-reportUnnecessaryIsInstance = "warning"
-
-##-- end pyright
-
 ##-- mypy
 # https://mypy.readthedocs.io/en/stable/config_file.html#config-file
-[mypy]
-python_version      = 3.10
-warn_return_any     = true
-warn_unused_configs = true
-
-# Per-module options:
-[mypy-pyparsing]
+[tool.mypy]
+python_version         = "3.12"
+follow_imports         = "skip"
+cache_dir              = ".temp/mypy_cache"
+warn_return_any        = false
+warn_unused_configs    = true
 ignore_missing_imports = true
+exclude                = [] 
 
 ##-- end mypy
 
