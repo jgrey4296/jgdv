@@ -32,10 +32,7 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
-from jgdv import DateTime, Seconds
 if TYPE_CHECKING:
     from jgdv import Maybe
     from typing import Final
@@ -45,6 +42,9 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+    from jgdv import DateTime, Seconds
+##--|
+
 # isort: on
 # ##-- end types
 
@@ -52,24 +52,30 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class Human_m:
+class HumanNumbers_m:
     """
     Simple Mixin for human related functions
     """
 
     @staticmethod
-    def human_sizes(val, format=False):
-        return tracemalloc._format_size(val, format)
+    def humanize(val:int|float, *, force_sign:bool=True) -> str:
+        """ Format {val} in a human readable way as a size.
+        Uses tracemalloc._format_size.
+        Depending on size, will use on of the units:
+        B, KiB, MiB, GiB, TiB.
+        """
+        return tracemalloc._format_size(val, force_sign) # type:ignore[attr-defined]
+
 
     @staticmethod
-    def round_time(dt:DateTime=None, roundTo:Seconds=60) -> DateTime:
+    def round_time(dt:DateTime=None, *,  round:Seconds=60) -> DateTime:
         """Round a datetime object to any time lapse in seconds
         dt : datetime.datetime object, default now.
-        roundTo : Closest number of seconds to round to, default 1 minute.
+        round : Closest number of seconds to round to, default 1 minute.
         Author: Thierry Husson 2012 - Use it as you want but don't blame me.
         from: https://stackoverflow.com/questions/3463930
         """
         dt       = dt or datetime.datetime.now()
         seconds  = (dt.replace(tzinfo=None) - dt.min).seconds
-        rounding = (seconds+roundTo/2) // roundTo * roundTo
+        rounding = (seconds+round/2) // round * round
         return dt + datetime.timedelta(0,rounding-seconds,-dt.microsecond)
