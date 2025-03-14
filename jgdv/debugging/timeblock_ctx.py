@@ -23,7 +23,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 import jgdv
-from jgdv import Proto
+from jgdv.decorators import MetaDec
 
 ##-- types
 # isort: off
@@ -55,8 +55,8 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-@Proto(jgdv.protos.DILogger_p)
-class TimeBlock_ctx:
+
+class TimeBlock_ctx(jgdv.protos.DILogger_p):
     """
     A Simple Timer Ctx class to log how long things take
     Give it a logger, a message, and a level.
@@ -99,3 +99,28 @@ class TimeBlock_ctx:
         self._logger.log(self._level, "%s : %s", self._exit_msg, f"{self.elapsed_time:0.4f} Seconds")
         # return False to reraise errors
         return False
+
+
+class TrackTime(MetaDec):
+    """ Decorate a callable to track its timing """
+
+    def __init__(self, logger:Maybe[Logger]=None, level:Maybe[int|str]=None, entry:Maybe[str]=None, exit:Maybe[str]=None, **kwargs:Any) -> None:  # noqa: A002, ANN401
+        kwargs.setdefault("mark", "_timetrack_mark")
+        kwargs.setdefault("data", "_timetrack_data")
+        super().__init__([], **kwargs)
+        self._logger = logger
+        self._level  =  level
+        self._entry  = entry
+        self._exit   = exit
+
+    def wrap_fn[I, O](self, fn:Func[I, O]) -> Func[I, O]:
+        logger, enter, exit, level = self._logger, self._entry, self.exit, self.level  # noqa: A001
+
+        def track_time_wrapper(*args:Any, **kwargs:Any) -> O:  # noqa: ANN401
+            with TimeBlock_ctx(logger=logger, enter_msg=enter, exit_msg=exit, level=level):
+                return fn(*args, **kwargs)
+
+        return track_time_wrapper
+
+    def wrap_method[I, O](self, fn:Method[I, O]) -> Method[I, O]:
+        return self._wrap_fn(fn)

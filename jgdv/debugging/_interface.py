@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 """
 
-
 """
 # ruff: noqa:
 
 # Imports:
 from __future__ import annotations
-
 
 # ##-- types
 # isort: off
@@ -33,10 +31,6 @@ if TYPE_CHECKING:
 
 # isort: on
 # ##-- end types
-
-##-- logging
-logging = logmod.getLogger(__name__)
-##-- end logging
 
 # Vars:
 DEL_LOG_K : Final[str] = "_log_del_active"

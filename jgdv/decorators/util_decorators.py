@@ -22,7 +22,6 @@ from uuid import UUID, uuid1
 
 from jgdv.debugging import TraceBuilder
 from .core import IdempotentDec, MetaDec, MonotonicDec
-from jgdv.debugging import TimeBlock_ctx
 
 # ##-- types
 # isort: off
@@ -67,30 +66,6 @@ class CanRaise(MetaDec):
 
     """
     pass
-
-class TrackTime(MetaDec):
-    """ Decorate a callable to track its timing """
-
-    def __init__(self, logger:Maybe[Logger]=None, level:Maybe[int|str]=None, entry:Maybe[str]=None, exit:Maybe[str]=None, **kwargs:Any) -> None:  # noqa: A002, ANN401
-        kwargs.setdefault("mark", "_timetrack_mark")
-        kwargs.setdefault("data", "_timetrack_data")
-        super().__init__([], **kwargs)
-        self._logger = logger
-        self._level  =  level
-        self._entry  = entry
-        self._exit   = exit
-
-    def wrap_fn[I, O](self, fn:Func[I, O]) -> Func[I, O]:
-        logger, enter, exit, level = self._logger, self._entry, self.exit, self.level  # noqa: A001
-
-        def track_time_wrapper(*args:Any, **kwargs:Any) -> O:  # noqa: ANN401
-            with TimeBlock_ctx(logger=logger, enter_msg=enter, exit_msg=exit, level=level):
-                return fn(*args, **kwargs)
-
-        return track_time_wrapper
-
-    def wrap_method[I, O](self, fn:Method[I, O]) -> Method[I, O]:
-        return self._wrap_fn(fn)
 
 class Breakpoint(IdempotentDec):
     """

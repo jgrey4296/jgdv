@@ -28,7 +28,6 @@ import timeit
 # ##-- end stdlib imports
 
 import jgdv
-from jgdv import Proto
 
 # ##-- types
 # isort: off
