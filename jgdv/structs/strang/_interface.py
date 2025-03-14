@@ -37,8 +37,6 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
     from jgdv import Maybe, Rx
@@ -66,7 +64,7 @@ SEP_DEFAULT    : Final[str]                = "::"
 SUBSEP_DEFAULT : Final[str]                = "."
 INST_K         : Final[str]                = "instanced"
 GEN_K          : Final[str]                = "gen_uuid"
-STRGET                                     = str.__getitem__
+STRGET         : Final[Callable]           = str.__getitem__
 # Body:
 
 class StrangMarker_e(enum.StrEnum):
@@ -112,7 +110,7 @@ class PreInitProcessed_p(Protocol):
     """
 
     @classmethod
-    def _pre_process(cls, data:Any, *, strict=False) -> Any:
+    def _pre_process(cls, data:str, *, strict:bool=False) -> str:
         pass
 
     def _process(self) -> None:

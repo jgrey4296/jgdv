@@ -2,13 +2,13 @@
 """
 
 """
-# ruff: noqa: B019
+# ruff: noqa: B019, PLR2004
+# mypy: disable-error-code="attr-defined,misc,override"
 # Imports:
 from __future__ import annotations
 
 # ##-- stdlib imports
 import datetime
-import enum
 import functools as ftz
 import importlib
 import itertools as itz
@@ -43,6 +43,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    import enum
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -64,7 +65,7 @@ logging.disabled = True
 class StrangBuilder_m:
 
     @staticmethod
-    def build(data, *args, **kwargs) -> Strang:
+    def build(data:str, *args:Any, **kwargs:Any) -> Strang:  # noqa: ANN401
         """ Build an appropriate Strang subclass else a Strang,
         goes from newest to oldest
         eg: For when you might have a Location or a Name, and want to try to build both
@@ -87,9 +88,9 @@ class StrangMeta(type(str)):
     to turn it into a strang
     """
 
-    _forms : list[type] = []
+    _forms : ClassVar[list[type]] = []
 
-    def __call__(cls, data, *args, **kwargs):
+    def __call__(cls:type[str], data:str, *args:Any, **kwargs:Any) -> str:  # noqa: ANN401
         """ Overrides normal str creation to allow passing args to init """
         match data:
             case pl.Path():
@@ -102,25 +103,29 @@ class StrangMeta(type(str)):
         try:
             data = cls.pre_process(data, strict=kwargs.get("strict", False))
         except ValueError as err:
-            raise errors.StrangError("Pre-Strang Error", cls, err, data) from None
+            msg = "Pre-Strang Error"
+            raise errors.StrangError(msg, cls, err, data) from None
 
         obj  = str.__new__(cls, data)
         try:
             obj.__init__(*args, **kwargs)
         except ValueError as err:
-            raise errors.StrangError("Strang Init Error", cls, err, data) from None
+            msg = "Strang Init Error"
+            raise errors.StrangError(msg, cls, err, data) from None
 
         try:
             # TODO don't call process and post_process if given the metadata in kwargs
             obj._process()
         except ValueError as err:
-            raise errors.StrangError("Strang Process Error", cls, err, data) from None
+            msg = "Strang Process Error"
+            raise errors.StrangError(msg, cls, err, data) from None
 
         try:
             # TODO allow post-process to override and return a different object?
             obj._post_process()
         except ValueError as err:
-            raise errors.StrangError("Post-Strang Error:", cls, err) from None
+            msg = "Post-Strang Error:"
+            raise errors.StrangError(msg, cls, err) from None
 
         return obj
 
@@ -143,28 +148,36 @@ class Strang(str, metaclass=StrangMeta):
     _separator        : ClassVar[str]                    = SEP_DEFAULT
     _subseparator     : ClassVar[str]                    = SUBSEP_DEFAULT
     _body_types       : ClassVar[Any]                    = str|UUID|StrangMarker_e
-    _typevar          : ClassVar[type]                   = None
-    bmark_e           : ClassVar[enum.Enum]              = StrangMarker_e
-    gmark_e           : ClassVar[enum.Enum|Literal[int]] = int
+    _typevar          : ClassVar[Maybe[type]]            = None
+    bmark_e           : ClassVar[enum.StrEnum]           = StrangMarker_e
+    gmark_e           : ClassVar[enum.IntEnum|type[int]] = int
+
+    metadata          : dict
+    _base_slices      : tuple[Maybe[slice], Maybe[slice]]
+    _mark_idx         : tuple[Maybe[int], Maybe[int]]
+    _group            : list[slice]
+    _body             : list[slice]
+    _body_meta        : list[Maybe[Strang._body_types]]
+    _group_meta       : set[enum.member]
 
     @classmethod
-    def __init_subclass__(cls, *args, **kwargs):
+    def __init_subclass__(cls, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
         StrangMeta._forms.append(cls)
 
-    def _post_process(self) -> None:
+    def _post_process(self) -> None:  # noqa: PLR0912
         """
         go through body elements, and parse UUIDs, markers, param
         setting self._body_meta and self._mark_idx
         """
         logging.debug("Post-processing Strang: %s", str.__str__(self))
-        max_body = len(self._body)
-        self._body_meta = [None for x in range(max_body)]
-        mark_idx : tuple[int, int] = (max_body, -1)
+        max_body        : int                    = len(self._body)
+        self._body_meta : list[Maybe[UUID|str]]  = [None for x in range(max_body)]
+        mark_idx        : tuple[int, int]        = (max_body, -1)
         for i, elem in enumerate(self.body()):
             match elem:
                 case x if (match:=UUID_RE.match(x)):
                     self.metadata[INST_K] = min(i, self.metadata.get(INST_K, max_body))
-                    hex, *_ = match.groups()
+                    hex, *_ = match.groups()  # noqa: A001
                     self.metadata[GEN_K] = True
                     if hex is not None:
                         logging.debug("(%s) Found UUID", i)
@@ -175,7 +188,7 @@ class Strang(str, metaclass=StrangMeta):
                 case x if (match:=MARK_RE.match(x)) and (x_l:=match[1].lower()) in self.bmark_e.__members__:
                     # Get explicit mark,
                     logging.debug("(%s) Found Named Marker: %s", i, x_l)
-                    self._body_meta[i] = self.bmark_e[x_l]
+                    self._body_meta[i] = self.bmark_e[x_l]  # type: ignore[index]
                     mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
                 case "_" if i < 2: # _ and + coexist
                     self._body_meta[i] = self.bmark_e.hide
@@ -191,44 +204,43 @@ class Strang(str, metaclass=StrangMeta):
         else:
             # Set the root and last mark_idx for popping
             match mark_idx:
-                case (x, -1):
-                    mark_idx = (x, x)
-                case (x, 0):
-                    mark_idx = (x, x)
+                case (int() as x, -1):
+                    self._mark_idx = (x, x)  # type: ignore[assignment]
+                case (int() as x, 0):
+                    self._mark_idx = (x, x)  # type: ignore[assignment]
                 case (_, _):
-                    pass
+                    self._mark_idx = mark_idx
 
-            self._mark_idx = mark_idx
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *_:Any, **kwargs:Any) -> None:  # noqa: ANN401
         super().__init__()
-        self.metadata                                           = dict(kwargs)
+        self.metadata     = dict(kwargs)
         # For easy head and body str's
-        self._base_slices : tuple[slice, slice]                 = (None,None)
-        self._mark_idx    : tuple[int, int]                     = (None,None)
-        self._group       : list[slice]                         = []
-        self._body        : list[slice]                         = []
-        self._body_meta   : list[Maybe[Strang._body_types]]     = []
-        self._group_meta  : set[enum.member]                    = set()
+        self._base_slices = (None,None)
+        self._mark_idx    = (None,None)
+        self._group       = []
+        self._body        = []
+        self._body_meta   = []
+        self._group_meta  = set()
 
-    def __str__(self):
+    def __str__(self) -> str:
         match self.metadata.get(GEN_K, False):
             case False:
                 return super().__str__()
-            case True:
+            case _:
                 return self._expanded_str()
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         body = self._subjoin(self.body(no_expansion=True))
         cls = self.__class__.__name__
         return f"<{cls}: {self[0:]}{self._separator}{body}>"
 
-    def __iter__(self) -> iter[Strang._body_types]:
+    def __iter__(self) -> Iterator[Strang._body_types]:
         """ iterate the body *not* the group """
         for x in range(len(self._body)):
             yield self[x]
 
-    def __getitem__(self, i) -> Strang._body_types|Strang:
+    def __getitem__(self, i:int|slice) -> Strang._body_types|Strang:  # noqa: PLR0911
         """
         strang[x] -> get a body obj or str
         strang[0:x] -> a head str
@@ -253,7 +265,11 @@ class Strang(str, metaclass=StrangMeta):
             case slice(start=2, stop=x):
                 return self.__class__(self._expanded_str(stop=x))
             case slice(start=int()):
-                raise KeyError("Slicing a Strang only supports a start of 0 (group), 1 (body), and 2 (clone)", i)
+                msg = "Slicing a Strang only supports a start of 0 (group), 1 (body), and 2 (clone)"
+                raise KeyError(msg, i)
+            case x:
+                raise TypeError(type(x))
+
 
     @property
     def base(self) -> Self:

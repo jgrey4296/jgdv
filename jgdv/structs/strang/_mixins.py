@@ -2,7 +2,7 @@
 """
 
 """
-
+# mypy: disable-error-code="attr-defined,index,arg-type,call-arg"
 # Imports:
 from __future__ import annotations
 
@@ -57,10 +57,11 @@ logging.disabled = True
 
 class _Strang_cmp_m:
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return str.__hash__(str(self))
 
-    def __eq__(self, other):
+    @override
+    def __eq__(self, other:object) -> bool:
         match other:
             case _Strang_cmp_m():
                 return hash(self) == hash(other)
@@ -68,6 +69,8 @@ class _Strang_cmp_m:
                 return hash(self) == hash(other)
             case str():
                 return hash(self[1:]) == hash(other)
+            case _:
+                return False
 
     def __lt__(self, other:str|Self) -> bool:
         match other:
@@ -87,7 +90,7 @@ class _Strang_cmp_m:
 
         return True
 
-    def __le__(self, other) -> bool:
+    def __le__(self, other:str) -> bool:
         return hash(self) == hash(other) or (self < other)
 
 class _Strang_test_m:
@@ -99,7 +102,7 @@ class _Strang_test_m:
     def is_head(self) -> bool:
         return self.bmark_e.head in self
 
-    def __contains__(self, other) -> bool:
+    def __contains__(self, other:str) -> bool:
         """ test for conceptual containment of names
         other(a.b.c) ∈ self(a.b) ?
         ie: self < other
@@ -118,7 +121,7 @@ class _Strang_test_m:
 
 class _Strang_format_m:
 
-    def _format_subval(self, val, no_expansion:bool=False) -> str:
+    def _format_subval(self, val:str, *, no_expansion:bool=False) -> str:
         match val:
             case str():
                 return val
@@ -127,9 +130,10 @@ class _Strang_format_m:
             case UUID():
                 return f"<uuid:{val}>"
             case _:
-                raise TypeError("Unknown body type", val)
+                msg = "Unknown body type"
+                raise TypeError(msg, val)
 
-    def _expanded_str(self, *, stop:Maybe[int]=None):
+    def _expanded_str(self, *, stop:Maybe[int]=None) -> str:
         """ Create a str of the Strang with gen uuid's replaced with actual uuids """
         group = self[0:]
         body = []
@@ -140,12 +144,13 @@ class _Strang_format_m:
                 case UUID():
                     body.append(f"<uuid:{val}>")
                 case _:
-                    raise TypeError("Unknown body type", val)
+                    msg = "Unknown body type"
+                    raise TypeError(msg, val)
 
         body_str = self._subjoin(body)
         return f"{group}{self._separator}{body_str}"
 
-    def __format__(self, spec) -> str:
+    def __format__(self, spec:str) -> str:
         """ format additions for strangs:
           {strang:g} = print only the group
           {strang:b} = print only the body
@@ -164,7 +169,7 @@ class _Strang_format_m:
 class _Strang_validation_m:
 
     @classmethod
-    def pre_process(cls, data:str, *, strict=False) -> str:
+    def pre_process(cls, data:str, *, strict:bool=False) -> str:  # noqa: ARG003
         """ run before str.__new__ is called, so can do early modification of the string
         Filters out extraneous duplicated separators
         """
@@ -177,25 +182,27 @@ class _Strang_validation_m:
                 val           = cleaned.removesuffix(cls._subseparator).removesuffix(cls._subseparator)
                 return val
             case _:
-                raise ValueError("Base data malformed", data)
+                msg = "Base data malformed"
+                raise ValueError(msg, data)
 
     def _process(self) -> None:
         """ Get slices of the strang to describe group and body components """
         logging.debug("Processing Strang: %s", str.__str__(self))
-        index     = 0
         sep_index = self.find(self._separator)
         if sep_index == -1:
-            raise ValueError("Strang lacks a group{sep}body structure", str(self))
+            msg = "Strang lacks a group{sep}body structure"
+            raise ValueError(msg, str(self))
 
         self._group += self._get_slices(0, sep_index)
         self._body  += self._get_slices(sep_index, add_offset=True)
         if not (bool(self._group) and bool(self._body)):
-            raise ValueError("Strang doesn't have both a group and body")
+            msg = "Strang doesn't have both a group and body"
+            raise ValueError(msg)
 
         self._base_slices = (slice(self._group[0].start, self._group[-1].stop),
                              slice(self._body[0].start, self._body[-1].stop))
 
-    def _get_slices(self, start:int=0, max:Maybe[int]=None, add_offset:bool=False):
+    def _get_slices(self, start:int=0, max:Maybe[int]=None, *, add_offset:bool=False) -> list[slice]:  # noqa: A002
         index, end, offset = start, max or len(self), len(self._subseparator)
         slices    = []
         if add_offset:
@@ -221,7 +228,7 @@ class _Strang_subgen_m:
     """ Operations Mixin for manipulating TaskNames """
 
     @classmethod
-    def _subjoin(cls, lst) -> str:
+    def _subjoin(cls, lst:list) -> str:
         return cls._subseparator.join(lst)
 
     def canon(self) -> Self:
@@ -234,14 +241,13 @@ class _Strang_subgen_m:
 
         return self.__class__(f"{group}{self._separator}{canon_body}")
 
-    def pop(self, *, top=False) -> Self:
+    def pop(self, *, top:bool=False) -> Self:
         """
         Strip off one marker's worth of the name, or to the top marker.
         eg:
         root(test::a.b.c..<UUID>.sub..other) => test::a.b.c..<UUID>.sub
         root(test::a.b.c..<UUID>.sub..other, top=True) => test::a.b.c
         """
-        group : str       = self[0:]
         end_id            = self._mark_idx[0 if top else 1]
         return self[2:end_id]
 
@@ -252,7 +258,7 @@ class _Strang_subgen_m:
         """
         return self.__class__(self._subjoin(str(x) for x in [self[2:], self.bmark_e.mark, *vals] if x is not None))
 
-    def to_uniq(self, *, suffix=None) -> Self:
+    def to_uniq(self, *, suffix:Maybe[str]=None) -> Self:
         """ Generate a concrete instance of this name with a UUID appended,
         optionally can add a suffix
 
