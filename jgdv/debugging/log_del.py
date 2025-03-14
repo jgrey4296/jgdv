@@ -30,7 +30,6 @@ import faulthandler
 
 from . import _interface as API  # noqa: N812
 
-
 # ##-- types
 # isort: off
 import abc

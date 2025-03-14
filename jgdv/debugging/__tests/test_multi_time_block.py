@@ -1,11 +1,24 @@
 #!/usr/bin/env python3
 """
+TEST File updated
 
 """
-# ruff: noqa:
+# ruff: noqa: ANN201, ARG001, ANN001, ARG002, ANN202, B011
 
-# Imports:
+# Imports
 from __future__ import annotations
+
+# ##-- stdlib imports
+import logging as logmod
+import pathlib as pl
+import warnings
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+import pytest
+# ##-- end 3rd party imports
+
+from ..multi_time_block import MultiTimeBlock_ctx
 
 # ##-- types
 # isort: off
@@ -17,6 +30,8 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
+# from dataclasses import InitVar, dataclass, field
+# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
     from jgdv import Maybe
@@ -32,10 +47,19 @@ if TYPE_CHECKING:
 # isort: on
 # ##-- end types
 
+##-- logging
+logging = logmod.getLogger(__name__)
+##-- end logging
+
 # Vars:
-DEL_LOG_K         : Final[str] = "_log_del_active"
-DEFAULT_LOG_LEVEL : Final[int] = 40
-DEFAULT_REPORT    : Final[str] = "traceback"
-CHANGE_PREFIX     : Final[str] = "+-:"
-DEFAULT_PREFIX    : Final[str] = "--"
+
 # Body:
+class TestMultiTimeBlock:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    ##--|
+    @pytest.mark.skip
+    def test_todo(self):
+        pass
