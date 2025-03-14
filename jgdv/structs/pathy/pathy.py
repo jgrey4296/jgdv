@@ -18,7 +18,6 @@ import itertools as itz
 import logging as logmod
 import pathlib as pl
 import re
-import sys
 import time as time_
 import types
 import weakref
@@ -59,11 +58,6 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-PATH_REFACTORED_MINOR_VER : Final[int] = 12
-
-if sys.version_info.minor < PATH_REFACTORED_MINOR_VER:
-    msg = "Pathy needs 3.12+"
-    raise RuntimeError(msg)
 
 class _PathyExpand_m:
     """ Mixin for normalizing the Paths """
