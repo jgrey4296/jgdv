@@ -2,7 +2,7 @@
 """
 
 """
-
+# ruff: noqa: ERA001
 # Imports:
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ from uuid import UUID, uuid1
 # isort: off
 import abc
 import collections.abc
-from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, NewType, _caller
+from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, NewType, _caller  # type: ignore[attr-defined]
 from typing import TypeAliasType
 # Protocols:
 from typing import Protocol, runtime_checkable
@@ -57,13 +57,13 @@ AnnotateRx       : Final[Rx]  = re.compile(r"(?P<name>\w+)(?:<(?P<extras>.*?)>)?
 class Subclasser:
 
     @staticmethod
-    def make_annotated_subclass(cls, *params) -> type:
+    def make_annotated_subclass(cls:type, *params:Any) -> type:  # noqa: ANN401, PLW0211
         """ Make a subclass of cls,
         annotated to have params in cls[cls._annotate_to]
         """
         match params:
             case [NewType() as param]:
-                p_str = param.__name__
+                p_str = param.__name__  # type: ignore[attr-defined]
             case [TypeAliasType() as param]:
                 p_str = param.__value__.__name__
             case [type() as param]:
@@ -72,32 +72,35 @@ class Subclasser:
                 p_str = param
             case [param]:
                 p_str = str(param)
-            case [param, *params]:
-                raise NotImplementedError("Multi Param Annotation not supported yet")
+            case [param, *params]:  # type: ignore[misc]
+                msg = "Multi Param Annotation not supported yet"
+                raise NotImplementedError(msg)
             case _:
-                raise ValueError("Bad param value for making an annotated subclass", params)
+                msg = "Bad param value for making an annotated subclass"
+                raise ValueError(msg, params)
 
         # Get the module definer 3 frames up.
         # So not make_annotated_subclass, or __class_getitem__, but where the subclass is created
         def_mod = _caller(3)
         subname = Subclasser.decorate_name(cls, params=p_str)
         subdata = {
-            cls._annotate_to : param,
+            cls._annotate_to : param,  # type: ignore[attr-defined]
             "__module__" : def_mod,
         }
         sub = Subclasser.make_subclass(subname, cls, namespace=subdata)
-        setattr(sub, cls._annotate_to, param)
+        setattr(sub, cls._annotate_to, param)  # type: ignore[attr-defined]
         return sub
 
     @staticmethod
-    def decorate_name(cls:str|type, *vals:str, params:Maybe[str]=None) -> str:
+    def decorate_name(cls:str|type, *vals:str, params:Maybe[str]=None) -> str:  # noqa: PLW0211
         match cls:
             case type():
                 cls = cls.__name__
             case str():
                 pass
             case x:
-                raise TypeError("Unexpected name decoration target", x)
+                msg = "Unexpected name decoration target"
+                raise TypeError(msg, x)
 
         if not bool(vals) and not params:
             return cls
@@ -107,10 +110,11 @@ class Subclasser:
 
         match AnnotateRx.match(cls):
             case None:
-                raise ValueError("Couldn't even match the cls name", cls)
-            case re.Match() as x:
-                set_extras.update((x['extras'] or "").split("+"))
-                params_str = params or x['params'] or ""
+                msg = "Couldn't even match the cls name"
+                raise ValueError(msg, cls)
+            case re.Match() as x:  # type: ignore[misc]
+                set_extras.update((x['extras'] or "").split("+"))  # type: ignore[index]
+                params_str = params or x['params'] or ""  # type: ignore[index]
 
         set_extras = {x for x in set_extras if bool(x)}
         if bool(set_extras):
@@ -119,7 +123,7 @@ class Subclasser:
         if bool(params_str):
             params_str = f"[{params_str}]"
 
-        return f"{x['name']}{extras_str}{params_str}"
+        return f"{x['name']}{extras_str}{params_str}"  # type: ignore[index]
 
     @staticmethod
     def make_subclass(name:str, cls:type, *, namespace:Maybe[dict]=None, mro:Maybe[tuple]=None) -> type:
@@ -128,7 +132,8 @@ class Subclasser:
         possibly with a maniplated mro and internal namespace
         """
         if (ispydantic:=issubclass(cls, BaseModel)) and mro is not None:
-                raise NotImplementedError("Extending pydantic classes with a new mro is not implemented")
+                msg = "Extending pydantic classes with a new mro is not implemented"
+                raise NotImplementedError(msg)
         elif ispydantic:
             sub = Subclasser._new_pydantic_class(name, cls, namespace=namespace)
             return sub
@@ -147,9 +152,10 @@ class Subclasser:
             case None:
                 mro = cls.mro()
             case tuple() | list():
-                mro = mro
+                pass
             case x:
-                raise TypeError("Unexpected mro type", x)
+                msg = "Unexpected mro type"
+                raise TypeError(msg, x)
         ##--|
         mro = tuple(resolve_bases(mro))
         match namespace:
@@ -160,12 +166,13 @@ class Subclasser:
                 # namespace = mcls.__prepare__(name, mro) | namespace
                 pass
             case x:
-                raise TypeError("Unexpected namespace type", x)
+                msg = "Unexpected namespace type"
+                raise TypeError(msg, x)
         try:
             return mcls(name, mro, namespace)
         except TypeError as err:
             err.add_note(str(mro))
-            raise err
+            raise
 
     @staticmethod
     def _new_pydantic_class(name:str, cls:type, *, namespace:Maybe[dict]=None) -> type:
@@ -191,7 +198,7 @@ class SubAnnotate_m:
 
     _annotate_to : ClassVar[str] = AnnotationTarget
 
-    def __init_subclass__(cls, **kwargs):
+    def __init_subclass__(cls, **kwargs:Any) -> None:  # noqa: ANN401
         """ TODO does this need to call super? """
         match kwargs.get(AnnotateKWD, None):
             case str() as target:
@@ -206,9 +213,9 @@ class SubAnnotate_m:
 
     @classmethod
     @ftz.cache
-    def __class_getitem__(cls, *params) -> Self:
+    def __class_getitem__(cls:type, *params:Any) -> type:  # noqa: ANN401
         """ Auto-subclass as {cls.__name__}[param]"""
-        logging.debug("Annotating: %s : %s : (%s)", cls.__name__, params, cls._annotate_to)
+        logging.debug("Annotating: %s : %s : (%s)", cls.__name__, params, cls._annotate_to)  # type: ignore[attr-defined]
         match params:
             case []:
                 return cls
@@ -235,7 +242,7 @@ class SubRegistry_m(SubAnnotate_m):
     _registry : ClassVar[dict] = {}
 
     @classmethod
-    def __init_subclass__(cls, *args, **kwargs):
+    def __init_subclass__(cls, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
         logging.debug("Registry Subclass: %s : %s : %s", cls, args, kwargs)
         super().__init_subclass__(*args, **kwargs)
         match getattr(cls, "_registry", None):
@@ -256,20 +263,20 @@ class SubRegistry_m(SubAnnotate_m):
                 cls._registry.setdefault(x, cls)
 
     @classmethod
-    def __class_getitem__(cls, param) -> Self:
-        match cls._registry.get(param, None):
+    def __class_getitem__(cls:type, *params:Any) -> type: # type:ignore  # noqa: ANN401
+        match cls._registry.get(params[0], None):  # type: ignore[attr-defined]
             case None:
-                logging.debug("No Registered annotation class: %s :%s", cls, param)
-                return super().__class_getitem__(param)
+                logging.debug("No Registered annotation class: %s :%s", cls, params)
+                return super().__class_getitem__(*params)  # type: ignore[misc]
             case x:
                 return x
 
     @classmethod
-    def _get_subclass_form(cls, *, param=None) -> Self:
+    def _get_subclass_form(cls, *, param:Maybe=None) -> Self:
         param = param or cls._get_annotation()
         return cls._registry.get(param, cls)
 
     @classmethod
-    def _maybe_subclass_form(cls, *, param=None) -> Maybe[Self]:
+    def _maybe_subclass_form(cls, *, param:Maybe=None) -> Maybe[Self]:
         param = param or cls._get_annotation()
         return cls._registry.get(param, None)

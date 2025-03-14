@@ -5,7 +5,8 @@ Subclasses of pathlib.Path for working with type safe:
 - Directories,
 - Files
 """
-
+# ruff: noqa: DTZ006
+# mypy: disable-error-code="arg-type,attr-defined,call-arg,misc,type-arg,valid-type"
 # Imports:
 from __future__ import annotations
 
@@ -58,26 +59,30 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-if sys.version_info.minor < 12:
-    raise RuntimeError("Pathy needs 3.12+")
+PATH_REFACTORED_MINOR_VER : Final[int] = 12
+
+if sys.version_info.minor < PATH_REFACTORED_MINOR_VER:
+    msg = "Pathy needs 3.12+"
+    raise RuntimeError(msg)
 
 class _PathyExpand_m:
     """ Mixin for normalizing the Paths """
 
-    def normalize(self, *, root=None, symlinks:bool=False) -> pl.Path:
+    def normalize(self, *, root:Maybe[pl.Path]=None, symlinks:bool=False) -> pl.Path:
         """
           a basic path normalization
           expands user, and resolves the location to be absolute
         """
         result = pl.Path(self)
         if symlinks and result.is_symlink():
-            raise NotImplementedError("symlink normalization", result)
+            msg = "symlink normalization"
+            raise NotImplementedError(msg, result)
 
         match result.parts:
             case ["~", *_]:
                 result = result.expanduser().resolve()
             case ["/", *_]:
-                result = result
+                pass
             case _ if root:
                 result = (root / result).expanduser().resolve()
             case _:
@@ -112,6 +117,8 @@ class _PathyTime_m:
                 return tolerance < diff
             case None:
                 return time < self.time_modified()
+            case _:
+                return False
 
 ##--|
 class Pathy(SubRegistry_m, annotate_to="pathy_type"):
@@ -125,7 +132,7 @@ class Pathy(SubRegistry_m, annotate_to="pathy_type"):
 
     Also: Pathy.cwd() and Pathy.home()
     """
-    _registry : dict[type, pl.PurePath|pl.Path] = {}
+    _registry : ClassVar[dict[type, pl.PurePath|pl.Path]] = {}
     __match_args__ = ("pathy_type",)
     # Standard Pathy Subtypes
     Pure = Pure
@@ -135,26 +142,27 @@ class Pathy(SubRegistry_m, annotate_to="pathy_type"):
     Wild = Wild
 
     @classmethod
-    def __class_getitem__(cls, param) -> Self:
+    def __class_getitem__(cls, param:Any) -> Self:  # noqa: ANN401
         if not isinstance(param, NewType):
-            raise TypeError("Bad Pathy Subtype", param)
+            msg = "Bad Pathy Subtype"
+            raise TypeError(msg, param)
         return super().__class_getitem__(param)
 
     @staticmethod
-    def cwd():
+    def cwd() -> Pathy[Real]:
         return Pathy[Real](pl.Path.cwd())
 
     @staticmethod
-    def home():
+    def home() -> Pathy[Real]:
         return Pathy[Real](pl.Path.home())
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args, **kwargs) -> Pathy:
         """ When instantiating a Pathy, get the right subtype """
-        cls = cls._maybe_subclass_form() or PathyPure
-        if cls is Pathy:
-            cls = PathyPure
+        use_cls = cls._maybe_subclass_form() or PathyPure
+        if use_cls is Pathy:
+            use_cls = PathyPure
 
-        obj = object.__new__(cls)
+        obj = object.__new__(use_cls)
         obj.__init__(*args, **kwargs)
         return obj
 
@@ -179,7 +187,8 @@ class PathyPure(Pathy[Pure], pl.PurePath):
             case pl.Path() if not other.is_absolute():
                 return str(other) in str(self)
             case Pathy():
-                pass
+                msg = "TODO"
+                raise NotImplementedError(msg)
             case _:
                 raise NotImplementedError()
 
@@ -212,13 +221,17 @@ class PathyPure(Pathy[Pure], pl.PurePath):
                 return self._newer_than(other)
             case Pathy() | pl.Path():
                 return super().__lt__(other)
+            case _:
+                return False
 
     def with_segments(self, *segments) -> Self:
         if isinstance(self, Pathy[File]):
-            raise TypeError("Can't subpath a file")
+            msg = "Can't subpath a file"
+            raise TypeError(msg)
         match segments:
             case [*_, pl.PurePath() as x] if x.is_absolute():
-                raise ValueError("Can't join when rhs is absolute", segments)
+                msg = "Can't join when rhs is absolute"
+                raise ValueError(msg, segments)
             case [*_, PathyFile()]:
                 return Pathy[File](*segments)
             case [*_, pl.Path()|str() as x] if pl.Path(x).suffix != "":
