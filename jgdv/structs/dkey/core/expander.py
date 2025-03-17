@@ -182,7 +182,7 @@ class Expander:
         to the final result
         """
         match source.exp_pre_lookup_h(sources, opts):
-            case None:
+            case [] | None:
                 return [[
                     ExpInst_d(val=f"{source:d}"),
                     ExpInst_d(val=f"{source:i}", lift=True),

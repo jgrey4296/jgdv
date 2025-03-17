@@ -75,8 +75,8 @@ class PathManip_m:
         for root in roots:
             root_key = DKey(root, fallback=root, mark=DKey.Mark.PATH)
             results.append(root_key.expand(spec, state))
-
-        return results
+        else:
+            return results
 
     def _get_relative(self, fpath, roots:Maybe[list[pl.Path]]=None) -> pl.Path:
         """ Get relative path of fpath.
