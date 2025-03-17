@@ -2,7 +2,7 @@
 """
 
 """
-
+# mypy: disable-error-code="attr-defined"
 # Imports:
 from __future__ import annotations
 
@@ -64,10 +64,10 @@ from jgdv import Maybe
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-env           : dict             = os.environ
+env           : dict             = os.environ # type: ignore
 IS_PRE_COMMIT : Final[bool]      = "PRE_COMMIT" in env
 
-class HandlerBuilder_m:  # noqa: N801
+class HandlerBuilder_m:
     """
     Loggerspec Mixin for building handlers
     """
@@ -176,6 +176,8 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
           Build a single spec, or multiple logger specs targeting the same logger
         """
         match data:
+            case LoggerSpec():
+                return data
             case False:
                 return LoggerSpec(disabled=True, **kwargs)
             case True:
@@ -249,7 +251,7 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
                 return self.get()
             case None:
                 logger = self.get()
-            case API.Logger():
+            case logmod.Logger():
                 logger = onto
 
         handler_pairs : list[tuple[logmod.Handler, logmod.Formatter]] = []
@@ -274,8 +276,9 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
         match self.target:
             case _ if bool(self.nested):
                 for subspec in self.nested:
-                    subspec.apply()
-                return logger
+                    subspec.apply(onto=logger)
+                else:
+                    return logger
             case None | []:
                 handler_pairs.append(self._discriminate_handler(None))
             case [*xs]:

@@ -102,11 +102,12 @@ class BlacklistFilter:
         self.blacklist_re  = re.compile("^({})".format("|".join(self._blacklist)))
 
     def __call__(self, record) -> bool:
-        return (
-            record.name == "root"
-            or (not bool(self._blacklist)
-                and (not self.blacklist_re.match(record.name)))
-        )
+        if record.name == "root":
+            return True
+        if not bool(self._blacklist):
+            return True
+
+        return not bool(self.blacklist_re.match(record.name))
 
 class WhitelistFilter:
     """
@@ -115,10 +116,12 @@ class WhitelistFilter:
 
     def __init__(self, whitelist=None):
         self._whitelist   = whitelist or []
-        self.whitelist_re = re.compile("^({})".format("|".join(self.names)))
+        self.whitelist_re = re.compile("^({})".format("|".join(self._whitelist)))
 
     def __call__(self, record) -> bool:
-        return (record.name == "root"
-                or not bool(self._whitelist)
-                or self.whitelist_re.match(record.name)
-                )
+        if record.name == "root":
+            return True
+        if not bool(self._whitelist):
+            return True
+
+        return bool(self.whitelist_re.match(record.name))
