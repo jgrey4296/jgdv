@@ -69,13 +69,20 @@ class TimeBlock_ctx(jgdv.protos.DILogger_p):
     end_time     : Maybe[float]
     elapsed_time : Maybe[float]
 
-    def __init__(self, *, logger:Maybe[Logger|False]=None, enter_msg:Maybe[str]=None, exit_msg:Maybe[str]=None, level:Maybe[int|str]=None) -> None:
+    def __init__(self, *, logger:Maybe[Logger|False]=None, enter:Maybe[str]=None, exit:Maybe[str]=None, level:Maybe[int|str]=None) -> None:
         self.start_time      = None
         self.end_time        = None
         self.elapsed_time    = None
-        self._level          = level or 10
-        self._enter_msg      = enter_msg or "Starting Timer"
-        self._exit_msg       = exit_msg  or "Time Elapsed"
+        self._enter_msg      = enter or "Starting Timer"
+        self._exit_msg       = exit or "Time Elapsed"
+
+        match level:
+            case int() as x:
+                self._level = x
+            case str() as x if x in logmod._nameToLevel:
+                self._level = logmod._nameToLevel[x]
+            case _:
+                self._level = logmod.INFO
 
         match logger:
             case False:
@@ -104,7 +111,7 @@ class TimeBlock_ctx(jgdv.protos.DILogger_p):
 class TrackTime(MetaDec):
     """ Decorate a callable to track its timing """
 
-    def __init__(self, logger:Maybe[Logger]=None, level:Maybe[int|str]=None, entry:Maybe[str]=None, exit:Maybe[str]=None, **kwargs:Any) -> None:  # noqa: A002, ANN401
+    def __init__(self, logger:Maybe[Logger]=None, level:Maybe[int|str]=None, enter:Maybe[str]=None, exit:Maybe[str]=None, **kwargs:Any) -> None:  # noqa: A002, ANN401
         kwargs.setdefault("mark", "_timetrack_mark")
         kwargs.setdefault("data", "_timetrack_data")
         super().__init__([], **kwargs)
@@ -117,7 +124,7 @@ class TrackTime(MetaDec):
         logger, enter, exit, level = self._logger, self._entry, self.exit, self.level  # noqa: A001
 
         def track_time_wrapper(*args:Any, **kwargs:Any) -> O:  # noqa: ANN401
-            with TimeBlock_ctx(logger=logger, enter_msg=enter, exit_msg=exit, level=level):
+            with TimeBlock_ctx(logger=logger, enter=enter, exit=exit, level=level):
                 return fn(*args, **kwargs)
 
         return track_time_wrapper
