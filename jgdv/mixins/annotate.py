@@ -168,6 +168,8 @@ class Subclasser:
             case x:
                 msg = "Unexpected namespace type"
                 raise TypeError(msg, x)
+
+        namespace.setdefault("__module__", mro[0].__dict__['__module__'])
         try:
             return mcls(name, mro, namespace)
         except TypeError as err:
