@@ -15,6 +15,7 @@ import pytest
 
 from jgdv.structs.dkey import DKey, Key_p
 from jgdv.structs.dkey.path_key import PathDKey
+from jgdv.structs.locator import JGDVLocator
 
 logging = logmod.root
 
@@ -33,6 +34,47 @@ class TestPathKey:
 
     def test_mark(self):
         assert(DKey.MarkOf(PathDKey) is DKey.Mark.PATH)
+
+    def test_expansion(self):
+        key = DKey("test", mark=DKey.Mark.PATH, implicit=True)
+        match key.expand({"test":"blah"}):
+            case pl.Path() as x:
+                assert(x == pl.Path.cwd() / "blah")
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_expansion_fail(self):
+        key = DKey("test", mark=DKey.Mark.PATH, implicit=True)
+        match key.expand():
+            case None:
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_loc_expansion(self):
+        locs = JGDVLocator(root=pl.Path.cwd())
+        locs.update({"test":"blah"})
+        key = DKey("test", mark=DKey.Mark.PATH, implicit=True)
+        match key.expand(locs):
+            case pl.Path() as x:
+                assert(x == pl.Path.cwd() / "blah")
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_loc_expansion_miss(self):
+        locs = JGDVLocator(root=pl.Path.cwd())
+        key = DKey("test", force=PathDKey, implicit=True)
+        match key.expand(locs):
+            case None:
+                assert(True)
+            case x:
+                 assert(False), x
+
 
     @pytest.mark.skip
     def test_todo(self):
