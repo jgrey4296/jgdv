@@ -22,7 +22,7 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-from ._interface import SEP
+from . import _interface as API # noqa: N812
 from .tag_file import TagFile
 
 # ##-- types
@@ -52,7 +52,6 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-EXT : Final[str] = ".sub"
 
 class SubstitutionFile(TagFile):
     """ SubstitutionFiles add a replacement tag for some tags
@@ -62,8 +61,8 @@ class SubstitutionFile(TagFile):
 
     """
 
-    sep           : str                  = SEP
-    ext           : str                  = EXT
+    sep           : str                  = API.SEP
+    ext           : str                  = API.SUB_EXT
     substitutions : dict[str, set[str]]  = defaultdict(set)  # noqa: RUF012
 
     def __str__(self) -> str:
@@ -103,7 +102,7 @@ class SubstitutionFile(TagFile):
         if bool(self.substitutions.get(normed, None)):
             return self.substitutions[normed]
 
-        return set([normed])
+        return {normed}
 
     def sub_many(self, *values:str) -> set[str]:
         result = set()
@@ -121,40 +120,54 @@ class SubstitutionFile(TagFile):
     def update(self, *values:str|tuple|dict|SubstitutionFile|TagFile|set) -> Self:
         """
         Overrides TagFile.update to handle tuples of (tag, count, replacements*)
+        and (tag, replacements*)
         """
         for val in values:
             match val:
                 case None | "": # empty line
                     continue
-                case str() if val.startswith(self.comment):
+                case str() if val.startswith(self.comment): # comment
                     continue
-                case str() if self.sep in val:
+                case str() if API.ALT_SEP in val: # key :: subs
+                    x, *ys = val.split(API.ALT_SEP)
+                    self._add_sub(x, list(ys))
+                case str() if self.sep in val: # key : count : subs
                     self.update(tuple(x.strip() for x in val.split(self.sep)))
-                case str(): # just a tag
+                case str(): # key
                     self._inc(val)
-                case list() | set():
+                case list() | set(): # keys
                     for key in val:
                         self._inc(key)
-                case dict(): # tag and count
-                    for key, val in val.items():
-                        self._inc(key, amnt=val)
-                case (str() as key, int() | str() as counts): # tag and count
+                case dict(): # { key : count }
+                    for key, v in val.items():
+                        self._inc(key, amnt=v)
+                case (str() as key, int() | str() as counts): # (key, count)
                     self._inc(key, amnt=int(counts))
-                case (str() as key, list() as subs): # tag and subs
-                    norm_key  = self._inc(key, amnt=1)
-                    norm_subs = [normed for x in subs if (normed:=self.norm_tag(x)) is not None]
-                    self.update({x:1 for x in norm_subs}) # Add to normal counts too
-                    self.substitutions[norm_key].update(norm_subs)
-                case (str() as key, int() | str() as counts, *subs): # Tag, count, subs
-                    norm_key  = self._inc(key, amnt=int(counts))
-                    norm_subs = [normed for x in subs if (normed:=self.norm_tag(x)) is not None]
-                    self.update({x:1 for x in norm_subs}) # Add to normal counts too
-                    self.substitutions[norm_key].update(norm_subs)
+                case (str() as key, list() as subs): # (key, subs)
+                    self._add_sub(key, subs)
+                case (str() as key, int() | str() as counts, *subs): # key, count, subs
+                    self._add_sub(key, list(subs), count=counts)
                 case SubstitutionFile():
                     self.update(val.counts)
                     for tag, subs in val.substitutions.items():
-                        self.substitutions[tag].update(subs)
+                        self._add_sub(tag, subs)
                 case TagFile():
                     self.update(val.counts.items())
 
         return self
+
+    def _add_sub(self, key:str, subs:list[str], *, count:str|int=1) -> None:
+        match subs:
+            case [str() as x] if self.sep in x:
+                subs = x.split(self.sep)
+            case _:
+                pass
+        try:
+            count = int(count)
+        except ValueError:
+            count = 1
+
+        norm_key  = self._inc(key, amnt=count)
+        norm_subs = [normed for x in subs if (normed:=self.norm_tag(x)) is not None]
+        self.update({x:1 for x in norm_subs}) # Add to normal counts too
+        self.substitutions[norm_key].update(norm_subs)

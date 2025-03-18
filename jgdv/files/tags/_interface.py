@@ -34,10 +34,12 @@ if TYPE_CHECKING:
 # ##-- end types
 
 # Vars:
-TAG_NORM     : Final[Rx]         = re.compile(" +")
-SEP          : Final[str]        = " : "
-EXT          : Final[str]        = ".tags"
-NORM_REPLACE : Final[str]        = "_"
-COMMENT      : Final[str]        = "%%"
+TAG_NORM         : Final[Rx]         = re.compile(" +")
+SEP              : Final[str]        = " : "
+ALT_SEP          : Final[str]        = " :: "
+TAG_EXT          : Final[str]        = ".tags"
+SUB_EXT          : Final[str]        = ".sub"
+NORM_REPLACE     : Final[str]        = "_"
+COMMENT          : Final[str]        = "%%"
 
 # Body:

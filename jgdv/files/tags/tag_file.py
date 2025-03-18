@@ -65,7 +65,7 @@ class TagFile(BaseModel):
 
     counts       : dict[str, int]        = defaultdict(lambda: 0)
     sep          : str                   = API.SEP
-    ext          : str                   = API.EXT
+    ext          : str                   = API.TAG_EXT
     norm_replace : str                   = API.NORM_REPLACE
     norm_regex   : Rx                    = API.TAG_NORM
     comment      : str                   = API.COMMENT
