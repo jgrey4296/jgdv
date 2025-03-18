@@ -10,7 +10,6 @@ from __future__ import annotations
 import datetime
 import enum
 import functools as ftz
-import inspect
 import itertools as itz
 import keyword
 import logging as logmod
@@ -51,6 +50,7 @@ from typing import no_type_check, final, override, overload
 from types import MethodType
 
 if TYPE_CHECKING:
+    import inspect
     from jgdv import Decorator, FmtStr, Func, Ident, Maybe, Method, Rx
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -71,7 +71,7 @@ class DKeyMetaDecorator(MetaDec):
     """ A Meta decorator that registers keys for input and output
     verification"""
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         kwargs.setdefault("mark", "_dkey_meta_marked")
         kwargs.setdefault("data", "_dkey_meta_vals")
         super().__init__(*args, **kwargs)
@@ -82,16 +82,22 @@ class DKeyExpansionDecorator(DataDec):
 
     """
 
-    def __init__(self, keys:list[DKey], ignores:Maybe[list[str]]=None, **kwargs):
+    def __init__(self, keys:list[DKey], ignores:Maybe[list[str]]=None, **kwargs) -> None:
         kwargs.setdefault("mark", "_dkey_marked")
         kwargs.setdefault("data", "_dkey_vals")
-        super().__init__(keys, **kwargs)
-        self._param_ignores     : tuple[str, str] = ignores or PARAM_IGNORES
+        super().__init__(keys, **kwargs) # type: ignore
+        match ignores:
+            case None:
+                self._param_ignores = PARAM_IGNORES
+            case list():
+                self._param_ignores = tuple(ignores)
+            case x:
+                raise TypeError(type(x))
 
-    def _wrap_method_h(self, meth:Method) -> Method:
+    def _wrap_method_h[T](self, meth:Method[..., T]) -> Method[..., T]:
         data_key = self._data_key
 
-        def _method_action_expansions(_self, spec, state, *call_args, **kwargs):
+        def _method_action_expansions(_self, spec, state, *call_args, **kwargs) -> T:
             try:
                 expansions = [x(spec, state) for x in getattr(meth, data_key)]
             except KeyError as err:
@@ -104,10 +110,10 @@ class DKeyExpansionDecorator(DataDec):
         # -
         return _method_action_expansions
 
-    def _wrap_fn_h(self, fn:Func) -> Func:
+    def _wrap_fn_h[T](self, fn:Func[..., T]) -> Func[..., T]:
         data_key = self._data_key
 
-        def _fn_action_expansions(spec, state, *call_args, **kwargs):
+        def _fn_action_expansions(spec, state, *call_args, **kwargs) -> T:
             try:
                 expansions = [x(spec, state) for x in getattr(fn, data_key)]
             except KeyError as err:
@@ -134,7 +140,8 @@ class DKeyExpansionDecorator(DataDec):
         # Check the head
         for x,y in zip(params, head, strict=False):
             if x != y:
-                raise dkey_errs.DecorationMismatch("Mismatch in signature head", x, y, form)
+                msg = "Mismatch in signature head"
+                raise dkey_errs.DecorationMismatch(msg, x, y, form)
 
         prefix_ig, suffix_ig = self._param_ignores
         # Then the tail, backwards, because the decorators are applied in reverse order
@@ -145,13 +152,16 @@ class DKeyExpansionDecorator(DataDec):
                 continue
 
             if keyword.iskeyword(key_str):
-                raise dkey_errs.DecorationMismatch("Key is a keyword, use an alias like _{} or {}_ex", x, y)
+                msg = "Key is a keyword, use an alias like _{} or {}_ex, or use named={}"
+                raise dkey_errs.DecorationMismatch(msg, x, key_str)
 
             if not key_str.isidentifier():
-                raise dkey_errs.DecorationMismatch("Key is not an identifier, use an alias _{} or {}_ex", x,y)
+                msg = "Key is not an identifier, use an alias _{} or {}_ex or use named={}"
+                raise dkey_errs.DecorationMismatch(msg, x, key_str)
 
             if x != y:
-                raise dkey_errs.DecorationMismatch("Mismatch in signature tail", str(x), str(y))
+                msg = "Mismatch in signature tail"
+                raise dkey_errs.DecorationMismatch(msg, str(x), key_str)
 
 class DKeyed:
     """ Decorators for actions
@@ -171,7 +181,7 @@ class DKeyed:
     _extensions         : ClassVar[set[type]] = set()
     _decoration_builder : ClassVar[type]      = DKeyExpansionDecorator
 
-    def __init_subclass__(cls):
+    def __init_subclass__(cls) -> None:
         """
         Subclasses of DKeyed are stored, and used to extend DKeyed
         """

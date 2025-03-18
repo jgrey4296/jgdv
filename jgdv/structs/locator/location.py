@@ -32,6 +32,7 @@ from jgdv.mixins.path_manip import PathManip_m
 from jgdv.mixins.enum_builders import FlagsBuilder_m
 from jgdv.structs.strang import Strang
 
+from . import _interface as API # noqa: N812
 from ._interface import Location_d, Location_p, WildCard_e, LocationMeta_e
 # ##-- end 1st party imports
 
@@ -85,8 +86,8 @@ class Location(Location_d, Strang):
         a_loc                                  = BackupTo('file::a/b/c.mp3')
         a_loc.path_pair() -> ('/vols/BackupSD/a/b/c.mp3', '~/a/b/c.mp3')
     """
-    _separator          : ClassVar[str]        = "::>"
-    _subseparator       : ClassVar[str]        = "/"
+    _separator          : str                  = API.LOC_SEP
+    _subseparator       : str                  = API.LOC_SUBSEP
     _body_types         : ClassVar[Any]        = str|WildCard_e
     gmark_e             : ClassVar[enum.Enum]  = LocationMeta_e
     bmark_e             : ClassVar[enum.Enum]  = WildCard_e
@@ -289,7 +290,7 @@ class Location(Location_d, Strang):
                 return ext
 
     @property
-    def keys(self):
+    def keys(self): # type: ignore
         raise NotImplementedError()
 
     def __lt__(self, other:TimeDelta|str|pl.Path|Location) -> bool:

@@ -63,6 +63,8 @@ logging = logmod.getLogger(__name__)
 
 # Vars:
 CWD_MARKER : Final[Ident] = "__cwd"
+LOC_SEP    : Final[str]   = "::>"
+LOC_SUBSEP : Final[str]   = "/"
 
 # Body:
 class WildCard_e(enum.StrEnum):

@@ -241,7 +241,7 @@ class _LocatorUtil_m:  # noqa: N801
 
 class _LocatorAccess_m:  # noqa: N801
 
-    def get(self, key, fallback:Maybe[pl.Path]=None) -> Maybe[pl.Path]:
+    def get(self, key, fallback:Maybe[str|pl.Path]=None) -> Maybe[pl.Path]:
         """
         Behavinng like a dict.get,
         uses Locator.access, but coerces to an unexpanded path
