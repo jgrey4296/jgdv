@@ -63,7 +63,8 @@ class TestSingleDKey:
 
     def test_basic(self):
         match DKey("blah", implicit=True, force=SingleDKey):
-            case SingleDKey():
+            case SingleDKey() as x:
+                assert(hasattr(x, "_conv_params"))
                 assert(True)
             case x:
                 assert(False), x
@@ -99,7 +100,8 @@ class TestMultiDKey:
 
     def test_basic(self):
         match DKey("{blah} {bloo}", force=MultiDKey):
-            case MultiDKey():
+            case MultiDKey() as x:
+                assert(hasattr(x, "_conv_params"))
                 assert(True)
             case x:
                 assert(False), x

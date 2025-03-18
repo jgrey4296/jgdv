@@ -139,7 +139,7 @@ class DKeyExpansionDecorator(DataDec):
         prefix_ig, suffix_ig = self._param_ignores
         # Then the tail, backwards, because the decorators are applied in reverse order
         for x,y in zip(params[::-1], tail[::-1], strict=False):
-            key_str = str(y)
+            key_str = y.var_name()
             if x.startswith(prefix_ig) or x.endswith(suffix_ig):
                 logging.debug("Skipping: %s", x)
                 continue

@@ -27,7 +27,7 @@ from jgdv.mixins.annotate import SubAnnotate_m
 from .meta import DKey, DKeyMark_e, DKeyMeta
 from .format import DKeyFormatting_m
 from .expander import Expander
-from .._interface import ExpInst_d, Expandable_p
+from .._interface import ExpInst_d
 # ##-- end 1st party imports
 
 # ##-- types
@@ -42,6 +42,7 @@ from typing import no_type_check, final, override, overload
 from .._interface import Key_p, Expandable_p
 
 if TYPE_CHECKING:
+   from .. import _interface as API  # noqa: N812
    from jgdv import Maybe, M_, Rx, Ident, Ctor, FmtStr, CHECKTYPE
    from typing import Final
    from typing import ClassVar, LiteralString
@@ -52,6 +53,8 @@ if TYPE_CHECKING:
    from jgdv._abstract.protocols import SpecStruct_p
 
    type KeyMark = DKeyMark_e|str
+   type LookupList = API.LookupList
+   type LitFalse = API.LitFalse
 
 # isort: on
 # ##-- end types
@@ -79,15 +82,16 @@ class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
     """
 
     _mark               : KeyMark|str|type              = DKey.Mark.default
-    _expansion_type     : Ctor                          = identity_fn
-    _typecheck          : CHECKTYPE                     = Any
-    _fallback           : Any                           = None
-    _fmt_params         : Maybe[FmtStr]                 = None
-    _conv_params        : Maybe[FmtStr]                 = None
-    _help               : Maybe[str]                    = None
+    _expansion_type     : Ctor
+    _typecheck          : CHECKTYPE
+    _fallback           : Maybe[Any]
+    _fmt_params         : Maybe[FmtStr]
+    _conv_params        : Maybe[FmtStr]
+    _help               : Maybe[str]
+    _named              : Maybe[str]
 
     _extra_kwargs       : ClassVar[set[str]]            = set()
-    __hash__                                            = str.__hash__
+    __hash__            : Callable                      = str.__hash__
 
     def __init_subclass__(cls, *, mark:M_[KeyMark]=None, conv:M_[str]=None, multi:bool=False) -> None:
         """ Registered the subclass as a DKey and sets the Mark enum this class associates with """
@@ -111,11 +115,14 @@ class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
     def __init__(self, data:str, **kwargs) -> None:
         assert(data == str(self))
         super().__init__()
-        self._expansion_type : Ctor          = kwargs.get("ctor", identity_fn)
-        self._typecheck      : CHECKTYPE     = kwargs.get("check", Any)
-        self._mark           : KeyMark       = kwargs.get("mark", self.__class__._mark)
-        self._max_expansions : Maybe[int]    = kwargs.get("max_exp", None)
-        self._fallback       : Maybe[Any]    = kwargs.get("fallback", None)
+        self._expansion_type = kwargs.get("ctor", identity_fn)
+        self._typecheck      = kwargs.get("check", Any)
+        self._mark           = kwargs.get("mark", self.__class__._mark)
+        self._max_expansions = kwargs.get("max_exp", None)
+        self._fallback       = kwargs.get("fallback", None)
+        self._named          = kwargs.get("named", None)
+        self._conv_params    = None
+        self._fmt_params     = None
         if self._fallback is Self:
             self._fallback = self
 
@@ -145,6 +152,12 @@ class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
                 self._help = help
 
         return self
+
+    def var_name(self) -> str:
+        """ When testing the dkey for its inclusion in a decorated functions signature,
+        this gives the 'named' val if its not None, otherwise the str of the key
+        """
+        return self._named or str(self)
 
     def keys(self) -> list[Key_p]:
         """ Get subkeys of this key. by default, an empty list.

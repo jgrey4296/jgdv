@@ -77,8 +77,9 @@ KWARGS_K            : Final[Ident]     = "kwargs"
 
 DEFAULT_DKEY_KWARGS : Final[list[str]] = [
     "ctor", "check", "mark", "fallback",
-    "max_exp", "fmt", "help", FORCE_ID,
-    "implicit", "conv", RAWKEY_ID,
+    "max_exp", "fmt", "help", "implicit", "conv",
+    "named",
+    RAWKEY_ID, FORCE_ID,
     ]
 # Body:
 
