@@ -23,8 +23,7 @@ dependencies   = [
                "sh >= 2.1.0",
                "stackprinter >= 0.2.0",
                "sty >= 1.0.6",
-               "packaging",
-
+               "packaging>=24.2",
 ]
 
 [project.optional-dependencies]
@@ -89,7 +88,7 @@ include    = ["jgdv*"]
 # https://mypy.readthedocs.io/en/stable/config_file.html#config-file
 [tool.mypy]
 python_version         = "3.12"
-follow_imports         = "skip"
+follow_imports         = "silent"
 cache_dir              = ".temp/mypy_cache"
 warn_return_any        = false
 warn_unused_configs    = true
@@ -99,10 +98,21 @@ exclude                = []
 ##-- end mypy
 
 ##-- pytest
+# https://docs.pytest.org/en/stable/reference/reference.html#ini-options-ref
 [tool.pytest.ini_options]
-log_cli       = false
-log_level     = "DEBUG"
-log_cli_level = "DEBUG"
+addopts          = [
+  # "--cov=",
+  # "--ignore-glob=related_/*"
+]
+cache_dir       = ".temp/pytest_cache"
+log_file        = ".temp/logs/pytest.log"
+
+log_cli         = false
+log_level       = "DEBUG"
+log_cli_level   = "INFO"
+log_format      = "%(levelname)s %(name)s : %(message)s"
+log_file_level  = "DEBUG"
+log_file_format = "%(asctime)s %(levelname)s %(name)s : %(message)s"
 
 ##-- end pytest
 

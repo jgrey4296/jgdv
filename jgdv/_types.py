@@ -11,19 +11,45 @@ and `Maybe[T]`, `Result[T, E]`, `Either[L, R]`.
 # Imports:
 from __future__ import annotations
 
-##-- imports
-from collections.abc import Callable, Generator, Hashable, Iterable, Iterator, KeysView, ItemsView, ValuesView
-from collections import deque
-import types
-from typing import (Any, Never, TypeGuard, Self, Annotated, final)
-from uuid import UUID, uuid1
-from packaging.version import Version
-from packaging.specifiers import SpecifierSet
-from re import Pattern, Match
+# ##-- stdlib imports
 import datetime
+import pathlib as pl
+import types
+from collections import deque
+from collections.abc import (
+    Callable,
+    Generator,
+    Hashable,
+    ItemsView,
+    Iterable,
+    Iterator,
+    KeysView,
+    ValuesView,
+)
+from re import Match, Pattern
+from typing import Annotated, Any, Never, Self, TypeGuard, final
+from uuid import UUID, uuid1
 from weakref import ref
 
-##-- end imports
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
+from packaging.specifiers import SpecifierSet
+from packaging.version import Version
+
+# ##-- end 3rd party imports
+
+# ##-- Generated Exports
+__all__ = ( # noqa: RUF022
+# -- Types
+"AbsPath", "CHECKTYPE", "Char", "Ctor", "DateTime", "Decorator", "Depth", "DictItems",
+"DictKeys", "DictVals", "E_", "Either", "Fifo", "FmtKey", "FmtSpec", "FmtStr", "Frame",
+"Func", "Ident", "Lambda", "Lifo", "M_", "Maybe", "Method", "Module", "Mut", "NoMut", "Queue",
+"R_", "RelPath", "Result", "Rx", "RxMatch", "RxStr", "Seconds", "Stack", "SubOf", "TimeDelta",
+"Traceback", "Url", "VList", "Vector", "VerSpecStr", "VerStr", "Weak",
+
+)
+# ##-- end Generated Exports
 
 ##-- strings
 type VerStr                   = Annotated[str, Version] # A Version String
@@ -39,8 +65,8 @@ type Url                      = Annotated[str, "url"]
 ##-- end strings
 
 ##-- paths
-type RelPath = Annotate[pl.Path, lambda x: not x.is_absolute()]
-type AbsPath = Annotate[pl.Path, lambda x: x.is_absolute()]
+type RelPath = Annotated[pl.Path, lambda x: not x.is_absolute()]
+type AbsPath = Annotated[pl.Path, lambda x: x.is_absolute()]
 
 ##-- end paths
 

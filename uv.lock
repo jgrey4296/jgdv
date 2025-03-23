@@ -196,7 +196,7 @@ dev = [
 requires-dist = [
     { name = "myst-parser", marker = "extra == 'dev'", specifier = ">=4.0.1" },
     { name = "networkx" },
-    { name = "packaging" },
+    { name = "packaging", specifier = ">=24.2" },
     { name = "pydantic", specifier = ">=2.9.0" },
     { name = "pyparsing" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.3.5" },
