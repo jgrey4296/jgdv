@@ -68,7 +68,7 @@ MAX_DEPTH           : Final[int]       = 10
 MAX_KEY_EXPANSIONS  : Final[int]       = 200
 PAUSE_COUNT         : Final[int]       = 0
 RECURSION_GUARD     : Final[int]       = 5
-PARAM_IGNORES       : Final[list[str]] = ["_", "_ex"]
+PARAM_IGNORES       : Final[tuple[str]] = ("_", "_ex")
 
 RAWKEY_ID           : Final[str]       = "_rawkeys"
 FORCE_ID            : Final[str]       = "force"

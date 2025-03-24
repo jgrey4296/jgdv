@@ -30,6 +30,8 @@ from jgdv.decorators import (
     MetaDec,
     DecoratorAccessor_m,
     DForm_e,
+    Decorated,
+    Decorable,
 )
 from jgdv.structs.strang import CodeReference
 from .core import errors as dkey_errs
@@ -48,10 +50,11 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 from types import MethodType
+from jgdv import Method
 
 if TYPE_CHECKING:
     import inspect
-    from jgdv import Decorator, FmtStr, Func, Ident, Maybe, Method, Rx
+    from jgdv import Decorator, FmtStr, Func, Ident, Maybe, Rx
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
@@ -81,6 +84,7 @@ class DKeyExpansionDecorator(DataDec):
     Utility class for idempotently decorating actions with auto-expanded keys
 
     """
+    _param_ignores : tuple[str, ...]
 
     def __init__(self, keys:list[DKey], ignores:Maybe[list[str]]=None, **kwargs) -> None:
         kwargs.setdefault("mark", "_dkey_marked")
@@ -94,34 +98,36 @@ class DKeyExpansionDecorator(DataDec):
             case x:
                 raise TypeError(type(x))
 
-    def _wrap_method_h[T](self, meth:Method[..., T]) -> Method[..., T]:
+
+    def _wrap_method_h[**In, Out](self, meth:Method[In,Out]) -> Decorated[Method[In, Out]]:
         data_key = self._data_key
 
-        def _method_action_expansions(_self, spec, state, *call_args, **kwargs) -> T:
+        def _method_action_expansions(*call_args:In.args, **kwargs:In.kwargs) -> Out:
+            _self, spec, state, *rest = call_args
             try:
                 expansions = [x(spec, state) for x in getattr(meth, data_key)]
             except KeyError as err:
                 logging.warning("Action State Expansion Failure: %s", err)
-                return False
+                return cast(Out, False)
             else:
-                all_args = (*call_args, *expansions)
-                return meth(_self, spec, state, *all_args, **kwargs)
+                return meth(*call_args, *expansions, **kwargs)
 
         # -
-        return _method_action_expansions
+        return cast(Method, _method_action_expansions)
 
-    def _wrap_fn_h[T](self, fn:Func[..., T]) -> Func[..., T]:
+
+    def _wrap_fn_h[**In, Out](self, fn:Func[In, Out]) -> Decorated[Func[In, Out]]:
         data_key = self._data_key
 
-        def _fn_action_expansions(spec, state, *call_args, **kwargs) -> T:
+        def _fn_action_expansions(*args:In.args, **kwargs:In.kwargs) -> Out:
+            spec, state, *rest = args
             try:
                 expansions = [x(spec, state) for x in getattr(fn, data_key)]
             except KeyError as err:
                 logging.warning("Action State Expansion Failure: %s", err)
-                return False
+                return cast(Out, False)
             else:
-                all_args = (*call_args, *expansions)
-                return fn(spec, state, *all_args, **kwargs)
+                return fn(*args, *expansions, **kwargs)
 
         # -
         return _fn_action_expansions

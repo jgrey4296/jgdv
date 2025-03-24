@@ -30,15 +30,23 @@ if TYPE_CHECKING:
 # isort: on
 # ##-- end types
 
-__all__ = ["Signature", "Decorable", "Decorated", "DForm_e", "Decorator_p"]
+# ##-- Generated Exports
+__all__ = ( # noqa: RUF022
+# -- Types
+"Decorable", "Decorated", "Signature",
+# -- Classes
+"DForm_e", "Decorator_p",
+
+)
+# ##-- end Generated Exports
 
 ##--| Util Types
 from jgdv._types import Func, Method
 
 ##--| Primary Types
-type Signature   = inspect.Signature
-type Decorable   = type | Func | Method
-type Decorated   = Decorable
+type Signature                = inspect.Signature
+type Decorable                = type | Func | Method
+type Decorated[F:Decorable]   = F
 
 class DForm_e(enum.Enum):
     """ This is necessary because you can't use Callable or MethodType
@@ -54,13 +62,13 @@ class DForm_e(enum.Enum):
 @runtime_checkable
 class Decorator_p(Protocol):
 
-    def __call__(self, target:Decorable) -> Decorated:
+    def __call__[T:Decorable](self, target:T) -> Maybe[Decorated[T]]:
         pass
 
-    def _wrap_method_h(self, fn:Func) -> Decorated:
+    def _wrap_method_h[**In, Out](self, meth:Method[In,Out]) -> Decorated[Method[In, Out]]:
         pass
 
-    def _wrap_fn_h(self, fn:Func) -> Decorated:
+    def _wrap_fn_h[**In, Out](self, fn:Func[In, Out]) -> Decorated[Func[In, Out]]:
         pass
 
     def _wrap_class_h(self, cls:type) -> Maybe[Decorated]:

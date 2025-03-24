@@ -78,10 +78,10 @@ type RxMatch                  = Match
 
 ##-- callables
 type Ctor[T]                   = type[T] | Callable[[*Any], T]
-type Func                      = Callable
-type Method[I,O]               = types.MethodType[type, I,O]
-type Decorator                 = Callable[..., Func]
-type Lambda                    = types.LambdaType
+type Func[**I, O]              = Callable[I, O]
+type Method[**I, O]            = types.MethodType[I, O]
+type Decorator[F:Func]         = Callable[[F], F]
+type Lambda[**I, O]            = types.LambdaType[I, O]
 
 ##-- end callables
 

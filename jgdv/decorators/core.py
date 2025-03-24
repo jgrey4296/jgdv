@@ -8,7 +8,6 @@ from __future__ import annotations
 
 # ##-- stdlib imports
 import datetime
-import enum
 import functools as ftz
 import inspect
 import itertools as itz
@@ -41,7 +40,8 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 if TYPE_CHECKING:
-    from jgdv import Maybe, Either, Method, Func
+    import enum
+    from jgdv import Maybe, Either, Func
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
@@ -51,6 +51,7 @@ if TYPE_CHECKING:
 
 ##--|
 from ._interface import Signature, Decorable, Decorated, DForm_e, Decorator_p
+from jgdv._types import Method
 # isort: on
 # ##-- end types
 
@@ -72,6 +73,9 @@ class _DecAnnotate_m:
     Annotations for a decorator are stored in a dict entry.
     of the form: '{annotation_prefix}:{data_suffix}'
     """
+    _data_key          : str
+    _annotation_prefix : str
+    _data_suffix       : str
 
     def data_key(self) -> str:
         if not self._data_key:
@@ -93,7 +97,8 @@ class _DecAnnotate_m:
                 setattr(target, self._data_key, xs)
                 return xs
             case x:
-                raise TypeError("Bad annotation type", x)
+                msg = "Bad annotation type"
+                raise TypeError(msg, x)
 
     def get_annotations(self, target:Decorable) -> list[str]:
         """ Get the annotations of the target """
@@ -116,6 +121,7 @@ class _DecMark_m:
     Marks are for easily testing if Decorator decorated something already
 
     """
+    _mark_key : str
 
     def mark_key(self) -> str:
         if not self._mark_key:
@@ -163,7 +169,8 @@ class _DecWrap_m:
             depth += 1
             id_func = id(f)
             if (id_func in memo) or (len(memo) >= recursion_limit):
-                raise ValueError('wrapper loop when unwrapping {!r}'.format(target))
+                msg = f'wrapper loop when unwrapping {target!r}'
+                raise ValueError(msg)
             memo[id_func] = f
         else:
             return depth
@@ -183,7 +190,8 @@ class _DecWrap_m:
                 logging.info("Decorating Function: %s", target)
                 return self._wrap_fn_h(target)
             case x:
-                raise ValueError("Unexpected Decorable type", x)
+                msg = "Unexpected Decorable type"
+                raise ValueError(msg, x)
 
     def _apply_onto(self, wrapper:Decorated, target:Decorable) -> Decorated:
         """ Uses functools.update_wrapper,
@@ -224,30 +232,31 @@ class _DecInspect_m:
         except TypeError as err:
             raise TypeError(*err.args) from None
         else:
-            raise TypeError("Unknown decoration target type", target)
+            msg = "Unknown decoration target type"
+            raise TypeError(msg, target)
 
 class _DecoratorHooks_m:
     """ The main hooks used to actually specify the decoration """
 
-    def _wrap_method_h(self, meth:Func) -> Decorated:
+    def _wrap_method_h[**In, Out](self, meth:Method[In,Out]) -> Decorated[Method[In, Out]]:
         """ Override this to add a decoration function to method """
         dec_name = self.dec_name()
 
-        def _default_method_wrapper(_self, *args, **kwargs):
+        def _default_method_wrapper(*args:In.args, **kwargs:In.kwargs) -> Out:
             logging.debug("Calling Wrapped Method: %s of %s", meth.__qualname__, dec_name)
-            return meth(_self, *args, **kwargs)
+            return meth(*args, **kwargs)
 
-        return _default_method_wrapper
+        return cast(Method, _default_method_wrapper)
 
-    def _wrap_fn_h(self, fn:Func) -> Decorated:
+    def _wrap_fn_h[**In, Out](self, fn:Func[In, Out]) -> Decorated[Func[In, Out]]:
         """ override this to add a decorator to a function """
         dec_name = self.dec_name()
 
-        def _default_fn_wrapper(*args, **kwargs):
+        def _default_fn_wrapper(*args:In.args, **kwargs:In.kwargs) -> Out:
             logging.debug("Calling Wrapped Fn: %s : %s", fn.__qualname__, dec_name)
             return fn(*args, **kwargs)
 
-        return _default_fn_wrapper
+        return cast(Method, _default_fn_wrapper)
 
     def _wrap_class_h(self, cls:type) -> Maybe[Decorated]:
         """ Override this to decorate a class """
@@ -288,6 +297,14 @@ class Decorator(_DecoratorCombined_m, Decorator_p):
     Form       : ClassVar[enum.EnumMeta] = DForm_e
     needs_args : ClassVar[bool]          = False
 
+    _annotation_prefix   : str
+    _mark_suffix         : str
+    _data_suffix         : str
+    _wrapper_assignments : list[str]
+    _wrapper_updates     : list[str]
+    _mark_key : str
+    _data_key : str
+
 
     def __new__(cls, *args, **kwargs):
         """ If called on a callable, create a new decorator and decorate,
@@ -316,8 +333,8 @@ class Decorator(_DecoratorCombined_m, Decorator_p):
         self._data_suffix         : str              = data    or DATA_SUFFIX
         self._wrapper_assignments : list[str]        = list(ftz.WRAPPER_ASSIGNMENTS)
         self._wrapper_updates     : list[str]        = list(ftz.WRAPPER_UPDATES)
-        self._mark_key = None
-        self._data_key = None
+        self._mark_key = None  # type: ignore[assignment]
+        self._data_key = None  # type: ignore[assignment]
         self.mark_key()
         self.data_key()
 
@@ -392,7 +409,8 @@ class IdempotentDec(Decorator):
                 # Already wrapped, nothing to do
                 return top
             case True:
-                raise ValueError("A Marked Decorable doesn't have a wrapper", target)
+                msg = "A Marked Decorable doesn't have a wrapper"
+                raise ValueError(msg, target)
             case False:
                 form = self._discrim_form(bottom)
 
@@ -430,8 +448,8 @@ class MetaDec(Decorator):
 
     def _decoration_logic(self, target:Decorable) -> Decorated:
         top, bottom = target, self._unwrap(target)
-        form, sig = self._discrim_form(target), self._signature(bottom)
-        self.annotate_decorable(bottom)
+        form, sig   = self._discrim_form(target), self._signature(bottom)
+        annotations = self.annotate_decorable(bottom)
         # Verify the target, may raise exceptions
         self._validate_target_h(bottom, form, annotations)
         self._validate_sig_h(sig, form, annotations)
@@ -470,12 +488,14 @@ class DataDec(IdempotentDec):
                 self._validate_target_h(bottom, form, annots)
                 self._validate_sig_h(sig, form, annots)
                 return top
-            case _:
+            case list() as annots:
                 form, sig = self._discrim_form(target), self._signature(bottom)
                 self._validate_target_h(bottom, form, annots)
                 self._validate_sig_h(sig, form, annots)
                 # Now handle the wrapping
                 return super()._decoration_logic(top)
+            case x:
+                raise TypeError(type(x))
 
     def _build_annotations_h(self, target, current:list) -> list:
         return [*self._data, *current]
