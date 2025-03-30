@@ -55,6 +55,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
     from ._interface import Handler, Formatter
+
 ##--|
 from jgdv import Maybe
 # isort: on
@@ -86,7 +87,8 @@ class HandlerBuilder_m:
         handler.doRollover()
         return handler
 
-    def _build_formatter(self, handler) -> Formatter:
+    def _build_formatter(self, handler:Handler) -> Formatter:
+        formatter : Formatter
         match self.colour:
             case _ if IS_PRE_COMMIT:
                 # Always strip colour when in pre-commit
@@ -98,11 +100,13 @@ class HandlerBuilder_m:
                 formatter = StripColourFormatter(fmt=self.format, style=self.style)
             case str() | True:
                 formatter = ColourFormatter(fmt=self.format, style=self.style)
+                formatter.apply_colour_mapping(API.alt_log_colours)
+
 
         return formatter
 
     def _build_filters(self) -> list[Callable]:
-        filters = []
+        filters : list[Callable] = []
         if bool(self.allow):
             filters.append(WhitelistFilter(self.allow))
         if bool(self.filter):
@@ -127,7 +131,8 @@ class HandlerBuilder_m:
             case "stderr":
                 handler = self._build_errorhandler()
             case _:
-                raise ValueError("Unknown logger spec target", target)
+                msg = "Unknown logger spec target"
+                raise ValueError(msg, target)
 
         formatter = self._build_formatter(handler)
 
@@ -150,17 +155,17 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
     """
 
     name                       : str
-    disabled                   : bool                        = False
-    base                       : Maybe[str]                  = None
-    level                      : str|int                     = logmod._nameToLevel.get("WARNING", 0)
-    format                     : str                         = "{levelname:<8} : {message}"
-    filter                     : list[str]                   = []
-    allow                      : list[str]                   = []
-    colour                     : bool|str                    = False
-    verbosity                  : int                         = 0
-    target                     : Maybe[str|list[str|pl.Path]]= None # stdout | stderr | file
-    filename_fmt               : Maybe[str]                      = "%Y-%m-%d::%H:%M.log"
-    propagate                  : Maybe[bool]                     = False
+    disabled                   : bool                            = False
+    base                       : Maybe[str]                      = None
+    level                      : str|int                         = logmod._nameToLevel.get("WARNING", 0)
+    format                     : str                             = "{levelname:<8} : {message}"
+    filter                     : list[str]                       = []
+    allow                      : list[str]                       = []
+    colour                     : bool|str                        = False
+    verbosity                  : int                             = 0
+    target                     : list[str|pl.Path]               = [] # stdout | stderr | file
+    filename_fmt               : str                             = "%Y-%m-%d::%H:%M.log"
+    propagate                  : bool                            = False
     clear_handlers             : bool                            = False
     style                      : str                             = "{"
     nested                     : list[LoggerSpec]                = []
@@ -168,10 +173,10 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
     _logger                    : Maybe[API.Logger]               = None
     _applied                   : bool                            = False
     RootName                   : ClassVar[str]                   = "root"
-    levels                     : ClassVar[enum.IntEnum]          = API.LogLevel_e
+    levels                     : ClassVar[type[enum.IntEnum]]    = API.LogLevel_e
 
     @staticmethod
-    def build(data:bool|list|dict, **kwargs) -> LoggerSpec:
+    def build(data:bool|list|dict, **kwargs:Any) -> LoggerSpec:  # noqa: ANN401
         """
           Build a single spec, or multiple logger specs targeting the same logger
         """
@@ -196,10 +201,11 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
                 as_dict.update(kwargs)
                 return LoggerSpec.model_validate(as_dict)
             case _:
-                raise TypeError("Unknown data for logger spec", data)
+                msg = "Unknown data for logger spec"
+                raise TypeError(msg, data)
 
     @field_validator("level")
-    def _validate_level(cls, val):
+    def _validate_level(cls, val:str|int) -> int:  # noqa: N805
         match val:
             case str() if (lvl:=logmod.getLevelNamesMapping().get(val, None)) is not None:
                 return lvl
@@ -208,35 +214,35 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
             case int():
                 return val
             case _:
-                breakpoint()
-                pass
                 raise ValueError(val)
 
     @field_validator("format")
-    def _validate_format(cls, val):
+    def _validate_format(cls, val:str) -> str:  # noqa: N805
         return val
 
-    @field_validator("target")
-    def _validate_target(cls, val):
+    @field_validator("target", mode="before")
+    def _validate_target(cls, val:list|str|pl.Path) -> list[str|pl.Path]:  # noqa: N805
         match val:
-            case [*xs] if all(x in API.TARGETS for x in xs):
+            case [*xs] if all(x in API.TARGETS for x in xs): # type: ignore
                 return val
             case str() if val in API.TARGETS:
-                return val
+                return [val]
             case pl.Path():
-                return val
+                return [val]
             case None:
-                return "stdout"
+                return ["stdout"]
             case _:
-                raise ValueError("Unknown target value for LoggerSpec", val)
+                msg = "Unknown target value for LoggerSpec"
+                raise ValueError(msg, val)
 
     @field_validator("style")
-    def _validate_style(cls, val):
+    def _validate_style(cls, val:str) -> str:  # noqa: N805
         match val:
             case "%" | "{" | "$":
                 return val
             case _:
-                raise ValueError("API.Logger Style Needs to be in [{,%,$]", val)
+                msg = "API.Logger Style Needs to be in [{,%,$]"
+                raise ValueError(msg, val)
 
     @ftz.cached_property
     def fullname(self) -> str:
@@ -244,7 +250,7 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
             return self.name
         return f"{self.base}.{self.name}"
 
-    def apply(self, *, onto:Maybe[API.Logger]=None) -> API.Logger:
+    def apply(self, *, onto:Maybe[API.Logger]=None) -> API.Logger:  # noqa: PLR0912, PLR0915
         """ Apply this spec (and nested specs) to the relevant logger """
         match onto:
             case None if self._logger is not None:
@@ -254,7 +260,7 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
             case logmod.Logger():
                 logger = onto
 
-        handler_pairs : list[tuple[logmod.Handler, logmod.Formatter]] = []
+        handler_pairs : list[tuple[Maybe[Handler], Maybe[Formatter]]] = []
         logger.propagate = self.propagate
         logger.setLevel(logmod._nameToLevel.get("NOTSET", 0))
         if self.disabled:
@@ -279,14 +285,13 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
                     subspec.apply(onto=logger)
                 else:
                     return logger
-            case None | []:
+            case []:
                 handler_pairs.append(self._discriminate_handler(None))
             case [*xs]:
                 handler_pairs += [self._discriminate_handler(x) for x in xs]
-            case str() | pl.Path():
-                handler_pairs.append(self._discriminate_handler(self.target))
             case _:
-                raise ValueError("Unknown target value for LoggerSpec", self.target)
+                msg = "Unknown target value for LoggerSpec"
+                raise ValueError(msg, self.target)
 
         log_filters = self._build_filters()
         for pair in handler_pairs:
@@ -317,7 +322,7 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
     def get(self) -> API.Logger:
         return logmod.getLogger(self.fullname)
 
-    def clear(self):
+    def clear(self) -> None:
         """ Clear the handlers for the logger referenced """
         logger = self.get()
         handlers = logger.handlers[:]
@@ -329,10 +334,10 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
         if not log_dir.exists():
             log_dir = pl.Path()
 
-        filename = datetime.datetime.now().strftime(self.filename_fmt)
+        filename = datetime.datetime.now().strftime(self.filename_fmt)  # noqa: DTZ005
         return log_dir / filename
 
-    def set_level(self, level:int|str):
+    def set_level(self, level:int|str) -> None:
         match level:
             case str():
                 level = logmod._nameToLevel.get(level, 0)

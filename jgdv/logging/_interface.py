@@ -63,37 +63,72 @@ type Formatter = logmod.Formatter
 type Handler   = logmod.Handler
 
 # Vars:
-LOGDEC_PRE    : Final[str]       = "__logcall__"
-PRINTER_NAME  : Final[str]       = "_printer_"
-MAX_FILES     : Final[int]       = 5
-TARGETS       : Final[list[str]] = [
+LOGDEC_PRE      : Final[str]       = "__logcall__"
+PRINTER_NAME    : Final[str]       = "_printer_"
+MAX_FILES       : Final[int]       = 5
+TARGETS         : Final[list[str]] = [
     "file", "stdout", "stderr", "rotate", "pass",
 ]
-SUBPRINTERS  : Final[list[str]]= [
+SUBPRINTERS     : Final[list[str]] = [
     "fail", "header", "help",
     "report", "sleep", "success",
     "setup", "shutdown",
     ]
 
-default_stdout : Final[dict] = {
+default_stdout  : Final[dict]      = {
     "name"           : logmod.root.name,
     "level"          : "user",
-    "target"         : "stdout",
+    "target"         : ["stdout"],
     "format"         : "{levelname}  : INIT : {message}",
     "style"          : "{",
     }
-default_printer : Final[dict] = {
+default_printer : Final[dict]      = {
     "name"           : PRINTER_NAME,
     "level"          : "user",
-    "target"         : "stdout",
+    "target"         : ["stdout"],
     "format"         : "{name}({levelname}) : {message}",
     "style"          : "{",
     "propagate"      : False,
     }
-default_print_file : Final[str] = "print.log"
+default_print_file : Final[str]    = "print.log"
+
+default_log_colours : Final[dict[int, tuple[str, str]]] = {
+    logmod.DEBUG    : ("fg", "grey"),
+    logmod.INFO     : ("fg", "blue"),
+    logmod.WARNING  : ("fg", "yellow"),
+    logmod.ERROR    : ("fg", "red"),
+    logmod.CRITICAL : ("fg", "red"),
+}
+
+alt_log_colours : Final[dict[int, tuple[str, str]]] = {
+    logmod.DEBUG    : ("fg", "grey"),
+    logmod.INFO     : ("fg", "green"),
+    logmod.WARNING  : ("fg", "blue"),
+    logmod.ERROR    : ("fg", "red"),
+    logmod.CRITICAL : ("fg", "red"),
+}
+
+default_colour_mapping : Final[dict[str, tuple[str,str]]] = {
+    "blue"           : ("fg", "blue"),
+    "cyan"           : ("fg", "cyan"),
+    "green"          : ("fg", "green"),
+    "magenta"        : ("fg", "magenta"),
+    "red"            : ("fg", "red"),
+    "yellow"         : ("fg", "yellow"),
+    "bg_blue"        : ("bg", "blue"),
+    "bg_cyan"        : ("bg", "cyan"),
+    "bg_green"       : ("bg", "green"),
+    "bg_magenta"     : ("bg", "magenta"),
+    "bg_red"         : ("bg", "red"),
+    "bg_yellow"      : ("bg", "yellow"),
+    "bold"           : ("ef", "bold"),
+    "underline"      : ("ef", "u"),
+    "italic"         : ("ef", "italic"),
+    "RESET"          : ("rs", "all"),
+}
 # Body:
 
-class LogLevel_e(enum.IntEnum):  # noqa: N801
+class LogLevel_e(enum.IntEnum):
     """ My Preferred Loglevel names """
     error     = logmod.ERROR   # Total Failures
     user      = logmod.WARNING # User Notification
@@ -101,7 +136,7 @@ class LogLevel_e(enum.IntEnum):  # noqa: N801
     detail    = logmod.DEBUG   # Exact values
     bootstrap = logmod.NOTSET  # Startup before configuration
 ##--|
-class LogConfig_p(Protocol):  # noqa: N801
+class LogConfig_p(Protocol):
     """ TODO """
 
     def setup(self, config:ChainGuard) -> None:
