@@ -22,13 +22,19 @@ from typing import Final, TypeAlias
 import datetime
 from collections import ChainMap
 
-__all__     = ["GuardedAccessError", "ChainGuard", "load"]
+# ##-- Generated Exports
+__all__ = (
+    "ChainGuard",
+    "load"
+    "GuardedAccessError",
+)
+# ##-- end Generated Exports
 
 
 from .errors import GuardedAccessError
 from ._base import TomlTypes
 from .chainguard import ChainGuard
 
-load        = ChainGuard.load
-load_dir    = ChainGuard.load_dir
-read        = ChainGuard.read
+load        = ChainGuard.load     # type: ignore
+load_dir    = ChainGuard.load_dir # type: ignore
+read        = ChainGuard.read     # type: ignore

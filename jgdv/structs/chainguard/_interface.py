@@ -67,4 +67,22 @@ class ChainProxy_p(Protocol):
     pass
 
 class ChainGuard_p(Protocol):
-    pass
+
+    def get(self, key:str, default:Maybe[TomlTypes]=None) -> Maybe[TomlTypes]:
+        pass
+
+    @classmethod
+    def read(cls:T, text:str) -> T:
+        pass
+
+    @classmethod
+    def from_dict(cls, data:dict[str, TomlTypes]) -> Self:
+        pass
+
+    @classmethod
+    def load(cls, *paths:str|pl.Path) -> Self:
+        pass
+
+    @classmethod
+    def load_dir(cls, dirp:str|pl.Path) -> Self:
+        pass

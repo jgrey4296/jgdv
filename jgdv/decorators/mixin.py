@@ -24,7 +24,6 @@ from uuid import UUID, uuid1
 
 from jgdv.debugging import TraceBuilder
 from .core import MonotonicDec, IdempotentDec, Decorator, DataDec
-from ._interface import Decorated
 from jgdv.mixins.annotate import Subclasser
 
 # ##-- types
@@ -40,6 +39,7 @@ from typing import no_type_check, final, override, overload
 from types import resolve_bases, FunctionType, MethodType
 
 if TYPE_CHECKING:
+    from ._interface import Decorated
     from ._interface import Decorable, DForm_e
     from jgdv import Maybe
     from typing import Final
@@ -81,7 +81,7 @@ class Mixin(MonotonicDec):
 
     needs_args = True
 
-    def __init__(self, *mixins:type, allow_inheritance:bool=False, silent:bool=False) -> None:
+    def __init__(self, *mixins:Maybe[type], allow_inheritance:bool=False, silent:bool=False) -> None:
         super().__init__()
         self._silent = silent
         self._name_mod = NAME_MOD
@@ -102,7 +102,7 @@ class Mixin(MonotonicDec):
                 msg = "Can't Mixin a class that inherits anything"
                 raise TypeError(msg, x)
 
-    def _build_annotations_h(self, target:Decorable, current:list) -> Maybe[list]:
+    def _build_annotations_h(self, target:Decorable, current:list) -> Maybe[list]:  # noqa: ARG002
         """ Given a list of the current annotation list,
         return its replacement
         """
@@ -111,7 +111,7 @@ class Mixin(MonotonicDec):
         new_mixins += [x for x in self._post_mixins  if x not in current]
         return new_mixins
 
-    def _validate_target_h(self, target:Decorable, form:DForm_e, args:Maybe[list]=None) -> None:
+    def _validate_target_h(self, target:Decorable, form:DForm_e, args:Maybe[list]=None) -> None:  # noqa: ARG002
         match target:
             case type() if hasattr(target, "model_fields"):
                 msg = "Pydantic classes shouldn't be extended"
@@ -123,6 +123,7 @@ class Mixin(MonotonicDec):
                 raise TypeError(msg, target)
 
     def _wrap_class_h(self, cls:Decorable) -> Decorated:
+        assert(isinstance(cls, type))
         match cls.mro():
             case [x, *xs]:
                 new_mro = [*self._pre_mixins, x, *self._post_mixins, *xs]

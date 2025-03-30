@@ -126,7 +126,7 @@ class Subclasser:
         return f"{x['name']}{extras_str}{params_str}"  # type: ignore[index]
 
     @staticmethod
-    def make_subclass(name:str, cls:type, *, namespace:Maybe[dict]=None, mro:Maybe[tuple]=None) -> type:
+    def make_subclass(name:str, cls:type, *, namespace:Maybe[dict]=None, mro:Maybe[Iterable]=None) -> type:
         """
         Build a dynamic subclass of cls, with name,
         possibly with a maniplated mro and internal namespace
@@ -142,7 +142,7 @@ class Subclasser:
             return sub
 
     @staticmethod
-    def _new_std_class(name:str, cls:type, *, namespace:Maybe[dict]=None, mro:Maybe[tuple]=None) -> type:
+    def _new_std_class(name:str, cls:type, *, namespace:Maybe[dict]=None, mro:Maybe[Iterable]=None) -> type:
         """
         Dynamically creates a new class
         """

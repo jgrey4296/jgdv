@@ -30,7 +30,7 @@ from .mixins.proxy_m import GuardProxyEntry_m
 from .mixins.reporter_m import DefaultedReporter_m
 from .mixins.writer_m import TomlWriter_m
 
-from ._interface import TomlTypes
+from ._interface import TomlTypes, ChainGuard_p
 # ##-- end 1st party imports
 
 # ##-- types
@@ -38,7 +38,7 @@ from ._interface import TomlTypes
 import abc
 import collections.abc
 from typing import TYPE_CHECKING, cast, assert_type, assert_never
-from typing import Generic, NewType, Mapping
+from typing import Generic, NewType
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
@@ -62,12 +62,13 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+@Proto(ChainGuard_p)
 @Mixin(GuardProxyEntry_m, TomlLoader_m, TomlWriter_m, silent=True)
 @Mixin(TomlAccess_m, DefaultedReporter_m, silent=True)
 class ChainGuard(GuardBase):
 
     @classmethod
-    def merge(cls, *guards:Self, dfs:callable=None, index=None, shadow=False) -> Self:
+    def merge(cls, *guards:Self, dfs:Maybe[Callable]=None, index:Maybe[str]=None, shadow:bool=False) -> Self:  # noqa: ARG003
         """
         Given an ordered list of guards and dicts, convert them to dicts,
         update an empty dict with each,
@@ -78,18 +79,19 @@ class ChainGuard(GuardBase):
 
         # TODO if given a dfs callable, use it to merge more intelligently
         """
-        curr_keys = set()
+        curr_keys : set = set()
         # Check for conflicts:
         for data in guards:
             new_keys = set(data.keys())
             if bool(curr_keys & new_keys) and not shadow:
-                raise KeyError("Key Conflict:", curr_keys & new_keys)
+                msg = "Key Conflict:"
+                raise KeyError(msg, curr_keys & new_keys)
             curr_keys |= new_keys
 
         # Build a TG from a chainmap
-        return ChainGuard.from_dict(ChainMap(*(dict(x) for x in guards)))
+        return ChainGuard.from_dict(ChainMap(*(dict(x) for x in guards))) # type: ignore
 
-    def remove_prefix(self, prefix) -> ChainGuard:
+    def remove_prefix(self, prefix:str) -> ChainGuard:
         """ Try to remove a prefix from loaded data
           eg: ChainGuard(tools.ChainGuard.data..).remove_prefix("tools.ChainGuard")
           -> ChainGuard(data..)

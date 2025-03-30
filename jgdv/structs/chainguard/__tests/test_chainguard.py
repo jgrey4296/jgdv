@@ -86,7 +86,7 @@ class TestBaseGuard:
 
     def test_repr(self):
         basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
-        assert(repr(basic) == "<ChainGuard:['test', 'bloo']>")
+        assert(repr(basic) == "<ChainGuard<+P>:['test', 'bloo']>")
 
     def test_immutable(self):
         basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})

@@ -85,6 +85,7 @@ class ParamStruct_p(Protocol):
     and return an updated diction and a list of values it didn't consume
 
     """
+    key_func : Callable
 
     def consume(self, args:list[str], *, offset:int=0) -> Maybe[tuple[dict, int]]:
         pass
