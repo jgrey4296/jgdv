@@ -93,7 +93,6 @@ class _ParamNameParser_m:
             case str() as x:
                 result['separator'] = x
 
-        pass
         return result
 
 

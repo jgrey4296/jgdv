@@ -129,6 +129,16 @@ class TestParamSpecConsumption:
             case x:
                 assert(False), x
 
+
+    def test_consume_short(self):
+        obj = ParamSpec.build({"name" : "--test", "default":False, "type":bool})
+        assert(obj.type_ is bool)
+        match obj.consume(["--t", "blah", "bloo"]):
+            case {"test": True}, 1:
+                assert(True)
+            case x:
+                assert(False), x
+
 class TestParamSpecDefaults:
 
     def test_sanity(self):
