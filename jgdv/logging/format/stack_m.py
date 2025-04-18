@@ -54,7 +54,7 @@ if TYPE_CHECKING:
 
 class StackFormatter_m:
     """ A Mixin Error formatter, adapted from stackprinter's docs
-    Formats the error stack as just the lines, not with src
+    Compactly Formats the error stack trace, without src.
 
     """
 

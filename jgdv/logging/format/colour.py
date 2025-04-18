@@ -34,7 +34,7 @@ from jgdv import Mixin, Proto
 # ##-- end 1st party imports
 
 from . import _interface as API # noqa: N812
-from .stack_format import StackFormatter_m
+from .stack_m import StackFormatter_m
 
 # ##-- types
 # isort: off
@@ -67,28 +67,6 @@ if TYPE_CHECKING:
 COLOUR_RESET       : str    = rs.all
 ##--|
 
-class SimpleLogColour:
-    """ Utility class for wrapping strings with specific colours """
-
-    def __init__(self) -> None:
-        msg = "SimpleLogColour is Static, don't instance it"
-        raise TypeError(msg)
-
-    @staticmethod
-    def green(s:str) -> str:
-        return "".join([LEVEL_MAP['green'], str(s), COLOUR_RESET])
-
-    @staticmethod
-    def blue(s:str) -> str:
-        return "".join([LEVEL_MAP['cyan'], str(s), COLOUR_RESET])
-
-    @staticmethod
-    def yellow(s:str) -> str:
-        return "".join([LEVEL_MAP['yellow'], str(s), COLOUR_RESET])
-
-    @staticmethod
-    def red(s:str) -> str:
-        return "".join([LEVEL_MAP['red'], str(s), COLOUR_RESET])
 
 @Mixin(StackFormatter_m)
 class ColourFormatter(logging.Formatter):

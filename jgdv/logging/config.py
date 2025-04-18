@@ -7,8 +7,8 @@
 from __future__ import annotations
 
 # ##-- stdlib imports
-import datetime
 import builtins
+import datetime
 import functools as ftz
 import itertools as itz
 import logging as logmod
@@ -16,23 +16,24 @@ import os
 import re
 import time
 import types
+import warnings
 import weakref
 from sys import stderr, stdout
-import warnings
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv import Proto, Mixin
-from jgdv.logging.colour_format import ColourFormatter, StripColourFormatter
-from jgdv.logging.logger_spec import LoggerSpec
-from jgdv.structs.metalord.singleton import MLSingleton
+from jgdv import Mixin, Proto
 from jgdv.structs.chainguard import ChainGuard
-from .logger import JGDVLogger
+from jgdv.structs.metalord.singleton import MLSingleton
 
-from . import _interface as API  # noqa: N812
 # ##-- end 1st party imports
+
+from . import _interface as API# noqa: N812
+from .format import StripColourFormatter
+from .logger import JGDVLogger
+from .logger_spec import LoggerSpec
 
 # ##-- types
 # isort: off
