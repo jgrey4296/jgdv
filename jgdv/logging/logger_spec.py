@@ -24,15 +24,16 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv import Proto, Mixin
+from jgdv import Mixin, Proto
 from jgdv._abstract.protocols import Buildable_p
 from jgdv._abstract.pydantic_proto import ProtocolModelMeta
-from .colour_format import ColourFormatter, StripColourFormatter
 from jgdv.structs.chainguard import ChainGuard
-from .filter import BlacklistFilter, WhitelistFilter
-from . import _interface as API  # noqa: N812
 
 # ##-- end 1st party imports
+
+from . import _interface as API # noqa: N812
+from .format import ColourFormatter, StripColourFormatter
+from .filter import BlacklistFilter, WhitelistFilter
 
 # ##-- types
 # isort: off

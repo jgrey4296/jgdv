@@ -92,14 +92,6 @@ default_printer : Final[dict]      = {
     }
 default_print_file : Final[str]    = "print.log"
 
-default_log_colours : Final[dict[int, tuple[str, str]]] = {
-    logmod.DEBUG    : ("fg", "grey"),
-    logmod.INFO     : ("fg", "blue"),
-    logmod.WARNING  : ("fg", "yellow"),
-    logmod.ERROR    : ("fg", "red"),
-    logmod.CRITICAL : ("fg", "red"),
-}
-
 alt_log_colours : Final[dict[int, tuple[str, str]]] = {
     logmod.DEBUG    : ("fg", "grey"),
     logmod.INFO     : ("fg", "green"),
@@ -108,26 +100,8 @@ alt_log_colours : Final[dict[int, tuple[str, str]]] = {
     logmod.CRITICAL : ("fg", "red"),
 }
 
-default_colour_mapping : Final[dict[str, tuple[str,str]]] = {
-    "blue"           : ("fg", "blue"),
-    "cyan"           : ("fg", "cyan"),
-    "green"          : ("fg", "green"),
-    "magenta"        : ("fg", "magenta"),
-    "red"            : ("fg", "red"),
-    "yellow"         : ("fg", "yellow"),
-    "bg_blue"        : ("bg", "blue"),
-    "bg_cyan"        : ("bg", "cyan"),
-    "bg_green"       : ("bg", "green"),
-    "bg_magenta"     : ("bg", "magenta"),
-    "bg_red"         : ("bg", "red"),
-    "bg_yellow"      : ("bg", "yellow"),
-    "bold"           : ("ef", "bold"),
-    "underline"      : ("ef", "u"),
-    "italic"         : ("ef", "italic"),
-    "RESET"          : ("rs", "all"),
-}
-# Body:
 
+# Body:
 class LogLevel_e(enum.IntEnum):
     """ My Preferred Loglevel names """
     error     = logmod.ERROR   # Total Failures

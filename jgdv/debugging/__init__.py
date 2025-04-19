@@ -10,6 +10,6 @@ Provides:
 - LogDel             : a class decorator for logging when __del__ is called
 
 """
-from .signal_handler import SignalHandler
+from .signal_handler import SignalHandler, NullHandler
 from .trace_builder import TraceBuilder
 from .log_del import LogDel
