@@ -1,3 +1,5 @@
+{# module.rst -*- mode: Jinja2 -*- #}
+{% import "python/debug_obj.rst.jinja" as jgdb %}
 
 .. _{{obj.name}}:
 
@@ -13,7 +15,7 @@
 
    {{ obj.docstring|indent(3) }}
 
-      {% endif %}
+{% endif %}
 
       {% block submodules %}
          {% set visible_subpackages = obj.subpackages|selectattr("display")|list %}
@@ -36,12 +38,16 @@ Submodules
       {% block content %}
          {% set visible_children = obj.children|selectattr("display")|list %}
          {% if visible_children %}
+            {% set visible_data    = visible_children|selectattr("type", "equalto", "data")|list %}
+            {% set visible_classes = visible_children|selectattr("type", "equalto", "class")|list %}
 
-            {% include "python/vis_types.rst.jinja" %}         
-            {% include "python/vis_attrs.rst.jinja" %} 
-            {% include "python/vis_excs.rst.jinja" %} 
-            {% include "python/vis_classes.rst.jinja" %} 
-            {% include "python/vis_funcs.rst.jinja" %} 
+            {% include "python/vis_types.rst.jinja"   %}          
+            {% include "python/vis_enums.rst.jinja"   %}            
+            {% include "python/vis_protos.rst.jinja"  %}             
+            {% include "python/vis_attrs.rst.jinja"   %}   
+            {% include "python/vis_excs.rst.jinja"    %}   
+            {% include "python/vis_funcs.rst.jinja"   %}   
+            {% include "python/vis_classes.rst.jinja" %}  
             
             {% set this_page_children = visible_children|rejectattr("type", "in", own_page_types)|list %}
             {% if this_page_children %}

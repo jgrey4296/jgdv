@@ -1,5 +1,5 @@
 
-{% block visexcs %}
+{% block vis_excs %}
 {% set visible_exceptions = visible_children|selectattr("type", "equalto", "exception")|list %}
    
 {% if visible_exceptions %}
@@ -24,4 +24,4 @@ Exceptions
    {% endif %}
 {% endif %}
 
-{% endblock visexcs %}
+{% endblock vis_excs %}

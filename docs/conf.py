@@ -27,6 +27,8 @@ html_js_files  = []
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ['**/flycheck_*.py', "**/__tests/*", '/obsolete/*', "README.md"]
+
+root_doct = "index"
 # -- Project information -----------------------------------------------------
 
 project   = 'jgdv'
@@ -60,7 +62,6 @@ html_theme         = "sphinx_rtd_theme"
 html_theme_options = {}
 html_sidebars      = {}
 
-
 html_theme_options.update({
     'logo_only'                   : False,
     # 'display_version'             : True,
@@ -77,14 +78,12 @@ html_theme_options.update({
 
 })
 
-##-- end rtd options
-
 # -- Extension Options -------------------------------------------------
 # https://sphinx-autoapi.readthedocs.io/en/latest/reference/config.html
 autoapi_generate_api_docs = True
-autoapi_add_toctree_entry = True
+autoapi_add_toctree_entry = False
 autoapi_type              = "python"
-autoapi_template_dir      = "_templates/autoapi"
+autoapi_template_dir      = "../docs/_templates/autoapi"
 autoapi_root              = "autoapi"
 autoapi_dirs              = ['../jgdv']
 autoapi_file_patterns     = ["*.py", "*.pyi"]
@@ -100,4 +99,16 @@ autoapi_options           = [
     'show-module-summary',
 ]
 
-# -- Imports --------------------------------------------------
+def filter_contains(val:list|str, *needles:str) -> bool:
+    match val:
+        case str():
+            return any(x in val for x in needles)
+        case list():
+            joined = " ".join(val)
+            return any(x in joined for x in needles)
+        case _:
+            return False
+
+def autoapi_prepare_jinja_env(jinja_env: jinja2.Environment) -> None:
+    jinja_env.add_extension("jinja2.ext.debug")
+    jinja_env.tests['contains'] = filter_contains

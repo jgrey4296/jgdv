@@ -40,14 +40,14 @@ If you find a bug, bug me, unsurprisingly, on the `issue tracker <https://github
    :glob:
    :hidden:
       
-   ../docs/conventions
+   notes
    _abstract/index
    
    [a-z]*/index
 
    genindex
    modindex
-   ../docs/autoapi/index
+   API Reference <autoapi/jgdv/index>
    
 
 .. .. Links
