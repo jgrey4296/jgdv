@@ -10,6 +10,7 @@ Deja Vu: The Documentation
 Introduction
 ------------
 
+In-Tree documentation.
 JGDV is my kitchen sink library.
 Things I keep writing that don't warrant a separate library get shoved in here.
 Of interest:
@@ -36,23 +37,17 @@ If you find a bug, bug me, unsurprisingly, on the `issue tracker <https://github
 .. .. Main Sidebar TocTree
 .. toctree::
    :maxdepth: 3
+   :glob:
    :hidden:
-
-   abstract
-   types
-   enums
-
-   debug
-   decorate
-   files
-   logging
-   structs
-   testing
-   util
-   todos
-   conventions
+      
+   ../docs/conventions
+   _abstract/index
    
+   [a-z]*/index
+
    genindex
    modindex
+   ../docs/autoapi/index
+   
 
 .. .. Links
