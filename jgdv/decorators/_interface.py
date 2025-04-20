@@ -41,7 +41,7 @@ __all__ = ( # noqa: RUF022
 # ##-- end Generated Exports
 
 ##--| Util Types
-from jgdv._types import Func, Method
+from jgdv._abstract.types import Func, Method
 
 ##--| Primary Types
 type Signature                = inspect.Signature

@@ -22,7 +22,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 from jgdv import Maybe, Lambda
-from jgdv.decorators import DecoratorBase
+from jgdv.decorators import Decorator
 
 from ._interface import Logger, LOGDEC_PRE
 
@@ -59,7 +59,7 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-class LogCall(DecoratorBase):
+class LogCall(Decorator):
     """ A Decorator for announcing the entry/exit of a function call
 
     eg:
