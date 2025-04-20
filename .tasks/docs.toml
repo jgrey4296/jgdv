@@ -39,7 +39,7 @@ actions = [
     { do="dootle.actions.shell:ShellAction", args=[
     "sphinx-build",
     # "--verbose",
-    "--quiet",
+    # "--quiet",
     # "--silent",
     "--conf-dir", "{doc_conf!p}",
     # "--write-all",

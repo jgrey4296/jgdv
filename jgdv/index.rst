@@ -40,11 +40,11 @@ If you find a bug, bug me, unsurprisingly, on the `issue tracker <https://github
    :glob:
    :hidden:
       
-   notes
    _abstract/index
    
    [a-z]*/index
 
+   _docs/*
    genindex
    modindex
    API Reference <autoapi/jgdv/index>
