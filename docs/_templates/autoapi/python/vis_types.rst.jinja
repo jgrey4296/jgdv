@@ -1,0 +1,24 @@
+
+{% block vistypes %}
+{% set visible_types = visible_children|selectattr("obj.annotation", "equalto", "TypeAlias")|list %}
+{% if visible_types %}
+Types               
+-----               
+
+
+.. toctree::
+   :hidden:
+      
+   {% for vtype in visible_types %}
+   {{ vtype.obj.id }}
+   {% endfor %}
+
+   
+.. autoapisummary::
+   
+      {% for vtype in visible_types %}
+   {{ vtype.id }}
+      {% endfor %}
+
+{% endif %}
+{% endblock vistypes %}
