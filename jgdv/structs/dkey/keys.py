@@ -24,6 +24,7 @@ from uuid import UUID, uuid1
 from .core.meta import DKey, DKeyMeta
 from .core.base import DKeyBase
 from .core.expander import Expander
+from .core.parser import RawKey
 from ._interface import INDIRECT_SUFFIX, DKeyMark_e, RAWKEY_ID, ExpInst_d
 # ##-- end 1st party imports
 
@@ -110,7 +111,7 @@ class SingleDKey(DKeyBase,   mark=DKeyMark_e.FREE):
         """
         if not bool(spec):
             return str(self)
-        rem, wrap, direct = self._consume_format_params(spec)
+        rem, wrap, direct = self._consume_format_params(spec) # type: ignore
 
         # format
         result = str(self)
@@ -124,17 +125,20 @@ class SingleDKey(DKeyBase,   mark=DKeyMark_e.FREE):
 
         return format(result, rem)
 
-class MultiDKey(DKeyBase,    mark=DKeyMark_e.MULTI, multi=True):
+class MultiDKey[X](DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
     """
       Multi keys allow 1+ explicit subkeys.
 
-    The have additional fields:
+    They have additional fields:
+
     _subkeys  : parsed information about explicit subkeys
 
     """
 
+    _subkeys : list[RawKey]
+
     def __init__(self, data:str|pl.Path, **kwargs) -> None:
-        super().__init__(data, **kwargs)
+        super().__init__(str(data), **kwargs)
         match kwargs.get(RAWKEY_ID, None):
             case [*xs]:
                 self._subkeys = xs
@@ -151,7 +155,7 @@ class MultiDKey(DKeyBase,    mark=DKeyMark_e.MULTI, multi=True):
 
           ... except stripping dkey particular format specs out of the result?
         """
-        rem, wrap, direct = self._consume_format_params(spec)
+        rem, wrap, direct = self._consume_format_params(spec) # type: ignore
         return format(str(self), rem)
 
     def keys(self) -> list[Key_p]:

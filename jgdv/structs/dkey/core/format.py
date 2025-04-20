@@ -63,7 +63,7 @@ logging = logmod.getLogger(__file__)
 ##-- end logging
 
 
-class DKeyFormatting_m:  # noqa: N801
+class DKeyFormatting_m:
     """ General formatting for dkeys """
 
     def __format__(self, spec:str) -> str:
@@ -98,7 +98,7 @@ class DKeyFormatting_m:  # noqa: N801
 
         return format(result, rem)
 
-    def _consume_format_params(self, spec:str) -> tuple(str, bool, bool):
+    def _consume_format_params(self, spec:str) -> tuple[str, bool, bool]:
         """
           return (remaining, wrap, direct)
         """
@@ -117,4 +117,4 @@ class DKeyFormatting_m:  # noqa: N801
             case _:
                 state = kwargs
 
-        return super().format(*args, **state)
+        return super().format(*args, **state) # type: ignore
