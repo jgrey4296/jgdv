@@ -88,7 +88,7 @@ html_theme_options.update({
 
 # -- Extension Options -------------------------------------------------
 # https://sphinx-autoapi.readthedocs.io/en/latest/reference/config.html
-autoapi_keep_files        = True
+autoapi_keep_files        = False
 autoapi_generate_api_docs = True
 autoapi_add_toctree_entry = False
 autoapi_type              = "python"
