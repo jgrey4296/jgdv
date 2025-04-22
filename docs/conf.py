@@ -11,8 +11,6 @@
 import os
 import sys
 import pathlib as pl
-local_mod = str(pl.Path('../').resolve())
-sys.path.insert(0, local_mod)
 
 # (Relative to this file):
 templates_path   = ['_templates']
@@ -89,7 +87,7 @@ autoapi_dirs              = ['../jgdv']
 autoapi_file_patterns     = ["*.py", "*.pyi"]
 autoapi_ignore            = exclude_patterns
 autoapi_options           = [
-    'imported-members',
+    # 'imported-members',
     'members',
     'undoc-members',
     'private-members',

@@ -2,7 +2,7 @@
 """
 
 """
-
+# mypy: disable-error-code="attr-defined"
 # Imports:
 from __future__ import annotations
 
@@ -66,15 +66,19 @@ logging = logmod.getLogger(__name__)
 @Proto(Location_p)
 class Location(Location_d, Strang):
     """ A Location is an abstraction higher than a path.
-      ie: a path, with metadata.
+
+    ie: a path, with metadata.
 
     Doesn't expand on its own, requires a JGDVLocator store
 
-    A Strang subclass, of {meta}+::a/path/location
-    eg: file/clean::.temp/docs/blah.rst
+    It is a Strang subclass, of the form "{meta}+::a/path/location". eg::
+
+        file/clean::.temp/docs/blah.rst
 
     TODO use annotations to require certain metaflags.
-    eg: ProtectedLoc = Location['protect']
+    eg::
+
+        ProtectedLoc = Location['protect']
         Cleanable    = Location['clean']
         FileLoc      = Location['file']
 
@@ -82,15 +86,18 @@ class Location(Location_d, Strang):
     and removes the need for much of PathManip_m?
 
     TODO add a ShadowLoc subclass using annotations
-    eg: BackupTo                               = ShadowLoc[root='/vols/BackupSD']
-        a_loc                                  = BackupTo('file::a/b/c.mp3')
+    eg::
+
+        BackupTo  = ShadowLoc[root='/vols/BackupSD']
+        a_loc     = BackupTo('file::a/b/c.mp3')
         a_loc.path_pair() -> ('/vols/BackupSD/a/b/c.mp3', '~/a/b/c.mp3')
+
     """
-    _separator          : str                  = API.LOC_SEP
-    _subseparator       : str                  = API.LOC_SUBSEP
-    _body_types         : ClassVar[Any]        = str|WildCard_e
-    gmark_e             : ClassVar[enum.Enum]  = LocationMeta_e
-    bmark_e             : ClassVar[enum.Enum]  = WildCard_e
+    _separator          : ClassVar[str]            = API.LOC_SEP
+    _subseparator       : ClassVar[str]            = API.LOC_SUBSEP
+    _body_types         : ClassVar[Any]            = str|WildCard_e
+    gmark_e             = LocationMeta_e
+    bmark_e             = WildCard_e
 
     @classmethod
     def pre_process(cls, data:str|pl.Path, *, strict:bool=False) -> Any:  # noqa: ANN401
@@ -116,7 +123,7 @@ class Location(Location_d, Strang):
 
         # Group metadata
         for elem in self.group:
-            self._group_meta.add(self.gmark_e[elem])
+            self._group_meta.add(self.gmark_e[elem]) # type: ignore
 
         # Body wildycards
         for i, elem in enumerate(self.body()):
@@ -147,27 +154,25 @@ class Location(Location_d, Strang):
                 case _:
                     pass
 
-        return self
-
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._group_meta = None
+        self._group_meta = set()
 
     def __repr__(self) -> str:
         body = self[1:]
         cls = self.__class__.__name__
         return f"<{cls}: {self[0:]}{self._separator}{body}>"
 
-    def __contains__(self, other:Location.gmark_e|Location.bmark_e|Location|pl.Path) -> bool:
-        """ whether a definite artifact is matched by self, an abstract artifact
-          other    ∈ self
-          a/b/c.py ∈ a/b/*.py
-          ________ ∈ a/*/c.py
-          ________ ∈ a/b/c.*
-          ________ ∈ a/*/c.*
-          ________ ∈ **/c.py
-          ________ ∈ a/b ie: self < other
+    def __contains__(self, other:Location.gmark_e|Location.bmark_e|Location|pl.Path) -> bool: # type: ignore
+        """ Whether a definite artifact is matched by self, an abstract artifact
 
+       | other    ∈ self
+       | a/b/c.py ∈ a/b/*.py
+       | ________ ∈ a/*/c.py
+       | ________ ∈ a/b/c.*
+       | ________ ∈ a/*/c.*
+       | ________ ∈ **/c.py
+       | ________ ∈ a/b ie: self < other
         """
         match other:
             case self.gmark_e():
@@ -236,18 +241,18 @@ class Location(Location_d, Strang):
         return True
 
     @property
-    def path(self) -> pl.Path:
+    def path(self) -> pl.Path: # type: ignore
         return pl.Path(self[1:])
 
     @property
-    def body_parent(self) -> list[Location._body_type]:
+    def body_parent(self) -> list[Location._body_types]:
         if self.gmark_e.file in self:
             return self.body()[:-1]
 
         return self.body()
 
     @property
-    def stem(self) -> Maybe[str|tuple[Location.bmark_e, str]]:
+    def stem(self) -> Maybe[str|tuple[Location.bmark_e, str]]: # type: ignore
         """ Return the stem, or a tuple describing how it is a wildcard """
         if self.gmark_e.file not in self._group_meta:
             return None
@@ -264,7 +269,7 @@ class Location(Location_d, Strang):
 
         return elem
 
-    def ext(self, *, last:bool=False) -> Maybe[str|tuple[Location.bmark_e, str]]:
+    def ext(self, *, last:bool=False) -> Maybe[str|tuple[Location.bmark_e, str]]: # type: ignore
         """ return the ext, or a tuple of how it is a wildcard.
         returns nothing if theres no extension,
         returns all suffixes if there are multiple, or just the last if last=True
@@ -293,14 +298,15 @@ class Location(Location_d, Strang):
     def keys(self): # type: ignore
         raise NotImplementedError()
 
+
     def __lt__(self, other:TimeDelta|str|pl.Path|Location) -> bool:
         """ self < path|location
             self < delta : self.modtime < (now - delta)
         """
         match other:
             case TimeDelta() if self.is_concrete():
-                pass
+                return False
             case TimeDelta():
                 raise NotImplementedError()
             case _:
-                return super().__lt__(other)
+                return super().__lt__(str(other))

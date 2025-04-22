@@ -64,9 +64,17 @@ type TomlTypes = str | int | float | bool | list['TomlTypes'] | dict[str,'TomlTy
 # Body:
 
 class ChainProxy_p(Protocol):
+    """ The proxy interface
+
+    Used for special access like::
+
+        cg.on_fail(...).val()
+
+    """
     pass
 
 class ChainGuard_p(Protocol):
+    """ The interface for a base ChainGuard object """
 
     def get(self, key:str, default:Maybe[TomlTypes]=None) -> Maybe[TomlTypes]:
         pass

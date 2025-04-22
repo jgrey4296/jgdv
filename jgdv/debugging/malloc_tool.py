@@ -67,23 +67,25 @@ logging = logmod.getLogger(__name__)
 class MallocTool:
     """ see https://docs.python.org/3/library/tracemalloc.html
 
-    example:
-    with MallocTool(2) as dm:
-        dm.whitelist(__file__)
-        dm.blacklist("*tracemalloc.py", all_frames=False)
-        val = 2
-        dm.snapshot("simple")
-        vals = [random.random() for x in range(1000)]
-        dm.current()
-        dm.snapshot("list")
-        vals = None
-        dm.current()
-        dm.snapshot("cleared")
+    example::
 
-    dm.compare("simple", "list")
-    dm.compare("list", "cleared")
-    dm.compare("list", "simple")
-    dm.inspect("list")
+        with MallocTool(2) as dm:
+            dm.whitelist(__file__)
+            dm.blacklist("*tracemalloc.py", all_frames=False)
+            val = 2
+            dm.snapshot("simple")
+            vals = [random.random() for x in range(1000)]
+            dm.current()
+            dm.snapshot("list")
+            vals = None
+            dm.current()
+            dm.snapshot("cleared")
+
+        dm.compare("simple", "list")
+        dm.compare("list", "cleared")
+        dm.compare("list", "simple")
+        dm.inspect("list")
+
     """
     num_frames      : int
     started         : bool

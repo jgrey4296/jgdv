@@ -8,9 +8,13 @@ Abstract APIs
 
 .. contents:: Contents
 
+This module provides various abstractions for reuse, including:
+
+1. Protocols
+2. Type Aliases
+3. An import Prelude
+   
+
 See :ref:`jgdv._abstract` for the classes.
 
-
-This module defines a number of protocols for easier extension of certain features.
-
-
+    

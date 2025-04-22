@@ -4,25 +4,31 @@
 Central store of Locations,
 which expands paths and can hook into the dkey system
 
-For a registered location ("blah": "ex/dir", "bloo": "file:>a/b/c.txt"):
-Locator.blah            -> {cwd}/ex/dir
-Locator['{blah}']       -> {cwd}/ex/dir
-Locator['{blah}/blee']  -> {cwd}/ex/dir/blee
+::
 
-Locator.bloo            -> {cwd}/a/b/c.txt
-Locator['{bloo}']       -> {cwd}/a/b/c.txt
-Locator['{bloo}/blee']  -> Error
+    locs = JGDVLocator()
+    locs.update({"blah": "ex/dir", "bloo": "file:>a/b/c.txt"})
 
-Locator[{blah}/{bloo}'] -> {cwd}/ex/dir/a/b/c.txt
+    locs.blah            # {cwd}/ex/dir
+    locs['{blah}']       # {cwd}/ex/dir
+    locator['{blah}/blee']  # {cwd}/ex/dir/blee
 
-Locator has 3 main access methods:
-Locator.get    : like dict.get
-Locator.access : Access the Location object
-Locator.expand : Expand the location(s) into a path
+    locator.bloo            # {cwd}/a/b/c.txt
+    locator['{bloo}']       # {cwd}/a/b/c.txt
+    locator['{bloo}/blee']  # Error
 
-Shorthands:
-Locator.KEY -    > Locator.access
-Locator["{KEY}"] > Locator.expand
+    locator[{blah}/{bloo}'] # {cwd}/ex/dir/a/b/c.txt
+
+JGDVLocator has 3 main access methods::
+    
+    JGDVLocator.get    : like dict.get
+    JGDVLocator.access : Access the Location object
+    JGDVLocator.expand : Expand the location(s) into a path
+
+Shorthands::
+    
+    Locator.KEY      # Locator.access
+    Locator["{KEY}"] # Locator.expand
 
 """
 # mypy: disable-error-code="name-defined"

@@ -39,7 +39,7 @@ actions = [
     { do="dootle.actions.shell:ShellAction", args=[
     "sphinx-build",
     # "--verbose",
-    # "--quiet",
+    "--quiet",
     # "--silent",
     "--conf-dir", "{doc_conf!p}",
     # "--write-all",
@@ -47,8 +47,7 @@ actions = [
     "--warning-file", "{logs!p}/sphinx.log",
     "--builder", "{doc_builder}",
     "{doc_src!p}",
-    "{doc_out!p}"
-    ]},
+    "{doc_out!p}"], errlimit=0},
 ]
 cleanup = []
 

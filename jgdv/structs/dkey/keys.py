@@ -126,8 +126,7 @@ class SingleDKey(DKeyBase,   mark=DKeyMark_e.FREE):
         return format(result, rem)
 
 class MultiDKey[X](DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
-    """
-      Multi keys allow 1+ explicit subkeys.
+    """ Multi keys allow 1+ explicit subkeys.
 
     They have additional fields:
 
@@ -194,9 +193,12 @@ class MultiDKey[X](DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
             return ExpInst_d(val=self._anon.format(*flat), literal=True)
 
 class NonDKey(DKeyBase,      mark=DKeyMark_e.NULL):
-    """
-      Just a string, not a key. But this lets you call no-ops for key specific methods
-    It can coerce itself though
+    """ Just a string, not a key.
+
+    ::
+
+        But this lets you call no-ops for key specific methods.
+        It can coerce itself though
     """
 
     def __init__(self, data, **kwargs) -> None:
@@ -211,6 +213,7 @@ class NonDKey(DKeyBase,      mark=DKeyMark_e.NULL):
         return format(str(self), rem)
 
     def format(self, fmt) -> str:
+        """ Just does normal str formatting """
         return format(self, fmt)
 
     def expand(self, *args, **kwargs) -> Maybe:
@@ -230,7 +233,7 @@ class NonDKey(DKeyBase,      mark=DKeyMark_e.NULL):
 class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
     """
       A Key for getting a redirected key.
-      eg: RedirectionDKey(key_) -> SingleDKey(value)
+      eg: RedirectionDKey(key) -> SingleDKey(value)
 
       re_mark :
     """

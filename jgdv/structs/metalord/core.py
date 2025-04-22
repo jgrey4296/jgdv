@@ -71,21 +71,25 @@ class MetalordCore(type):
     By default classes are constructed using type().
     https://docs.python.org/3/reference/datamodel.html#metaclasses
 
-    [Metaclass Definition, Metaclass Creation] ...
+    Execution order::
 
-    Class Definition:
-    1) MRO resolution           : __mro_entries__(self, bases)
-    2) metaclass selection      : (most dervied of (type | metaclasses))
-    3) namespace preparation    : metacls.__prepare__(metacls, name, bases, **kwargs) -> dict
-    4) class body execution     : exec(body, globals, namespace)
-    5) class object creation    : metaclass.__new__(name, bases, namespace, **kwargs) -> classobj
-    6) subclass init            : parent.__init_subclass__(cls, **kwargs)
-    7) class object init        : metaclass.__init__(cls, na,e, bases, namespace, **kwargs)
+        - Metaclass Definition
+        - Metaclass Creation
 
-    Then instances are created by:
-    1) metaclass.__call__(cls, ...) -> instance
-    1.b) cls.__new__(cls, ...) -> instance
-    1.c) cls.__init__(instance, ...)
+        - Class Definition:
+            1) MRO resolution           : __mro_entries__(self, bases)
+            2) metaclass selection      : (most dervied of (type | metaclasses))
+            3) namespace preparation    : metacls.__prepare__(metacls, name, bases, **kwargs) -> dict
+            4) class body execution     : exec(body, globals, namespace)
+            5) class object creation    : metaclass.__new__(name, bases, namespace, **kwargs) -> classobj
+            6) subclass init            : parent.__init_subclass__(cls, **kwargs)
+            7) class object init        : metaclass.__init__(cls, na,e, bases, namespace, **kwargs)
+
+        - Instance Creation::
+            1) metaclass.__call__(cls, ...) -> instance
+            1.b) cls.__new__(cls, ...) -> instance
+            1.c) cls.__init__(instance, ...)
+
     """
 
     @classmethod

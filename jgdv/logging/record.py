@@ -55,9 +55,11 @@ logging = logmod.getLogger(__name__)
 # Body:
 
 class JGDVLogRecord(logmod.getLogRecordFactory()):
-    """ A Basic extension of the log record
+    """ A Basic extension of the log record.
 
-    needs the signature:
-    factory(name, level, fn, lno, msg, args, exc_info, func=None, sinfo=None, **kwargs)
-"""
+    needs the signature::
+
+        factory(name, level, fn, lno, msg, args, exc_info, func=None, sinfo=None, **kwargs)
+
+    """
     pass
