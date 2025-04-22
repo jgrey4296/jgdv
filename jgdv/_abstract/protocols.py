@@ -40,9 +40,9 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    from .types import Maybe, Ctor
     type ChainGuard = Any
-    type Maybe[T]   = None|T
-    type Ctor[T]    = type(T) | Callable[[*Any], T]
     type Logger     = logmod.Logger
 
 # isort: on

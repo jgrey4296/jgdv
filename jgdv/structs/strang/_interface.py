@@ -68,7 +68,7 @@ STRGET         : Final[Callable]           = str.__getitem__
 # Body:
 
 class StrangMarker_e(enum.StrEnum):
-    """ Markers Used in a Strang """
+    """ Markers Used in a base Strang """
 
     head     = "$head$"
     gen      = "$gen$"
@@ -77,6 +77,7 @@ class StrangMarker_e(enum.StrEnum):
     extend   = "+"
 
 class CodeRefMeta_e(enum.StrEnum):
+    """ Available Group values of CodeRef strang's """
     module  = "module"
     cls     = "cls"
     value   = "value"
@@ -88,10 +89,12 @@ class CodeRefMeta_e(enum.StrEnum):
 ##--|
 @runtime_checkable
 class Strang_p(Protocol):
+    """  """
     pass
 
 @runtime_checkable
 class Importable_p(Protocol):
+    """  """
     pass
 
 @runtime_checkable
@@ -99,13 +102,14 @@ class PreInitProcessed_p(Protocol):
     """ Protocol for things like Strang,
     whose metaclass preprocess the initialisation data before even __new__ is called.
 
-    Is used in a metatype.__call__ as:
-    cls._pre_process(...)
-    obj = cls.__new__(...)
-    obj.__init__(...)
-    obj._process()
-    obj._post_process()
-    return obj
+    Is used in a metatype.__call__ as::
+
+        cls._pre_process(...)
+        obj = cls.__new__(...)
+        obj.__init__(...)
+        obj._process()
+        obj._post_process()
+        return obj
 
     """
 

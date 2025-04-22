@@ -56,6 +56,7 @@ logging.disabled = True
 ##-- end logging
 
 class _Strang_cmp_m:
+    """ The mixin of Strang Comparison methods """
 
     def __hash__(self) -> int:
         return str.__hash__(str(self))
@@ -94,6 +95,7 @@ class _Strang_cmp_m:
         return hash(self) == hash(other) or (self < other)
 
 class _Strang_test_m:
+    """ The mixin of strang test method """
 
     def is_uniq(self) -> bool:
         """ utility method to test if this name refers to a name with a UUID """
@@ -120,6 +122,7 @@ class _Strang_test_m:
                 return False
 
 class _Strang_format_m:
+    """ The mixin for formatting strangs into pure strings """
 
     def _format_subval(self, val:str, *, no_expansion:bool=False) -> str:
         match val:
@@ -167,6 +170,7 @@ class _Strang_format_m:
 ##--|
 
 class _Strang_validation_m:
+    """ The mixin for validating strangs on construction """
 
     @classmethod
     def pre_process(cls, data:str, *, strict:bool=False) -> str:  # noqa: ARG003

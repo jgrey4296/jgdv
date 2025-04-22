@@ -51,7 +51,7 @@ if TYPE_CHECKING:
 
 ##--|
 from ._interface import Signature, Decorable, Decorated, DForm_e, Decorator_p
-from jgdv._types import Method
+from jgdv._abstract.types import Method
 # isort: on
 # ##-- end types
 

@@ -25,7 +25,7 @@ from uuid import UUID, uuid1
 from .. import _interface as API  # noqa: N812
 from jgdv.mixins.enum_builders import EnumBuilder_m
 from jgdv.mixins.annotate import SubAnnotate_m, Subclasser
-from .parser import DKeyParser
+from .parser import DKeyParser, RawKey
 from .._interface import DKeyMark_e, ExpInst_d
 # ##-- end 1st party imports
 
@@ -52,7 +52,7 @@ if TYPE_CHECKING:
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
    from string import Formatter
 
-   type KeyMark = DKeyMark_e|str
+   from .._interface import KeyMark
 
 
 # isort: on
@@ -62,8 +62,11 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+StrMeta : Final[type] = type(str)
 
-class DKeyMeta(type(str)):
+##--| Body:
+
+class DKeyMeta(StrMeta):
     """
       The Metaclass for keys, which ensures that subclasses of DKeyBase
       are DKey's, despite there not being an actual subclass relation between them.
@@ -74,7 +77,7 @@ class DKeyMeta(type(str)):
     _single_registry    : ClassVar[dict[KeyMark,type]] = {}
     _multi_registry     : ClassVar[dict[KeyMark,type]] = {}
     _conv_registry      : ClassVar[dict[str, KeyMark]] = {}
-    _parser             : ClassVar[Formatter]             = DKeyParser()
+    _parser             : ClassVar[DKeyParser]         = DKeyParser()
 
     # Use the default str hash method
     _expected_init_keys : ClassVar[list[str]] = API.DEFAULT_DKEY_KWARGS[:]
@@ -96,9 +99,9 @@ class DKeyMeta(type(str)):
             case [DKey() as x] if kwargs.get("mark", None) is None:
                 new_key = x
             case [pl.Path()  as x]:
-                new_key = cls.__new__(cls, str(x), **kwargs)
+                new_key = cls.__new__(cls, str(x), **kwargs) # type: ignore
             case [str()|DKey() as x]:
-                new_key = cls.__new__(cls, *args, **kwargs)
+                new_key = cls.__new__(cls, *args, **kwargs) # type: ignore
             case x:
                 msg = "Unknown type passed to construct dkey"
                 raise TypeError(msg, type(x), repr(x))
@@ -131,7 +134,7 @@ class DKeyMeta(type(str)):
         return any(sub in x for x in cls.mro())
 
     @staticmethod
-    def extract_raw_keys(data:str, *, implicit=False) -> list:
+    def extract_raw_keys(data:str, *, implicit=False) -> list[RawKey]:
         """ Calls the Python format string parser to extract
         keys and their formatting/conversion specs.
 
@@ -214,7 +217,7 @@ class DKeyMeta(type(str)):
 
 
     @staticmethod
-    def mark_alias(val:Any) -> Maybe[DKeyMark_e]:  # noqa: ANN401
+    def mark_alias(val:Any) -> Maybe[KeyMark]:  # noqa: ANN401
         """ aliases for marks """
         match val:
             case DKeyMark_e() | str():
@@ -230,7 +233,7 @@ class DKeyMeta(type(str)):
             case _:
                 return None
 
-class DKey(metaclass=DKeyMeta):
+class DKey(str, metaclass=DKeyMeta):
     """ A facade for DKeys and variants.
       Implements __new__ to create the correct key type, from a string, dynamically.
 
@@ -251,7 +254,7 @@ class DKey(metaclass=DKeyMeta):
       DKey is the factory, but all DKeys are subclasses of DKeyBase,
       to allow control over __init__.
       """
-    Mark             : ClassVar[enum.Enum]  = DKeyMark_e
+    Mark             : ClassVar[enum.EnumMeta]  = DKeyMark_e
     ExpInst          : ClassVar[type]       = ExpInst_d
     _extra_sources   : ClassVar[list[dict]] = []
     __match_args                            = ("_mark",)
@@ -260,6 +263,7 @@ class DKey(metaclass=DKeyMeta):
         return DKeyMeta.get_subtype(name, multi=True)
 
     def __new__(cls, data, **kwargs) -> DKey:
+        mark : KeyMark
         # Get Raw Key information to choose the mark
         # put the rawkey data into _rawkey_id to save on reparsing later
         multi_key = kwargs.get("mark", None) in DKeyMeta._multi_registry
@@ -283,7 +287,7 @@ class DKey(metaclass=DKeyMeta):
                 kwargs[API.RAWKEY_ID] = [x]
             case [x] if not bool(x.prefix):
                 # one key, no extra text
-                kw_mark      = kwargs.get("mark", None)
+                kw_mark : Maybe[KeyMark] = kwargs.get("mark", None)
                 conv_mark = DKeyMeta._conv_registry.get(x.conv, None)
                 if (kw_mark and conv_mark):
                     msg = "Kwd Mark/Conversion Conflict"
@@ -300,6 +304,7 @@ class DKey(metaclass=DKeyMeta):
                 multi_key = True
 
 
+        subtype_cls : type[DKey]
         # Choose the sub-ctor
         match kwargs.get(API.FORCE_ID, None):
             case type() as x:
@@ -307,15 +312,15 @@ class DKey(metaclass=DKeyMeta):
                 del kwargs[API.FORCE_ID]
                 subtype_cls = x
             case None:
-                subtype_cls       : type = DKeyMeta.get_subtype(mark, multi=multi_key)
+                subtype_cls = DKeyMeta.get_subtype(mark, multi=multi_key)
 
         # Build a str with the subtype_cls and data
         # (Has to be str.__new__ for reasons)
-        result           = str.__new__(subtype_cls, data)
+        result : DKey = str.__new__(subtype_cls, data)
 
         match list(kwargs.keys() - DKeyMeta._expected_init_keys - subtype_cls._extra_kwargs):
             case []:
-                result.__init__(data, **kwargs)
+                result.__init__(data, **kwargs) # type: ignore
                 return result
             case [*xs]:
                 msg = "Key got unexpected kwargs"
@@ -328,7 +333,7 @@ class DKey(metaclass=DKeyMeta):
         """ Get the mark of the key type or instance """
         match target:
             case DKey():
-                return target._mark
+                return target._mark # type: ignore
             case type() if issubclass(target, DKey):
                 return target._mark
             case _:

@@ -66,13 +66,17 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 class CodeReference(Strang):
-    """
-      A reference to a class or function. can be created from a string (so can be used from toml),
-      or from the actual object (from in python)
+    """ A reference to a class or function.
 
-    has the form [cls::]module.a.b.c:ClassName
+    can be created from a string (so can be used from toml),
+    or from the actual object (from in python)
+
+    Has the form::
+
+        [cls::]module.a.b.c:ClassName
 
     Can be built with an imported value directly, and a type to check against
+
     __call__ imports the reference
     """
 

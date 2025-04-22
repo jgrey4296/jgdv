@@ -62,12 +62,18 @@ logging = logmod.getLogger(__name__)
 logging.disabled = True
 ##-- end logging
 
+type BodyMark = type[enum.StrEnum]
+type GroupMark = type[enum.StrEnum] | type[int]
+
+##--|
+
 class StrangBuilder_m:
 
     @staticmethod
     def build(data:str, *args:Any, **kwargs:Any) -> Strang:  # noqa: ANN401
         """ Build an appropriate Strang subclass else a Strang,
-        goes from newest to oldest
+        goes from newest to oldest.
+
         eg: For when you might have a Location or a Name, and want to try to build both
         """
         for sub in StrangMeta._forms[::-1]:
@@ -80,7 +86,7 @@ class StrangBuilder_m:
                 pass
         else:
             return Strang(data, *args, **kwargs)
-##--|
+        ##--|
 
 class StrangMeta(type(str)):
     """ A Metaclass for Strang
@@ -133,24 +139,32 @@ class StrangMeta(type(str)):
 
 @Mixin(s_mix.PreStrang_m, None, s_mix.PostStrang_m, allow_inheritance=True)
 class Strang(str, metaclass=StrangMeta):
+    """ A Structured String Baseclass.
+
+    A Normal str, but is parsed on construction to extract and validate
+    certain form and metadata.
+
+    The Form of a Strang is::
+
+        {group}{sep}{body}
+        eg: group.val::body.val
+
+    Body objs can be marks (Strang.bmark_e), and UUID's as well as str's
+
+    strang[x] and strang[x:y] are changed to allow structured access::
+
+        val = Strang("a.b.c::d.e.f")
+        val[0] # a.b.c
+        val[1] # d.e.f
+
     """
-      A Structured String Baseclass.
-      A Normal str, but is parsed on construction to extract and validate
-      certain form and metadata.
 
-    Form: group{sep}body
-    body objs can be marks (Strang.bmark_e), and UUID's as well as str's
-
-    strang[x] and strang[x:y] are changed.
-
-    """
-
-    _separator        : ClassVar[str]                    = SEP_DEFAULT
-    _subseparator     : ClassVar[str]                    = SUBSEP_DEFAULT
-    _body_types       : ClassVar[Any]                    = str|UUID|StrangMarker_e
-    _typevar          : ClassVar[Maybe[type]]            = None
-    bmark_e           : ClassVar[enum.StrEnum]           = StrangMarker_e
-    gmark_e           : ClassVar[enum.IntEnum|type[int]] = int
+    _separator        : ClassVar[str]               = SEP_DEFAULT
+    _subseparator     : ClassVar[str]               = SUBSEP_DEFAULT
+    _body_types       : ClassVar[Any]               = str|UUID|StrangMarker_e
+    _typevar          : ClassVar[Maybe[type]]       = None
+    bmark_e           : ClassVar[BodyMark]          = StrangMarker_e
+    gmark_e           : ClassVar[GroupMark]         = int
 
     metadata          : dict
     _base_slices      : tuple[Maybe[slice], Maybe[slice]]
@@ -158,7 +172,7 @@ class Strang(str, metaclass=StrangMeta):
     _group            : list[slice]
     _body             : list[slice]
     _body_meta        : list[Maybe[Strang._body_types]]
-    _group_meta       : set[enum.member]
+    _group_meta       : set[str]
 
     @classmethod
     def __init_subclass__(cls, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
@@ -253,9 +267,9 @@ class Strang(str, metaclass=StrangMeta):
             case int():
                 return self._body_meta[i] or super().__getitem__(self._body[i])
             case slice(start=0, stop=None):
-                return super().__getitem__(self._base_slices[0])
+                return super().__getitem__(self._base_slices[0]) # type: ignore
             case slice(start=1, stop=None, step=None):
-                return super().__getitem__(self._base_slices[1])
+                return super().__getitem__(self._base_slices[1]) # type: ignore
             case slice(start=0, stop=x):
                 return super().__getitem__(self._group[x])
             case slice(start=1, stop=int() as x):
@@ -279,7 +293,7 @@ class Strang(str, metaclass=StrangMeta):
     def group(self) -> list[str]:
         return [STRGET(self, x) for x in self._group]
 
-    def body(self, *, reject:Maybe[callable]=None, no_expansion:bool=False) -> list[str]:
+    def body(self, *, reject:Maybe[Callable]=None, no_expansion:bool=False) -> list[str]:
         """ Get the body, as a list of str's,
         with values filtered out if a rejection fn is used
         """

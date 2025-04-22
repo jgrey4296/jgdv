@@ -56,19 +56,19 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 class ChainGetter:
-    """
-      The core logic to turn a key into a value.
-      Doesn't perform repeated expansions.
+    """ The core logic to turn a key into a value.
 
-      tries sources in order.
+    | Doesn't perform repeated expansions.
+    | Tries sources in order.
+
     TODO replace this with collections.ChainMap ?
     """
 
     @staticmethod
     def get(key:str, *sources:dict|SpecStruct_p|JGDVLocator, fallback:Maybe=None) -> Maybe[Any]:
-        """
-        Get a key's value from an ordered sequence of potential sources.
-        Try to get {key} then {key_} in order of sources passed in
+        """ Get a key's value from an ordered sequence of potential sources.
+
+        | Try to get {key} then {key\\_} in order of sources passed in.
         """
         replacement = fallback
         for source in sources:
@@ -97,11 +97,11 @@ class ChainGetter:
 
     @staticmethod
     def lookup(target:list[ExpInst_d], sources:list)-> Maybe[ExpInst_d]:
-        """
-        Handle lookup instructions:
-        pass thorugh DKeys and (DKey, ..)
-        lift (str(), True, fallback)
-        don't lift (str(), False, fallback)
+        """ Handle lookup instructions
+
+        | pass through DKeys and (DKey, ..)
+        | lift (str(), True, fallback)
+        | don't lift (str(), False, fallback)
 
         """
         for spec in target:

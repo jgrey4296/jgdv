@@ -1,35 +1,42 @@
 #!/usr/bin/env python3
 """
+
 Central store of Locations,
 which expands paths and can hook into the dkey system
 
-For a registered location ("blah": "ex/dir", "bloo": "file:>a/b/c.txt"):
-Locator.blah            -> {cwd}/ex/dir
-Locator['{blah}']       -> {cwd}/ex/dir
-Locator['{blah}/blee']  -> {cwd}/ex/dir/blee
+::
 
-Locator.bloo            -> {cwd}/a/b/c.txt
-Locator['{bloo}']       -> {cwd}/a/b/c.txt
-Locator['{bloo}/blee']  -> Error
+    locs = JGDVLocator()
+    locs.update({"blah": "ex/dir", "bloo": "file:>a/b/c.txt"})
 
-Locator[{blah}/{bloo}'] -> {cwd}/ex/dir/a/b/c.txt
+    locs.blah            # {cwd}/ex/dir
+    locs['{blah}']       # {cwd}/ex/dir
+    locator['{blah}/blee']  # {cwd}/ex/dir/blee
 
-Locator has 3 main access methods:
-Locator.get    : like dict.get
-Locator.access : Access the Location object
-Locator.expand : Expand the location(s) into a path
+    locator.bloo            # {cwd}/a/b/c.txt
+    locator['{bloo}']       # {cwd}/a/b/c.txt
+    locator['{bloo}/blee']  # Error
 
-Shorthands:
-Locator.KEY -    > Locator.access
-Locator["{KEY}"] > Locator.expand
+    locator[{blah}/{bloo}'] # {cwd}/ex/dir/a/b/c.txt
+
+JGDVLocator has 3 main access methods::
+    
+    JGDVLocator.get    : like dict.get
+    JGDVLocator.access : Access the Location object
+    JGDVLocator.expand : Expand the location(s) into a path
+
+Shorthands::
+    
+    Locator.KEY      # Locator.access
+    Locator["{KEY}"] # Locator.expand
 
 """
+# mypy: disable-error-code="name-defined"
 # Imports:
 from __future__ import annotations
 
 # ##-- stdlib imports
 import datetime
-import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
@@ -66,16 +73,18 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 
+
 if TYPE_CHECKING:
-   from jgdv import Maybe, Stack, Queue
-   from typing import Final
-   from typing import ClassVar, Any, LiteralString
-   from typing import Never, Self, Literal
-   from typing import TypeGuard
-   from collections.abc import Iterable, Iterator, Callable, Generator
-   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
-   type FmtStr      = str
-   type JGDVLocator = Any
+    import enum
+    from jgdv import Maybe, Stack, Queue, FmtStr
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+
 # isort: on
 # ##-- end types
 
@@ -113,33 +122,40 @@ class _LocatorGlobal:
         return len(_LocatorGlobal._global_locs)
 
     @staticmethod
-    def peek() -> None|JGDVLocator:
+    def peek() -> Maybe[JGDVLocator]:
         match _LocatorGlobal._global_locs:
             case []:
                 return None
             case [*_, x]:
                 return x
+            case _:
+                return None
+
 
     @staticmethod
     def push(locs) -> None:
         _LocatorGlobal._global_locs.append(locs)
 
     @staticmethod
-    def pop() -> None|JGDVLocator:
+    def pop() -> Maybe[JGDVLocator]:
         match _LocatorGlobal._global_locs:
             case []:
                 return None
             case [*xs, x]:
                 _LocatorGlobal._global_locs = xs
                 return x
+            case _:
+                return None
 
-    def __get__(self, obj, objtype=None) -> JGDVLocator:
+    def __get__(self, obj, objtype=None) -> Maybe[JGDVLocator]:
         """ use the descriptor protocol to make a pseudo static-variable
         https://docs.python.org/3/howto/descriptor.html
         """
         return _LocatorGlobal.peek()
 
-class _LocatorUtil_m:  # noqa: N801
+class _LocatorUtil_m:
+
+    _data    : dict[DKey|str, Location]
 
     def update(self, extra:dict|ChainGuard|Location|JGDVLocator, *, strict=True) -> Self:
         """
@@ -151,7 +167,7 @@ class _LocatorUtil_m:  # noqa: N801
             case dict():
                 pass
             case Location():
-                extra = {extra.name : extra}
+                extra = {extra.key : extra}
             case ChainGuard():
                 return self.update(dict(extra), strict=strict)
             case JGDVLocator():
@@ -195,14 +211,14 @@ class _LocatorUtil_m:  # noqa: N801
                      if not any(x in data for x in meta):
                          return False
             case str():
-                return self.metacheck(DKey(key, implicit=True), meta)
+                return self.metacheck(DKey(key, implicit=True), *meta)
         return False
 
     def registered(self, *values, task="doot", strict=True) -> set:
         """ Ensure the values passed in are registered locations,
           error with DirAbsent if they aren't
         """
-        missing = {x for x in values if x not in self}
+        missing = {x for x in values if x not in self} # type: ignore
 
         if strict and bool(missing):
             msg = "Ensured Locations are missing for %s : %s"
@@ -216,14 +232,14 @@ class _LocatorUtil_m:  # noqa: N801
           resolves symlinks unless symlinks=True
         """
         match path:
-            case Location() if Location.gmark_e.earlycwd in path:
+            case Location() if Location.gmark_e.earlycwd in path: # type: ignore
                 the_path = path.path
-                return self._normalize(the_path, root=_LocatorGlobal._startup_cwd)
+                return self._normalize(the_path, root=_LocatorGlobal._startup_cwd) # type: ignore
             case Location():
                 the_path = path.path
-                return self._normalize(the_path, root=self.root)
+                return self._normalize(the_path, root=self.root) # type: ignore
             case pl.Path():
-                return self._normalize(path, root=self.root)
+                return self._normalize(path, root=self.root) # type: ignore
             case _:
                 msg = "Bad type to normalize"
                 raise TypeError(msg, path)
@@ -239,7 +255,9 @@ class _LocatorUtil_m:  # noqa: N801
         # TODO
         pass
 
-class _LocatorAccess_m:  # noqa: N801
+class _LocatorAccess_m:
+
+    _data    : dict[DKey|str, Location]
 
     def get(self, key, fallback:Maybe[str|pl.Path]=None) -> Maybe[pl.Path]:
         """
@@ -273,7 +291,7 @@ class _LocatorAccess_m:  # noqa: N801
           Access the registered Location associated with 'key'
         """
         match key:
-            case str() if key in self:
+            case str() if key in self: # type: ignore
                 return self._data[key]
             case _:
                 return None
@@ -284,21 +302,21 @@ class _LocatorAccess_m:  # noqa: N801
         join them together, and normalize it
         """
         coerced : DKey = self._coerce_key(key, strict=strict)
-        match coerced.expand(self):
+        match coerced.expand(self): # type: ignore
             case None if strict:
                 msg = "Strict Expansion of Location failed"
                 raise KeyError(msg, key)
             case None:
                 return None
             case pl.Path() as x if norm:
-                return self.normalize(x)
+                return self.normalize(x) # type: ignore
             case pl.Path() as x:
                 return x
             case x:
                 msg = "Unknown Response When Expanding Location"
                 raise TypeError(msg, key, x)
 
-    def _coerce_key(self, key:Location|DKey|str|pl.Path, *, strict=False) -> DKey:
+    def _coerce_key(self, key:Location|DKey|str|pl.Path, *, strict:bool=False) -> DKey:
         """ Coerces a key to a MultiDKey for expansion using DKey's expansion mechanism,
         using self as the source
         """
@@ -319,7 +337,7 @@ class _LocatorAccess_m:  # noqa: N801
             case False:
                 return DKey(current, ctor=pl.Path, mark="soft.fail")
             case True:
-                return DKey(current, ctor=pl.Path, mark=DKey.Mark.MULTI)
+                return DKey(current, ctor=pl.Path, mark=DKey.Mark.MULTI) # type: ignore
 
 ##--|
 
@@ -346,13 +364,21 @@ class JGDVLocator:
       locs['{temp}/somewhere']
       will expand 'temp' (if it is a registered location)
       """
-    gmark_e = LocationMeta_e
+    gmark_e : ClassVar[enum.EnumMeta]   = LocationMeta_e
     Current : ClassVar[_LocatorGlobal] = _LocatorGlobal()
 
+    _root    : pl.Path
+    _data    : dict[DKey|str, Location]
+    _loc_ctx : Maybe[JGDVLocator]
+
+    access : Callable
+    expand : Callable
+    update : Callable
+
     def __init__(self, root:pl.Path):
-        self._root    : pl.Path()                 = root.expanduser().resolve()
-        self._data    : dict[str, Location]       = {}
-        self._loc_ctx : Maybe[JGDVLocator]      = None
+        self._root    = root.expanduser().resolve()
+        self._data    = {}
+        self._loc_ctx = None
         match self.Current:
             case None:
                 _LocatorGlobal.push(self)
@@ -412,9 +438,9 @@ class JGDVLocator:
     def __len__(self) -> int:
         return len(self._data)
 
-    def __iter__(self) -> Generator[str]:
+    def __iter__(self) -> Generator[str|DKey]:
         """ Iterate over the registered location names """
-        return iter(self._data.keys())
+        return iter(self._data.keys()) # type: ignore
 
     def __call__(self, new_root=None) -> JGDVLocator:
         """ Create a copied locations object, with a different root """
@@ -427,11 +453,13 @@ class JGDVLocator:
         """
         _LocatorGlobal.push(self)
         os.chdir(self._root)
+        assert(self.Current is not None)
         return self.Current
 
-    def __exit__(self, exc_type, exc_value, exc_traceback) -> bool:
+    def __exit__(self, exc_type, exc_value, exc_traceback) -> bool: # type: ignore
         """ returns the global state to its original, """
         _LocatorGlobal.pop()
+        assert(self.Current is not None)
         os.chdir(self.Current._root)
         return False
 

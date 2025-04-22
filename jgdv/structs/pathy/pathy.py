@@ -275,8 +275,11 @@ class PathyDir(Pathy[Dir], PathyReal):
 
 class WildPathy(Pathy[Wild], PathyPure):
     """ A Pure Pathy that represents a location with wildcards and keys in it.
-    can handle wildcards (?), globs (* and **), and keys ({}) in it.
-    eg: a/path/*/?.txt
+
+    ::
+
+        Can handle wildcards (?), globs (* and **), and keys ({}) in it.
+        eg: a/path/*/?.txt
 
     Converts to a List of PathReal's by calling 'expand'
     """
@@ -299,10 +302,10 @@ class WildPathy(Pathy[Wild], PathyPure):
         return self.glob(pattern, case_sensitive=case_sensitive, recurse_symlinks=recurse_symlinks)
 
     def walk_files(self, *, d_skip=None, f_skip=None, depth=None) -> iter[PathyFile]:
-        """
-        Walk a Path, returning applicable files
-        filters directories using fn. lambda x -> bool. True skips
-        filters file using f_skip(lambda x: bool), True ignores
+        """ Walk a Path, returning applicable files
+
+        | filters directories using fn. lambda x -> bool. True skips
+        | filters file using f_skip(lambda x: bool), True ignores
         """
         d_skip = d_skip or (lambda x: [])
         f_skip = f_skip or (lambda x: False)
@@ -317,9 +320,9 @@ class WildPathy(Pathy[Wild], PathyPure):
                 yield Pathy['file'](fpath)
 
     def walk_dirs(self, *, d_skip=None, depth=None) -> iter[Pathy['dir']]:
-        """
-        Walk the directory tree, to a certain depth.
-        d_skip: lambda x: -> bool. True skip
+        """ Walk the directory tree, to a certain depth.
+
+        > d_skip: lambda x: -> bool. True skip
 
         returns an iterator of the available paths
         """

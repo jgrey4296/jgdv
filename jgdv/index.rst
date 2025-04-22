@@ -14,11 +14,11 @@ JGDV is my kitchen sink library.
 Things I keep writing that don't warrant a separate library get shoved in here.
 Of interest:
 
-#. LogConfig
-#. Strang
-#. ChainGuard
-#. Locator
-
+#. :ref:`LogConfig<jgdv.logging.config>`
+#. :ref:`Strang<jgdv.structs.strang>`
+#. :ref:`ChainGuard<jgdv.structs.chainguard>`
+#. :ref:`Locator<jgdv.structs.locator>`
+#. :ref:`DKey<jgdv.structs.dkey>`
 
 .. _repo:
 
@@ -31,28 +31,20 @@ The repo can be found `here <https://github.com/jgrey4296/jgdv>`_.
 If you find a bug, bug me, unsurprisingly, on the `issue tracker <https://github.com/jgrey4296/jgdv/issues>`_.
 
 
-
-
 .. .. Main Sidebar TocTree
 .. toctree::
    :maxdepth: 3
+   :glob:
    :hidden:
-
-   abstract
-   types
-   enums
-
-   debug
-   decorate
-   files
-   logging
-   structs
-   testing
-   util
-   todos
-   conventions
+      
+   _abstract/index
    
+   [a-z]*/index
+
+   _docs/*
    genindex
    modindex
+   API Reference <autoapi/jgdv/index>
+   
 
 .. .. Links

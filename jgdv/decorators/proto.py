@@ -65,12 +65,12 @@ class CheckProtocols:
     """ A Class Decorator to ensure a class has no abc.abstractmethod's
     or unimplemented protocol members
 
-    pass additional protocols when making the decorator,
-    eg:
+    pass additional protocols when making the decorator, eg::
 
-    @CheckProtocol(Proto1_p, Proto2_p, AbsClass...)
-    class MyClass:
-    pass
+        @CheckProtocol(Proto1_p, Proto2_p, AbsClass...)
+        class MyClass:
+        pass
+
     """
 
     def get_protos(target:type) -> set[Protocol]:
@@ -106,11 +106,12 @@ class CheckProtocols:
     def test_protocol(proto:Protocol, cls) -> list[str]:
         """ Returns a list of methods which are defined in the protocol,
         no where else in the mro.
+
         ie: they are unimplemented protocol requirements
 
         Can handle type aliases, so long as they actually point to a protocol.
-        eg: type proto_alias = MyProtocol_p
-        where issubclass(MyProtocol_p, Protocol)
+        | eg: type proto_alias = MyProtocol_p
+        | where issubclass(MyProtocol_p, Protocol)
         """
 
         result = []
@@ -166,21 +167,23 @@ class CheckProtocols:
                                   still_abstract)
 
 class Proto(MonotonicDec):
-    """ Decorator to explicitly annotate a class as an implementer of a set of protocols
-    Protocols are annotated into cls._jgdv_protos : set[Protocol]
+    """ Decorator to explicitly annotate a class as an implementer of a set of protocols.
 
-    class ClsName(Supers*, P1, P1..., **kwargs):...
+    Protocols are annotated into cls._jgdv_protos : set[Protocol]::
 
-    becomes:
+        class ClsName(Supers*, P1, P1..., **kwargs):...
 
-    @Protocols(P1, P2,...)
-    class ClsName(Supers): ...
+    becomes::
 
-    Protocol *definition* remains the typical way:
+        @Protocols(P1, P2,...)
+        class ClsName(Supers): ...
 
-    class Proto1(Protocol): ...
+    Protocol *definition* remains the usual way::
 
-    class ExtProto(Proto1, Protocol): ...
+        class Proto1(Protocol): ...
+
+        class ExtProto(Proto1, Protocol): ...
+
     """
     needs_args = True
 

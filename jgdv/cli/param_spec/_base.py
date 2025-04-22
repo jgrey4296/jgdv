@@ -85,13 +85,12 @@ PSpecMixins                    = [
 
 @Proto(ParamStruct_p)
 class ParamSpecBase(*PSpecMixins, BaseModel, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True, extra="allow"):
-
     """ Declarative CLI Parameter Spec.
 
-    Declared the param name (turns into {prefix}{name})
-    The value will be parsed into a given {type_}, and lifted to a list or set if necessary
-    If given, can have a {default} value.
-    {insist} will cause an error if it isn't parsed
+    | Declares the param name (turns into {prefix}{name})
+    | The value will be parsed into a given {type}, and lifted to a list or set if necessary
+    | If given, can have a {default} value.
+    | {insist} will cause an error if it isn't parsed
 
     If {prefix} is a non-empty string, then its positional, and to parse it requires no -key.
     If {prefix} is an int, then the parameter has to be in the correct place in the given args.
@@ -122,8 +121,9 @@ class ParamSpecBase(*PSpecMixins, BaseModel, metaclass=ProtocolModelMeta, arbitr
 
     @staticmethod
     def key_func(x):
-        """ Sort Parameters so:
-        -{prefix len} < name < int positional < positional < --help
+        """ Sort Parameters
+
+        > -{prefix len} < name < int positional < positional < --help
 
         """
         match x.prefix:
@@ -211,7 +211,8 @@ class ParamSpecBase(*PSpecMixins, BaseModel, metaclass=ProtocolModelMeta, arbitr
     @ftz.cached_property
     def key_str(self) -> str:
         """ Get how the param needs to be written in the cli.
-        eg: -test or --test
+
+        | eg: -test or --test
         """
         match self.prefix:
             case str():

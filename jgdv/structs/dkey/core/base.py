@@ -52,9 +52,9 @@ if TYPE_CHECKING:
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
    from jgdv._abstract.protocols import SpecStruct_p
 
-   type KeyMark = DKeyMark_e|str
+   type KeyMark    = API.KeyMark
    type LookupList = API.LookupList
-   type LitFalse = API.LitFalse
+   type LitFalse   = API.LitFalse
 
 # isort: on
 # ##-- end types
@@ -65,7 +65,7 @@ logging = logmod.getLogger(__name__)
 
 @Proto(Key_p, Expandable_p, check=False)
 @Mixin(DKeyFormatting_m)
-class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
+class DKeyBase[X](SubAnnotate_m, str, annotate_to="_mark"):
     """
       Base class for implementing actual DKeys.
       adds:
@@ -81,7 +81,7 @@ class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
     on class definition, can register a 'mark', 'multi', and a conversion parameter str
     """
 
-    _mark               : KeyMark|str|type              = DKey.Mark.default
+    _mark               : KeyMark = DKey.Mark.default # type: ignore
     _expansion_type     : Ctor
     _typecheck          : CHECKTYPE
     _fallback           : Maybe[Any]
@@ -137,7 +137,7 @@ class DKeyBase(SubAnnotate_m, str, annotate_to="_mark"):
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}: {self}>"
 
-    def __eq__(self, other:str) -> bool:
+    def __eq__(self, other:object) -> bool:
         match other:
             case DKey() | str():
                 return str.__eq__(self, other)

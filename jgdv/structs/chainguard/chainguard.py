@@ -1,5 +1,7 @@
 #/usr/bin/env python3
-""""""
+"""
+
+"""
 # Imports:
 from __future__ import annotations
 
@@ -66,6 +68,11 @@ logging = logmod.getLogger(__name__)
 @Mixin(GuardProxyEntry_m, TomlLoader_m, TomlWriter_m, silent=True)
 @Mixin(TomlAccess_m, DefaultedReporter_m, silent=True)
 class ChainGuard(GuardBase):
+    """ The Final ChainGuard class.
+
+    Takes the GuardBase object, and mixes in extra capabilities.
+
+    """
 
     @classmethod
     def merge(cls, *guards:Self, dfs:Maybe[Callable]=None, index:Maybe[str]=None, shadow:bool=False) -> Self:  # noqa: ARG003

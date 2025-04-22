@@ -24,6 +24,7 @@ from uuid import UUID, uuid1
 from .core.meta import DKey, DKeyMeta
 from .core.base import DKeyBase
 from .core.expander import Expander
+from .core.parser import RawKey
 from ._interface import INDIRECT_SUFFIX, DKeyMark_e, RAWKEY_ID, ExpInst_d
 # ##-- end 1st party imports
 
@@ -110,7 +111,7 @@ class SingleDKey(DKeyBase,   mark=DKeyMark_e.FREE):
         """
         if not bool(spec):
             return str(self)
-        rem, wrap, direct = self._consume_format_params(spec)
+        rem, wrap, direct = self._consume_format_params(spec) # type: ignore
 
         # format
         result = str(self)
@@ -124,17 +125,19 @@ class SingleDKey(DKeyBase,   mark=DKeyMark_e.FREE):
 
         return format(result, rem)
 
-class MultiDKey(DKeyBase,    mark=DKeyMark_e.MULTI, multi=True):
-    """
-      Multi keys allow 1+ explicit subkeys.
+class MultiDKey[X](DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
+    """ Multi keys allow 1+ explicit subkeys.
 
-    The have additional fields:
+    They have additional fields:
+
     _subkeys  : parsed information about explicit subkeys
 
     """
 
+    _subkeys : list[RawKey]
+
     def __init__(self, data:str|pl.Path, **kwargs) -> None:
-        super().__init__(data, **kwargs)
+        super().__init__(str(data), **kwargs)
         match kwargs.get(RAWKEY_ID, None):
             case [*xs]:
                 self._subkeys = xs
@@ -151,7 +154,7 @@ class MultiDKey(DKeyBase,    mark=DKeyMark_e.MULTI, multi=True):
 
           ... except stripping dkey particular format specs out of the result?
         """
-        rem, wrap, direct = self._consume_format_params(spec)
+        rem, wrap, direct = self._consume_format_params(spec) # type: ignore
         return format(str(self), rem)
 
     def keys(self) -> list[Key_p]:
@@ -190,9 +193,12 @@ class MultiDKey(DKeyBase,    mark=DKeyMark_e.MULTI, multi=True):
             return ExpInst_d(val=self._anon.format(*flat), literal=True)
 
 class NonDKey(DKeyBase,      mark=DKeyMark_e.NULL):
-    """
-      Just a string, not a key. But this lets you call no-ops for key specific methods
-    It can coerce itself though
+    """ Just a string, not a key.
+
+    ::
+
+        But this lets you call no-ops for key specific methods.
+        It can coerce itself though
     """
 
     def __init__(self, data, **kwargs) -> None:
@@ -207,6 +213,7 @@ class NonDKey(DKeyBase,      mark=DKeyMark_e.NULL):
         return format(str(self), rem)
 
     def format(self, fmt) -> str:
+        """ Just does normal str formatting """
         return format(self, fmt)
 
     def expand(self, *args, **kwargs) -> Maybe:
@@ -226,7 +233,7 @@ class NonDKey(DKeyBase,      mark=DKeyMark_e.NULL):
 class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
     """
       A Key for getting a redirected key.
-      eg: RedirectionDKey(key_) -> SingleDKey(value)
+      eg: RedirectionDKey(key) -> SingleDKey(value)
 
       re_mark :
     """

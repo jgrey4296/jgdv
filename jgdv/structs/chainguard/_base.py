@@ -1,7 +1,7 @@
-
 #!/usr/bin/env python3
 """
-
+The core implementation of the ChainGuard object,
+which is then extended with mixins.
 """
 
 # Imports:

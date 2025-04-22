@@ -65,8 +65,11 @@ logging = logmod.getLogger(__name__)
 
 class RawKey(BaseModel):
     """ Utility class for parsed {}-format string parameters.
-    see: https://peps.python.org/pep-3101/
-    and: https://docs.python.org/3/library/string.html#format-string-syntax
+
+    ::
+
+        see: https://peps.python.org/pep-3101/
+        and: https://docs.python.org/3/library/string.html#format-string-syntax
 
     Provides the data from string.Formatter.parse, but in a structure
     instead of a tuple.
@@ -104,9 +107,9 @@ class RawKey(BaseModel):
         return bool(self.key)
 
     def joined(self) -> str:
-        """ return the key and params as one string
-        eg: blah, fmt=5, conv=p -> blah:5!p
+        """ Returns the key and params as one string
 
+        eg: blah, fmt=5, conv=p -> blah:5!p
         """
         if not bool(self.key):
             return ""
@@ -120,14 +123,17 @@ class RawKey(BaseModel):
         return "".join(args)
 
     def wrapped(self) -> str:
-        """ return this key in simple wrapped form
+        """ Returns this key in simple wrapped form
+
         (it ignores format, conv params and prefix)
+
         eg: blah -> {blah}
         """
         return "{%s}" % self.key
 
     def anon(self) -> str:
         """ Make a format str of this key, with anon variables.
+
         eg: blah {key:f!p} -> blah {}
         """
         if bool(self.key):
@@ -136,16 +142,22 @@ class RawKey(BaseModel):
         return self.prefix
 
     def direct(self) -> str:
-        """ return this key in direct form
-        eg: blah -> blah
-        ... blah_ -> blah
+        """ Returns this key in direct form
+
+        ::
+
+            eg: blah -> blah
+                blah_ -> blah
         """
         return self.key.removesuffix(INDIRECT_SUFFIX)
 
     def indirect(self) -> str:
-        """ return this key in indirect form
-        eg: blah -> blah_
-        ... blah_ -> blah_
+        """ Returns this key in indirect form
+
+        ::
+
+            eg: blah -> blah_
+                blah_ -> blah_
         """
         if self.key.endswith(INDIRECT_SUFFIX):
             return self.key
@@ -157,8 +169,11 @@ class RawKey(BaseModel):
 
 class DKeyParser:
     """ Parser for extracting {}-format params from strings.
-    see: https://peps.python.org/pep-3101/
-    and: https://docs.python.org/3/library/string.html#format-string-syntax
+
+    ::
+
+        see: https://peps.python.org/pep-3101/
+        and: https://docs.python.org/3/library/string.html#format-string-syntax
     """
 
     def parse(self, format_string, *, implicit=False) -> Iterator[RawKey]:

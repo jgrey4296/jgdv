@@ -34,4 +34,4 @@ from typing import no_type_check, final, override, overload
 # isort: on
 # ##-- end types
 
-from ._types import *
+from .types import *

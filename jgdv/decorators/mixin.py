@@ -67,16 +67,19 @@ NAME_MOD  : Final[str] = "M"
 
 class Mixin(MonotonicDec):
     """ Decorator to App/Prepend Mixins into the decorated class.
-    'None' is used to separate pre and post mixins
 
-    class ClsName(mixins, Supers, Protocols, metaclass=MCls, **kwargs):...
+    Converts::
 
-    into:
+        class ClsName(mixins, Supers, Protocols, metaclass=MCls, **kwargs):...
 
-    @Protocols(*ps)
-    @Mixin(*ms, None)
-    class ClsName(Supers): ...
+    into::
 
+        @Protocols(*ps)
+        @Mixin(*ms, None)
+        class ClsName(Supers): ...
+
+
+    ('None' is used to separate pre and post mixins)
 """
 
     needs_args = True
@@ -140,22 +143,25 @@ class Mixin(MonotonicDec):
 
 
 class DelayMixin(DataDec):
-    """ TODO A Decorator for annotating a class with mixins,
-    but delaying the construction of the True class until later,
+    """ TODO A Decorator for annotating a class with mixins
+
+    Delays the construction of the True class until later,
     using @MixinNow
     """
     pass
 
 class MixinNow(MonotonicDec):
     """ TODO The trigger for delayed mixins.
+
     After using @DelayMixin,
     trigger the True class using this.
 
-    eg:
-    @MixinNow
-    @DelayMixin(m3, None, m4)
-    @DelayMixin(m1, m2)
-    class Blah:...
+    eg::
+
+        @MixinNow
+        @DelayMixin(m3, None, m4)
+        @DelayMixin(m1, m2)
+        class Blah:...
 
     """
     pass

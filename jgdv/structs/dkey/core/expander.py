@@ -74,35 +74,39 @@ logging = logmod.getLogger(__name__)
 # Body:
 
 class Expander:
-    """
-    A Static class to control expansion.
-    In order it does |-
-    - pre-format the value to (A, coerceA,B, coerceB)
-    - (lookup A) or (lookup B) or None
-    - manipulates the retrieved value
-    - potentially recurses on retrieved values
-    - type coerces the value
-    - runs a post-coercion hook
-    - checks the type of the value to be returned
+    """ A Static class to control expansion.
+
+    In order it does::
+
+        - pre-format the value to (A, coerceA,B, coerceB)
+        - (lookup A) or (lookup B) or None
+        - manipulates the retrieved value
+        - potentially recurses on retrieved values
+        - type coerces the value
+        - runs a post-coercion hook
+        - checks the type of the value to be returned
 
     During the above, the hooks of Expandable_p will be called on the source,
     if they return nothing, the default hook implementation is used.
 
     All of those steps are fallible.
-    when one of them fails, then the expansion tries to return, in order
-    - a fallback value passed into the expansion call
-    - a fallback value stored on construction of the key
-    - None
+    When one of them fails, then the expansion tries to return, in order::
+    
+        - a fallback value passed into the expansion call
+        - a fallback value stored on construction of the key
+        - None
 
-    Redirection Rules |-
-    - Hit          || {test}  => state[test=>blah]  => blah
-    - Soft Miss    || {test}  => state[test_=>blah] => {blah}
-    - Hard Miss    || {test}  => state[...] => fallback or None
+    Redirection Rules::
 
-    Indirect Keys act as||-
-    - Indirect Soft Hit ||  {test_}  => state[test_=>blah] => {blah}
-    - Indirect Hard Hit ||  {test_}  => state[test=>blah] => blah
-    - Indirect Miss     ||  {test_} => state[...]         => {test_}
+        - Hit          || {test}  => state[test=>blah]  => blah
+        - Soft Miss    || {test}  => state[test_=>blah] => {blah}
+        - Hard Miss    || {test}  => state[...]         => fallback or None
+
+    Indirect Keys act as::
+
+        - Indirect Soft Hit ||  {test_}  => state[test_=>blah] => {blah}
+        - Indirect Hard Hit ||  {test_}  => state[test=>blah]  => blah
+        - Indirect Miss     ||  {test_} => state[...]          => {test_}
 
     """
 

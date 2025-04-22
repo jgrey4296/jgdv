@@ -50,6 +50,9 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
     from ._meta import DKey
 
+    type KeyMark = DKeyMark_e|str|type
+    type LookupList = list[list[ExpInst_d]]
+    type LitFalse   = Literal[False]
 ##--|
 
 # isort: on
@@ -68,7 +71,7 @@ MAX_DEPTH           : Final[int]       = 10
 MAX_KEY_EXPANSIONS  : Final[int]       = 200
 PAUSE_COUNT         : Final[int]       = 0
 RECURSION_GUARD     : Final[int]       = 5
-PARAM_IGNORES       : Final[tuple[str]] = ("_", "_ex")
+PARAM_IGNORES       : Final[tuple[str, str]] = ("_", "_ex")
 
 RAWKEY_ID           : Final[str]       = "_rawkeys"
 FORCE_ID            : Final[str]       = "force"
@@ -121,8 +124,6 @@ class Expandable_p(Protocol):
     """ An expandable, like a DKey,
     uses these hooks to customise the expansion
     """
-    type LookupList = list[list[ExpInst_d]]
-    type LitFalse   = Literal[False]
 
     def expand(self, *args, **kwargs) -> Maybe:
         pass
