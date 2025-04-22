@@ -44,7 +44,7 @@ If you find a bug, bug me, unsurprisingly, on the `issue tracker <https://github
    _docs/*
    genindex
    modindex
-   API Reference <autoapi/jgdv/index>
+   API Reference <_docs/autoapi/jgdv/index>
    
 
 .. .. Links

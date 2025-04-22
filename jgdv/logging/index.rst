@@ -9,11 +9,12 @@ Logging
 .. contents:: Contents
 
 
-:ref:`jgdv.logging` provides a `JGDVLogConfig` which sets up
-various loggers, using log specs able to be defined in `TOML`.
-Also provided are a `Formatter` for adding colour to stdout,
-some `Filter` classes, and a `StackFormatter_m` mixin, using `stackprinter`
+:mod:`jgdv.logging.config` provides a :class:`JGDVLogConfig <jgdv.logging.config.JGDVLogConfig>`
+which sets up various loggers, using log specs able to be defined in `TOML`.
+Also provided are a :class:`ColourFormatter <jgdv.logging.format.colour.ColourFormatter>` for adding colour to stdout,
+some :mod:`Filters <jgdv.logging.filter>`, and a :class:`StackFormatter_m <jgdv.logging.format.stack_m.StackFormatter_m>` mixin, using `stackprinter`_
 to print error stack traces a bit nicer.
+
 
 
 
@@ -41,3 +42,5 @@ and
 .. _tieztpost: https://ntietz.com/blog/the-only-two-log-levels-you-need-are-info-and-error/
 
 .. _pyLogLevels: https://docs.python.org/3/library/logging.html#logging-levels
+
+.. _stackprinter: https://github.com/cknd/stackprinter

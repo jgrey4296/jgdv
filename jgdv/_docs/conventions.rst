@@ -12,7 +12,7 @@ Conventions
 Package-wide conventions I prefer.
 
 Naming
-=====
+======
 
 #. Mixins     {}_m.
 #. Protocols  {}_p.

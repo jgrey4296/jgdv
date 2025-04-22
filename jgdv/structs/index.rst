@@ -9,7 +9,7 @@ Structs
 .. contents:: Contents
 
 
-:doc:`autoapi/jgdv/structs` provides some of the key classes of JGDV.
+:ref:`jgdv.structs` provides some of the key classes of JGDV.
 Especially:
 
 1. :ref:`jgdv.structs.chainguard`, a type guarded failable accessor to nested mappings.

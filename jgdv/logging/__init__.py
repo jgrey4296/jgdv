@@ -1,7 +1,7 @@
 """
-JGDVLogConfig provides a single config point for logging,
+:class:`JGDVLogConfig` provides a single config point for logging,
 both to files and stdout/error,
-with a TOML formatted spec.
+with a `TOML` formatted spec.
 
 """
 

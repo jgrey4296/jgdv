@@ -126,6 +126,7 @@ class PrintCapture_m:
 @Mixin(PrintCapture_m)
 class JGDVLogConfig(metaclass=MLSingleton):
     """ Utility class to setup [stdout, stderr, file] logging.
+
       Also creates a 'printer' logger, so instead of using `print`,
       tasks can notify the user using the printer,
       which also includes the notifications into the general log trace
@@ -133,11 +134,11 @@ class JGDVLogConfig(metaclass=MLSingleton):
       The Printer has a number of children, which can be controlled
       to customise verbosity.
 
-      Standard _printer children:
-      [ action_exec, action_group, artifact, cmd, fail, header, help, queue,
-      report, skip, sleep, success, task, task_header, task_loop, task_state,
-      track,
-      ]
+      Standard _printer children::
+        action_exec, action_group, artifact, cmd, fail, header, help, queue,
+        report, skip, sleep, success, task, task_header, task_loop, task_state,
+        track
+
 
     """
 

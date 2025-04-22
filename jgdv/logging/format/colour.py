@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-see https://alexandra-zaharia.github.io/posts/make-your-own-custom-color-formatter-with-python-logging/
+see `Alexandra Zaharia <https://alexandra-zaharia.github.io/posts/make-your-own-custom-color-formatter-with-python-logging/>`_
+
 """
 # Imports:
 from __future__ import annotations
