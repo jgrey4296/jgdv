@@ -4,6 +4,58 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [1.1.0] - 2025-04-23
+
+### Features
+
+- @Mixin appends by default now
+- Subfile can be updated with (key, [subs])
+- Logdel
+- Human numbers test
+- Malloc tool
+- Debugging test stubs
+- Dkey.var_name for signature checking
+- Null handler for interrupt
+- Merge branch 'refactor.logging'
+
+### Bug Fixes
+
+- Logging setup mistakes
+- Subclasser module default
+- Coderef usage
+- Tests for validating signatures
+- Don't keep generated autoapi files
+
+### Dependencies
+
+- Version 1.0.1 -> 1.1.0
+
+### Refactoring
+
+- Types
+- Time_ctx
+- Timing ctx managers
+- Decorator typing
+- Tracktime decorator to timeblock_ctx
+- Structs.regex -> rxmatcher
+- Pathy import guard to __init__
+- Timeblock_ctx entry/exit_msg -> enter/exit
+- Sub file
+- Log colour setup
+- Logging filters/formatters
+- Jinja templates for autoapi
+- Rst files to src tree
+- Errors submodule
+- Types into _abstract
+- Doc templates
+- Move all doc files into src tree
+- Docs -> jgdv/_docs/
+
+### Testing
+
+- Path key
+- Param spec short consume
+
 ## [1.0.1] - 2025-03-02
 
 ### Bug Fixes

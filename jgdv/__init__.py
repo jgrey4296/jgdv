@@ -4,7 +4,7 @@ JGDV, my kitchen sink library.
 
 
 """
-__version__ = "1.0.1"
+__version__ = "1.1.0"
 
 from ._abstract import protocols as protos
 from ._abstract.types import *  # noqa: F403
