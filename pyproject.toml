@@ -6,7 +6,7 @@ version         = "1.0.1"
 description     = ""
 readme          = "README.md"
 requires-python = ">=3.12"
-license         = {file = "LICENSE"}
+license-files   = ["LICENSE"]
 keywords        = []
 authors         = [
   {name  = "John Grey", email = "jgrey.n.plus.one+jgdv@gmail.com"},
@@ -16,14 +16,14 @@ classifiers     = [
 ]
 
 dependencies   = [
-               "pyparsing",
-               "networkx",
-               "pydantic >= 2.9.0",
-               "python-statemachine >= 2.5.0",
-               "sh >= 2.1.0",
-               "stackprinter >= 0.2.0",
-               "sty >= 1.0.6",
-               "packaging>=24.2",
+    "pyparsing",
+    "networkx",
+    "pydantic >= 2.9.0",
+    "python-statemachine >= 2.5.0",
+    "sh >= 2.1.0",
+    "stackprinter >= 0.2.0",
+    "sty >= 1.0.6",
+    "packaging>=24.2",
 ]
 
 [project.optional-dependencies]
