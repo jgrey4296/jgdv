@@ -170,6 +170,7 @@ tag                = false
                    '^current_version\s+=\s+"{version}"'
 ]
 "jgdv/__init__.py" = ['^__version__\s+=\s+"{version}"']
+"jgdv/_docs/conf.py" = ['^release\s+=\s+"{version}"']
 
 ##-- end bumpver
 
