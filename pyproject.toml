@@ -60,8 +60,8 @@ changelog     = "https://github.com/jgrey4296/jgdv/blob/master/CHANGELOG.md"
 ##-- build-system
 [build-system]
 requires = [
-         "setuptools >= 63.1.0",
-         "wheel >= 0.37.1"
+    "setuptools >= 63.1.0",
+    "wheel >= 0.37.1"
 ]
 
 build-backend = "setuptools.build_meta"
@@ -73,12 +73,14 @@ include-package-data = true
 namespaces = true
 where      = ["."]
 include    = ["jgdv*"]
+exclude    = ["jgdv._docs*"]
 
 [tool.setuptools.package-data]
 "*" = ["*"]
 "jgdv.__data"    = ["*.so"]
 
 [tool.setuptools.exclude-package-data]
+jgdv = ["**.rst"]
 
 [tool.distutils.egg_info]
 # from https://github.com/pypa/setuptools/discussions/3348#discussioncomment-6556887
