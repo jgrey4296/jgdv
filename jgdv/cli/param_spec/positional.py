@@ -65,7 +65,10 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 class PositionalParam(ParamSpecBase):
-    """ TODO a param that is specified by its position in the arg list """
+    """ A param that is specified by its position in the arg list
+
+    TODO enable it to consume multiples
+    """
 
     desc : str = "A Positional Param"
 

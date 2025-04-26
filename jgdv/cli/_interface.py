@@ -62,6 +62,7 @@ logging = logmod.getLogger(__name__)
 DEFAULT_PREFIX    : Final[str]  = "-"
 END_SEP           : Final[str]  = "--"
 FULLNAME_RE       : Final[Rx]   = re.compile(r"(?:<(?P<pos>\d*)>|(?P<prefix>\W+))?(?P<name>.+?)(?P<assign>=)?$")
+""" The Regexp for parsing string descriptions of parameters """
 
 EMPTY_CMD         : Final[str]  = "_cmd_"
 EXTRA_KEY         : Final[str]  = "_extra_"

@@ -92,7 +92,7 @@ class ParamSpec:
         Determine what sort of parameter to use.
         Literals: assign, position, "toggle"
 
-        Default: KEyParam
+        Default: KeyParam
 
         """
         match data:

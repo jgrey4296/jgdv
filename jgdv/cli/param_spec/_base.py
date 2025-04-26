@@ -123,7 +123,11 @@ class ParamSpecBase(*PSpecMixins, BaseModel, metaclass=ProtocolModelMeta, arbitr
     def key_func(x):
         """ Sort Parameters
 
-        > -{prefix len} < name < int positional < positional < --help
+        -{prefix len} < name < int positional < positional < --help
+
+        Positionals with explicit positions are sorted by that,
+        With remaiing going after
+        Help Always goes last.
 
         """
         match x.prefix:
