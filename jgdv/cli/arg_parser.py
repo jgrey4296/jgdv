@@ -278,6 +278,8 @@ class CLIParser:
 
     def _parse_params_unordered(self, res:ParseResult_d, params:list[ParamSpec]):
         logging.debug("Parsing Params Unordered: %s", params)
+        non_positional = [x for x in params if not x.positional]
+        positional     = [x for x in params if x.positional]
 
         def consume_it(x:ParamSpec):
             # TODO refactor this as a partial
@@ -292,30 +294,26 @@ class CLIParser:
                     res.non_default.add(x.name)
 
         # Parse non-positional params
-        remaining = [x for x in params if not x.positional]
-        while bool(remaining) and bool(self._remaining_args):
-            match [x for x in remaining if x.matches_head(self._remaining_args[0])]:
+        while bool(non_positional) and bool(self._remaining_args):
+            match [x for x in non_positional if x.matches_head(self._remaining_args[0])]:
                 case []:
-                    remaining = []
+                    non_positional = []
                 case [x]:
                     consume_it(x)
-                    remaining.remove(x)
+                    non_positional.remove(x)
                 case [*xs]:
-                    raise errors.ParseError("Too many potential params", xs)
+                    raise errors.ParseError("Too many potential non-positional params", xs)
         else:
             logging.debug("Finished consuming non-positional")
 
         # Parse positional params
-        remaining = [x for x in params if x.positional]
-        while bool(remaining) and bool(self._remaining_args):
-            match [x for x in remaining if x.matches_head(self._remaining_args[0])]:
+        while bool(positional) and bool(self._remaining_args):
+            match [x for x in positional if x.matches_head(self._remaining_args[0])]:
                 case []:
-                    remaining = []
-                case [x]:
+                    positional = []
+                case [x, *xs]:
                     consume_it(x)
-                    remaining.remove(x)
-                case [*xs]:
-                    raise errors.ParseError("Too many potential params", xs)
+                    positional.remove(x)
         else:
             logging.debug("Finished Consuming Positional")
 
