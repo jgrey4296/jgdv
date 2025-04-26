@@ -66,6 +66,8 @@ logging = logmod.getLogger(__name__)
 class HelpParam(ToggleParam): #[bool]):
     """ The --help flag that is always available """
 
+    desc : str = "The Default Help Param"
+
     def __init__(self, **kwargs):
         kwargs.update({"name":"help", "default":False, "prefix":"--", "implicit":True})
         super().__init__(**kwargs)
@@ -73,12 +75,16 @@ class HelpParam(ToggleParam): #[bool]):
 class VerboseParam(RepeatToggleParam): #[int]):
     """ The implicit -verbose flag """
 
+    desc : str = "The Default Verbosity Param"
+
     def __init__(self, **kwargs):
         kwargs.update({"name":"verbose", "default":0, "prefix":"-", "implicit":True})
         super().__init__(**kwargs)
 
 class SeparatorParam(LiteralParam):
     """ A Parameter to separate subcmds """
+
+    desc : str = "The Default Separator Param"
 
     def __init__(self, **kwargs):
         kwargs.update({"name":"--", "prefix":"", "implicit":True})

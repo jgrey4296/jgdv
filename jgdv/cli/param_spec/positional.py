@@ -67,6 +67,8 @@ logging = logmod.getLogger(__name__)
 class PositionalParam(ParamSpecBase):
     """ TODO a param that is specified by its position in the arg list """
 
+    desc : str = "A Positional Param"
+
     @ftz.cached_property
     def key_str(self) -> str:
         return self.name

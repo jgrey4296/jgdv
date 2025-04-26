@@ -149,7 +149,7 @@ class JGDVLogConfig(metaclass=MLSingleton):
     _printer_children     : list
     _initial_spec         : LoggerSpec
     _printer_initial_spec : LoggerSpec
-    _registry             : list
+    _registry             : list[LoggerSpec]
     is_setup              : bool
 
     def __init__(self, *, subprinters:Maybe[list[str]]=None, style:Maybe[str]=None) -> None:
@@ -168,6 +168,16 @@ class JGDVLogConfig(metaclass=MLSingleton):
         self.activate_spec(self._printer_initial_spec)
 
         logging.log(self.levels.bootstrap, "Post Log Setup") # type: ignore
+
+    def __repr__(self) -> str:
+
+        return f"<{self.__class__.__name__}({len(self._registry)}) : >"
+
+    def _report(self) -> None:
+        printer = self.subprinter()
+        for x in self._registry:
+            printer.user("%s : %s", x.fullname, x.level)
+
 
     def _install_logger_override(self) -> None:
         if self.logger_cls is None:
@@ -246,7 +256,8 @@ class JGDVLogConfig(metaclass=MLSingleton):
                                       config.on_fail({}).logging.stream(),
                                       ],
                                      name=LoggerSpec.RootName)
-        print_spec        = LoggerSpec.build(config.on_fail({}).logging.printer(), name=API.PRINTER_NAME)
+        print_spec        = LoggerSpec.build(config.on_fail({}).logging.printer(),
+                                             name=API.PRINTER_NAME)
 
         self.activate_spec(root_spec, override=True)
         self.activate_spec(print_spec, override=True)

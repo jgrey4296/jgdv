@@ -66,6 +66,8 @@ logging = logmod.getLogger(__name__)
 class AssignParam(ParamSpecBase):
     """ TODO a joined --key=val param """
 
+    desc : str = "An Assignment Param"
+
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("prefix", "--")
         kwargs.setdefault("separator", "=")
@@ -82,6 +84,8 @@ class AssignParam(ParamSpecBase):
 
 class WildcardParam(AssignParam):
     """ TODO a wildcard param that matches any --{key}={val} """
+
+    desc : str = "A Wildcard"
 
     def __init__(self, *args, **kwargs):
         kwargs.setdefault("type", str)

@@ -106,7 +106,7 @@ class ParamSpecBase(*PSpecMixins, BaseModel, metaclass=ProtocolModelMeta, arbitr
 
     insist               : bool                      = False
     default              : Any|Callable              = None
-    desc                 : str                       = "An undescribed parameter"
+    desc                 : str                       = "An Base Parameter"
     count                : int                       = 1
     prefix               : int|str                   = DEFAULT_PREFIX
     separator            : str|Literal[False]        = False

@@ -70,6 +70,8 @@ logging = logmod.getLogger(__name__)
 class ToggleParam(ParamSpecBase): #[bool]):
     """ A bool of -param or -not-param """
 
+    desc : str = "A Toggle"
+
     def next_value(self, args:list) -> tuple[str, list, int]:
         head, *_ = args
         if self.inverse in head:
@@ -83,6 +85,7 @@ class RepeatToggleParam(ToggleParam):
     """ TODO A repeatable toggle
     eg: -verbose -verbose -verbose
     """
+    desc : str = "A Repeat Toggle"
     pass
 
 class LiteralParam(ToggleParam):
@@ -90,6 +93,7 @@ class LiteralParam(ToggleParam):
     Match on a Literal Parameter.
     For command/subcmd names etc
     """
+    desc   : str = "A Literal"
     prefix : str = ""
 
     def matches_head(self, val) -> bool:
@@ -110,6 +114,7 @@ class ImplicitParam(ParamSpecBase):
     A Parameter that is implicit, so doesn't give a help description unless
     forced to
     """
+    desc : str = "An Implicit Parameter"
 
     def help_str(self):
         return ""
@@ -119,6 +124,7 @@ class KeyParam(ParamSpecBase):
     eg: -key val
     """
     type_ : InstanceOf[type] = Field(default=str, alias="type")
+    desc  : str = "A Key"
 
     def matches_head(self, val) -> bool:
         return val in self.key_strs
@@ -138,6 +144,7 @@ class RepeatableParam(KeyParam):
     """
 
     type_ : InstanceOf[type] = Field(default=list, alias="type")
+    desc  : str = "A Repeatable Key"
 
     def next_value(self, args:list) -> tuple[str, list, int]:
         """ Get as many values as match
@@ -164,6 +171,8 @@ class ChoiceParam(LiteralParam): # [str]):
 
     """
 
+    desc : str = "A Choice"
+
     def __init__(self, name, choices:list[str], **kwargs):
         super().__init__(name=name, **kwargs)
         self._choices = choices
@@ -181,6 +190,7 @@ class EntryParam(LiteralParam):
     """ TODO a parameter that if it matches,
     returns list of more params to parse
     """
+    desc : str = "An expandable Param"
     pass
 
 class ConstrainedParam(ParamSpecBase):
@@ -190,3 +200,4 @@ class ConstrainedParam(ParamSpecBase):
     eg: {name:amount, constraints={min=0, max=10}}
     """
     constraints : list[Any] = []
+    desc : str = "A Constrained Param"
