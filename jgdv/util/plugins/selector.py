@@ -57,6 +57,9 @@ def plugin_selector(plugins:ChainGuard, *,
     """ Selects and loads a plugin from a chainguard,
     based on a target,
     with an available fallback constructor
+
+    if the target is a suitable coderef, it is coerced and loaded instead,
+    bypassing the plugins
     """
     logging.debug("Selecting plugin for target: %s", target)
 
