@@ -35,6 +35,7 @@ class TestStrangBase:
         obj = Strang("head::tail")
         assert(isinstance(obj, Strang))
         assert(isinstance(obj, str))
+        assert(str in Strang.mro())
 
     def test_with_params(self):
         obj = Strang("head::tail.a.b.c[blah]")
@@ -49,7 +50,6 @@ class TestStrangBase:
     def test_repr_with_uuid(self):
         obj = Strang(f"head::tail.<uuid:{UUID_STR}>")
         assert(repr(obj) == f"<Strang<+M>: head::tail.<uuid>>")
-
 
     def test_repr_with_brace_val(self):
         obj = Strang("head::tail.{aval}.blah")
@@ -123,12 +123,28 @@ class TestStrangValidation:
         obj = Strang(f"head::+.tail.blah")
         assert(obj[0] == Strang.bmark_e.extend)
 
-class TestStrangCmp:
+class TestStrangEQ:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
     def test_hash(self):
         obj = Strang("head::tail.a.b.c")
         obj2 = Strang("head::tail.a.b.c")
         assert(hash(obj) == hash(obj2))
+
+
+    def test_hash_same_as_str(self):
+        obj = Strang("head::tail.a.b.c")
+        assert(hash(obj) == str.__hash__(obj))
+        assert(hash(obj) == hash(str(obj)))
+
+
+    def test_hash_spy(self, mocker):
+        hash_spy = mocker.spy(Strang, "__hash__")
+        obj = Strang("head::tail.a.b.c")
+        hash(obj)
+        hash_spy.assert_called()
 
     def test_hash_fail(self):
         obj = Strang("head::tail.a.b.c")
@@ -139,14 +155,11 @@ class TestStrangCmp:
         obj = Strang("head::tail.a.b.<uuid>")
         obj2 = Strang("head::tail.a.b.<uuid>")
         assert(obj[1:-1] != obj2[1:-1])
+        assert(hash(str(obj)) == str.__hash__(str(obj)))
+        assert(str.__hash__(str(obj)) != str.__hash__(str(obj2)))
         assert(hash(obj) != hash(obj2))
 
     def test_eq_to_str(self):
-        obj = Strang("head::tail.a.b.c")
-        other = "tail.a.b.c"
-        assert(obj == other)
-
-    def test_eq_to_full_str(self):
         obj = Strang("head::tail.a.b.c")
         other = "head::tail.a.b.c"
         assert(obj == other)
@@ -170,6 +183,26 @@ class TestStrangCmp:
         obj = Strang("head::tail.a.b.c")
         other = Strang("head.blah::tail.a.b.c")
         assert(obj != other)
+
+    def test_not_eq_uuids(self):
+        obj   = Strang("head::tail.a.<uuid>")
+        other = Strang("head::tail.a.<uuid>")
+        assert(isinstance(obj[-1], uuid.UUID))
+        assert(isinstance(other[-1], uuid.UUID))
+
+        assert(obj[-1] != other[-1])
+        assert(hash(obj) != hash(other))
+        assert(obj is not other)
+
+        assert(not obj.__eq__(other))
+        assert(obj.__eq__(other) is (obj == other))
+        result = obj != other
+        assert(result)
+
+class TestStrangLT:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
     def test_lt(self):
         obj = Strang("head::tail.a.b.c")
@@ -476,44 +509,64 @@ class TestStrangFormatting:
     def test_sanity(self):
         assert(True is not False)
 
+
+
     def test_format_group(self):
         obj = Strang("group.blah::body.a.b.c")
         assert(f"{obj:g}" == "group.blah")
+
+
 
     def test_format_body(self):
         obj = Strang("group.blah::body.a.b.c")
         assert(f"{obj:b}" == "body.a.b.c")
 
 
+
+
     @pytest.mark.skip
     def test_todo(self):
         pass
 
+
+
 class TestStrangAnnotation:
+
+
 
     def test_sanity(self):
         assert(True is not False)
+
+
 
     def test_unannotated(self):
         obj = Strang("group::body")
         assert(Strang._typevar is None)
         assert(obj._typevar is None)
 
+
+
     def test_type_annotated(self):
         cls = Strang[int]
         assert(issubclass(cls, Strang))
         assert(cls._typevar is int)
+
+
 
     def test_str_annotation(self):
         cls = Strang["blah"]
         assert(issubclass(cls, Strang))
         assert(cls._typevar == "blah")
 
+
+
     def test_annotated_instance(self):
         cls = Strang[int]
         ref = cls("group.a.b::body.c.d")
         assert(isinstance(ref, Strang))
         assert(ref._typevar == int)
+
+
 
     def test_match_type(self):
         match Strang[int]("group.a.b::body.c.d"):
@@ -522,6 +575,8 @@ class TestStrangAnnotation:
             case _:
                 assert(False)
 
+
+
     def test_match_on_strang(self):
         match Strang[int]("group.a.b::body.c.d"):
             case Strang("group.a.b::body.c.d"):
@@ -529,12 +584,16 @@ class TestStrangAnnotation:
             case _:
                 assert(False)
 
+
+
     def test_match_on_literal(self):
         match Strang[int]("group.a.b::body.c.d"):
             case "group.a.b::body.c.d":
                 assert(True)
             case _:
                 assert(False)
+
+
 
     def test_match_on_subtype(self):
         cls = Strang[int]
@@ -544,6 +603,8 @@ class TestStrangAnnotation:
             case _:
                 assert(False)
 
+
+
     def test_match_on_subtype_fail(self):
         cls = Strang[bool]
         match Strang[int]("group.a.b::body.c.d"):
@@ -552,7 +613,11 @@ class TestStrangAnnotation:
             case _:
                 assert(True)
 
+
+
     def test_subclass_annotate(self):
+
+
 
         class StrangSub(Strang):
             _separator : ClassVar[str] = ":|:"
@@ -564,7 +629,11 @@ class TestStrangAnnotation:
         assert(isinstance(ref, StrangSub))
 
 
+
+
     def test_subclass_annotate_independence(self):
+
+
 
         class StrangSub(Strang):
             _separator : ClassVar[str] = ":|:"

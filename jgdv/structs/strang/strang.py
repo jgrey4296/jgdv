@@ -112,7 +112,7 @@ class StrangMeta(type(str)):
             msg = "Pre-Strang Error"
             raise errors.StrangError(msg, cls, err, data) from None
 
-        obj  = str.__new__(cls, data)
+        obj = cls.__new__(cls, data)
         try:
             obj.__init__(*args, **kwargs)
         except ValueError as err:
@@ -139,6 +139,7 @@ class StrangMeta(type(str)):
 
 @Mixin(s_mix.PreStrang_m, None, s_mix.PostStrang_m, allow_inheritance=True)
 class Strang(str, metaclass=StrangMeta):
+
     """ A Structured String Baseclass.
 
     A Normal str, but is parsed on construction to extract and validate
@@ -249,6 +250,15 @@ class Strang(str, metaclass=StrangMeta):
         cls = self.__class__.__name__
         return f"<{cls}: {self[0:]}{self._separator}{body}>"
 
+    def __hash__(self):
+        return str.__hash__(str(self))
+
+    def __eq__(self, other:object) -> bool:
+        return hash(self) == hash(other)
+
+    def __ne__(self, other) -> bool:
+        return not self == other
+
     def __iter__(self) -> Iterator[Strang._body_types]:
         """ iterate the body *not* the group """
         for x in range(len(self._body)):
@@ -307,7 +317,6 @@ class Strang(str, metaclass=StrangMeta):
         return [self._format_subval(x, no_expansion=no_expansion) for x in body]
 
     @property
-    @ftz.cache
     def shape(self) -> tuple[int, int]:
         return (len(self._group), len(self._body))
 

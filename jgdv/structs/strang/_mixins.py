@@ -58,20 +58,6 @@ logging.disabled = True
 class _Strang_cmp_m:
     """ The mixin of Strang Comparison methods """
 
-    def __hash__(self) -> int:
-        return str.__hash__(str(self))
-
-    @override
-    def __eq__(self, other:object) -> bool:
-        match other:
-            case _Strang_cmp_m():
-                return hash(self) == hash(other)
-            case str() if self._separator in other:
-                return hash(self) == hash(other)
-            case str():
-                return hash(self[1:]) == hash(other)
-            case _:
-                return False
 
     def __lt__(self, other:str|Self) -> bool:
         match other:
