@@ -157,15 +157,15 @@ class CLIParser:
         for x in cmds:
             match x:
                 case (str() as alias, ParamSource_p() as source):
-                    self._cmd_specs[alias] = source.param_specs
+                    self._cmd_specs[alias] = source.param_specs()
                 case ParamSource_p():
-                    self._cmd_specs[x.name] = x.param_specs
+                    self._cmd_specs[x.name] = x.param_specs()
                 case x:
                     raise TypeError(x)
 
         match subcmds:
             case [*xs]:
-                self._subcmd_specs = {y.name:(x, y.param_specs) for x,y in xs}
+                self._subcmd_specs = {y.name:(x, y.param_specs()) for x,y in xs}
             case _:
                 logging.info("No Subcmd Specs provided for parsing")
                 self._subcmd_specs = {}

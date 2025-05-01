@@ -113,7 +113,6 @@ class ParamSource_p(Protocol):
     def name(self) -> str:
         raise NotImplementedError()
 
-    @property
     def param_specs(self) -> list[ParamStruct_p]:
         raise NotImplementedError()
 
