@@ -21,7 +21,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 from jgdv.debugging import TraceBuilder
-from .core import IdempotentDec, MetaDec, MonotonicDec
+from ._core import IdempotentDec, MetaDec, MonotonicDec
 
 # ##-- types
 # isort: off

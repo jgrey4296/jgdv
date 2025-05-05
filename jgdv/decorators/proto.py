@@ -18,10 +18,15 @@ import types
 import typing
 import weakref
 from uuid import UUID, uuid1
+
 # ##-- end stdlib imports
 
+# ##-- 1st party imports
 from jgdv.mixins.annotate import Subclasser
-from .core import MonotonicDec, IdempotentDec, Decorator
+
+# ##-- end 1st party imports
+
+from ._core import Decorator, IdempotentDec, MonotonicDec
 
 # ##-- types
 # isort: off
@@ -33,7 +38,7 @@ from typing import Generic, NewType, TypeAliasType, _GenericAlias
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-from types import resolve_bases, FunctionType, MethodType
+from types import resolve_bases, FunctionType, MethodType, MethodDescriptorType, WrapperDescriptorType, ClassMethodDescriptorType, BuiltinFunctionType, BuiltinMethodType
 
 if TYPE_CHECKING:
     from jgdv import Maybe
@@ -105,7 +110,7 @@ class CheckProtocols:
 
     def test_protocol(proto:Protocol, cls) -> list[str]:
         """ Returns a list of methods which are defined in the protocol,
-        no where else in the mro.
+        and nowhere else in the mro.
 
         ie: they are unimplemented protocol requirements
 
@@ -118,8 +123,9 @@ class CheckProtocols:
         # Get the members of the protocol/abc
         match proto:
             case type() if issubclass(proto, Protocol):
-                members  = proto.__protocol_attrs__
-                qualname = proto.__qualname__
+                non_callable = getattr(proto, "__non_callable_proto_members__", set())
+                members      = set(proto.__protocol_attrs__) - non_callable
+                qualname     = proto.__qualname__
             case type() if issubclass(proto, abc.ABC):
                 return []
             case _:
@@ -128,6 +134,8 @@ class CheckProtocols:
         # then filter out the implemented ones
         for member in members:
             match getattr(cls, member, None):
+                # case str():
+                #     pass
                 case property():
                     pass
                 case None:
@@ -140,6 +148,10 @@ class CheckProtocols:
                 case MethodType() as meth  if qualname in meth.__func__.__qualname__:
                     result.append(member)
                 case MethodType() | ftz.cached_property():
+                    pass
+                case BuiltinFunctionType() | BuiltinMethodType():
+                    pass
+                case MethodDescriptorType() | WrapperDescriptorType() | ClassMethodDescriptorType():
                     pass
                 case x:
                     raise TypeError("Unexpected Type in protocol checking", member, type(x), x, cls)

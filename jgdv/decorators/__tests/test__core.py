@@ -13,30 +13,6 @@ import itertools as itz
 import logging as logmod
 import pathlib as pl
 import warnings
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    ClassVar,
-    Final,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    Mapping,
-    Match,
-    MutableMapping,
-    Protocol,
-    Sequence,
-    Tuple,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    cast,
-    final,
-    overload,
-    runtime_checkable,
-)
 from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
@@ -47,7 +23,7 @@ import pytest
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from jgdv.decorators.core import (
+from .._core import (
     ANNOTATIONS_PREFIX,
     DATA_SUFFIX,
     MARK_SUFFIX,
@@ -66,7 +42,7 @@ logging = logmod.root
 class _Utils:
 
     @pytest.fixture(scope="function")
-    def dec(self):
+    def dec(self): # type: ignore
         return Decorator()
 
     @pytest.fixture(scope="function")

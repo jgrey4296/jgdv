@@ -23,7 +23,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 from jgdv.debugging import TraceBuilder
-from .core import MonotonicDec, IdempotentDec, Decorator, DataDec
+from ._core import MonotonicDec, IdempotentDec, Decorator, DataDec
 from jgdv.mixins.annotate import Subclasser
 
 # ##-- types
