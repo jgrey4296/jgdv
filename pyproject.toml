@@ -177,11 +177,13 @@ tag                = false
 ##-- end bumpver
 
 ##-- isort
+
+##-- isort
+# https://pycqa.github.io/isort/docs/configuration/config_files.html
 [tool.isort]
 color_output           = false
-py_version             = 310
-profile                = "black"
-comment_prefix         = "#"
+py_version             = 312
+comment_prefix         = "# "
 sections               = [
 "FUTURE", "STDLIB", "THIRDPARTY", "FIRSTPARTY", "LOCALFOLDER"
 ]
@@ -203,4 +205,5 @@ import_footer_stdlib      = "##-- end stdlib imports"
 import_footer_thirdparty  = "##-- end 3rd party imports"
 import_footer_firstparty  = "##-- end 1st party imports"
 import_footer_localfolder = ""
+
 ##-- end isort
