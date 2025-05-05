@@ -30,7 +30,7 @@ import sh
 # ##-- 1st party imports
 from jgdv._abstract.protocols import SpecStruct_p
 from jgdv.structs.chainguard import ChainGuard
-from .meta import DKey
+from .._meta import DKey
 from .parser import RawKey
 from .._interface import Key_p, DKeyMark_e, INDIRECT_SUFFIX, FMT_PATTERN
 # ##-- end 1st party imports

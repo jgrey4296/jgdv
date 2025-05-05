@@ -25,7 +25,7 @@ from uuid import UUID, uuid1
 # ##-- 1st party imports
 from jgdv._abstract.protocols import SpecStruct_p
 from .._interface import ExpInst_d
-from .meta import DKey
+from .._meta import DKey
 # ##-- end 1st party imports
 
 # ##-- types

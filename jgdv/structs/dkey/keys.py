@@ -21,10 +21,10 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from .core.meta import DKey, DKeyMeta
-from .core.base import DKeyBase
-from .core.expander import Expander
-from .core.parser import RawKey
+from ._meta import DKey, DKeyMeta
+from ._base import DKeyBase
+from ._util.expander import Expander
+from ._util.parser import RawKey
 from ._interface import INDIRECT_SUFFIX, DKeyMark_e, RAWKEY_ID, ExpInst_d
 # ##-- end 1st party imports
 

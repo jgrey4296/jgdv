@@ -34,9 +34,9 @@ from jgdv.decorators import (
     Decorable,
 )
 from jgdv.structs.strang import CodeReference
-from .core import errors as dkey_errs
-from .core.meta import DKey
-from ._interface import ARGS_K, KWARGS_K, PARAM_IGNORES
+from .. import errors as dkey_errs
+from .._meta import DKey
+from .._interface import ARGS_K, KWARGS_K, PARAM_IGNORES
 
 # ##-- end 1st party imports
 

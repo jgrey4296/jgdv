@@ -15,10 +15,10 @@ import pytest
 
 logging = logmod.root
 
-from jgdv.structs.dkey._interface import Key_p
 from jgdv.structs.strang import CodeReference
-from jgdv.structs.dkey import DKey
-from jgdv.structs.dkey.import_key import ImportDKey
+from ... import DKey
+from ..._interface import Key_p
+from ..import_key import ImportDKey
 
 IMP_KEY_BASES               : Final[list[str]]           = ["bob", "bill", "blah", "other", "23boo", "aweg2531", "awe_weg", "aweg-weji-joi"]
 EXP_KEY_BASES               : Final[list[str]]           = [f"{{{x}}}" for x in IMP_KEY_BASES]
@@ -51,9 +51,9 @@ class TestImportKey:
         key = DKey("fn", mark=DKey.Mark.CODE, implicit=True)
         match key({"fn":"jgdv:identity_fn"}):
             case CodeReference() as x:
-                assert(callable(x()))
-                assert(x()(2) == 2)
-                assert(True)
+                iden = x()
+                assert(callable(iden))
+                assert(iden(2) == 2)
             case x:
                  assert(False), x
 

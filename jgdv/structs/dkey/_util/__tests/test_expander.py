@@ -20,10 +20,10 @@ import pytest
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from jgdv.structs.dkey import DKey, IndirectDKey
 from jgdv import identity_fn
 
-from jgdv.structs.dkey._interface import ExpInst_d
+from ... import DKey, IndirectDKey
+from ..._interface import ExpInst_d
 # ##-- end 1st party imports
 
 # ##-- types

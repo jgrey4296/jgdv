@@ -19,9 +19,9 @@ logging = logmod.root
 from jgdv.structs.strang import CodeReference
 
 from jgdv.structs import dkey
-from jgdv.structs.dkey._interface import DKeyMark_e
-from jgdv.structs.dkey.core.meta import DKeyMeta
-from jgdv.structs.dkey._interface import Key_p
+from .._interface import DKeyMark_e
+from .._meta import DKeyMeta
+from .._interface import Key_p
 
 @pytest.fixture(scope="function")
 def save_registry(mocker):

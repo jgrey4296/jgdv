@@ -15,10 +15,10 @@ import warnings
 import pytest
 
 from jgdv import JGDVError
-from jgdv.structs.dkey import DKey, DKeyed
-from jgdv.structs.dkey import DKeyExpansionDecorator as DKexd
 from jgdv.decorators import DForm_e
-from jgdv.structs.dkey.decorator import DKeyMetaDecorator, DKeyedMeta, DKeyedRetrieval
+from ... import DKey, DKeyed
+from ..decorator import DKeyMetaDecorator, DKeyedMeta, DKeyedRetrieval
+from ..decorator import DKeyExpansionDecorator as DKexd
 
 logging = logmod.root
 

@@ -15,8 +15,8 @@ import pytest
 
 logging = logmod.root
 
-
-from jgdv.structs.dkey import DKey, MultiDKey, DKeyFormatter
+from ... import DKey, MultiDKey
+from ..formatter import  DKeyFormatter
 
 class TestDKeyFormatterParsing:
 

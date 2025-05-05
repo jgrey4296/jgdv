@@ -23,14 +23,15 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv._abstract.protocols import SpecStruct_p, Buildable_p
+from jgdv._abstract.protocols import Buildable_p, SpecStruct_p
 from jgdv.structs.strang import CodeReference
 
-from .core.meta import DKey
-from .core.base import DKeyBase
-from .keys import SingleDKey, MultiDKey, NonDKey
-from ._interface import Key_p, DKeyMark_e
 # ##-- end 1st party imports
+
+from .._interface import DKeyMark_e, Key_p
+from .._base import DKeyBase
+from .._meta import DKey
+from ..keys import MultiDKey, NonDKey, SingleDKey
 
 # ##-- types
 # isort: off

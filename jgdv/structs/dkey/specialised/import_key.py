@@ -23,13 +23,15 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
+from jgdv._abstract.protocols import Buildable_p, SpecStruct_p
 from jgdv.structs.strang import CodeReference
 
-from .core.meta import DKey
-from .core.base import DKeyBase
-from .keys import SingleDKey, MultiDKey, NonDKey
-from ._interface import DKeyMark_e, ExpInst_d
 # ##-- end 1st party imports
+
+from .._interface import DKeyMark_e, Key_p
+from .._base import DKeyBase
+from .._meta import DKey
+from ..keys import MultiDKey, NonDKey, SingleDKey
 
 # ##-- types
 # isort: off
@@ -49,9 +51,7 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
-##--|
-from jgdv._abstract.protocols import SpecStruct_p, Buildable_p
-from ._interface import Key_p
+
 # isort: on
 # ##-- end types
 
@@ -59,19 +59,12 @@ from ._interface import Key_p
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class PathDKey(SingleDKey, mark=DKeyMark_e.PATH, conv="p"):
+class ImportDKey(SingleDKey, mark=DKeyMark_e.CODE, conv="c"):
     """
-    A Simple key that always expands to a path, and is then normalised
+      Subclass for dkey's which expand to CodeReferences
     """
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv_params     = "p"
-        self._expansion_type  = pl.Path
-        self._typecheck       = pl.Path
-
-
-    def exp_final_h(self, val:ExpInst_d, opts) -> Maybe[ExpInst_d]:
-        return ExpInst_d(val=pl.Path(val.val).expanduser().resolve(),
-                         literal=True
-                         )
+        self._expansion_type  = CodeReference
+        self._typecheck       = CodeReference

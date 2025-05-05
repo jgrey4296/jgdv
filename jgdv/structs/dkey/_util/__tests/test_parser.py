@@ -17,7 +17,7 @@ import warnings
 import pytest
 # ##-- end 3rd party imports
 
-from jgdv.structs.dkey.core.parser import RawKey, DKeyParser
+from ..parser import RawKey, DKeyParser
 
 # ##-- types
 # isort: off
@@ -28,8 +28,6 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
    from jgdv import Maybe

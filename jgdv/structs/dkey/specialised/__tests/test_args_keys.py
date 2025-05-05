@@ -15,9 +15,8 @@ import pytest
 
 logging = logmod.root
 
-from jgdv.structs.dkey import DKey, Key_p
-from jgdv.structs.dkey.args_keys import ArgsDKey, KwargsDKey
-
+from ... import DKey, Key_p
+from ..args_keys import ArgsDKey, KwargsDKey
 
 IMP_KEY_BASES               : Final[list[str]]           = ["bob", "bill", "blah", "other", "23boo", "aweg2531", "awe_weg", "aweg-weji-joi"]
 EXP_KEY_BASES               : Final[list[str]]           = [f"{{{x}}}" for x in IMP_KEY_BASES]
@@ -43,7 +42,6 @@ class TestKwargsDKey:
 
     def test_mark(self):
         assert(DKey.MarkOf(KwargsDKey) is DKey.Mark.KWARGS)
-
 
     @pytest.mark.skip
     def test_todo(self):

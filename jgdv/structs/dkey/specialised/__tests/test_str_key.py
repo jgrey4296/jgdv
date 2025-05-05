@@ -13,11 +13,11 @@ import warnings
 
 import pytest
 
-from jgdv.structs.dkey import DKey, Key_p
-from jgdv.structs.dkey.path_key import PathDKey
-from jgdv.structs.locator import JGDVLocator
-
 logging = logmod.root
+
+from ... import DKey, Key_p
+from ..str_key import StrDKey
+
 
 IMP_KEY_BASES               : Final[list[str]]           = ["bob", "bill", "blah", "other", "23boo", "aweg2531", "awe_weg", "aweg-weji-joi"]
 EXP_KEY_BASES               : Final[list[str]]           = [f"{{{x}}}" for x in IMP_KEY_BASES]
@@ -30,51 +30,10 @@ EXP_IND_KEYS                : Final[list[str]]           = [f"{{{x}}}" for x in 
 VALID_KEYS                                           = IMP_KEY_BASES + EXP_KEY_BASES + EXP_P_KEY_BASES + IMP_IND_KEYS + EXP_IND_KEYS
 VALID_MULTI_KEYS                                     = PATH_KEYS + MUTI_KEYS
 
-class TestPathKey:
+class TestStrKey:
 
     def test_mark(self):
-        assert(DKey.MarkOf(PathDKey) is DKey.Mark.PATH)
-
-    def test_expansion(self):
-        key = DKey("test", mark=DKey.Mark.PATH, implicit=True)
-        match key.expand({"test":"blah"}):
-            case pl.Path() as x:
-                assert(x == pl.Path.cwd() / "blah")
-                assert(True)
-            case x:
-                 assert(False), x
-
-
-    def test_expansion_fail(self):
-        key = DKey("test", mark=DKey.Mark.PATH, implicit=True)
-        match key.expand():
-            case None:
-                assert(True)
-            case x:
-                 assert(False), x
-
-
-    def test_loc_expansion(self):
-        locs = JGDVLocator(root=pl.Path.cwd())
-        locs.update({"test":"blah"})
-        key = DKey("test", mark=DKey.Mark.PATH, implicit=True)
-        match key.expand(locs):
-            case pl.Path() as x:
-                assert(x == pl.Path.cwd() / "blah")
-                assert(True)
-            case x:
-                 assert(False), x
-
-
-    def test_loc_expansion_miss(self):
-        locs = JGDVLocator(root=pl.Path.cwd())
-        key = DKey("test", force=PathDKey, implicit=True)
-        match key.expand(locs):
-            case None:
-                assert(True)
-            case x:
-                 assert(False), x
-
+        assert(DKey.MarkOf(StrDKey) is DKey.Mark.STR)
 
     @pytest.mark.skip
     def test_todo(self):

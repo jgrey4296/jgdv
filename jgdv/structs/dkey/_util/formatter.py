@@ -31,13 +31,14 @@ import sh
 from jgdv import Mixin
 from jgdv._abstract.protocols import SpecStruct_p
 from jgdv.structs.chainguard import ChainGuard
-from ._getter import ChainGetter as CG  # noqa: N817
-from .meta import DKey
-from .parser import RawKey
-
-from .._interface import Key_p, MAX_DEPTH, MAX_KEY_EXPANSIONS, FMT_PATTERN, DEFAULT_COUNT, PAUSE_COUNT
 
 # ##-- end 1st party imports
+
+from .._interface import (DEFAULT_COUNT, FMT_PATTERN, MAX_DEPTH,
+                          MAX_KEY_EXPANSIONS, PAUSE_COUNT, Key_p)
+from .._meta import DKey
+from .getter import ChainGetter as CG  # noqa: N817
+from .parser import RawKey
 
 # ##-- types
 # isort: off

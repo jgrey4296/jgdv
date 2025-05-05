@@ -36,8 +36,8 @@ import sh
 from jgdv import identity_fn
 from jgdv.decorators import DoMaybe
 from jgdv.structs.strang import CodeReference, Strang
-from ._getter import ChainGetter as CG  # noqa: N817
-from .meta import DKey
+from .getter import ChainGetter as CG  # noqa: N817
+from .._meta import DKey
 from .._interface import DKeyMark_e, MAX_KEY_EXPANSIONS, DEFAULT_COUNT, PAUSE_COUNT, RECURSION_GUARD, ExpInst_d
 # ##-- end 1st party imports
 

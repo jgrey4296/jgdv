@@ -22,11 +22,11 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from .. import _interface as API  # noqa: N812
+from . import _interface as API  # noqa: N812
 from jgdv.mixins.enum_builders import EnumBuilder_m
 from jgdv.mixins.annotate import SubAnnotate_m, Subclasser
-from .parser import DKeyParser, RawKey
-from .._interface import DKeyMark_e, ExpInst_d
+from ._util.parser import DKeyParser, RawKey
+from ._interface import DKeyMark_e, ExpInst_d
 # ##-- end 1st party imports
 
 # ##-- types
@@ -39,7 +39,7 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
-from .._interface import Key_p
+from ._interface import Key_p
 
 if TYPE_CHECKING:
    from jgdv import Maybe, Ident, Ctor
@@ -52,7 +52,7 @@ if TYPE_CHECKING:
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
    from string import Formatter
 
-   from .._interface import KeyMark
+   from ._interface import KeyMark
 
 
 # isort: on
