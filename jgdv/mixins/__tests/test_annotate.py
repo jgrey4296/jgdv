@@ -16,7 +16,7 @@ import warnings
 ##-- end stdlib imports
 
 import pytest
-from jgdv.mixins.annotate import SubAnnotate_m, SubRegistry_m, Subclasser
+from ..annotate import SubAnnotate_m, SubRegistry_m, Subclasser
 
 # Logging:
 logging = logmod.root

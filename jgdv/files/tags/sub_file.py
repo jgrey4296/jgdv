@@ -52,7 +52,6 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
 class SubstitutionFile(TagFile):
     """ SubstitutionFiles add a replacement tag for some tags
 

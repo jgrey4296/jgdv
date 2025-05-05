@@ -14,7 +14,7 @@ from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
 import warnings
 
 import pytest
-from jgdv.logging.logger import JGDVLogger
+from ..logger import JGDVLogger
 
 # Logging:
 logging = logmod.root

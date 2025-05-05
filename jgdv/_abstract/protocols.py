@@ -139,8 +139,8 @@ class Buildable_p(Protocol):
     TODO add type parameter
     """
 
-    @staticmethod
-    def build(*args:Any) -> Self:  # noqa: ANN401
+    @classmethod
+    def build(cls, *args:Any) -> Self:  # noqa: ANN401
         pass
 
 @runtime_checkable
@@ -160,7 +160,7 @@ class Nameable_p(Protocol):
     def __hash__(self) -> int:
         pass
 
-    def __eq__(self, other:Nameable_p) -> bool:
+    def __eq__(self, other:object) -> bool:
         pass
 
     def __lt__(self, other:Nameable_p) -> bool:

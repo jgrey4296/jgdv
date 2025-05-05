@@ -20,7 +20,7 @@ import datetime
 import pytest
 # ##-- end 3rd party imports
 
-from jgdv.mixins.human_numbers import HumanNumbers_m
+from ..human_numbers import HumanNumbers_m
 
 # ##-- types
 # isort: off
