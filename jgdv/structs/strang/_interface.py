@@ -27,6 +27,8 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
+from jgdv._abstract.str_proto import String_p
+
 # ##-- types
 # isort: off
 import abc
@@ -37,6 +39,8 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
+from collections.abc import Sized
+from collections import UserString
 
 if TYPE_CHECKING:
     from jgdv import Maybe, Rx
@@ -47,6 +51,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+    from types import UnionType
+
 ##--|
 
 # isort: on
@@ -56,16 +62,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-# Vars:
-FMT_PATTERN    : Final[Rx]                 = re.compile("^(h?)(t?)(p?)")
-UUID_RE        : Final[Rx]                 = re.compile(r"<uuid(?::(.+?))?>")
-MARK_RE        : Final[Rx]                 = re.compile(r"\$(.+?)\$")
-SEP_DEFAULT    : Final[str]                = "::"
-SUBSEP_DEFAULT : Final[str]                = "."
-INST_K         : Final[str]                = "instanced"
-GEN_K          : Final[str]                = "gen_uuid"
-STRGET         : Final[Callable]           = str.__getitem__
-# Body:
+##--| Enums
 
 class StrangMarker_e(enum.StrEnum):
     """ Markers Used in a base Strang """
@@ -86,11 +83,95 @@ class CodeRefMeta_e(enum.StrEnum):
     val     = "value"
     default = fn
 
+##--| Vars
+FMT_PATTERN    : Final[Rx]                 = re.compile("^(h?)(t?)(p?)")
+UUID_RE        : Final[Rx]                 = re.compile(r"<uuid(?::(.+?))?>")
+MARK_RE        : Final[Rx]                 = re.compile(r"\$(.+?)\$")
+SEP_DEFAULT    : Final[str]                = "::"
+SUBSEP_DEFAULT : Final[str]                = "."
+INST_K         : Final[str]                = "instanced"
+GEN_K          : Final[str]                = "gen_uuid"
+STRGET         : Final[Callable]           = str.__getitem__
+
 ##--|
+type BODY_TYPES = str|UUID|StrangMarker_e
+type BodyMark   = type[enum.StrEnum]
+type GroupMark  = type[enum.StrEnum] | type[int]
+# Body:
+
+##--|
+
+class Strang_d(Protocol):
+    metadata          : dict
+    _separator        : ClassVar[str]
+    _subseparator     : ClassVar[str]
+    _body_types       : ClassVar[type|UnionType]
+    _typevar          : ClassVar[Maybe[type]]
+
+    _base_slices      : tuple[Maybe[slice], Maybe[slice]]
+    _mark_idx         : tuple[Maybe[int], Maybe[int]]
+    _group            : list[slice]
+    _body             : list[slice]
+    _body_meta        : list[Maybe[BODY_TYPES]]
+    _group_meta       : set[str]
+
+class StrangInternal_p(Protocol):
+
+    def _get_slices(self, start:int=0, max:Maybe[int]=None, *, add_offset:bool=False) -> list[slice]:  # noqa: A002
+        pass
+
 @runtime_checkable
-class Strang_p(Protocol):
+class Strang_p(Strang_d, StrangInternal_p, String_p, Protocol):
     """  """
-    pass
+
+    @classmethod
+    def _subjoin(cls, lst:list) -> str:
+        pass
+
+    def __getitem__(self, i:int|slice) -> Strang_p|BODY_TYPES:
+        pass
+
+    @property
+    def base(self) -> Self:
+        pass
+
+    @property
+    def group(self) -> list[str]:
+        pass
+
+    @property
+    def shape(self) -> tuple[int, int]:
+        pass
+
+    def body(self, *, reject:Maybe[Callable]=None, no_expansion:bool=False) -> list[str]:
+        pass
+
+    def uuid(self) -> Maybe[UUID]:
+        pass
+
+    def is_uniq(self) -> bool:
+        pass
+
+    def is_head(self) -> bool:
+        pass
+
+    def with_head(self) -> Self:
+        pass
+
+    def pop(self, *, top:bool=False) -> Self:
+        pass
+
+    def push(self, *vals:str) -> Self:
+        pass
+
+    def to_uniq(self, *, suffix:Maybe[str]=None) -> Self:
+        pass
+
+    def de_uniq(self) -> Self:
+        pass
+
+    def root(self) -> Self:
+        pass
 
 @runtime_checkable
 class Importable_p(Protocol):

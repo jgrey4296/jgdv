@@ -29,7 +29,7 @@ from uuid import UUID, uuid1
 from jgdv import Proto, Mixin
 from . import errors
 from . import _mixins as s_mix
-from ._interface import FMT_PATTERN, SEP_DEFAULT, SUBSEP_DEFAULT, StrangMarker_e, UUID_RE, INST_K, GEN_K, STRGET, MARK_RE
+from ._interface import FMT_PATTERN, SEP_DEFAULT, SUBSEP_DEFAULT, StrangMarker_e, UUID_RE, INST_K, GEN_K, STRGET, MARK_RE, Strang_p
 
 # ##-- types
 # isort: off
@@ -85,7 +85,7 @@ class StrangBuilder_m:
             except (errors.StrangError, ValueError, KeyError):
                 pass
         else:
-            return Strang(data, *args, **kwargs)
+            return Strang(data, *args, **kwargs) # type: ignore
         ##--|
 
 class StrangMeta(type(str)):
@@ -137,6 +137,7 @@ class StrangMeta(type(str)):
 
 ##--|
 
+@Proto(Strang_p)
 @Mixin(s_mix.PreStrang_m, None, s_mix.PostStrang_m, allow_inheritance=True)
 class Strang(str, metaclass=StrangMeta):
 
@@ -160,24 +161,26 @@ class Strang(str, metaclass=StrangMeta):
 
     """
 
-    _separator        : ClassVar[str]               = SEP_DEFAULT
-    _subseparator     : ClassVar[str]               = SUBSEP_DEFAULT
-    _body_types       : ClassVar[Any]               = str|UUID|StrangMarker_e
-    _typevar          : ClassVar[Maybe[type]]       = None
-    bmark_e           : ClassVar[BodyMark]          = StrangMarker_e
-    gmark_e           : ClassVar[GroupMark]         = int
-
-    metadata          : dict
-    _base_slices      : tuple[Maybe[slice], Maybe[slice]]
-    _mark_idx         : tuple[Maybe[int], Maybe[int]]
-    _group            : list[slice]
-    _body             : list[slice]
-    _body_meta        : list[Maybe[Strang._body_types]]
-    _group_meta       : set[str]
+    _separator        = SEP_DEFAULT
+    _subseparator     = SUBSEP_DEFAULT
+    _body_types       = str|UUID|StrangMarker_e
+    _typevar          = None
+    bmark_e           = StrangMarker_e
+    gmark_e           = int
 
     @classmethod
     def __init_subclass__(cls, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
         StrangMeta._forms.append(cls)
+
+    def __init__(self, *_:Any, **kwargs:Any) -> None:  # noqa: ANN401
+        super().__init__()
+        self._mark_idx : tuple[Maybe[int], Maybe[int]] = (None,None)
+        self._base_slices                              = (None,None) # For easy head and body str's
+        self.metadata                                  = dict(kwargs)
+        self._group                                    = []
+        self._body                                     = []
+        self._body_meta                                = []
+        self._group_meta                               = set()
 
     def _post_process(self) -> None:  # noqa: PLR0912
         """
@@ -185,15 +188,15 @@ class Strang(str, metaclass=StrangMeta):
         setting self._body_meta and self._mark_idx
         """
         logging.debug("Post-processing Strang: %s", str.__str__(self))
-        max_body        : int                    = len(self._body)
-        self._body_meta : list[Maybe[UUID|str]]  = [None for x in range(max_body)]
+        max_body        : int                    = len(self._body) # type: ignore
+        self._body_meta = [None for x in range(max_body)]
         mark_idx        : tuple[int, int]        = (max_body, -1)
         for i, elem in enumerate(self.body()):
             match elem:
                 case x if (match:=UUID_RE.match(x)):
-                    self.metadata[INST_K] = min(i, self.metadata.get(INST_K, max_body))
+                    self.metadata[INST_K] = min(i, self.metadata.get(INST_K, max_body)) # type: ignore
                     hex, *_ = match.groups()  # noqa: A001
-                    self.metadata[GEN_K] = True
+                    self.metadata[GEN_K] = True # type: ignore
                     if hex is not None:
                         logging.debug("(%s) Found UUID", i)
                         self._body_meta[i] = UUID(match[1])
@@ -220,28 +223,21 @@ class Strang(str, metaclass=StrangMeta):
             # Set the root and last mark_idx for popping
             match mark_idx:
                 case (int() as x, -1):
-                    self._mark_idx = (x, x)  # type: ignore[assignment]
+                    assert(isinstance(x, int))
+                    self._mark_idx = (x, x)
                 case (int() as x, 0):
-                    self._mark_idx = (x, x)  # type: ignore[assignment]
-                case (_, _):
-                    self._mark_idx = mark_idx
+                    assert(isinstance(x, int))
+                    self._mark_idx = (x, x)
+                case (int() as x, int() as y):
+                    assert(isinstance(x, int))
+                    assert(isinstance(y, int))
+                    self._mark_idx = (x, y)
 
-
-    def __init__(self, *_:Any, **kwargs:Any) -> None:  # noqa: ANN401
-        super().__init__()
-        self.metadata     = dict(kwargs)
-        # For easy head and body str's
-        self._base_slices = (None,None)
-        self._mark_idx    = (None,None)
-        self._group       = []
-        self._body        = []
-        self._body_meta   = []
-        self._group_meta  = set()
 
     def __str__(self) -> str:
         match self.metadata.get(GEN_K, False):
             case False:
-                return super().__str__()
+                return str.__str__(self)
             case _:
                 return self._expanded_str()
 
@@ -250,13 +246,13 @@ class Strang(str, metaclass=StrangMeta):
         cls = self.__class__.__name__
         return f"<{cls}: {self[0:]}{self._separator}{body}>"
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return str.__hash__(str(self))
 
     def __eq__(self, other:object) -> bool:
         return hash(self) == hash(other)
 
-    def __ne__(self, other) -> bool:
+    def __ne__(self, other:object) -> bool:
         return not self == other
 
     def __iter__(self) -> Iterator[Strang._body_types]:

@@ -45,15 +45,15 @@ class TestStrangBase:
 
     def test_repr(self):
         obj = Strang("head::tail")
-        assert(repr(obj) == "<Strang<+M>: head::tail>")
+        assert(repr(obj) == "<Strang<+M+P>: head::tail>")
 
     def test_repr_with_uuid(self):
         obj = Strang(f"head::tail.<uuid:{UUID_STR}>")
-        assert(repr(obj) == f"<Strang<+M>: head::tail.<uuid>>")
+        assert(repr(obj) == f"<Strang<+M+P>: head::tail.<uuid>>")
 
     def test_repr_with_brace_val(self):
         obj = Strang("head::tail.{aval}.blah")
-        assert(repr(obj) == "<Strang<+M>: head::tail.{aval}.blah>")
+        assert(repr(obj) == "<Strang<+M+P>: head::tail.{aval}.blah>")
 
     def test_needs_separator(self):
         with pytest.raises(StrangError):

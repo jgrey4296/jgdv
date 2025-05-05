@@ -84,7 +84,7 @@ class CodeReference(Strang):
     _separator        : ClassVar[str]                      = "::"
     _tail_separator   : ClassVar[str]                      = ":"
     _body_types       : ClassVar[Any]                      = str
-    gmark_e           : ClassVar[enum.StrEnum]             = CodeRefMeta_e
+    gmark_e           : ClassVar[type[CodeRefMeta_e]]     = CodeRefMeta_e
 
     _value_idx        : slice
 
@@ -119,7 +119,7 @@ class CodeReference(Strang):
         self._body.append(slice(last_slice.start, last_slice.start + index))
         self._value_idx = slice(last_slice.start+index+1, last_slice.stop)
 
-    def __init__(self, *, value:Maybe[type]=None, check:Maybe[type]=None, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
+    def __init__(self, *_:Any, value:Maybe[type]=None, check:Maybe[type]=None, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
         super().__init__(**kwargs)
         self._value = value
 
@@ -148,7 +148,7 @@ class CodeReference(Strang):
                 raise
             return err
 
-    def _do_import(self, *, check:Maybe[SpecialType|type]) -> Any:  # noqa: ANN401
+    def _do_import(self, *, check:Maybe[SpecialType|type]) -> Any:  # noqa: ANN401, PLR0912
         match self._value:
             case None:
                 try:
@@ -185,13 +185,18 @@ class CodeReference(Strang):
                 raise ImportError(msg, the_type, self._value)
 
         match check:
+            case None:
+                return curr
+            case typing._SpecialForm():
+                return curr
             case x if x is Any:
                 return curr
-            case x if not (isinstance(curr, x) or issubclass(curr, check)):
+            case type() as x if not (isinstance(curr, x) or issubclass(curr, x)):
                 msg = "Imported Code Reference is not of correct type"
                 raise ImportError(msg, self, check)
 
-        Never()
+        raise RuntimeError()
+
 
     def to_alias(self, group:str, plugins:dict|ChainGuard) -> str:
         """ TODO Given a nested dict-like, see if this reference can be reduced to an alias """
@@ -203,7 +208,9 @@ class CodeReference(Strang):
         return base_alias
 
     def to_uniq(self) -> Never:
-        raise NotImplementedError("Code References shouldn't need UUIDs")
+        msg = "Code References shouldn't need UUIDs"
+        raise NotImplementedError(msg)
 
     def with_head(self) -> Never:
-        raise NotImplementedError("Code References shouldn't need $head$s")
+        msg = "Code References shouldn't need $head$s"
+        raise NotImplementedError(msg)
