@@ -2,23 +2,54 @@
 """
 
 """
-##-- imports
+# ruff: noqa: ANN201, PLR0133, B011, ANN001
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 import logging as logmod
-import warnings
 import pathlib as pl
-from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
-                    Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
-                    TypeVar, cast)
-from dataclasses import dataclass, field, InitVar
+import warnings
+# ##-- end stdlib imports
 
-##-- end imports
-
+# ##-- 3rd party imports
 import pytest
-from jgdv.cli.arg_parser import ParseMachine, CLIParser, ParseResult_d
+
+# ##-- end 3rd party imports
+
+# ##-- 1st party imports
+import jgdv.cli.param_spec as Specs  # noqa: N812
+from jgdv.cli.arg_parser import CLIParser, ParseMachine, ParseResult_d
 from jgdv.cli.param_spec import ParamSpec
-import jgdv.cli.param_spec as Specs
+
+# ##-- end 1st party imports
+
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType, Never
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+from dataclasses import InitVar, dataclass, field
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+
+# isort: on
+# ##-- end types
+
 logging = logmod.root
 
 @dataclass
@@ -29,7 +60,6 @@ class _ParamSource:
     def param_specs(self) -> list[ParamSpec]:
         return self._param_specs
 
-
 class _utils:
 
     @pytest.fixture(scope="function")
@@ -37,8 +67,8 @@ class _utils:
         obj = _ParamSource(name="testcmd",
                            _param_specs=[
                                ParamSpec(name="-on", type=bool),
-                               ParamSpec(name="-val")
-                           ]
+                               ParamSpec(name="-val"),
+                           ],
                            )
         return obj
 
@@ -47,8 +77,8 @@ class _utils:
         obj = _ParamSource(name="blah",
                            _param_specs=[
                                ParamSpec(name="-on",  type=bool),
-                               ParamSpec(name="-val", type=str)
-                           ]
+                               ParamSpec(name="-val", type=str),
+                           ],
                            )
         return obj
 
@@ -57,12 +87,13 @@ class _utils:
         obj = _ParamSource(name="bloo",
                            _param_specs=[
                                ParamSpec(name="-on", type=bool),
-                               ParamSpec(name="-val", type=str)
-                           ]
+                               ParamSpec(name="-val", type=str),
+                           ],
                            )
         return obj
 
 ##--|
+
 class TestParseMachine:
 
     def test_sanity(self):
@@ -121,7 +152,7 @@ class TestParser(_utils):
         obj._setup(["blah","b","c"], [Specs.LiteralParam(name="blah")], [a_source], [])
         obj._parse_head()
         assert(obj.head_result.name == "_head_")
-        assert(obj.head_result.args['blah'] == True)
+        assert(obj.head_result.args['blah'] is True)
 
     def test_parse_cmd(self, a_source):
         obj = CLIParser()
@@ -161,6 +192,7 @@ class TestParser(_utils):
         assert(obj.subcmd_results[0].name == "blah")
 
     def test_parse_multi_subcmd(self, a_source, b_source, c_source):
+        expected_sub_results = 2
         obj = CLIParser()
         obj._setup(["testcmd", "blah", "-on", "--", "bloo", "-val", "lastval"],
                    [], [a_source], [(a_source.name, b_source), (a_source.name, c_source)])
@@ -169,7 +201,7 @@ class TestParser(_utils):
         obj._parse_cmd()
         obj._parse_subcmd()
         assert(obj.cmd_result.name == "testcmd")
-        assert(len(obj.subcmd_results) == 2)
+        assert(len(obj.subcmd_results) == expected_sub_results)
         assert(obj.subcmd_results[0].name == "blah")
         match obj.subcmd_results[0].args:
             case {"on": True}:
@@ -202,7 +234,7 @@ class TestParseResultReport:
 class TestParseArgs:
 
     def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
+        assert(True is not False)
 
     def test_ordered(self):
         params = [
