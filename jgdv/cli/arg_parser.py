@@ -1,6 +1,7 @@
 """
 
 """
+# mypy: disable-error-code="attr-defined"
 # Imports:
 from __future__ import annotations
 
@@ -89,7 +90,7 @@ class ParseMachine(ParseMachineBase):
     Will raise a jgdv.cli.errors.ParseError on failure
     """
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:  # noqa: ANN003
         kwargs.setdefault("parser", CLIParser())
         super().__init__(**kwargs)
 
@@ -101,7 +102,8 @@ class ParseMachine(ParseMachineBase):
                 self.parse()
             self.finish()
         except TransitionNotAllowed as err:
-            raise errors.ParseError("Transition failure", err) from err
+            msg = "Transition failure"
+            raise errors.ParseError(msg, err) from err
         else:
             return self.model.report()
 
@@ -113,33 +115,45 @@ class CLIParser:
     # {prog} {args} [{task} {tasks_args}] - implicit do cmd
 
     """
-    _initial_args     : list[str]                              = []
-    _remaining_args   : list[str]                              = []
-    _head_specs       : list[ParamSpec]                        = []
-    _cmd_specs        : dict[str, list[ParamSpec]]             = {}
-    _subcmd_specs     : dict[str, tuple[str, list[ParamSpec]]] = {}
-    head_result       : Maybe[ParseResult_d]                     = None
-    cmd_result        : Maybe[ParseResult_d]                     = None
-    subcmd_results    : list[ParseResult_d]                      = []
-    extra_results     : ParseResult_d                            = ParseResult_d(EXTRA_KEY)
-    _force_help        : bool                                   = False
+    _initial_args      : list[str]
+    _remaining_args    : list[str]
+    _head_specs        : list[ParamSpec]
+    _cmd_specs         : dict[str, list[ParamStruct_p]]
+    _subcmd_specs      : dict[str, tuple[str, list[ParamStruct_p]]]
+    head_result        : Maybe[ParseResult_d]
+    cmd_result         : Maybe[ParseResult_d]
+    subcmd_results     : list[ParseResult_d]
+    extra_results      : ParseResult_d
+    _force_help        : bool
 
-    def __init__(self):
-        self._remaining_args = []
+    def __init__(self) -> None:
+        self._remaining_args    = []
+        self._initial_args      = []
+        self._remaining_args    = []
+        self._head_specs        = []
+        self._cmd_specs         = {}
+        self._subcmd_specs      = {}
+        self.head_result        = None
+        self.cmd_result         = None
+        self.subcmd_results     = []
+        self.extra_results      = ParseResult_d(EXTRA_KEY)
+        self._force_help        = False
+
 
     def _parse_fail_cond(self) -> bool:
         return False
 
-    def _has_no_more_args_cond(self):
+    def _has_no_more_args_cond(self) -> bool:
         return not bool(self._remaining_args)
 
-    @ParseMachine.finish._transitions.before
-    def all_args_consumed_val(self):
+    @ParseMachineBase.finish._transitions.before
+    def all_args_consumed_val(self) -> None:
         if bool(self._remaining_args):
-            raise errors.ArgParseError("Not All Args Were Consumed", self._remaining_args)
+            msg = "Not All Args Were Consumed"
+            raise errors.ArgParseError(msg, self._remaining_args)
 
-    @ParseMachine.Prepare.enter
-    def _setup(self, args:list[str], head_specs:list, cmds:list[ParamSource_p], subcmds:list[tuple[str, ParamSource_p]]):
+    @ParseMachineBase.Prepare.enter
+    def _setup(self, args:list[str], head_specs:list, cmds:list[ParamSource_p], subcmds:list[tuple[str, ParamSource_p]]) -> None:
         """
           Parses the list of arguments against available registered parameter head_specs, cmds, and tasks.
         """
@@ -152,7 +166,8 @@ class CLIParser:
         self._head_specs : list[ParamSpec]          = head_specs
 
         if not isinstance(cmds, list):
-            raise TypeError("cmds needs to be a list", cmds)
+            msg = "cmds needs to be a list"
+            raise TypeError(msg, cmds)
 
         for x in cmds:
             match x:
@@ -170,23 +185,22 @@ class CLIParser:
                 logging.info("No Subcmd Specs provided for parsing")
                 self._subcmd_specs = {}
 
-        self.head_result       : Maybe[ParseResult_d]                      = None
-        self.cmd_result        : Maybe[ParseResult_d]                      = None
-        self.subcmd_results    : list[ParseResult_d]                     = []
-        self.extra_results     : ParseResult_d                           = ParseResult_d(EXTRA_KEY)
-        self._force_help       : bool                                  = False
+        self.head_result       = None
+        self.cmd_result        = None
+        self.subcmd_results    = []
+        self.extra_results     = ParseResult_d(EXTRA_KEY)
+        self._force_help       = False
 
-    @ParseMachine.Cleanup.enter
+    @ParseMachineBase.Cleanup.enter
     def _cleanup(self) -> None:
         logging.debug("Cleaning up")
         self._initial_args      = []
         self._remaining_args    = []
-        self._specs             = {}
         self._cmd_specs         = {}
         self._subcmd_specs      = {}
 
-    @ParseMachine.CheckForHelp.enter
-    def help_flagged(self):
+    @ParseMachineBase.CheckForHelp.enter
+    def help_flagged(self) -> None:
         logging.debug("Checking for Help Flag")
         match HELP.consume(self._remaining_args[-1:]):
             case None:
@@ -195,8 +209,8 @@ class CLIParser:
                 self._force_help = True
                 self._remaining_args.pop()
 
-    @ParseMachine.Head.enter
-    def _parse_head(self):
+    @ParseMachineBase.Head.enter
+    def _parse_head(self) -> None:
         """ consume arguments for doot actual """
         logging.debug("Head Parsing: %s", self._remaining_args)
         if not bool(self._head_specs):
@@ -207,8 +221,8 @@ class CLIParser:
         self.head_result = ParseResult_d("_head_", defaults)
         self._parse_params_unordered(self.head_result, head_specs)
 
-    @ParseMachine.Cmd.enter
-    def _parse_cmd(self):
+    @ParseMachineBase.Cmd.enter
+    def _parse_cmd(self) -> None:
         """ consume arguments for the command being run """
         logging.debug("Cmd Parsing: %s", self._remaining_args)
         if not bool(self._cmd_specs):
@@ -224,17 +238,18 @@ class CLIParser:
         logging.info("Cmd matches: %s", cmd_name)
         self._remaining_args.pop(0)
         # get its specs
-        cmd_specs        = sorted(self._cmd_specs[cmd_name], key=ParamSpec.key_func)
-        defaults : dict  = ParamSpec.build_defaults(cmd_specs)
-        self.cmd_result  = ParseResult_d(cmd_name, defaults)
-        self._parse_params_unordered(self.cmd_result, cmd_specs)
+        cmd_specs : list[ParamStruct_p] = sorted(self._cmd_specs[cmd_name], key=ParamSpec.key_func)
+        defaults  : dict                = ParamSpec.build_defaults(cmd_specs)
+        self.cmd_result                 = ParseResult_d(cmd_name, defaults)
+        self._parse_params_unordered(self.cmd_result, cmd_specs) # type: ignore
 
-    @ParseMachine.SubCmd.enter
-    def _parse_subcmd(self):
+    @ParseMachineBase.SubCmd.enter
+    def _parse_subcmd(self) -> None:
         """ consume arguments for tasks """
         if not bool(self._subcmd_specs):
             return
         logging.debug("SubCmd Parsing: %s", self._remaining_args)
+        assert(self.cmd_result is not None)
         active_cmd = self.cmd_result.name
         last = None
         # Determine subcmd
@@ -253,15 +268,16 @@ class CLIParser:
                     sub_specs        = sorted(params, key=ParamSpec.key_func)
                     defaults : dict  = ParamSpec.build_defaults(sub_specs)
                     sub_result       = ParseResult_d(sub_name, defaults)
-                    self._parse_params_unordered(sub_result, sub_specs)
+                    self._parse_params_unordered(sub_result, sub_specs) # type: ignore
                     self.subcmd_results.append(sub_result)
                 case _, _:
                     pass
                 case _:
-                    raise errors.SubCmdParseError("Unrecognised SubCmd", sub_name)
+                    msg = "Unrecognised SubCmd"
+                    raise errors.SubCmdParseError(msg, sub_name)
 
-    @ParseMachine.Extra.enter
-    def _parse_extra(self):
+    @ParseMachineBase.Extra.enter
+    def _parse_extra(self) -> None:
         logging.debug("Extra Parsing: %s", self._remaining_args)
         self._remaining_args = []
 
@@ -276,17 +292,18 @@ class CLIParser:
                     res.args.update(data)
                     res.non_default.add(param.name)
 
-    def _parse_params_unordered(self, res:ParseResult_d, params:list[ParamSpec]):
+    def _parse_params_unordered(self, res:ParseResult_d, params:list[ParamSpec]) -> None:
         logging.debug("Parsing Params Unordered: %s", params)
         non_positional = [x for x in params if not x.positional]
         positional     = [x for x in params if x.positional]
 
-        def consume_it(x:ParamSpec):
+        def consume_it(x:ParamSpec) -> None:
             # TODO refactor this as a partial
             logging.debug("Consume it: %s", x.name)
             match x.consume(self._remaining_args):
                 case None:
-                    raise errors.ParseError("Failed to consume", x.name)
+                    msg = "Failed to consume"
+                    raise errors.ParseError(msg, x.name)
                 case data, count:
                     logging.debug("Consuming Parameter: %s", x.name)
                     self._remaining_args = self._remaining_args[count:]
@@ -302,7 +319,8 @@ class CLIParser:
                     consume_it(x)
                     non_positional.remove(x)
                 case [*xs]:
-                    raise errors.ParseError("Too many potential non-positional params", xs)
+                    msg = "Too many potential non-positional params"
+                    raise errors.ParseError(msg, xs)
         else:
             logging.debug("Finished consuming non-positional")
 
@@ -333,6 +351,7 @@ class CLIParser:
             case False:
                 cmd_result = self.cmd_result
             case True if self.cmd_result is None:
+                assert(self.head_result is not None)
                 self.head_result.args['help'] = True
                 cmd_result = ParseResult_d(EMPTY_CMD)
             case True if self.cmd_result.name == EMPTY_CMD:

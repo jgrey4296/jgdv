@@ -24,7 +24,10 @@ logging = logmod.root
 @dataclass
 class _ParamSource:
     name : str
-    param_specs : list[ParamSpec]
+    _param_specs : list[ParamSpec]
+
+    def param_specs(self) -> list[ParamSpec]:
+        return self._param_specs
 
 
 class _utils:
@@ -32,7 +35,7 @@ class _utils:
     @pytest.fixture(scope="function")
     def a_source(self) -> _ParamSource:
         obj = _ParamSource(name="testcmd",
-                           param_specs=[
+                           _param_specs=[
                                ParamSpec(name="-on", type=bool),
                                ParamSpec(name="-val")
                            ]
@@ -42,7 +45,7 @@ class _utils:
     @pytest.fixture(scope="function")
     def b_source(self) -> _ParamSource:
         obj = _ParamSource(name="blah",
-                           param_specs=[
+                           _param_specs=[
                                ParamSpec(name="-on",  type=bool),
                                ParamSpec(name="-val", type=str)
                            ]
@@ -52,7 +55,7 @@ class _utils:
     @pytest.fixture(scope="function")
     def c_source(self) -> _ParamSource:
         obj = _ParamSource(name="bloo",
-                           param_specs=[
+                           _param_specs=[
                                ParamSpec(name="-on", type=bool),
                                ParamSpec(name="-val", type=str)
                            ]
@@ -149,7 +152,7 @@ class TestParser(_utils):
     def test_parse_subcmd(self, a_source, b_source):
         obj = CLIParser()
         obj._setup(["testcmd", "blah"], [], [a_source], [(a_source.name, b_source)])
-        assert(obj._subcmd_specs['blah'] == ("testcmd", b_source.param_specs))
+        assert(obj._subcmd_specs['blah'] == ("testcmd", b_source.param_specs()))
         assert(not bool(obj.subcmd_results))
         obj._parse_cmd()
         obj._parse_subcmd()
@@ -161,7 +164,7 @@ class TestParser(_utils):
         obj = CLIParser()
         obj._setup(["testcmd", "blah", "-on", "--", "bloo", "-val", "lastval"],
                    [], [a_source], [(a_source.name, b_source), (a_source.name, c_source)])
-        assert(obj._subcmd_specs['blah'] == ("testcmd", b_source.param_specs))
+        assert(obj._subcmd_specs['blah'] == ("testcmd", b_source.param_specs()))
         assert(not bool(obj.subcmd_results))
         obj._parse_cmd()
         obj._parse_subcmd()
