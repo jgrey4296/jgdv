@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python2
 """
 
 """
@@ -20,6 +20,7 @@ from jgdv.cli import ParseError
 from jgdv.cli.param_spec import ParamSpecBase
 import jgdv.cli.param_spec as Specs
 from .._base import ParamSpecBase
+from ... import _interface as API
 
 good_names = ("test", "blah", "bloo")
 
@@ -30,8 +31,8 @@ class TestParamSpecBase:
 
     def test_initial(self):
         match ParamSpecBase(name="test"):
-            case ParamSpecBase():
-                assert(True)
+            case ParamSpecBase() as obj:
+                assert(isinstance(obj, API.ParamStruct_p))
             case x:
                  assert(False), x
 

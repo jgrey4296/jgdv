@@ -53,7 +53,8 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 def plugin_selector(plugins:ChainGuard, *,
-                    target:str="default", fallback:Maybe[type]=None) -> Maybe[type]:
+                    target:str="default",
+                    fallback:Maybe[type]=None) -> Maybe[type]:
     """ Selects and loads a plugin from a chainguard,
     based on a target,
     with an available fallback constructor
