@@ -22,14 +22,17 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-# ##-- 3rd party imports
+# ##-- 1st party imports
+from jgdv import Mixin, Proto
 
-# ##-- end 3rd party imports
+# ##-- end 1st party imports
 
-from jgdv import Proto, Mixin
-from . import errors
 from . import _mixins as s_mix
-from ._interface import FMT_PATTERN, SEP_DEFAULT, SUBSEP_DEFAULT, StrangMarker_e, UUID_RE, INST_K, GEN_K, STRGET, MARK_RE, Strang_p
+from . import errors
+from ._interface import (FMT_PATTERN, GEN_K, INST_K, MARK_RE, SEP_DEFAULT,
+                         STRGET, SUBSEP_DEFAULT, UUID_RE, Strang_i, Strang_p,
+                         StrangMarker_e)
+from ._meta import StrangMeta
 
 # ##-- types
 # isort: off
@@ -51,7 +54,7 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
-
+    from . import _interface as API  # noqa: N812
 ##--|
 
 # isort: on
@@ -62,7 +65,7 @@ logging = logmod.getLogger(__name__)
 logging.disabled = True
 ##-- end logging
 
-type BodyMark = type[enum.StrEnum]
+type BodyMark  = type[enum.StrEnum]
 type GroupMark = type[enum.StrEnum] | type[int]
 
 ##--|
@@ -88,57 +91,10 @@ class StrangBuilder_m:
             return Strang(data, *args, **kwargs) # type: ignore
         ##--|
 
-class StrangMeta(type(str)):
-    """ A Metaclass for Strang
-    It runs the pre-processsing and post-processing on the constructed str
-    to turn it into a strang
-    """
-
-    _forms : ClassVar[list[type]] = []
-
-    def __call__(cls:type[str], data:str, *args:Any, **kwargs:Any) -> str:  # noqa: ANN401
-        """ Overrides normal str creation to allow passing args to init """
-        match data:
-            case pl.Path():
-                data = str(data)
-            case cls():
-                data = str(data)
-            case _:
-                pass
-
-        try:
-            data = cls.pre_process(data, strict=kwargs.get("strict", False))
-        except ValueError as err:
-            msg = "Pre-Strang Error"
-            raise errors.StrangError(msg, cls, err, data) from None
-
-        obj = cls.__new__(cls, data)
-        try:
-            obj.__init__(*args, **kwargs)
-        except ValueError as err:
-            msg = "Strang Init Error"
-            raise errors.StrangError(msg, cls, err, data) from None
-
-        try:
-            # TODO don't call process and post_process if given the metadata in kwargs
-            obj._process()
-        except ValueError as err:
-            msg = "Strang Process Error"
-            raise errors.StrangError(msg, cls, err, data) from None
-
-        try:
-            # TODO allow post-process to override and return a different object?
-            obj._post_process()
-        except ValueError as err:
-            msg = "Post-Strang Error:"
-            raise errors.StrangError(msg, cls, err) from None
-
-        return obj
-
 ##--|
 
-@Proto(Strang_p)
-@Mixin(s_mix.PreStrang_m, None, s_mix.PostStrang_m, allow_inheritance=True)
+@Proto(Strang_i, mod_mro=False)
+@Mixin(*s_mix.PreStrang_m.mro(), *s_mix.PostStrang_m.mro(), allow_inheritance=True)
 class Strang(str, metaclass=StrangMeta):
 
     """ A Structured String Baseclass.
@@ -163,7 +119,7 @@ class Strang(str, metaclass=StrangMeta):
 
     _separator        = SEP_DEFAULT
     _subseparator     = SUBSEP_DEFAULT
-    _body_types       = str|UUID|StrangMarker_e
+    _body_types       = str|UUID|StrangMarker_e|Strang_p
     _typevar          = None
     bmark_e           = StrangMarker_e
     gmark_e           = int
@@ -172,15 +128,15 @@ class Strang(str, metaclass=StrangMeta):
     def __init_subclass__(cls, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
         StrangMeta._forms.append(cls)
 
-    def __init__(self, *_:Any, **kwargs:Any) -> None:  # noqa: ANN401
+    def __init__(self:Strang_i, *_:Any, **kwargs:Any) -> None:  # noqa: ANN401
         super().__init__()
         self._mark_idx : tuple[Maybe[int], Maybe[int]] = (None,None)
         self._base_slices                              = (None,None) # For easy head and body str's
         self.metadata                                  = dict(kwargs)
-        self._group                                    = []
-        self._body                                     = []
-        self._body_meta                                = []
-        self._group_meta                               = set()
+        self._group      : list[slice]                 = []
+        self._body       : list[slice]                 = []
+        self._body_meta  : list[Maybe[API.BODY_TYPES]] = []
+        self._group_meta : list[str]                   = set()
 
     def _post_process(self) -> None:  # noqa: PLR0912
         """
@@ -233,7 +189,6 @@ class Strang(str, metaclass=StrangMeta):
                     assert(isinstance(y, int))
                     self._mark_idx = (x, y)
 
-
     def __str__(self) -> str:
         match self.metadata.get(GEN_K, False):
             case False:
@@ -260,7 +215,7 @@ class Strang(str, metaclass=StrangMeta):
         for x in range(len(self._body)):
             yield self[x]
 
-    def __getitem__(self, i:int|slice) -> Strang._body_types|Strang:  # noqa: PLR0911
+    def __getitem__(self, i:int|slice) -> Strang._body_types:  # noqa: PLR0911
         """
         strang[x] -> get a body obj or str
         strang[0:x] -> a head str
@@ -271,17 +226,17 @@ class Strang(str, metaclass=StrangMeta):
         """
         match i:
             case int():
-                return self._body_meta[i] or super().__getitem__(self._body[i])
+                return self._body_meta[i] or str.__getitem__(self, self._body[i])
             case slice(start=0, stop=None):
-                return super().__getitem__(self._base_slices[0]) # type: ignore
+                return str.__getitem__(self, self._base_slices[0]) # type: ignore
             case slice(start=1, stop=None, step=None):
-                return super().__getitem__(self._base_slices[1]) # type: ignore
+                return str.__getitem__(self, self._base_slices[1]) # type: ignore
             case slice(start=0, stop=x):
-                return super().__getitem__(self._group[x])
+                return str.__getitem__(self, self._group[x])
             case slice(start=1, stop=int() as x):
-                return self._body_meta[x] or super().__getitem__(self._body[x])
+                return self._body_meta[x] or str.__getitem__(self, self._body[x])
             case slice(start=1, stop=x, step=y):
-                return super().__getitem__(slice(self._body[x or 0].start, self._body[y].stop))
+                return str.__getitem__(self, slice(self._body[x or 0].start, self._body[y].stop))
             case slice(start=2, stop=x):
                 return self.__class__(self._expanded_str(stop=x))
             case slice(start=int()):
@@ -289,7 +244,6 @@ class Strang(str, metaclass=StrangMeta):
                 raise KeyError(msg, i)
             case x:
                 raise TypeError(type(x))
-
 
     @property
     def base(self) -> Self:
@@ -320,3 +274,4 @@ class Strang(str, metaclass=StrangMeta):
         if bool(uuids:=[x for x in self._body_meta if isinstance(x, UUID)]):
             return uuids[0]
         return None
+

@@ -101,34 +101,49 @@ type GroupMark  = type[enum.StrEnum] | type[int]
 
 ##--|
 
-class Strang_d(Protocol):
-    metadata          : dict
-    _separator        : ClassVar[str]
-    _subseparator     : ClassVar[str]
-    _body_types       : ClassVar[type|UnionType]
-    _typevar          : ClassVar[Maybe[type]]
+@runtime_checkable
+class Importable_p(Protocol):
+    """  """
+    pass
 
-    _base_slices      : tuple[Maybe[slice], Maybe[slice]]
-    _mark_idx         : tuple[Maybe[int], Maybe[int]]
-    _group            : list[slice]
-    _body             : list[slice]
-    _body_meta        : list[Maybe[BODY_TYPES]]
-    _group_meta       : set[str]
+class PreInitProcessed_p(Protocol):
+    """ Protocol for things like Strang,
+    whose metaclass preprocess the initialisation data before even __new__ is called.
 
+    Is used in a metatype.__call__ as::
+
+        cls._pre_process(...)
+        obj = cls.__new__(...)
+        obj.__init__(...)
+        obj._process()
+        obj._post_process()
+        return obj
+
+    """
+
+    @classmethod
+    def pre_process(cls, data:str, *, strict:bool=False) -> str:
+        pass
+
+    def _process(self) -> None:
+        pass
+
+    def _post_process(self) -> None:
+        pass
 class StrangInternal_p(Protocol):
 
     def _get_slices(self, start:int=0, max:Maybe[int]=None, *, add_offset:bool=False) -> list[slice]:  # noqa: A002
         pass
 
 @runtime_checkable
-class Strang_p(Strang_d, StrangInternal_p, String_p, Protocol):
+class Strang_p(StrangInternal_p, PreInitProcessed_p, String_p, Protocol):
     """  """
-
     @classmethod
     def _subjoin(cls, lst:list) -> str:
         pass
 
-    def __getitem__(self, i:int|slice) -> Strang_p|BODY_TYPES:
+    @override
+    def __getitem__(self, i:int|slice) -> BODY_TYPES: # type: ignore[override]
         pass
 
     @property
@@ -173,33 +188,20 @@ class Strang_p(Strang_d, StrangInternal_p, String_p, Protocol):
     def root(self) -> Self:
         pass
 
-@runtime_checkable
-class Importable_p(Protocol):
-    """  """
-    pass
 
-@runtime_checkable
-class PreInitProcessed_p(Protocol):
-    """ Protocol for things like Strang,
-    whose metaclass preprocess the initialisation data before even __new__ is called.
 
-    Is used in a metatype.__call__ as::
+class Strang_i(Strang_p, Protocol):
+    _separator        : ClassVar[str]
+    _subseparator     : ClassVar[str]
+    _body_types       : ClassVar[type|UnionType]
+    _typevar          : ClassVar[Maybe[type]]
+    bmark_e           : ClassVar[type[enum.StrEnum]]
+    gmark_e           : ClassVar[type[enum.Enum]|type[enum.StrEnum]|int]
 
-        cls._pre_process(...)
-        obj = cls.__new__(...)
-        obj.__init__(...)
-        obj._process()
-        obj._post_process()
-        return obj
-
-    """
-
-    @classmethod
-    def _pre_process(cls, data:str, *, strict:bool=False) -> str:
-        pass
-
-    def _process(self) -> None:
-        pass
-
-    def _post_process(self) -> None:
-        pass
+    metadata          : dict
+    _base_slices      : tuple[Maybe[slice], Maybe[slice]]
+    _mark_idx         : tuple[Maybe[int], Maybe[int]]
+    _group            : list[slice]
+    _body             : list[slice]
+    _body_meta        : list[Maybe[BODY_TYPES]]
+    _group_meta       : set[str]

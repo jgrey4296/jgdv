@@ -16,8 +16,9 @@ import warnings
 import pytest
 from random import randint
 
-from jgdv.structs.strang.errors import StrangError
-from jgdv.structs.strang import Strang
+from .. import _interface as API
+from ..errors import StrangError
+from ..strang import Strang
 logging = logmod.root
 
 UUID_STR = str(uuid.uuid1())
@@ -30,6 +31,14 @@ class TestStrangBase:
     def test_sanity(self):
         assert(True is not False)
         assert(Strang is not None)
+
+
+    def test_basic_ctor(self):
+        assert(issubclass(Strang, str))
+        obj = Strang("head::tail")
+        assert(isinstance(obj, Strang))
+        assert(isinstance(obj, API.Strang_p))
+        assert(isinstance(obj, str))
 
     def test_initial(self):
         obj = Strang("head::tail")
