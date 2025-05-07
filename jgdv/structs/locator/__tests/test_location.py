@@ -39,6 +39,7 @@ class TestLocation:
 
     def test_file_stem(self):
         loc = Location("file::>test/path.py")
+        assert(loc.path.stem == loc.stem)
         assert(loc.stem == "path")
 
     def test_file_ext(self):

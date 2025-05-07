@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 # ruff: noqa:
 
@@ -9,12 +8,10 @@
 from __future__ import annotations
 
 # ##-- stdlib imports
-import datetime
 import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
-import pathlib as pl
 import re
 import time
 import types
@@ -28,7 +25,7 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
-from jgdv.structs.dkey import Key_p
+from jgdv.structs.strang._interface import Strang_i, Strang_p
 
 # ##-- types
 # isort: off
@@ -40,11 +37,12 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
-    from jgdv import Maybe
+    import datetime
+    from jgdv.structs.dkey._interface import Key_i
+    import pathlib as pl
+    from jgdv import Maybe, Ident
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
@@ -52,6 +50,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+    TimeDelta = datetime.timedelta
 ##--|
 
 # isort: on
@@ -67,6 +66,7 @@ LOC_SEP    : Final[str]   = "::>"
 LOC_SUBSEP : Final[str]   = "/"
 
 # Body:
+
 class WildCard_e(enum.StrEnum):
     """ Ways a path can have a wildcard. """
     glob       = "*"
@@ -97,19 +97,42 @@ class LocationMeta_e(enum.StrEnum):
     default      = loc
 
 ##--|
-class Location_d:
-    key                 : Maybe[str|Key_p]
-    path                : pl.Path
-    meta                : enum.EnumMeta
 
 ##--|
+
 @runtime_checkable
-class Location_p(Protocol):
+class Location_p(Strang_p, Protocol):
     """ Something which describes a file system location,
     with a possible identifier, and metadata
     """
-    def keys(self) -> set[str]:
-        pass
+
+    @override
+    def __getitem__(self, i:int|slice) -> str|WildCard_e: ...
+
+    def __lt__(self, other:TimeDelta|str|pl.Path|Location_p) -> bool: ...
+
+    @property
+    def keys(self) -> set[str]: ...
+
+    @property
+    def path(self) -> pl.Path: ...
+
+    @property
+    def body_parent(self) -> list[str|WildCard_e]: ...
+
+    @property
+    def stem(self) -> Maybe[str|tuple[WildCard_e, str]]: ...
+
+    def ext(self, *, last:bool=False) -> Maybe[str|tuple[WildCard_e, str]]: ...
+
+    def check_wildcards(self, other:Self) -> bool: ...
+
+    def is_concrete(self) -> bool: ...
+
+class Location_i(Location_p, Protocol):
+    key   : Maybe[str|Key_i]
+    path  : pl.Path
+    meta  : enum.EnumMeta
 
 @runtime_checkable
 class Locator_p(Protocol):

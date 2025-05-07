@@ -3,6 +3,7 @@
 
 """
 # mypy: disable-error-code="attr-defined"
+# ruff: noqa: ANN002, ANN003
 # Imports:
 from __future__ import annotations
 
@@ -33,7 +34,8 @@ from jgdv.mixins.enum_builders import FlagsBuilder_m
 from jgdv.structs.strang import Strang
 
 from . import _interface as API # noqa: N812
-from ._interface import Location_d, Location_p, WildCard_e, LocationMeta_e
+from ._interface import Location_i, WildCard_e, LocationMeta_e
+from jgdv.structs.strang._interface import Strang_i
 # ##-- end 1st party imports
 
 # ##-- types
@@ -63,8 +65,8 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-@Proto(Location_p)
-class Location(Location_d, Strang):
+@Proto(Location_i, Strang_i)
+class Location(Strang):
     """ A Location is an abstraction higher than a path.
 
     ie: a path, with metadata.
@@ -93,11 +95,11 @@ class Location(Location_d, Strang):
         a_loc.path_pair() -> ('/vols/BackupSD/a/b/c.mp3', '~/a/b/c.mp3')
 
     """
-    _separator          : ClassVar[str]            = API.LOC_SEP
-    _subseparator       : ClassVar[str]            = API.LOC_SUBSEP
-    _body_types         : ClassVar[Any]            = str|WildCard_e
-    gmark_e             = LocationMeta_e
-    bmark_e             = WildCard_e
+    _separator                     = API.LOC_SEP
+    _subseparator                  = API.LOC_SUBSEP
+    _body_types                    = str|WildCard_e
+    bmark_e : type[WildCard_e]     = WildCard_e # type: ignore[assignment]
+    gmark_e : type[LocationMeta_e] = LocationMeta_e # type: ignore[assignment]
 
     @classmethod
     def pre_process(cls, data:str|pl.Path, *, strict:bool=False) -> Any:  # noqa: ANN401
@@ -119,7 +121,6 @@ class Location(Location_d, Strang):
     def _post_process(self) -> None:
         max_body         = len(self._body)
         self._body_meta  = [None for x in range(max_body)]
-        self._group_meta = set()
 
         # Group metadata
         for elem in self.group:
@@ -155,15 +156,14 @@ class Location(Location_d, Strang):
                     pass
 
     def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-        self._group_meta = set()
+        super().__init__(*args, **kwargs) # type: ignore[misc]
 
     def __repr__(self) -> str:
         body = self[1:]
         cls = self.__class__.__name__
         return f"<{cls}: {self[0:]}{self._separator}{body}>"
 
-    def __contains__(self, other:Location.gmark_e|Location.bmark_e|Location|pl.Path) -> bool: # type: ignore
+    def __contains__(self, other:object) -> bool: # type: ignore
         """ Whether a definite artifact is matched by self, an abstract artifact
 
        | other    ∈ self
@@ -189,8 +189,8 @@ class Location(Location_d, Strang):
     def is_concrete(self) -> bool:
         return self.gmark_e.abstract not in self._group_meta
 
-    def check_wildcards(self, other:Location) -> bool:
-        """  """
+    def check_wildcards(self, other:Location) -> bool:  # noqa: PLR0912
+        """ Return True if other is within self, accounting for wildcards """
         logging.debug("Checking %s < %s", self, other)
         if self.is_concrete():
             return self < other
@@ -215,11 +215,11 @@ class Location(Location_d, Strang):
         logging.debug("%s and %s match on path", self, other)
         # Compare the stem/ext
         match self.stem, other.stem:
-            case x, y if x == y:
-                pass
             case (xa, ya), (xb, yb) if xa == xb and ya == yb:
                 pass
             case (xa, ya), str():
+                pass
+            case str() as x, str() as y if x == y:
                 pass
             case _, _:
                 return False
@@ -228,11 +228,11 @@ class Location(Location_d, Strang):
         match self.ext(), other.ext():
             case None, None:
                 pass
-            case x, y if x == y:
-                pass
             case (xa, ya), (xb, yb) if xa == xb and ya == yb:
                 pass
             case (x, y), _:
+                pass
+            case str() as x, str() as y if x == y:
                 pass
             case _, _:
                 return False
@@ -242,7 +242,7 @@ class Location(Location_d, Strang):
 
     @property
     def path(self) -> pl.Path: # type: ignore
-        return pl.Path(self[1:])
+        return pl.Path(str(self[1:]))
 
     @property
     def body_parent(self) -> list[Location._body_types]:
@@ -257,19 +257,26 @@ class Location(Location_d, Strang):
         if self.gmark_e.file not in self._group_meta:
             return None
 
-        elem = self[1:-1].split(".")[0]
-        if elem == "":
-            return None
-        if (wc:=self.bmark_e.glob) in elem:
-            return (wc, elem)
-        if (wc:=self.bmark_e.select) in elem:
-            return (wc, elem)
-        if (wc:=self.bmark_e.key) in elem:
-            return (wc, elem)
+        match self[1:-1]:
+            case str() as elem:
+                pass
+            case _:
+                return None
 
-        return elem
+        match elem.split(".")[0]:
+            case str() as elem if (wc:=self.bmark_e.glob) in elem:
+                return (wc, elem)
+            case str() as elem if (wc:=self.bmark_e.select) in elem:
+                return (wc, elem)
+            case str() as elem if (wc:=self.bmark_e.key) in elem:
+                return (wc, elem)
+            case str() as elem:
+                return elem
+            case _:
+                return None
 
-    def ext(self, *, last:bool=False) -> Maybe[str|tuple[Location.bmark_e, str]]: # type: ignore
+
+    def ext(self, *, last:bool=False) -> Maybe[str|tuple[Location.bmark_e, str]]: # type: ignore # noqa: PLR0911
         """ return the ext, or a tuple of how it is a wildcard.
         returns nothing if theres no extension,
         returns all suffixes if there are multiple, or just the last if last=True
@@ -277,7 +284,12 @@ class Location(Location_d, Strang):
         if self.gmark_e.file not in self._group_meta:
             return None
 
-        elem = self[1:-1]
+        match self[1:-1]:
+            case str() as elem:
+                pass
+            case _:
+                return None
+
         match elem.rfind(".") if last else elem.find("."):
             case -1:
                 return None
@@ -295,7 +307,7 @@ class Location(Location_d, Strang):
                 return ext
 
     @property
-    def keys(self): # type: ignore
+    def keys(self) -> set[str]:
         raise NotImplementedError()
 
 
