@@ -2,7 +2,7 @@
 """
 
 """
-
+# ruff: noqa: ANN001, ANN002, ANN003
 # Imports:
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ from . import _interface as API  # noqa: N812
 from jgdv.mixins.enum_builders import EnumBuilder_m
 from jgdv.mixins.annotate import SubAnnotate_m, Subclasser
 from ._util.parser import DKeyParser, RawKey
-from ._interface import DKeyMark_e, ExpInst_d
+from ._interface import DKeyMark_e, ExpInst_d, Key_i
 # ##-- end 1st party imports
 
 # ##-- types
@@ -82,7 +82,7 @@ class DKeyMeta(StrMeta):
     # Use the default str hash method
     _expected_init_keys : ClassVar[list[str]] = API.DEFAULT_DKEY_KWARGS[:]
 
-    def __call__(cls:Ctor[DKey], *args, **kwargs) -> DKey:
+    def __call__(cls:Ctor[DKey], *args, **kwargs) -> DKey: # noqa: N805
         """ Runs on class instance creation
         skips running cls.__init__, allowing cls.__new__ control
         (ie: Allows The DKey accessor t
@@ -116,10 +116,10 @@ class DKeyMeta(StrMeta):
                 msg = "No key was built"
                 raise TypeError(msg, args)
 
-    def __instancecheck__(cls, instance) -> bool:
+    def __instancecheck__(cls, instance) -> bool: # noqa: N805
         return any(x.__instancecheck__(instance) for x in {Key_p})
 
-    def __subclasscheck__(cls, sub) -> bool:
+    def __subclasscheck__(cls, sub) -> bool: # noqa: N805
         if cls is DKey:
             bases = [DKeyMeta.get_subtype(DKeyMark_e.NULL),
                      DKeyMeta.get_subtype(DKeyMark_e.FREE),
@@ -168,7 +168,7 @@ class DKeyMeta(StrMeta):
         return ctor
 
     @staticmethod
-    def register_key_type(ctor:type, mark:KeyMark, conv:Maybe[str]=None, multi:bool=False) -> None:
+    def register_key_type(ctor:type, mark:KeyMark, conv:Maybe[str]=None, *, multi:bool=False) -> None:
         """ Register a DKeyBase implementation to a mark
 
         Can be a single key, or a multi key,

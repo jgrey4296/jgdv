@@ -28,7 +28,7 @@ from jgdv.structs.strang import CodeReference
 
 # ##-- end 1st party imports
 
-from .._interface import DKeyMark_e, Key_p
+from .._interface import DKeyMark_e
 from .._base import DKeyBase
 from .._meta import DKey
 from ..keys import MultiDKey, NonDKey, SingleDKey

@@ -48,7 +48,7 @@ if TYPE_CHECKING:
    from collections.abc import Iterable, Iterator, Callable, Generator
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
    from jgdv._abstract.protocols import SpecStruct_p
-   from ._interface import Key_p
+   from ._interface import Key_i
 
 # isort: on
 # ##-- end types
@@ -157,7 +157,7 @@ class MultiDKey[X](DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
         rem, wrap, direct = self._consume_format_params(spec) # type: ignore
         return format(str(self), rem)
 
-    def keys(self) -> list[Key_p]:
+    def keys(self) -> list[Key_i]:
         return [DKey(key.joined(), implicit=True)
                 for key in self._subkeys
                 if bool(key)

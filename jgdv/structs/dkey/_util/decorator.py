@@ -2,7 +2,8 @@
 """
 
 """
-
+# mypy: disable-error-code="attr-defined"
+# ruff: noqa: ANN002, ANN003
 # Imports:
 from __future__ import annotations
 
@@ -30,13 +31,11 @@ from jgdv.decorators import (
     MetaDec,
     DecoratorAccessor_m,
     DForm_e,
-    Decorated,
-    Decorable,
 )
 from jgdv.structs.strang import CodeReference
 from .. import errors as dkey_errs
 from .._meta import DKey
-from .._interface import ARGS_K, KWARGS_K, PARAM_IGNORES
+from .._interface import ARGS_K, KWARGS_K, PARAM_IGNORES, Key_p
 
 # ##-- end 1st party imports
 
@@ -50,9 +49,9 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 from types import MethodType
-from jgdv import Method
 
 if TYPE_CHECKING:
+    from jgdv import Method
     import inspect
     from jgdv import Decorator, FmtStr, Func, Ident, Maybe, Rx
     from typing import Final
@@ -62,6 +61,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+    from .._interface import Key_i
+    from jgdv.decorators._interface import Decorated, Decorable
     type Signature = inspect.Signature
 # isort: on
 # ##-- end types
@@ -98,7 +99,6 @@ class DKeyExpansionDecorator(DataDec):
             case x:
                 raise TypeError(type(x))
 
-
     def _wrap_method_h[**In, Out](self, meth:Method[In,Out]) -> Decorated[Method[In, Out]]:
         data_key = self._data_key
 
@@ -108,13 +108,12 @@ class DKeyExpansionDecorator(DataDec):
                 expansions = [x(spec, state) for x in getattr(meth, data_key)]
             except KeyError as err:
                 logging.warning("Action State Expansion Failure: %s", err)
-                return cast(Out, False)
+                return cast("Out", False)  # noqa: FBT003
             else:
                 return meth(*call_args, *expansions, **kwargs)
 
         # -
-        return cast(Method, _method_action_expansions)
-
+        return cast("Method", _method_action_expansions)
 
     def _wrap_fn_h[**In, Out](self, fn:Func[In, Out]) -> Decorated[Func[In, Out]]:
         data_key = self._data_key
@@ -125,7 +124,7 @@ class DKeyExpansionDecorator(DataDec):
                 expansions = [x(spec, state) for x in getattr(fn, data_key)]
             except KeyError as err:
                 logging.warning("Action State Expansion Failure: %s", err)
-                return cast(Out, False)
+                return cast("Out", False)  # noqa: FBT003
             else:
                 return fn(*args, *expansions, **kwargs)
 
@@ -152,6 +151,7 @@ class DKeyExpansionDecorator(DataDec):
         prefix_ig, suffix_ig = self._param_ignores
         # Then the tail, backwards, because the decorators are applied in reverse order
         for x,y in zip(params[::-1], tail[::-1], strict=False):
+            assert(isinstance(y, Key_p))
             key_str = y.var_name()
             if x.startswith(prefix_ig) or x.endswith(suffix_ig):
                 logging.debug("Skipping: %s", x)
@@ -254,16 +254,24 @@ class DKeyedRetrieval(DecoratorAccessor_m, DKeyed):
         return cls._build_decorator(keys)
 
     @classmethod
-    def args(cls, fn) -> Decorator:
+    def args(cls, fn:Callable) -> Decorator:
         """ mark an action as using spec.args """
         keys = [DKey(ARGS_K, implicit=True, mark=DKey.Mark.ARGS)]
-        return cls._build_decorator(keys)(fn)
+        match cls._build_decorator(keys)(fn):
+            case None:
+                raise dkey_errs.DecorationMismatch()
+            case x:
+                return x
 
     @classmethod
-    def kwargs(cls, fn) -> Decorator:
+    def kwargs(cls, fn:Callable) -> Decorator:
         """ mark an action as using all kwargs"""
         keys = [DKey(KWARGS_K, implicit=True, mark=DKey.Mark.KWARGS)]
-        return cls._build_decorator(keys)(fn)
+        match cls._build_decorator(keys)(fn):
+            case None:
+                raise dkey_errs.DecorationMismatch()
+            case x:
+                return x
 
     @classmethod
     def redirects(cls, *args, **kwargs) -> Decorator:

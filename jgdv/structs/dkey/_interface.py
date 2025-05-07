@@ -2,8 +2,7 @@
 """
 
 """
-# ruff: noqa: N801
-
+# ruff: noqa: N801, ANN001, ANN002, ANN003
 # Imports:
 from __future__ import annotations
 
@@ -41,7 +40,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    from jgdv import Maybe, Rx, Ident, RxStr
+    from jgdv import Maybe, Rx, Ident, RxStr, Ctor, CHECKTYPE, FmtStr
     from typing import Final
     from typing import ClassVar, LiteralString
     from typing import Never, Self, Literal
@@ -117,7 +116,9 @@ class Key_p(Protocol):
 
     def redirect(self, spec=None) -> Key_p: ...
 
-    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:Maybe[list[Key_p]]=None, on_fail=Any, locs:Maybe[Mapping]=None, **kwargs) -> str: ...  # noqa: ANN003
+    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:Maybe[list[Key_p]]=None, on_fail=Any, locs:Maybe[Mapping]=None, **kwargs) -> str: ...  # noqa: PLR0913
+
+    def var_name(self) -> str: ...
 
 @runtime_checkable
 class Expandable_p(Protocol):
@@ -125,28 +126,34 @@ class Expandable_p(Protocol):
     uses these hooks to customise the expansion
     """
 
-    def expand(self, *args, **kwargs) -> Maybe:
-        pass
+    def expand(self, *args, **kwargs) -> Maybe: ...
 
-    def exp_extra_sources_h(self) -> Maybe[list]:
-        pass
+    def exp_extra_sources_h(self) -> Maybe[list]: ...
 
-    def exp_pre_lookup_h(self, sources, opts) -> Maybe[LookupList]:
-        pass
+    def exp_pre_lookup_h(self, sources, opts) -> Maybe[LookupList]: ...
 
-    def exp_pre_recurse_h(self, vals:list[ExpInst_d], sources, opts) -> Maybe[list[ExpInst_d]]:
-        pass
+    def exp_pre_recurse_h(self, vals:list[ExpInst_d], sources, opts) -> Maybe[list[ExpInst_d]]: ...
 
-    def exp_flatten_h(self, vals:list[ExpInst_d], opts) -> Maybe[LitFalse|ExpInst_d]:
-        pass
+    def exp_flatten_h(self, vals:list[ExpInst_d], opts) -> Maybe[LitFalse|ExpInst_d]: ...
 
-    def exp_coerce_h(self, val:ExpInst_d, opts) -> Maybe[ExpInst_d]:
-        pass
-    def exp_final_h(self, val:ExpInst_d, opts) -> Maybe[LitFalse|ExpInst_d]:
-        pass
+    def exp_coerce_h(self, val:ExpInst_d, opts) -> Maybe[ExpInst_d]: ...
 
-    def exp_check_result_h(self, val:ExpInst_d, opts) -> None:
-        pass
+    def exp_final_h(self, val:ExpInst_d, opts) -> Maybe[LitFalse|ExpInst_d]: ...
+
+    def exp_check_result_h(self, val:ExpInst_d, opts) -> None: ...
+
+class Key_i(Key_p, Expandable_p, Protocol):
+    _mark               : KeyMark
+    _expansion_type     : Ctor
+    _typecheck          : CHECKTYPE
+    _fallback           : Maybe[Any]
+    _fmt_params         : Maybe[FmtStr]
+    _conv_params        : Maybe[FmtStr]
+    _help               : Maybe[str]
+    _named              : Maybe[str]
+
+    _extra_kwargs       : ClassVar[set[str]]
+    __hash__            : Callable
 
 ##--|
 
@@ -158,7 +165,7 @@ class ExpInst_d:
     """
     __slots__ = "convert", "fallback", "lift", "literal", "rec", "total_recs", "val"
 
-    def __init__(self, **kwargs) -> None:  # noqa: ANN003
+    def __init__(self, **kwargs) -> None:
         match kwargs:
             case {"val": ExpInst_d() as val }:
                 msg = "Nested ExpInst_d"
@@ -169,7 +176,7 @@ class ExpInst_d:
                  msg = "ExpInst_d's must have a val"
                  raise ValueError(msg, x)
 
-        if bool((extra:=kwargs.keys() - ExpInst_d.__slots__)):
+        if bool(extra:=kwargs.keys() - ExpInst_d.__slots__):
             msg = "Unexpected kwargs given to ExpInst_d"
             raise ValueError(msg, extra)
 

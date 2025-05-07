@@ -2,7 +2,7 @@
 """
 
 """
-
+# ruff: noqa: ANN001, ANN002, ANN003, ARG004
 # Imports:
 from __future__ import annotations
 
@@ -39,10 +39,10 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Any,
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-from ._interface import Key_p, Expandable_p
+from ._interface import Key_i
 
 if TYPE_CHECKING:
-   from .. import _interface as API  # noqa: N812
+   from . import _interface as API  # noqa: N812
    from jgdv import Maybe, M_, Rx, Ident, Ctor, FmtStr, CHECKTYPE
    from typing import Final
    from typing import ClassVar, LiteralString
@@ -63,7 +63,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-@Proto(Key_p, Expandable_p, check=False)
+@Proto(Key_i, check=False, mod_mro=False)
 @Mixin(DKeyFormatting_m)
 class DKeyBase[X](SubAnnotate_m, str, annotate_to="_mark"):
     """
@@ -159,7 +159,7 @@ class DKeyBase[X](SubAnnotate_m, str, annotate_to="_mark"):
         """
         return self._named or str(self)
 
-    def keys(self) -> list[Key_p]:
+    def keys(self) -> list[Key_i]:
         """ Get subkeys of this key. by default, an empty list.
         (named 'keys' to be in keeping with dict)
         """

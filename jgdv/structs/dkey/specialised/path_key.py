@@ -51,8 +51,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 ##--|
-from jgdv._abstract.protocols import SpecStruct_p, Buildable_p
-from .._interface import Key_p
+
 # isort: on
 # ##-- end types
 
