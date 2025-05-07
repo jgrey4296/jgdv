@@ -62,41 +62,28 @@ class DForm_e(enum.Enum):
 @runtime_checkable
 class Decorator_p(Protocol):
 
-    def __call__[T:Decorable](self, target:T) -> Maybe[Decorated[T]]:
-        pass
+    def __call__[T:Decorable](self, target:T) -> Maybe[Decorated[T]]: ...
 
-    def _wrap_method_h[**In, Out](self, meth:Method[In,Out]) -> Decorated[Method[In, Out]]:
-        pass
+    def _wrap_method_h[**In, Out](self, meth:Method[In,Out]) -> Decorated[Method[In, Out]]: ...
 
-    def _wrap_fn_h[**In, Out](self, fn:Func[In, Out]) -> Decorated[Func[In, Out]]:
-        pass
+    def _wrap_fn_h[**In, Out](self, fn:Func[In, Out]) -> Decorated[Func[In, Out]]: ...
 
-    def _wrap_class_h(self, cls:type) -> Maybe[Decorated]:
-        pass
+    def _wrap_class_h(self, cls:type) -> Maybe[Decorated]: ...
 
-    def _validate_target_h(self, target:Decorable, form:DForm_e, args:Maybe[list]=None) -> None:
-        pass
+    def _validate_target_h(self, target:Decorable, form:DForm_e, args:Maybe[list]=None) -> None: ...
 
-    def _validate_sig_h(self, sig:Signature, form:DForm_e, args:Maybe[list]=None) -> None:
-        pass
+    def _validate_sig_h(self, sig:Signature, form:DForm_e, args:Maybe[list]=None) -> None: ...
 
-    def _build_annotations_h(self, target:Decorable, current:list) -> Maybe[list]:
-        pass
+    def _build_annotations_h(self, target:Decorable, current:list) -> Maybe[list]: ...
 
-    def dec_name(self) -> str:
-        pass
+    def dec_name(self) -> str: ...
 
-    def apply_mark(self, *args:Decorable) -> None:
-        pass
+    def apply_mark(self, *args:Decorable) -> None: ...
 
-    def annotate_decorable(self, target:Decorable) -> list:
-        pass
+    def annotate_decorable(self, target:Decorable) -> list: ...
 
-    def is_marked(self, target:Decorable) -> bool:
-        pass
+    def is_marked(self, target:Decorable) -> bool: ...
 
-    def is_annotated(self, target:Decorable) -> bool:
-        pass
+    def is_annotated(self, target:Decorable) -> bool: ...
 
-    def get_annotations(self, target:Decorable) -> list[str]:
-        pass
+    def get_annotations(self, target:Decorable) -> list[str]: ...

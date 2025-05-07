@@ -85,7 +85,7 @@ class _DecAnnotate_m:
 
     def annotate_decorable(self, target:Decorable) -> list:
         """
-        Essentially: target[data_key] += self[data_key][:]
+        Essentially: target[data_key] += self.{data_key}[:]
         """
         current = getattr(target, self._data_key, [])
         match self._build_annotations_h(target, current):

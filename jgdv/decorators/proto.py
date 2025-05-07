@@ -78,6 +78,7 @@ class CheckProtocols:
 
     """
 
+    @staticmethod
     def get_protos(target:type) -> set[Protocol]:
         """ Get the protocols of a type from its mro and annotations """
         # From MRO
@@ -88,14 +89,17 @@ class CheckProtocols:
                     pass
                 case TypeAliasType() if issubclass(x.__value__, Protocol):
                     protos.append(x)
-                case x if issubclass(x, Protocol|abc.ABC):
+                case x if issubclass(x, Protocol):
+                    protos.append(x)
+                case x if issubclass(x, abc.ABC):
                     protos.append(x)
                 case _:
                     pass
+        else:
+            protos += getattr(target, PROTO_SUFFIX, [])
+            return set(protos)
 
-        protos += getattr(target, PROTO_SUFFIX, [])
-        return set(protos)
-
+    @staticmethod
     def test_method(cls:type, name:str) -> bool:
         """ return True if the named method is abstract still """
         if name == ABSMETHS:
@@ -108,6 +112,7 @@ class CheckProtocols:
             case FunctionType() | property():
                 return False
 
+    @staticmethod
     def test_protocol(proto:Protocol, cls) -> list[str]:
         """ Returns a list of methods which are defined in the protocol,
         and nowhere else in the mro.
@@ -118,13 +123,14 @@ class CheckProtocols:
         | eg: type proto_alias = MyProtocol_p
         | where issubclass(MyProtocol_p, Protocol)
         """
-
-        result = []
+        members : set
+        result  : list = []
         # Get the members of the protocol/abc
         match proto:
             case type() if issubclass(proto, Protocol):
                 non_callable = getattr(proto, "__non_callable_proto_members__", set())
-                members      = set(proto.__protocol_attrs__) - non_callable
+                fields       = getattr(proto, "__annotations__", {})
+                members      = set(proto.__protocol_attrs__) - non_callable - fields.keys()
                 qualname     = proto.__qualname__
             case type() if issubclass(proto, abc.ABC):
                 return []
@@ -134,8 +140,6 @@ class CheckProtocols:
         # then filter out the implemented ones
         for member in members:
             match getattr(cls, member, None):
-                # case str():
-                #     pass
                 case property():
                     pass
                 case None:
@@ -153,11 +157,12 @@ class CheckProtocols:
                     pass
                 case MethodDescriptorType() | WrapperDescriptorType() | ClassMethodDescriptorType():
                     pass
-                case x:
-                    raise TypeError("Unexpected Type in protocol checking", member, type(x), x, cls)
+                case _:
+                    pass
         else:
             return result
 
+    @staticmethod
     def validate_protocols(cls:type, *, protos:Maybe[list[Protocol]]) -> type:
         still_abstract = set()
         for meth in getattr(cls, ABSMETHS, []):
@@ -199,11 +204,12 @@ class Proto(MonotonicDec):
     """
     needs_args = True
 
-    def __init__(self, *protos:Protocol, check=True):
+    def __init__(self, *protos:Protocol, check:bool=True, mod_mro:bool=False):
         super().__init__(data=PROTO_SUFFIX)
         self._protos : list = []
         self._check  : bool = check
         self._name_mod = NAME_MOD
+        self._mod_mro = mod_mro
         for x in protos:
             match x:
                 case TypeAliasType() if isinstance(x.__value__, _GenericAlias):
@@ -231,7 +237,7 @@ class Proto(MonotonicDec):
                 raise TypeError("Unexpected type passed for protocol annotation")
 
     def _wrap_class_h(self, cls:type) -> Maybe[type]:
-        """ """
+        """ Logic for inserting the protocol into the given cls. """
         new_name = Subclasser.decorate_name(cls, self._name_mod)
         self.annotate_decorable(cls)
         protos = CheckProtocols.get_protos(cls)
@@ -241,8 +247,13 @@ class Proto(MonotonicDec):
                 pass
             case [*xs]:
                 protos.update(xs)
+
         try:
-            customized = Subclasser.make_subclass(new_name, cls)
+            if self._mod_mro:
+                modified = self._build_mro(cls)
+                customized = Subclasser.make_subclass(new_name, cls, mro=modified)
+            else:
+                customized = Subclasser.make_subclass(new_name, cls)
         except TypeError as err:
             raise TypeError(*err.args, cls, self._protos, protos) from None
 
@@ -254,6 +265,18 @@ class Proto(MonotonicDec):
                 pass
         ##--|
         return customized
+
+    def _build_mro(self, cls) -> list:
+        import typing
+        match cls.mro():
+            case [*xs, typing.Protocol, x] if x is object:
+                base = [*xs, *self._protos, object]
+            case [*xs, x] if x is object:
+                base = [*xs, *self._protos, object]
+            case x:
+                raise TypeError(type(x))
+
+        return base
 
     def _build_annotations_h(self, target:Decorable, current:list) -> Maybe[list]:
         updated = current[:]

@@ -132,8 +132,8 @@ class Subclasser:
         possibly with a maniplated mro and internal namespace
         """
         if (ispydantic:=issubclass(cls, BaseModel)) and mro is not None:
-                msg = "Extending pydantic classes with a new mro is not implemented"
-                raise NotImplementedError(msg)
+            msg = "Extending pydantic classes with a new mro is not implemented"
+            raise NotImplementedError(msg)
         elif ispydantic:
             sub = Subclasser._new_pydantic_class(name, cls, namespace=namespace)
             return sub

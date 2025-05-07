@@ -93,8 +93,8 @@ class Mixin(MonotonicDec):
         except ValueError:
             index = 0
         finally:
-            self._pre_mixins  = [x for x in mixins[:index] if x is not None]
-            self._post_mixins = [x for x in mixins[index:] if x is not None]
+            self._pre_mixins  = [x for x in mixins[:index] if x is not None and x is not object]
+            self._post_mixins = [x for x in mixins[index:] if x is not None and x is not object]
             if not allow_inheritance:
                 self._validate_mixins()
 

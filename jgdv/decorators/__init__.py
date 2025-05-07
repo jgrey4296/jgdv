@@ -13,12 +13,13 @@ import typing
 # ##-- types
 # isort: off
 if typing.TYPE_CHECKING:
+   from ._interface import Decorated, Decorator_p
    from jgdv import Maybe, Ident
    from typing import ClassVar
 # isort: on
 # ##-- end types
 
-from ._interface import Signature, Decorable, Decorated, DForm_e, Decorator_p
+from ._interface import Signature, Decorable, DForm_e
 from ._core import Decorator, MonotonicDec, IdempotentDec, MetaDec, DataDec
 from .mixin import Mixin
 from .proto import Proto
@@ -32,7 +33,7 @@ class DecoratorAccessor_m:
     _decoration_builder : ClassVar[type[Decorator]] = DataDec
 
     @classmethod
-    def _build_decorator(cls, keys) -> Decorator_p:
+    def _build_decorator(cls, keys:list) -> Decorator_p:
         return cls._decoration_builder(keys)
 
     @classmethod

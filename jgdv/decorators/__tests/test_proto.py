@@ -155,16 +155,20 @@ class TestProtoDecorator:
 
     def test_proto_no_check_no_error(self):
 
-        @Proto(RawProto_p, check=False)
+        @Proto(RawProto_p, check=False, mod_mro=True)
         class Example:
             """ doesn't implement the protocol, but is annotated with it """
             val : ClassVar[int] = 25
 
             def bloo(self):
                 return 10
+            
+            def aweg(self):
+                return blah
 
         obj = Example()
-        assert(not isinstance(Example, RawProto_p))
+        assert(isinstance(Example, RawProto_p))
+        assert(RawProto_p in Example.mro())
         assert(obj.bloo() == 10)
         assert(Example.val == 25)
         match Proto.get(Example):
