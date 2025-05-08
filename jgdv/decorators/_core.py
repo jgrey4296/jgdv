@@ -29,6 +29,8 @@ from jgdv.debugging import TraceBuilder
 from jgdv.mixins.annotate import Subclasser
 # ##-- end 1st party imports
 
+from . import _interface as API  # noqa: N812
+
 # ##-- types
 # isort: off
 import abc
@@ -40,6 +42,7 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 if TYPE_CHECKING:
+    from jgdv._abstract.types import Method
     import enum
     from jgdv import Maybe, Either, Func
     from typing import Final
@@ -50,19 +53,13 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
 ##--|
-from ._interface import Signature, Decorable, Decorated, DForm_e, Decorator_p
-from jgdv._abstract.types import Method
+from ._interface import Signature, Decorable, Decorated, DForm_e, Decorator_i
 # isort: on
 # ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-WRAPPED             : Final[str]       = "__wrapped__"
-ANNOTATIONS_PREFIX  : Final[str]       = "__JGDV__"
-MARK_SUFFIX         : Final[str]       = "_mark"
-DATA_SUFFIX         : Final[str]       = "_data"
 
 # TODO use ideas from pytest.mark
 # TODO use strang for mark/data keys
@@ -73,17 +70,13 @@ class _DecAnnotate_m:
     Annotations for a decorator are stored in a dict entry.
     of the form: '{annotation_prefix}:{data_suffix}'
     """
-    _data_key          : str
-    _annotation_prefix : str
-    _data_suffix       : str
-
-    def data_key(self) -> str:
+    def data_key(self:Decorator_i) -> str:
         if not self._data_key:
             self._data_key = f"{self._annotation_prefix}:{self._data_suffix}"
 
         return self._data_key
 
-    def annotate_decorable(self, target:Decorable) -> list:
+    def annotate_decorable(self:Decorator_i, target:Decorable) -> list:
         """
         Essentially: target[data_key] += self.{data_key}[:]
         """
@@ -100,13 +93,13 @@ class _DecAnnotate_m:
                 msg = "Bad annotation type"
                 raise TypeError(msg, x)
 
-    def get_annotations(self, target:Decorable) -> list[str]:
+    def get_annotations(self:Decorator_i, target:Decorable) -> list[str]:
         """ Get the annotations of the target """
         bottom = self._unwrap(target)
         data   = getattr(bottom, self._data_key, [])
         return data[:]
 
-    def is_annotated(self, target:Decorable) -> bool:
+    def is_annotated(self:Decorator_i, target:Decorable) -> bool:
         logging.info("Testing for annotation data: %s : %s", self._data_key, target)
         match target:
             case type():
@@ -121,21 +114,19 @@ class _DecMark_m:
     Marks are for easily testing if Decorator decorated something already
 
     """
-    _mark_key : str
-
-    def mark_key(self) -> str:
+    def mark_key(self:Decorator_i) -> str:
         if not self._mark_key:
             self._mark_key = f"{self._annotation_prefix}:{self._mark_suffix}"
 
         return self._mark_key
 
-    def apply_mark(self, *args:Decorable) -> None:
+    def apply_mark(self:Decorator_i, *args:Decorable) -> None:
         """ Mark the UNWRAPPED, original target as already decorated """
         logging.info("Applying Mark %s to : %s", self._mark_key, args)
         for x in args:
             setattr(x, self._mark_key, True)
 
-    def is_marked(self, target:Decorable) -> bool:
+    def is_marked(self:Decorator_i, target:Decorable) -> bool:
         logging.info("Testing for mark: %s : %s", self._mark_key, target)
         match target:
             case type():
@@ -149,7 +140,7 @@ class _DecMark_m:
 class _DecWrap_m:
     """ Utils for unwrapping and wrapping a  """
 
-    def _unwrap(self, target:Decorated) -> Decorable:
+    def _unwrap(self:Decorator_i, target:Decorated) -> Decorable:
         """ Get the un-decorated function if there is one """
         match target:
             case type():
@@ -157,14 +148,14 @@ class _DecWrap_m:
             case x:
                 return inspect.unwrap(x)
 
-    def _unwrapped_depth(self, target:Decorated) -> int:
+    def _unwrapped_depth(self:Decorator_i, target:Decorated) -> int:
         """ the code of inspect.unwrap, but used for counting the unwrap depth """
         logging.info("Counting Wrap Depth of: %s", target)
         f               = target
         memo            = {id(f): f}
         depth           = 0
         recursion_limit = sys.getrecursionlimit()
-        while not isinstance(f, type) and hasattr(f, WRAPPED):
+        while not isinstance(f, type) and hasattr(f, API.WRAPPED):
             f = f.__wrapped__
             depth += 1
             id_func = id(f)
@@ -175,7 +166,7 @@ class _DecWrap_m:
         else:
             return depth
 
-    def _build_wrapper(self, form:DForm_e, target:Decorable) -> Maybe[Decorated]:
+    def _build_wrapper(self:Decorator_i, form:DForm_e, target:Decorable) -> Maybe[Decorated]:
         """ Create a new decoration using the appropriate hook """
         match form:
             case self.Form.CLASS:
@@ -193,7 +184,7 @@ class _DecWrap_m:
                 msg = "Unexpected Decorable type"
                 raise ValueError(msg, x)
 
-    def _apply_onto(self, wrapper:Decorated, target:Decorable) -> Decorated:
+    def _apply_onto(self:Decorator_i, wrapper:Decorated, target:Decorable) -> Decorated:
         """ Uses functools.update_wrapper,
         Modify cls._wrapper_assignments and cls._wrapper_updates as necessary
         """
@@ -209,10 +200,10 @@ class _DecWrap_m:
 
 class _DecInspect_m:
 
-    def _signature(self, target:Decorable) -> Signature:
+    def _signature(self:Decorator_i, target:Decorable) -> Signature:
         return inspect.signature(target, follow_wrapped=False)
 
-    def _discrim_form(self, target:Decorable) -> DForm_e:
+    def _discrim_form(self:Decorator_i, target:Decorable) -> DForm_e:
         """ Determine the type of the thing being decorated"""
         try:
             target = self._unwrap(target)
@@ -238,7 +229,7 @@ class _DecInspect_m:
 class _DecoratorHooks_m:
     """ The main hooks used to actually specify the decoration """
 
-    def _wrap_method_h[**In, Out](self, meth:Method[In,Out]) -> Decorated[Method[In, Out]]:
+    def _wrap_method_h[**In, Out](self:Decorator_i, meth:Method[In,Out]) -> Decorated[Method[In, Out]]:
         """ Override this to add a decoration function to method """
         dec_name = self.dec_name()
 
@@ -246,9 +237,9 @@ class _DecoratorHooks_m:
             logging.debug("Calling Wrapped Method: %s of %s", meth.__qualname__, dec_name)
             return meth(*args, **kwargs)
 
-        return cast(Method, _default_method_wrapper)
+        return cast("Method", _default_method_wrapper)
 
-    def _wrap_fn_h[**In, Out](self, fn:Func[In, Out]) -> Decorated[Func[In, Out]]:
+    def _wrap_fn_h[**In, Out](self:Decorator_i, fn:Func[In, Out]) -> Decorated[Func[In, Out]]:
         """ override this to add a decorator to a function """
         dec_name = self.dec_name()
 
@@ -256,22 +247,22 @@ class _DecoratorHooks_m:
             logging.debug("Calling Wrapped Fn: %s : %s", fn.__qualname__, dec_name)
             return fn(*args, **kwargs)
 
-        return cast(Method, _default_fn_wrapper)
+        return cast("Method", _default_fn_wrapper)
 
-    def _wrap_class_h(self, cls:type) -> Maybe[Decorated]:
+    def _wrap_class_h(self:Decorator_i, cls:type) -> Maybe[Decorated]:
         """ Override this to decorate a class """
         return Subclasser.make_subclass("DefaultWrappedClass", cls)
 
-    def _validate_target_h(self, target:Decorable, form:DForm_e, args:Maybe[list]=None) -> None:
+    def _validate_target_h(self:Decorator_i, target:Decorable, form:DForm_e, args:Maybe[list]=None) -> None:
         """ Abstract class for specialization.
         Given the original target, throw an error here if it isn't 'correct' in some way
         """
         pass
 
-    def _validate_sig_h(self, sig:Signature, form:DForm_e, args:Maybe[list]=None) -> None:
+    def _validate_sig_h(self:Decorator_i, sig:Signature, form:DForm_e, args:Maybe[list]=None) -> None:
         pass
 
-    def _build_annotations_h(self, target:Decorable, current:list) -> Maybe[list]:
+    def _build_annotations_h(self:Decorator_i, target:Decorable, current:list) -> Maybe[list]:
         """ Given a list of the current annotation list,
         return its replacement
         """
@@ -282,71 +273,60 @@ class _DecoratorHooks_m:
 class _DecoratorCombined_m(_DecAnnotate_m, _DecWrap_m, _DecMark_m, _DecInspect_m, _DecoratorHooks_m):
     """ Combines the util mixins """
     pass
+
 ##--|
 
 class _DecIdempotentLogic_m:
     """ Decorate the passed target in an idempotent way """
+    pass
 
 ##--|
 
-class Decorator(_DecoratorCombined_m, Decorator_p):
+class Decorator(_DecoratorCombined_m, Decorator_i):
     """
     The abstract Superclass of Decorators
     A subclass implements '_decoration_logic'
     """
-    Form       : ClassVar[enum.EnumMeta] = DForm_e
-    needs_args : ClassVar[bool]          = False
-
-    _annotation_prefix   : str
-    _mark_suffix         : str
-    _data_suffix         : str
-    _wrapper_assignments : list[str]
-    _wrapper_updates     : list[str]
-    _mark_key : str
-    _data_key : str
+    Form                 : ClassVar[enum.EnumMeta] = DForm_e
+    needs_args           : ClassVar[bool]          = False
 
 
-    def __new__(cls, *args, **kwargs):
+    def __new__[T:Decorator_i](cls:type[T], *args, **kwargs) -> T:  # noqa: ANN002, ANN003
         """ If called on a callable, create a new decorator and decorate,
         otherwise create the new object
         """
         match args:
             case []:
                 obj = super().__new__(cls)
-                obj.__init__(*args, **kwargs)
+                obj.__init__(*args, **kwargs) # type: ignore[misc]
                 return obj
             case [x, *_] if callable(x) and not cls.needs_args:
                 obj = super().__new__(cls)
-                obj.__init__(*args[1:], **kwargs)
+                obj.__init__(*args[1:], **kwargs) # type: ignore[misc]
                 return obj(args[0])
             case _:
                 obj = super().__new__(cls)
-                obj.__init__(*args, **kwargs)
+                obj.__init__(*args, **kwargs) # type: ignore[misc]
                 return obj
 
 
-    def __init__(self, *args, prefix:Maybe[str]=None, mark:Maybe[str]=None, data:Maybe[str]=None):
+    def __init__(self, *args, prefix:Maybe[str]=None, mark:Maybe[str]=None, data:Maybe[str]=None) -> None:  # noqa: ANN002
         # Ignores any args
         # TODO use strangs for mark and data key
-        self._annotation_prefix   : str              = prefix  or ANNOTATIONS_PREFIX
-        self._mark_suffix         : str              = mark    or self.__class__.__name__
-        self._data_suffix         : str              = data    or DATA_SUFFIX
-        self._wrapper_assignments : list[str]        = list(ftz.WRAPPER_ASSIGNMENTS)
-        self._wrapper_updates     : list[str]        = list(ftz.WRAPPER_UPDATES)
-        self._mark_key = None  # type: ignore[assignment]
-        self._data_key = None  # type: ignore[assignment]
+        self._annotation_prefix   = prefix  or API.ANNOTATIONS_PREFIX
+        self._mark_suffix         = mark    or self.__class__.__name__
+        self._data_suffix         = data    or API.DATA_SUFFIX
+        self._wrapper_assignments = list(ftz.WRAPPER_ASSIGNMENTS)
+        self._wrapper_updates     = list(ftz.WRAPPER_UPDATES)
+        self._mark_key            = None  # type: ignore[assignment]
+        self._data_key            = None  # type: ignore[assignment]
+
         self.mark_key()
         self.data_key()
 
     def __call__(self, target:Decorable) -> Decorated:
         try:
             decorated = self._decoration_logic(target)
-            # # need to wrap with my wrapper
-            # annotations = self.get_annotations(target)
-            # form, sig   = self._discrim_form(target), self._signature(target)
-            # # Verify the target, may raise exceptions
-            # self._validate_target_h(target, form, annotations)
-            # self._validate_sig_h(sig, form, annotations)
         except Exception as err:
             # Capture all decoration exceptions,
             # and turn them into JGDVErrors,
@@ -357,6 +337,14 @@ class Decorator(_DecoratorCombined_m, Decorator_p):
             return decorated
 
     def _decoration_logic(self, target:Decorable) -> Decorated:
+        """
+        # need to wrap with my wrapper
+        annotations = self.get_annotations(target)
+        form, sig   = self._discrim_form(target), self._signature(target)
+        # Verify the target, may raise exceptions
+        self._validate_target_h(target, form, annotations)
+        self._validate_sig_h(sig, form, annotations)
+        """
         raise NotImplementedError()
 
     def dec_name(self) -> str:
@@ -436,7 +424,7 @@ class MetaDec(Decorator):
     ie: annotates without wrapping
     """
 
-    def __init__(self, value:str|list[str], **kwargs):
+    def __init__(self, value:str|list[str], **kwargs) -> None:  # noqa: ANN003
         kwargs.setdefault("mark", "_meta_marked")
         kwargs.setdefault("data", "_meta_vals")
         super().__init__(**kwargs)
@@ -465,7 +453,7 @@ class DataDec(IdempotentDec):
     to run the single wrapping function
     """
 
-    def __init__(self, keys:str|list[str], **kwargs):
+    def __init__(self, keys:str|list[str], **kwargs) -> None:  # noqa: ANN003
         kwargs.setdefault("mark", "_d_marked")
         kwargs.setdefault("data", "_d_vals")
         super().__init__(**kwargs)

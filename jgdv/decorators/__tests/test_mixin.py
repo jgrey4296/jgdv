@@ -25,14 +25,11 @@ import pytest
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
+from .. import _interface as API
 from .._core import (
-    ANNOTATIONS_PREFIX,
-    DATA_SUFFIX,
-    MARK_SUFFIX,
     Decorator,
     IdempotentDec,
     MonotonicDec,
-    DForm_e,
 )
 
 from jgdv.decorators.mixin import Mixin

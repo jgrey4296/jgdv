@@ -23,21 +23,16 @@ import pytest
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
+from .. import _interface as API
 from .._core import (
-    ANNOTATIONS_PREFIX,
-    DATA_SUFFIX,
-    MARK_SUFFIX,
     Decorator,
     MonotonicDec,
     IdempotentDec,
     MetaDec,
     DataDec,
-    DForm_e,
 )
 
 # ##-- end 1st party imports
-
-logging = logmod.root
 
 class _Utils:
 
@@ -94,7 +89,7 @@ class TestDFormDiscrimination(_Utils):
 
     def test_is_fn(self, dec, a_fn):
         match dec._discrim_form(a_fn):
-            case DForm_e.FUNC:
+            case API.DForm_e.FUNC:
                 assert(True)
             case x:
                 assert(False), x
@@ -102,21 +97,21 @@ class TestDFormDiscrimination(_Utils):
     def test_is_instance_method(self, dec, a_class):
         inst = a_class()
         match dec._discrim_form(inst.simple):
-            case DForm_e.METHOD:
+            case API.DForm_e.METHOD:
                 assert(True)
             case x:
                 assert(False), x
 
     def test_is_method(self, dec, a_method):
         match dec._discrim_form(a_method):
-            case DForm_e.METHOD:
+            case API.DForm_e.METHOD:
                 assert(True)
             case x:
                 assert(False), x
 
     def test_is_class(self, dec, a_class):
         match dec._discrim_form(a_class):
-            case DForm_e.CLASS:
+            case API.DForm_e.CLASS:
                 assert(True)
             case x:
                 assert(False), x
@@ -131,8 +126,8 @@ class TestDecorator(_Utils):
         assert(True is not False) # noqa: PLR0133
 
     def test_basic_init(self, dec):
-        mark = f"{ANNOTATIONS_PREFIX}:{dec.__class__.__name__}"
-        data = f"{ANNOTATIONS_PREFIX}:{DATA_SUFFIX}"
+        mark = f"{API.ANNOTATIONS_PREFIX}:{dec.__class__.__name__}"
+        data = f"{API.ANNOTATIONS_PREFIX}:{API.DATA_SUFFIX}"
         assert(dec._mark_key == mark)
         assert(dec._data_key == data)
 
@@ -140,19 +135,19 @@ class TestDecorator(_Utils):
     def test_custom_prefix(self, name):
         dec = Decorator(prefix=name)
         assert(dec._mark_key == f"{name}:{dec.__class__.__name__}")
-        assert(dec._data_key == f"{name}:{DATA_SUFFIX}")
+        assert(dec._data_key == f"{name}:{API.DATA_SUFFIX}")
 
     @pytest.mark.parametrize("name", ["blah", "bloo", "blee"])
     def test_custom_mark(self, name):
         dec = Decorator(mark=name)
-        assert(dec._mark_key == f"{ANNOTATIONS_PREFIX}:{name}")
-        assert(dec._data_key == f"{ANNOTATIONS_PREFIX}:{DATA_SUFFIX}")
+        assert(dec._mark_key == f"{API.ANNOTATIONS_PREFIX}:{name}")
+        assert(dec._data_key == f"{API.ANNOTATIONS_PREFIX}:{API.DATA_SUFFIX}")
 
     @pytest.mark.parametrize("name", ["blah", "bloo", "blee"])
     def test_custom_data(self, name):
         dec = Decorator(data=name)
-        assert(dec._mark_key == f"{ANNOTATIONS_PREFIX}:{dec.__class__.__name__}")
-        assert(dec._data_key == f"{ANNOTATIONS_PREFIX}:{name}")
+        assert(dec._mark_key == f"{API.ANNOTATIONS_PREFIX}:{dec.__class__.__name__}")
+        assert(dec._data_key == f"{API.ANNOTATIONS_PREFIX}:{name}")
 
 
     def test_decorating_without_instantiation(self):
@@ -411,7 +406,7 @@ class TestMonotonic(_Utils):
             pass
 
         match Dec1()._discrim_form(testfn):
-            case DForm_e.FUNC:
+            case API.DForm_e.FUNC:
                 assert(True)
             case x:
                 assert(False), x
@@ -432,7 +427,7 @@ class TestMonotonic(_Utils):
                 pass
 
         match Dec1()._discrim_form(TestClass.testfn):
-            case DForm_e.METHOD:
+            case API.DForm_e.METHOD:
                 assert(True)
             case x:
                 assert(False), x

@@ -2,6 +2,7 @@
 """
 
 """
+# ruff: noqa: ERA001
 # Import:
 from __future__ import annotations
 
@@ -96,7 +97,7 @@ class Breakpoint(IdempotentDec):
 class DoMaybe(MonotonicDec):
     """ Make a fn or method propagate None's """
 
-    def _wrap_method_h[I, O](self, meth:Method[I, O]) -> Method[I, Maybe[O]]:
+    def _wrap_method_h[**I, O](self, meth:Method[I, O]) -> Method[I, Maybe[O]]:
 
         def _prop_maybe(_self, fst, *args:Any, **kwargs:Any) -> Maybe[O]:  # noqa: ANN001, ANN401
             match fst:
@@ -105,9 +106,9 @@ class DoMaybe(MonotonicDec):
                 case x:
                     return meth(_self, x, *args, **kwargs)
 
-        return _prop_maybe
+        return cast("Method[I, Maybe[O]]", _prop_maybe)
 
-    def _wrap_fn_h[I, O](self, fn:Func[I, O]) -> Func[I, Maybe[O]]:
+    def _wrap_fn_h[**I, O](self, fn:Func[I, O]) -> Func[I, Maybe[O]]: # type: ignore[override]
 
         def _prop_maybe(fst:Any, *args:Any, **kwargs:Any) -> Maybe[O]:  # noqa: ANN401
             match fst:
@@ -117,40 +118,40 @@ class DoMaybe(MonotonicDec):
                     try:
                         return fn(x, *args, **kwargs)
                     except Exception as err:
-                        err.with_traceback(TraceBuilder[2:])
+                        err.with_traceback(TraceBuilder[2:]) # type: ignore[misc]
                         raise
 
-        return _prop_maybe
+        return cast("Func[I, Maybe[O]]", _prop_maybe)
 
 class DoEither(MonotonicDec):
     """ Either do the fn/method, or propagate the error """
 
-    def _wrap_method_h[I:Any, O:Any](self, meth:Method[I, O]) -> Method[I, Either[O]]:
+    def _wrap_method_h[**I, O, E:Exception](self, meth:Method[I, O]) -> Method[I, Either[O, E]]:
 
-        def _prop_either(_self:Any, fst:Any, *args:Any, **kwargs:Any) -> Either[O]:  # noqa: ANN401
+        def _prop_either(_self:Any, fst:Any, *args:Any, **kwargs:Any) -> Either[O, E]:  # noqa: ANN401
             match fst:
                 case Exception() as err:
-                    return err
+                    return cast("E", err)
                 case x:
                     try:
                         return meth(_self, x, *args, **kwargs)
                     except Exception as err:  # noqa: BLE001
-                        err.with_traceback(TraceBuilder[2:])
-                        return err
+                        err.with_traceback(TraceBuilder[2:]) # type: ignore[misc]
+                        return cast("E", err)
 
-        return _prop_either
+        return cast("Method[I, Either[O, E]]", _prop_either)
 
-    def _wrap_fn_h[I:Any, O:Any](self, fn:Func[I, O]) -> Func[I, Either[O]]:
+    def _wrap_fn_h[**I, O, E:Exception](self, fn:Func[I, O]) -> Func[I, Either[O, E]]: # type: ignore[override]
 
-        def _prop_either(fst:Any, *args:Any, **kwargs:Any) -> Either[O]:  # noqa: ANN401
+        def _prop_either(fst:Any, *args:Any, **kwargs:Any) -> Either[O, E]:  # noqa: ANN401
             match fst:
                 case Exception() as err:
-                    return err
+                    return cast("E", err)
                 case x:
                     try:
                         return fn(x, *args, **kwargs)
                     except Exception as err:  # noqa: BLE001
-                        err.with_traceback(TraceBuilder[2:])
-                        return err
+                        err.with_traceback(TraceBuilder[2:]) # type: ignore[misc]
+                        return cast("E", err)
 
-        return _prop_either
+        return cast("Func[I, Either[O, E]]", _prop_either)

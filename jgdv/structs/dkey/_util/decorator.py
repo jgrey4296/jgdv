@@ -202,7 +202,7 @@ class DKeyed:
                     pass
 
 class DKeyedMeta(DKeyed):
-    """ Mixin for decorators that declare meta information,
+    """ Subclass extension for decorators that declare meta information,
     but doesnt modify the behaviour
     """
 
@@ -219,7 +219,8 @@ class DKeyedMeta(DKeyed):
         return DKeyMetaDecorator(keys)
 
 class DKeyedRetrieval(DecoratorAccessor_m, DKeyed):
-    """ Mixin for decorators which modify the calling behaviour of the decoration target
+    """ Subclass extension for DKeyed decorators,
+    which modify the calling behaviour of the decoration target
 
     """
 
