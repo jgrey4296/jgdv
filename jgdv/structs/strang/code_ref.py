@@ -65,6 +65,9 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+ProtoMeta : Final[type] = type(Protocol)
+##--|
+
 class CodeReference(Strang):
     """ A reference to a class or function.
 
@@ -181,15 +184,19 @@ class CodeReference(Strang):
         match check:
             case None:
                 return curr
-            case typing._SpecialForm():
+            case types.UnionType() if isinstance(curr, check):
                 return curr
+            case typing._SpecialForm():
+                raise NotImplementedError("Checking Special Types like generics is not supported yet", check, curr)
             case x if x is Any:
                 return curr
-            case type() as x if not (isinstance(curr, x) or issubclass(curr, x)):
-                msg = "Imported Code Reference is not of correct type"
-                raise ImportError(msg, self, check)
+            case type() as x if (isinstance(curr, x) or issubclass(curr, x)):
+                return curr
+            case ProtoMeta() as x if issubclass(curr, x):
+                return curr
 
-        raise RuntimeError()
+        msg = "Imported Code Reference is not of correct type"
+        raise ImportError(msg, self, check)
 
     @property
     def module(self) -> str:

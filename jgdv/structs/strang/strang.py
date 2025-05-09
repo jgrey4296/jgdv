@@ -117,12 +117,12 @@ class Strang(str, metaclass=StrangMeta):
 
     """
 
-    _separator        = SEP_DEFAULT
-    _subseparator     = SUBSEP_DEFAULT
-    _body_types       = str|UUID|StrangMarker_e|Strang_p
-    _typevar          = None
-    bmark_e           = StrangMarker_e
-    gmark_e           = int
+    _separator    : ClassVar          = SEP_DEFAULT
+    _subseparator : ClassVar          = SUBSEP_DEFAULT
+    _body_types   : ClassVar          = str|UUID|StrangMarker_e|Strang_p
+    _typevar      : ClassVar          = None
+    bmark_e       : ClassVar          = StrangMarker_e
+    gmark_e       : ClassVar          = int
 
     @classmethod
     def __init_subclass__(cls, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
