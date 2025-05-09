@@ -90,7 +90,9 @@ class CodeReference(Strang):
 
     @classmethod
     def from_value(cls:type[CodeReference], value:Any) -> CodeReference:  # noqa: ANN401
-        return cls(f"{value.__module__}:{value.__qualname__}", value=value)
+        split_qual = value.__qualname__.split(".")
+        val_iden = ":".join([".".join(split_qual[:-1]), split_qual[-1]])
+        return cls(f"{value.__module__}:{val_iden}", value=value)
 
     @classmethod
     def pre_process(cls, data:str, *, strict:bool=False) -> str:  # noqa: ARG003
@@ -113,7 +115,7 @@ class CodeReference(Strang):
         last       = str.__getitem__(self, last_slice)
         if self._tail_separator not in last:
             msg = "CodeRef didn't have a final value"
-            raise ValueError(msg, str.__str__(self))
+            raise ValueError(msg, last, str.__str__(self))
 
         index = last.index(self._tail_separator)
         self._body.append(slice(last_slice.start, last_slice.start + index))
@@ -126,14 +128,6 @@ class CodeReference(Strang):
     def __repr__(self) -> str:
         code_path = str(self)
         return f"<CodeRef: {code_path}>"
-
-    @ftz.cached_property
-    def module(self) -> str:
-        return self[1::-1]
-
-    @ftz.cached_property
-    def value(self) -> str:
-        return str.__getitem__(self, self._value_idx)
 
     def __call__(self, *, check:SpecialType|type=Any, raise_error:bool=False) -> Result[type, ImportError]:
         """ Tries to import and retrieve the reference,
@@ -197,6 +191,14 @@ class CodeReference(Strang):
 
         raise RuntimeError()
 
+    @property
+    def module(self) -> str:
+        return self[1::-1]
+
+
+    @property
+    def value(self) -> str:
+        return str.__getitem__(self, self._value_idx)
 
     def to_alias(self, group:str, plugins:dict|ChainGuard) -> str:
         """ TODO Given a nested dict-like, see if this reference can be reduced to an alias """

@@ -26,7 +26,6 @@ from jgdv.mixins.annotate import SubAnnotate_m
 from ._interface import StrangMarker_e, GEN_K, INST_K, Strang_p, Strang_i
 from . import _interface as API  # noqa: N812
 
-
 # ##-- types
 # isort: off
 import abc
@@ -59,7 +58,6 @@ logging.disabled = True
 
 class _Strang_cmp_m:
     """ The mixin of Strang Comparison methods """
-
 
     def __lt__(self:Strang_i, other:object) -> bool:
         match other:
@@ -236,6 +234,7 @@ class _Strang_subgen_m:
         eg: group::a.b.c.$gen$.<uuid>.c.d.e
         ->  group::a.b.c..c.d.e
         """
+
         def _filter_fn(x:API.BODY_TYPES) -> bool:
             return (isinstance(x, UUID)
                     or x == self.bmark_e.gen # type: ignore

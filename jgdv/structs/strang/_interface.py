@@ -122,73 +122,58 @@ class PreInitProcessed_p(Protocol):
     """
 
     @classmethod
-    def pre_process(cls, data:str, *, strict:bool=False) -> str:
-        pass
+    def pre_process(cls, data:str, *, strict:bool=False) -> str: ...
 
-    def _process(self) -> None:
-        pass
+    def _process(self) -> None: ...
 
-    def _post_process(self) -> None:
-        pass
+    def _post_process(self) -> None: ...
+
 class StrangInternal_p(Protocol):
 
-    def _get_slices(self, start:int=0, max:Maybe[int]=None, *, add_offset:bool=False) -> list[slice]:  # noqa: A002
-        pass
+    def _get_slices(self, start:int=0, max:Maybe[int]=None, *, add_offset:bool=False) -> list[slice]: ... # noqa: A002
+
+class StrangTesting_p(Protocol):
+
+    def is_uniq(self) -> bool: ...
+
+    def is_head(self) -> bool: ...
+
+class StrangMod_p(Protocol):
+
+    def with_head(self) -> Self: ...
+
+    def pop(self, *, top:bool=False) -> Self: ...
+
+    def push(self, *vals:str) -> Self: ...
+
+    def to_uniq(self, *, suffix:Maybe[str]=None) -> Self: ...
+
+    def de_uniq(self) -> Self: ...
+
+    def root(self) -> Self: ...
 
 @runtime_checkable
-class Strang_p(StrangInternal_p, PreInitProcessed_p, String_p, Protocol):
+class Strang_p(StrangTesting_p, StrangMod_p, StrangInternal_p, PreInitProcessed_p, String_p, Protocol):
     """  """
+
     @classmethod
-    def _subjoin(cls, lst:list) -> str:
-        pass
+    def _subjoin(cls, lst:list) -> str: ...
 
     @override
-    def __getitem__(self, i:int|slice) -> BODY_TYPES: # type: ignore[override]
-        pass
+    def __getitem__(self, i:int|slice) -> BODY_TYPES: ... # type: ignore[override]
 
     @property
-    def base(self) -> Self:
-        pass
+    def base(self) -> Self: ...
 
     @property
-    def group(self) -> list[str]:
-        pass
+    def group(self) -> list[str]: ...
 
     @property
-    def shape(self) -> tuple[int, int]:
-        pass
+    def shape(self) -> tuple[int, int]: ...
 
-    def body(self, *, reject:Maybe[Callable]=None, no_expansion:bool=False) -> list[str]:
-        pass
+    def body(self, *, reject:Maybe[Callable]=None, no_expansion:bool=False) -> list[str]: ...
 
-    def uuid(self) -> Maybe[UUID]:
-        pass
-
-    def is_uniq(self) -> bool:
-        pass
-
-    def is_head(self) -> bool:
-        pass
-
-    def with_head(self) -> Self:
-        pass
-
-    def pop(self, *, top:bool=False) -> Self:
-        pass
-
-    def push(self, *vals:str) -> Self:
-        pass
-
-    def to_uniq(self, *, suffix:Maybe[str]=None) -> Self:
-        pass
-
-    def de_uniq(self) -> Self:
-        pass
-
-    def root(self) -> Self:
-        pass
-
-
+    def uuid(self) -> Maybe[UUID]: ...
 
 class Strang_i(Strang_p, Protocol):
     _separator        : ClassVar[str]

@@ -23,15 +23,16 @@ NO_PREFIX : Final[str] = "jgdv:identity_fn"
 
 class TestCodeReference:
 
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
     def test_basic(self):
         ref = CodeReference(EX_STR)
         assert(isinstance(ref, CodeReference))
 
-
     def test_with_no_prefix(self):
         ref = CodeReference(NO_PREFIX)
         assert(isinstance(ref, CodeReference))
-
 
     def test_(self):
         ref = CodeReference(EX_STR)
@@ -51,11 +52,25 @@ class TestCodeReference:
 
     def test_module(self):
         ref = CodeReference(EX_STR)
+        assert(ref[1::-1] == "jgdv")
         assert(ref.module == "jgdv")
 
     def test_value(self):
         ref = CodeReference(EX_STR)
         assert(ref.value == "identity_fn")
+
+
+    def test_from_fn(self):
+        def simple_fn():
+            return "blah"
+
+        ref = CodeReference.from_value(simple_fn)
+        assert(ref() is simple_fn)
+
+class TestCodeReferenceImporting:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
     def test_import(self):
         ref      = CodeReference(EX_STR)
