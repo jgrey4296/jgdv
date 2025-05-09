@@ -130,7 +130,8 @@ class CheckProtocols:
             case type() if issubclass(proto, Protocol):
                 non_callable = getattr(proto, "__non_callable_proto_members__", set())
                 fields       = getattr(proto, "__annotations__", {})
-                members      = set(proto.__protocol_attrs__) - non_callable - fields.keys()
+                non_attrs    = {x for x in proto.__protocol_attrs__ if getattr(proto, x, None) is None}
+                members      = set(proto.__protocol_attrs__) - non_callable - fields.keys() - non_attrs
                 qualname     = proto.__qualname__
             case type() if issubclass(proto, abc.ABC):
                 return []

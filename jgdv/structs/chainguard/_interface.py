@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 # ruff: noqa:
 
@@ -14,7 +13,6 @@ import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
-import pathlib as pl
 import re
 import time
 import types
@@ -28,6 +26,8 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
+from jgdv._abstract.stdlib_protos import Mapping_p
+
 # ##-- types
 # isort: off
 import abc
@@ -38,17 +38,16 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
+    import pathlib as pl
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
-    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from collections.abc import Sequence, MutableMapping, Hashable
 
 ##--|
 
@@ -60,7 +59,9 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-type TomlTypes = str | int | float | bool | list['TomlTypes'] | dict[str,'TomlTypes'] | datetime.datetime
+type TomlTypes = (str | int | float | bool | list['TomlTypes']
+                  | dict[str,'TomlTypes'] | datetime.datetime)
+type ProxyWrapper[T] = callable[[TomlTypes], T]
 # Body:
 
 class ChainProxy_p(Protocol):
@@ -71,26 +72,44 @@ class ChainProxy_p(Protocol):
         cg.on_fail(...).val()
 
     """
-    pass
 
-class ChainGuard_p(Protocol):
+    def __call__[T](self, wrapper:Maybe[ProxyWrapper[T]]=None, fallback_wrapper:Maybe[ProxyWrapper[T]]=None) -> T: ...
+
+    def __getattr__(self, attr:str) -> Self: ...
+
+    def __getitem__(self, keys:str|tuple[str]) -> Self: ...
+
+class ProxyEntry_p(Protocol):
+
+    def on_fail(self, fallback:Any, types:Maybe[Any]=None, *, non_root=False) -> ChainProxy_p: ...
+
+    def first_of(self, fallback:Any, types:Maybe[Any]=None) -> ChainProxy_p: ...
+
+    def all_of(self, fallback:Any, types:Maybe[Any]=None) -> ChainProxy_p: ...
+
+    def flatten_on(self, fallback:Any) -> ChainProxy_p: ...
+
+    def match_on(self, **kwargs:tuple[str,Any]) -> ChainProxy_p: ...
+
+class ChainGuard_p(ProxyEntry_p, Mapping_p, Protocol):
     """ The interface for a base ChainGuard object """
 
-    def get(self, key:str, default:Maybe[TomlTypes]=None) -> Maybe[TomlTypes]:
-        pass
+    def get(self, key:str, default:Maybe[TomlTypes]=None) -> Maybe[TomlTypes]: ...
 
     @classmethod
-    def read(cls:T, text:str) -> T:
-        pass
+    def read[T:ChainGuard_p](cls:T, text:str) -> T: ...
 
     @classmethod
-    def from_dict(cls, data:dict[str, TomlTypes]) -> Self:
-        pass
+    def from_dict(cls, data:dict[str, TomlTypes]) -> Self: ...
 
     @classmethod
-    def load(cls, *paths:str|pl.Path) -> Self:
-        pass
+    def load(cls, *paths:str|pl.Path) -> Self: ...
 
     @classmethod
-    def load_dir(cls, dirp:str|pl.Path) -> Self:
-        pass
+    def load_dir(cls, dirp:str|pl.Path) -> Self: ...
+
+
+    @staticmethod
+    def report_defaulted() -> list[str]: ...
+
+    def to_file(self, path:pl.Path) -> None: ...

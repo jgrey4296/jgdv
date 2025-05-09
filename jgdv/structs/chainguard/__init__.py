@@ -39,7 +39,7 @@ __all__ = (
 
 
 from .errors import GuardedAccessError
-from ._base import TomlTypes
+from ._interface import TomlTypes
 from .chainguard import ChainGuard
 
 load        = ChainGuard.load     # type: ignore

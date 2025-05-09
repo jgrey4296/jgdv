@@ -73,7 +73,6 @@ class ChainGuard(GuardBase):
     Takes the GuardBase object, and mixes in extra capabilities.
 
     """
-
     @classmethod
     def merge(cls, *guards:Self, dfs:Maybe[Callable]=None, index:Maybe[str]=None, shadow:bool=False) -> Self:  # noqa: ARG003
         """

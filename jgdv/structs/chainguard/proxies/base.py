@@ -28,7 +28,8 @@ from weakref import ref
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv.structs.chainguard._base import GuardBase, TomlTypes
+from .._interface import TomlTypes
+from .._base import GuardBase
 from jgdv.structs.chainguard.mixins.reporter_m import DefaultedReporter_m
 
 # ##-- end 1st party imports

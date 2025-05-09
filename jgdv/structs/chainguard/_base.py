@@ -8,7 +8,6 @@ which is then extended with mixins.
 from __future__ import annotations
 
 # ##-- stdlib imports
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -24,21 +23,23 @@ from uuid import UUID, uuid1
 
 from .errors import GuardedAccessError
 from .mixins.access_m import super_get, super_set
-from ._interface import TomlTypes
+from ._interface import ChainGuard_p
+from jgdv import Proto
 
 # ##-- types
 # isort: off
 import abc
 import collections.abc
-from collections.abc import ItemsView, KeysView, ValuesView
 from typing import TYPE_CHECKING, cast, assert_type, assert_never
-from typing import Generic, NewType, Mapping
+from typing import Generic, NewType
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    from collections.abc import ItemsView, KeysView, ValuesView
+    from ._interface import TomlTypes
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -56,6 +57,9 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+type InputData = dict[str, TomlTypes]
+
+##--|
 class GuardBase(dict):
     """
     Provides access to toml data (ChainGuard.load(apath))
@@ -69,7 +73,7 @@ class GuardBase(dict):
     data.report_defaulted() -> ['a.path.that.may.exist.<str|int>']
     """
 
-    def __init__(self, data:dict[str,TomlTypes]=None, *, index:Maybe[list[str]]=None, mutable:bool=False):
+    def __init__(self, data:Maybe[InputData]=None, *, index:Maybe[list[str]]=None, mutable:bool=False) -> None:
         super().__init__()
         super_set(self, "__table", data or {})
         super_set(self, "__index"   , (index or ["<root>"])[:])
@@ -82,9 +86,10 @@ class GuardBase(dict):
         return len(self._table())
 
     def __call__(self) -> TomlTypes:
-        raise GuardedAccessError("Don't call a ChainGuard, call a GuardProxy using methods like .on_fail")
+        msg = "Don't call a ChainGuard, call a GuardProxy using methods like .on_fail"
+        raise GuardedAccessError(msg)
 
-    def __iter__(self) -> iter:
+    def __iter__(self) -> Iterator:
         return iter(getattr(self, "__table").keys())
 
     def __contains__(self, _key: object) -> bool:
@@ -96,22 +101,23 @@ class GuardBase(dict):
     def _table(self) -> dict[str,TomlTypes]:
         return super_get(self, "__table")
 
-    def keys(self) -> KeysView[str]:
+    def keys(self) -> KeysView[str]: # type: ignore[override]
         table = super_get(self, "__table")
         return table.keys()
 
-    def items(self) -> ItemsView[str, TomlTypes]:
+    def items(self) -> ItemsView[str, TomlTypes]: # type: ignore[override]
         match super_get(self, "__table"):
             case dict() as val:
                 return val.items()
             case list() as val:
-                return dict({self._index()[-1]: val}).items()
+                return {self._index()[-1]: val}.items()
             case GuardBase() as val:
                 return val.items()
             case x:
-                raise TypeError("Unknown table type", x)
+                msg = "Unknown table type"
+                raise TypeError(msg, x)
 
-    def values(self) -> ValuesView[TomlTypes]:
+    def values(self) -> list|ValuesView[TomlTypes]: # type: ignore[override]
         match super_get(self, "__table"):
             case dict() as val:
                 return val.values()
@@ -121,5 +127,6 @@ class GuardBase(dict):
                 raise TypeError()
 
 
-    def update(self, *args):
-        raise NotImplementedError("ChainGuards are immutable")
+    def update(self, *args) -> Never: # type: ignore[override]  # noqa: ANN002
+        msg = "ChainGuards are immutable"
+        raise NotImplementedError(msg)

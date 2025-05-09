@@ -40,9 +40,11 @@ from weakref import ref
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv.structs.chainguard._base import GuardBase, TomlTypes
-from jgdv.structs.chainguard.errors import GuardedAccessError
-from jgdv.structs.chainguard.proxies.base import GuardProxy
+from jgdv import Proto
+from .._base import GuardBase
+from .._interface import TomlTypes, ChainProxy_p
+from ..errors import GuardedAccessError
+from .base import GuardProxy
 
 # ##-- end 1st party imports
 
@@ -76,6 +78,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+@Proto(ChainProxy_p)
 class GuardFailureProxy(GuardProxy):
     """
     A Wrapper for guarded access to toml values.
