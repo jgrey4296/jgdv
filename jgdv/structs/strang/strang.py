@@ -44,6 +44,7 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
+from . import _interface as API  # noqa: N812
 
 if TYPE_CHECKING:
     import enum
@@ -54,7 +55,6 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
-    from . import _interface as API  # noqa: N812
 ##--|
 
 # isort: on
@@ -119,7 +119,8 @@ class Strang(str, metaclass=StrangMeta):
 
     _separator    : ClassVar          = SEP_DEFAULT
     _subseparator : ClassVar          = SUBSEP_DEFAULT
-    _body_types   : ClassVar          = str|UUID|StrangMarker_e|Strang_p
+    _body_types   : ClassVar          = API.BODY_TYPES | API.Strang_p
+    _group_types  : ClassVar          = API.GROUP_TYPES
     _typevar      : ClassVar          = None
     bmark_e       : ClassVar          = StrangMarker_e
     gmark_e       : ClassVar          = int
@@ -130,13 +131,13 @@ class Strang(str, metaclass=StrangMeta):
 
     def __init__(self:Strang_i, *_:Any, **kwargs:Any) -> None:  # noqa: ANN401
         super().__init__()
-        self._mark_idx : tuple[Maybe[int], Maybe[int]] = (None,None)
-        self._base_slices                              = (None,None) # For easy head and body str's
-        self.metadata                                  = dict(kwargs)
-        self._group      : list[slice]                 = []
-        self._body       : list[slice]                 = []
-        self._body_meta  : list[Maybe[API.BODY_TYPES]] = []
-        self._group_meta : list[str]                   = set()
+        self._mark_idx     = (None,None)
+        self._base_slices  = (None,None) # For easy head and body str's
+        self.metadata      = dict(kwargs)
+        self._group        = []       # type: ignore[var-annotated]
+        self._body         = []       # type: ignore[var-annotated]
+        self._body_meta    = []       # type: ignore[var-annotated]
+        self._group_meta   = set()    # type: ignore[var-annotated]
 
     def _post_process(self) -> None:  # noqa: PLR0912
         """

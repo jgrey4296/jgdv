@@ -145,7 +145,7 @@ class CodeReference(Strang):
                 raise
             return err
 
-    def _do_import(self, *, check:Maybe[SpecialType|type]) -> Any:  # noqa: ANN401, PLR0912
+    def _do_import(self, *, check:Maybe[SpecialType|Protocol|type]) -> Any:  # noqa: ANN401, PLR0912
         match self._value:
             case None:
                 try:
@@ -162,11 +162,16 @@ class CodeReference(Strang):
             case _:
                 curr = self._value
 
+        self._check_imported_type(check)
+        return self._value
+
+
+    def _check_imported_type(self, check:Maybe[SpecialType|Protocol|type]) -> None:
         has_mark     = any(x in self for x in [self.gmark_e.fn, self.gmark_e.cls])  # type: ignore[attr-defined]
         is_callable  = callable(self._value)
         is_type      = isinstance(self._value, type)
         if not has_mark:
-            pass
+              pass
         elif self.gmark_e.fn in self and not is_callable:  # type: ignore[attr-defined]
             msg = "Imported 'Function' was not a callable"
             raise ImportError(msg, self._value, self)
@@ -183,17 +188,23 @@ class CodeReference(Strang):
 
         match check:
             case None:
-                return curr
-            case types.UnionType() if isinstance(curr, check):
-                return curr
+                return
+            case types.UnionType() if isinstance(self._value, check):
+                return
             case typing._SpecialForm():
-                raise NotImplementedError("Checking Special Types like generics is not supported yet", check, curr)
+                raise NotImplementedError("Checking Special Types like generics is not supported yet", check, self._value)
             case x if x is Any:
-                return curr
-            case type() as x if (isinstance(curr, x) or issubclass(curr, x)):
-                return curr
-            case ProtoMeta() as x if issubclass(curr, x):
-                return curr
+                return
+            case x if issubclass(x, Protocol):
+                if isinstance(self._value, x):
+                    return
+            case type() as x:
+                try:
+                    match = isinstance(self._value, x)
+                    match |= issubclass(self._value, x)
+                    return
+                except TypeError:
+                    pass
 
         msg = "Imported Code Reference is not of correct type"
         raise ImportError(msg, self, check)

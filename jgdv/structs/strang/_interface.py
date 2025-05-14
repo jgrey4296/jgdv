@@ -94,9 +94,10 @@ GEN_K          : Final[str]                = "gen_uuid"
 STRGET         : Final[Callable]           = str.__getitem__
 
 ##--|
-type BODY_TYPES = str|UUID|StrangMarker_e
-type BodyMark   = type[enum.StrEnum]
-type GroupMark  = type[enum.StrEnum] | type[int]
+type BODY_TYPES  = str|UUID|StrangMarker_e
+type GROUP_TYPES = str
+type BodyMark    = type[enum.StrEnum]
+type GroupMark   = type[enum.StrEnum] | type[int]
 # Body:
 
 ##--|
@@ -179,6 +180,7 @@ class Strang_i(Strang_p, Protocol):
     _separator        : ClassVar[str]
     _subseparator     : ClassVar[str]
     _body_types       : ClassVar[type|UnionType]
+    _group_types      : ClassVar[type|UnionType]
     _typevar          : ClassVar[Maybe[type]]
     bmark_e           : ClassVar[type[enum.StrEnum]]
     gmark_e           : ClassVar[type[enum.Enum]|type[enum.StrEnum]|int]
@@ -189,4 +191,4 @@ class Strang_i(Strang_p, Protocol):
     _group            : list[slice]
     _body             : list[slice]
     _body_meta        : list[Maybe[BODY_TYPES]]
-    _group_meta       : set[str]
+    _group_meta       : set[GROUP_TYPES]

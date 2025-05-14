@@ -65,8 +65,8 @@ class _Strang_cmp_m:
                 return False
             case Strang_p():
                 pass
-            case _:
-                raise NotImplementedError()
+            case x:
+                return False
 
         if not self[0:] == other[0:]:
             return False
