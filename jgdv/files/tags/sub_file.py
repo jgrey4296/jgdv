@@ -116,7 +116,7 @@ class SubstitutionFile(TagFile):
             return True
         return bool(self.substitutions.get(normed, None))
 
-    def update(self, *values:str|tuple|dict|SubstitutionFile|TagFile|set) -> Self:
+    def update(self, *values:str|tuple|dict|SubstitutionFile|TagFile|set) -> Self:  # noqa: PLR0912
         """
         Overrides TagFile.update to handle tuples of (tag, count, replacements*)
         and (tag, replacements*)
@@ -146,16 +146,16 @@ class SubstitutionFile(TagFile):
                     self._add_sub(key, subs)
                 case (str() as key, int() | str() as counts, *subs): # key, count, subs
                     self._add_sub(key, list(subs), count=counts)
-                case SubstitutionFile():
-                    self.update(val.counts)
-                    for tag, subs in val.substitutions.items():
-                        self._add_sub(tag, subs)
+                case SubstitutionFile() as v:
+                    self.update(v.counts)
+                    for tag, xs in v.substitutions.items():
+                        self._add_sub(tag, xs)
                 case TagFile():
-                    self.update(val.counts.items())
+                    self.update(*val.counts.items())
 
         return self
 
-    def _add_sub(self, key:str, subs:list[str], *, count:str|int=1) -> None:
+    def _add_sub(self, key:str, subs:Iterable[str], *, count:str|int=1) -> None:
         match subs:
             case [str() as x] if self.sep in x:
                 subs = x.split(self.sep)
@@ -166,7 +166,10 @@ class SubstitutionFile(TagFile):
         except ValueError:
             count = 1
 
-        norm_key  = self._inc(key, amnt=count)
-        norm_subs = [normed for x in subs if (normed:=self.norm_tag(x)) is not None]
-        self.update({x:1 for x in norm_subs}) # Add to normal counts too
-        self.substitutions[norm_key].update(norm_subs)
+        match self._inc(key, amnt=count):
+            case None:
+                pass
+            case str() as norm_key:
+                norm_subs = [normed for x in subs if (normed:=self.norm_tag(x)) is not None]
+                self.update(dict.fromkeys(norm_subs, 1)) # Add to normal counts too
+                self.substitutions[norm_key].update(norm_subs)

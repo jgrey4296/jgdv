@@ -24,7 +24,6 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-
 # ##-- 1st party imports
 from jgdv.mixins.annotate import SubAnnotate_m
 from jgdv.structs.chainguard import ChainGuard
@@ -39,7 +38,8 @@ from ._base import ParamSpecBase
 import abc
 import collections.abc
 from typing import TYPE_CHECKING, cast, assert_type, assert_never
-from typing import Generic, NewType, Any, Callable
+from typing import Generic, NewType, Any
+from collections.abc import Callable
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
@@ -68,7 +68,7 @@ class AssignParam(ParamSpecBase):
 
     desc : str = "An Assignment Param"
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
         kwargs.setdefault("prefix", "--")
         kwargs.setdefault("separator", "=")
         kwargs.setdefault("type", str)
@@ -78,7 +78,8 @@ class AssignParam(ParamSpecBase):
         """ get the value for a --key=val """
         logging.debug("Getting Key Assignment: %s : %s", self.name, args)
         if self.separator not in args[0]:
-            raise ArgParseError("Assignment param has no assignment", self.separator, args[0])
+            msg = "Assignment param has no assignment"
+            raise ArgParseError(msg, self.separator, args[0])
         key,val = self._split_assignment(args[0])
         return self.name, [val], 1
 
@@ -87,18 +88,22 @@ class WildcardParam(AssignParam):
 
     desc : str = "A Wildcard"
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
         kwargs.setdefault("type", str)
         kwargs['name'] = "*"
         super().__init__(**kwargs)
 
-    def matches_head(self, val) -> bool:
-        return (val.startswith(self.prefix)
-                and self.separator in val)
+    def matches_head(self, val:str) -> bool:
+        assert(isinstance(self.separator, str))
+        match self.prefix:
+            case str() as p:
+                return (val.startswith(p)
+                        and self.separator in val)
+            case _:
+                return False
 
     def next_value(self, args:list) -> tuple[str, list, int]:
         logging.debug("Getting Wildcard Key Assingment: %s", args)
         assert(self.separator in args[0]), (self.separator, args[0])
         key,val = self._split_assignment(args[0])
         return key.removeprefix(self.prefix), [val], 1
-

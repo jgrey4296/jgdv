@@ -95,7 +95,7 @@ class TagFile(BaseModel):
 
     @field_validator("counts", mode="before")
     def _validate_counts(cls, val:dict) -> dict:  # noqa: N805
-        counts = defaultdict(lambda: 0)
+        counts : dict[str, int] = defaultdict(lambda: 0)
         match val:
             case dict():
                 counts.update(val)
@@ -139,13 +139,16 @@ class TagFile(BaseModel):
         return self.norm_tag(value) in self.counts
 
     def _inc(self, key:str, *, amnt:int=1) -> Maybe[str]:
+        """ Increment the count of a key,
+        if the normalized tag is empty, returns nothing
+        """
         norm_key = self.norm_tag(key)
         if not bool(norm_key):
             return None
         self.counts[norm_key] += amnt
         return norm_key
 
-    def update(self, *values:str|TagFile|set|dict) -> Self:
+    def update(self, *values:str|tuple[str,int|str]|TagFile|set|dict) -> Self:
         for val in values:
             match val:
                 case None | "":
@@ -153,7 +156,7 @@ class TagFile(BaseModel):
                 case str() if val.startswith(self.comment):
                     continue
                 case str() if self.sep in val:
-                    self.update(tuple(x.strip() for x in val.split(self.sep)))
+                    self.update(*(x.strip() for x in val.split(self.sep)))
                 case str():
                     self._inc(val)
                 case list() | set():
@@ -164,7 +167,8 @@ class TagFile(BaseModel):
                     self._inc(key, amnt=int(counts))
                 case TagFile():
                     self.update(*val.counts.items())
-        return self
+        else:
+            return self
 
     def to_set(self) -> set[str]:
         return set(self.counts.keys())

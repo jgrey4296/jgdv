@@ -39,7 +39,8 @@ from .._interface import END_SEP
 import abc
 import collections.abc
 from typing import TYPE_CHECKING, cast, assert_type, assert_never
-from typing import Generic, NewType, Any, Callable
+from typing import Generic, NewType, Any
+from collections.abc import Callable
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
@@ -76,7 +77,7 @@ class PositionalParam(ParamSpecBase):
     def key_str(self) -> str:
         return self.name
 
-    def matches_head(self, val) -> bool:
+    def matches_head(self, val:str) -> bool:  # noqa: ARG002
         return True
 
     def next_value(self, args:list) -> tuple[str, list, int]:

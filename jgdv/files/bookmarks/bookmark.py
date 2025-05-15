@@ -2,12 +2,11 @@
 """
 
 """
-
+# ruff: noqa: N805
 # Imports:
 from __future__ import annotations
 
 # ##-- stdlib imports
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -33,8 +32,8 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
 from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+import urllib.parse
 
 if TYPE_CHECKING:
     from jgdv import Maybe, Rx
@@ -44,6 +43,9 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    from jgdv.files.tags import SubstitutionFile
+
     type UrlParseResult = urllib.parse.ParseResult
 
 # isort: on
@@ -60,16 +62,18 @@ class Bookmark(BaseModel):
     _tag_sep         : ClassVar[str]         = " : "
     _tag_norm_re     : ClassVar[Rx]          = re.compile(" +")
 
-    @staticmethod
-    def build(line:str, sep=None):
+    @classmethod
+    def build[T](cls:type[T], line:str, sep:Maybe[str]=None) -> T:
         """
         Build a bookmark from a line of a bookmark file
         """
+        tags : list
         sep  = sep or Bookmark._tag_sep
         tags = []
         match [x.strip() for x in line.split(sep)]:
             case []:
-                raise TypeError("Bad line passed to Bookmark")
+                msg = "Bad line passed to Bookmark"
+                raise TypeError(msg)
             case [url]:
                 logging.warning("No Tags for: %s", url)
             case [url, *tags]:
@@ -80,22 +84,31 @@ class Bookmark(BaseModel):
                         sep=sep)
 
     @field_validator("tags", mode="before")
-    def _validate_tags(cls, val):
+    def _validate_tags(cls, val:list|set|str) -> set:
         match val:
             case list()|set():
                 return { Bookmark._tag_norm_re.sub("_", x.strip()) for x in val }
             case str():
                 return { Bookmark._tag_norm_re.sub("_", x.strip()) for x in val.split(Bookmark._tag_sep) }
             case _:
-                raise ValueError("Unrecognized tags base", val)
+                msg = "Unrecognized tags base"
+                raise ValueError(msg, val)
 
-    def __eq__(self, other):
-        return self.url == other.url
+    def __eq__(self, other:object) -> bool:
+        match other:
+            case Bookmark() as o:
+                return self.url == o.url
+            case _:
+                return False
 
-    def __lt__(self, other):
-        return self.url < other.url
+    def __lt__(self, other:object) -> bool:
+        match other:
+            case Bookmark() as o:
+                return self.url < o.url
+            case _:
+                return False
 
-    def __str__(self):
+    def __str__(self) -> str:
         sep = Bookmark._tag_sep
         tags = sep.join(sorted(self.tags))
         return f"{self.url}{sep}{tags}"
@@ -104,7 +117,7 @@ class Bookmark(BaseModel):
     def url_comps(self) -> UrlParseResult:
         return urllib.parse.urlparse(self.url)
 
-    def merge(self, other) -> Self:
+    def merge(self, other:Bookmark) -> Self:
         """ Merge two bookmarks' tags together,
         creating a new bookmark
         """
@@ -114,12 +127,12 @@ class Bookmark(BaseModel):
                           name=self.name)
         return merged
 
-    def clean(self, subs):
+    def clean(self, subs:SubstitutionFile) -> None:
         """
         run tag substitutions on all tags in the bookmark
         """
         cleaned_tags = set()
         for tag in self.tags:
-            cleaned_tags.add(subs.sub(tag))
+            cleaned_tags.update(subs.sub(tag))
 
         self.tags = cleaned_tags

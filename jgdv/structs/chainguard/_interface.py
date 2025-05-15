@@ -15,7 +15,6 @@ import itertools as itz
 import logging as logmod
 import re
 import time
-import types
 import collections
 import contextlib
 import hashlib
@@ -61,7 +60,7 @@ logging = logmod.getLogger(__name__)
 # Vars:
 type TomlTypes = (str | int | float | bool | list['TomlTypes']
                   | dict[str,'TomlTypes'] | datetime.datetime)
-type ProxyWrapper[T] = callable[[TomlTypes], T]
+type ProxyWrapper[T] = Callable[[TomlTypes], T]
 # Body:
 
 class ChainProxy_p(Protocol):
@@ -81,16 +80,17 @@ class ChainProxy_p(Protocol):
 
 class ProxyEntry_p(Protocol):
 
-    def on_fail(self, fallback:Any, types:Maybe[Any]=None, *, non_root=False) -> ChainProxy_p: ...
+    def on_fail(self, fallback:Any, types:Maybe[Any]=None, *, non_root:bool=False) -> ChainProxy_p: ...  # noqa: ANN401
 
-    def first_of(self, fallback:Any, types:Maybe[Any]=None) -> ChainProxy_p: ...
+    def first_of(self, fallback:Any, types:Maybe[Any]=None) -> ChainProxy_p: ...  # noqa: ANN401
 
-    def all_of(self, fallback:Any, types:Maybe[Any]=None) -> ChainProxy_p: ...
+    def all_of(self, fallback:Any, types:Maybe[Any]=None) -> ChainProxy_p: ...  # noqa: ANN401
 
-    def flatten_on(self, fallback:Any) -> ChainProxy_p: ...
+    def flatten_on(self, fallback:Any) -> ChainProxy_p: ...  # noqa: ANN401
 
     def match_on(self, **kwargs:tuple[str,Any]) -> ChainProxy_p: ...
 
+@runtime_checkable
 class ChainGuard_p(ProxyEntry_p, Mapping_p, Protocol):
     """ The interface for a base ChainGuard object """
 
@@ -113,3 +113,8 @@ class ChainGuard_p(ProxyEntry_p, Mapping_p, Protocol):
     def report_defaulted() -> list[str]: ...
 
     def to_file(self, path:pl.Path) -> None: ...
+
+    def _table(self) -> dict[str,TomlTypes]: ...
+
+class ChainGuard_i(ChainGuard_p, Protocol):
+    pass

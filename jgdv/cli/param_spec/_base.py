@@ -46,7 +46,8 @@ from ._mixins import _ConsumerArg_m, _DefaultsBuilder_m, _ParamNameParser_m
 import abc
 import collections.abc
 from typing import TYPE_CHECKING, cast, assert_type, assert_never
-from typing import Generic, NewType, Any, Callable, Literal
+from typing import Generic, NewType, Any, Literal
+from collections.abc import Callable
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
@@ -76,7 +77,7 @@ class _SortGroups_e(enum.IntEnum):
     last      = 99
 
 ##--|
-PSpecMixins                    = [
+PSpecMixins = [
     SubAnnotate_m,
     _ParamNameParser_m,
     _ConsumerArg_m,
@@ -84,7 +85,7 @@ PSpecMixins                    = [
 ]
 
 @Proto(ParamStruct_p)
-class ParamSpecBase(*PSpecMixins, BaseModel, metaclass=ProtocolModelMeta, arbitrary_types_allowed=True, extra="allow"):
+class ParamSpecBase(*PSpecMixins, BaseModel, arbitrary_types_allowed=True, extra="allow"):
     """ Declarative CLI Parameter Spec.
 
     | Declares the param name (turns into {prefix}{name})

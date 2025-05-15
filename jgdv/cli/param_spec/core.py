@@ -41,7 +41,8 @@ from ._base import ParamSpecBase
 import abc
 import collections.abc
 from typing import TYPE_CHECKING, cast, assert_type, assert_never
-from typing import Generic, NewType, Any, Callable
+from typing import Generic, NewType, Any
+from collections.abc import Callable
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
@@ -129,7 +130,7 @@ class KeyParam(ParamSpecBase):
     def matches_head(self, val) -> bool:
         return val in self.key_strs
 
-    def next_value(self, args:list) -> tuple[list, int]:
+    def next_value(self, args:list) -> tuple[str, list, int]:
         """ get the value for a -key val """
         logging.debug("Getting Key/Value: %s : %s", self.name, args)
         match args:

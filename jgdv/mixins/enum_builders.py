@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 """
 
-
-
 """
 
 ##-- builtin imports
 from __future__ import annotations
 
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -19,16 +16,34 @@ import re
 import time
 import types
 import weakref
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
 from uuid import UUID, uuid1
 
 ##-- end builtin imports
 
+# ##-- types
+# isort: off
+import abc
+import collections.abc
+from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import Generic, NewType, Never
+# Protocols:
+from typing import Protocol, runtime_checkable
+# Typing Decorators:
+from typing import no_type_check, final, override, overload
+
+if TYPE_CHECKING:
+    from jgdv import Maybe
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+##--|
+
+# isort: on
+# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -38,24 +53,27 @@ class EnumBuilder_m:
     """ A Mixin to add a .build(str) method for the enum """
 
     @classmethod
-    def build(cls, val:str, *, strict=True) -> Self:
+    def build[T:enum.EnumMeta](cls:type[T], val:str|T, *, strict:bool=True) -> T:
         try:
             match val:
                 case str():
                     return cls[val]
                 case cls():
                     return val
-        except KeyError as err:
-            logging.warning("Can't Create a flag of (%s):%s. Available: %s", cls, val, list(cls.__members__.keys()))
+                case _:
+                    msg = "Can't create an enum"
+                    raise TypeError(msg, val)
+        except KeyError:
+            logging.warning("Can't Create an enum of (%s):%s. Available: %s", cls, val, list(cls.__members__.keys()))
             if strict:
-                raise err
-
+                raise
+            return T.default
 
 class FlagsBuilder_m:
     """ A Mixin to add a .build(vals) method for EnumFlags """
 
     @classmethod
-    def build(cls, vals:str|list|dict, *, strict=True) -> Self:
+    def build[T:enum.EnumMeta](cls:type[T], vals:str|list|dict, *, strict:bool=True) -> T:
         match vals:
             case str():
                 vals = [vals]
@@ -72,9 +90,9 @@ class FlagsBuilder_m:
                         base |= cls[x]
                     case cls():
                         base |= x
-            except KeyError as err:
+            except KeyError:
                 logging.warning("Can't create a flag of (%s):%s. Available: %s", cls, x, list(cls.__members__.keys()))
                 if strict:
-                    raise err
+                    raise
         else:
             return base

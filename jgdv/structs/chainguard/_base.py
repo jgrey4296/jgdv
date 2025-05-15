@@ -23,7 +23,7 @@ from uuid import UUID, uuid1
 
 from .errors import GuardedAccessError
 from .mixins.access_m import super_get, super_set
-from ._interface import ChainGuard_p
+from . import _interface as API
 from jgdv import Proto
 
 # ##-- types
@@ -60,6 +60,7 @@ logging = logmod.getLogger(__name__)
 type InputData = dict[str, TomlTypes]
 
 ##--|
+
 class GuardBase(dict):
     """
     Provides access to toml data (ChainGuard.load(apath))

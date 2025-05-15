@@ -7,7 +7,6 @@ See EOF for license/metadata/notes as applicable
 ##-- builtin imports
 from __future__ import annotations
 
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -18,12 +17,6 @@ import re
 import time
 import types
 import weakref
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
 from uuid import UUID, uuid1
 
 ##-- end builtin imports
@@ -35,9 +28,13 @@ logging = logmod.getLogger(__name__)
 import pytest
 import os
 import tempfile
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
 
 @pytest.fixture
-def wrap_tmp(tmp_path):
+def wrap_tmp(tmp_path:pl.Path) -> Generator[pl.Path]:
     """ create a new temp directory, and change cwd to it,
       returning to original cwd after the test
       """
