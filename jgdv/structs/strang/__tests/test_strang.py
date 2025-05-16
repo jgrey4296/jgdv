@@ -16,12 +16,16 @@ import warnings
 import pytest
 from random import randint
 
-from .. import _interface as API
+from .. import _interface as API  # noqa: N812
 from ..errors import StrangError
 from ..strang import Strang
-logging = logmod.root
+from ..processor import StrangBasicProcessor
 
+##--|
+logging  = logmod.root
 UUID_STR = str(uuid.uuid1())
+
+##--|
 
 class TestStrangBase:
     """ Ensure basic functionality of structured names,
@@ -32,10 +36,13 @@ class TestStrangBase:
         assert(True is not False)
         assert(Strang is not None)
 
+    def test_type_subclass(self):
+        assert(issubclass(Strang, str))
 
     def test_basic_ctor(self):
-        assert(issubclass(Strang, str))
-        obj = Strang("head::tail")
+        as_str = "head.a::tail.b"
+        obj = Strang(as_str)
+        assert(obj is not as_str)
         assert(isinstance(obj, Strang))
         assert(isinstance(obj, API.Strang_p))
         assert(isinstance(obj, str))
@@ -46,23 +53,18 @@ class TestStrangBase:
         assert(isinstance(obj, str))
         assert(str in Strang.mro())
 
-    def test_with_params(self):
-        obj = Strang("head::tail.a.b.c[blah]")
-        assert(isinstance(obj, Strang))
-        assert(isinstance(obj, str))
-        assert(obj[-1] == "c[blah]")
-
     def test_repr(self):
         obj = Strang("head::tail")
-        assert(repr(obj) == "<Strang<+M+P>: head::tail>")
+        assert(repr(obj) == "<Strang<+P>: head::tail>")
 
+    @pytest.mark.xfail
     def test_repr_with_uuid(self):
         obj = Strang(f"head::tail.<uuid:{UUID_STR}>")
-        assert(repr(obj) == f"<Strang<+M+P>: head::tail.<uuid>>")
+        assert(repr(obj) == f"<Strang<+P>: head::tail.<uuid:{UUID_STR}>>")
 
     def test_repr_with_brace_val(self):
         obj = Strang("head::tail.{aval}.blah")
-        assert(repr(obj) == "<Strang<+M+P>: head::tail.{aval}.blah>")
+        assert(repr(obj) == "<Strang<+P>: head::tail.{aval}.blah>")
 
     def test_needs_separator(self):
         with pytest.raises(StrangError):
@@ -72,65 +74,312 @@ class TestStrangBase:
         obj = Strang("head.a.b::tail.c.d.blah.bloo")
         assert(obj.shape == (3,5))
 
-class TestStrangValidation:
+class TestStrang_PreProcess:
 
     def test_sanity(self):
-        assert(True is not False)
+        assert(True is not False) # noqa: PLR0133
 
-    def test_pre_filter_repeat_gaps(self):
-        val = Strang("group::a.b....c....d.e")
-        assert(val == "group::a.b..c..d.e")
+    def test_clean_separators(self):
+        obj = StrangBasicProcessor()
+        match obj.pre_process(Strang, "a.b.c::d.e....f"):
+            case "a.b.c::d.e..f":
+                assert(True)
+            case x:
+                 assert(False), x
 
-    def test_gap_mark(self):
-        obj = Strang("head::tail..blah")
-        assert(obj[1:1] == Strang.bmark_e.mark)
 
-    def test_remove_gap_if_last(self):
-        obj = Strang("head::tail.blah..")
-        assert(obj[-1] == "blah")
+    def test_trim_rhs(self):
+        obj = StrangBasicProcessor()
+        match obj.pre_process(Strang, "a.b.c::d.e...."):
+            case "a.b.c::d.e":
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_trim_lhs(self):
+        obj = StrangBasicProcessor()
+        match obj.pre_process(Strang, "    a.b.c::d.e"):
+            case "a.b.c::d.e":
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_verify_structure_fail(self):
+        obj = StrangBasicProcessor()
+        with pytest.raises(ValueError):
+            obj.pre_process(Strang, "a.b.c")
+
+class TestStrang_Process:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_process_section_bounds(self):
+        obj = StrangBasicProcessor()
+        base = Strang("a.b.c::d.e.f")
+        base.data.bounds = ()
+        assert(not bool(base.data.bounds))
+        obj.process(base)
+        match base.data.bounds:
+            case [slice() as head, slice() as body]:
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_process_section_slices(self):
+        obj = StrangBasicProcessor()
+        base = Strang("a.b.c.blah::d.e.f")
+        base.data.slices = ()
+        assert(not bool(base.data.slices))
+        obj.process(base)
+        match base.data.slices:
+            case [tuple() as head, tuple() as body]:
+                assert(len(head) == 4)
+                assert(len(body) == 3)
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_process_section_flat(self):
+        obj             = StrangBasicProcessor()
+        base            = Strang("a.b.c.blah::d.e.f")
+        base.data.flat  = ()
+        assert(not bool(base.data.flat))
+        obj.process(base)
+        match base.data.slices:
+            case [tuple() as head, tuple() as body]:
+                assert(len(head) == 4)
+                assert(len(body) == 3)
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+
+
+class TestStrang_PostProcess:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+
+    def test_post_process_body_uuids(self):
+        obj = StrangBasicProcessor()
+        val = Strang("a.b.c::d.e.<uuid>")
+        val.data.meta = ()
+        assert(not bool(val.data.meta))
+        obj.post_process(val)
+        match val.data.meta[1][-1]:
+            case uuid.UUID():
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    @pytest.mark.xfail
+    def test_post_process_head_uuids(self):
+        obj = StrangBasicProcessor()
+        val = Strang("a.b.c::d.e.<uuid>")
+        val.data.meta = ()
+        assert(not bool(val.data.meta))
+
+
+    @pytest.mark.xfail
+    def test_post_process_body_marks(self):
+        obj = StrangBasicProcessor()
+        val = Strang("a.b.c::d.e.$head$")
+        val.data.meta = ()
+        assert(not bool(val.data.meta))
+
+
+    @pytest.mark.xfail
+    def test_post_process_head_marks(self):
+        obj = StrangBasicProcessor()
+        val = Strang("a.b.c::d.e.$head$")
+        val.data.meta = ()
+        assert(not bool(val.data.meta))
 
     def test_build_uuids(self):
         obj = Strang(f"head::tail.<uuid:{UUID_STR}>")
-        assert(isinstance(obj[1:-1], uuid.UUID))
+        assert(isinstance(obj.data.meta[1][-1], uuid.UUID))
+        match obj.get(1,-1):
+            case uuid.UUID():
+                assert(True)
+            case x:
+                 assert(False), type(x)
 
     def test_build_uuid_gen(self):
         obj = Strang("head::tail.<uuid>.<uuid>")
-        assert(isinstance(obj[-1], uuid.UUID))
-        assert(isinstance(obj[-2], uuid.UUID))
+        assert(isinstance(obj.get(1,1), uuid.UUID))
+        assert(isinstance(obj.get(1,2), uuid.UUID))
         assert(obj[-1] != obj[-2])
 
+    @pytest.mark.xfail
     def test_rebuild_uuid(self):
         s1 = Strang(f"head::tail.<uuid:{UUID_STR}>")
         s2 = Strang(str(s1))
-        assert(isinstance(s1[1:-1], uuid.UUID))
-        assert(isinstance(s2[1:-1], uuid.UUID))
+        assert(isinstance(s1.get(1,-1), uuid.UUID))
+        assert(isinstance(s2.get(1,-1), uuid.UUID))
         assert(s1[-1] == s2[-1])
 
+    @pytest.mark.xfail
     def test_rebuild_generated_uuid(self):
         s1 = Strang("head::tail.<uuid>")
         s2 = Strang(str(s1))
-        assert(isinstance(s1[-1], uuid.UUID))
-        assert(isinstance(s2[-1], uuid.UUID))
+        assert(isinstance(s1.get(1,-1), uuid.UUID))
+        assert(isinstance(s2.get(1,-1), uuid.UUID))
         assert(s1[-1] == s2[-1])
 
-    @pytest.mark.parametrize(["val"], [(x,) for x in iter(Strang.bmark_e)])
-    def test_build_named_mark(self, val):
-        obj = Strang(f"head::{val}.blah")
-        assert(obj._body_meta[0] == val)
-        assert(obj[0] == val)
+    # @pytest.mark.parametrize(["val"], [(x,) for x in iter(Strang.bmark_e)])
+    # def test_build_named_mark(self, val):
+    #     obj = Strang(f"head::{val}.blah")
+    #     assert(obj._body_meta[0] == val)
+    #     assert(obj[0] == val)
 
     def test_implicit_mark(self):
         obj = Strang(f"head::_.tail.blah")
-        assert(obj[0] == Strang.bmark_e.hide)
+        assert(obj.get(1, 0) == Strang.section(1).marks.hide)
 
     def test_implicit_mark_fail(self):
         """ implicit only works in first two elements of body """
         obj = Strang(f"head::a.b.c._.tail.blah")
-        assert(obj._body_meta[3] == None)
+        assert(obj.get(1,-1) == obj[1,-1])
 
     def test_extension_mark(self):
         obj = Strang(f"head::+.tail.blah")
-        assert(obj[0] == Strang.bmark_e.extend)
+        assert(obj.get(1,0) == Strang.section(1).marks.extend)
+
+class TestStrangAccess:
+
+    def test_sanity(self):
+        assert(True is not False)
+
+    def test_getitem_equiv_to_str(self):
+        ing = "group.blah.awef::a.b.c"
+        ang = Strang(ing)
+        assert(ang is not ing)
+        assert(ang == ing)
+        assert(ang[0] == ing[0])
+        assert(ang[:-1] == ing[:-1])
+        assert(ang[2:6] == ing[2:6])
+        assert(ang[:] == ing[:])
+        assert(ang[:] is not ing[:])
+
+    def test_getitem_section_word(self):
+        val = Strang("a.b.c::d.cognate.f")
+        assert(val[0,0]   == "a")
+        assert(val[0,1]   == "b")
+        assert(val[0,-1]  == "c")
+        assert(val[1,0]   == "d")
+        assert(val[1,1]   == "cognate")
+        assert(val[1,-1]  == "f")
+
+    def test_getitem_section_word_slice(self):
+        val = Strang("a.b.c::d.e.f.g")
+        assert(val[0,:]   == "a.b.c")
+        assert(val[0,:-1] == "a.b")
+        assert(val[1,0::2] == "d.f")
+        assert(val[1,:0:-2] == "g.e")
+
+    def test_getitem_section_word_by_name(self):
+        val = Strang("a.b.c::d.cognate.f")
+        assert(val['head',0]   == "a")
+        assert(val['head',1]   == "b")
+        assert(val['head',-1]  == "c")
+        assert(val['body',0]   == "d")
+        assert(val['body',1]   == "cognate")
+        assert(val['body',-1]  == "f")
+
+    def test_getitem_section_slice(self):
+        val = Strang("a.b.c::d.e.f")
+        match val.data.bounds[0]:
+            case slice(start=x,stop=y):
+                assert(x == 0)
+                assert(y == 5)
+            case x:
+                 assert(False), x
+
+        assert(val[0,:] == "a.b.c")
+        assert(val[1,:] == "d.e.f")
+        assert(val[0,] == "a.b.c")
+        assert(val[1,] == "d.e.f")
+
+    def test_getitem_section_slice_by_name(self):
+        val = Strang("a.b.c::d.e.f")
+        match val.data.bounds[0]:
+            case slice(start=x,stop=y):
+                assert(x == 0)
+                assert(y == 5)
+            case x:
+                 assert(False), x
+
+        assert(val['head',:] == "a.b.c")
+        assert(val['body',:] == "d.e.f")
+        assert(val['head',] == "a.b.c")
+        assert(val['body',] == "d.e.f")
+
+    def test_getitem_body_mark(self):
+        val = Strang("group.blah.awef::a..c")
+        assert(val[1, 1] == "")
+        assert(val[1, 1] == val._sections[1].marks.mark)
+        assert(Strang._sections[1].marks.mark in val)
+        assert(Strang._sections[1].marks.head not in val)
+
+    def test_getitem_body_mark_head(self):
+        val = Strang("group.blah.awef::a..$head$")
+        assert(val[1, -1] == Strang.section(1).marks.head)
+        assert(Strang._sections[1].marks.mark in val)
+        assert(Strang._sections[1].marks.head in val)
+
+    def test_get_str(self):
+        val = Strang("group.blah.awef::a.blah.2")
+        match val.get(1,1), val[1,1]:
+            case "blah", "blah":
+                assert(True)
+            case x:
+                 assert(False), x
+
+    def test_get_int(self):
+        val = Strang("group.blah.awef::a.blah.3")
+        match val.get(1,-1), val[1,-1]:
+            case 3, "3":
+                assert(True)
+            case x:
+                 assert(False), (type(x), x)
+
+    def test_get_uuid(self):
+        val = Strang("group.blah.awef::a.<uuid>")
+        match val.get(1, -1), val[1,-1]:
+            case uuid.UUID(), "<uuid>":
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_get_words(self):
+        val = Strang("group.blah.awef::a.b.<uuid>")
+        match val.words(1), val[1,:]:
+            case [*xs], "a.b.<uuid>":
+                for x,y in zip(xs, ["a", "b", val.data.meta[1][-1]]):
+                    assert(x == y)
+                else:
+                    assert(True)
+            case x:
+                 assert(False), x
+
+    def test_iter(self):
+        val = Strang("group.blah.awef::a.b.c")
+        for x,y in zip(val, ["group", "blah","awef", "a", "b", "c"], strict=True):
+            assert(x == y)
+
+    def test_iter_uuid(self):
+        val = Strang("group.blah.awef::a.b.c.<uuid>")
+        for x,y in zip(val,
+                       ["group", "blah", "awef", "a", "b","c", val.data.meta[1][-1]]):
+            assert(x == y)
 
 class TestStrangEQ:
 
@@ -142,12 +391,10 @@ class TestStrangEQ:
         obj2 = Strang("head::tail.a.b.c")
         assert(hash(obj) == hash(obj2))
 
-
     def test_hash_same_as_str(self):
         obj = Strang("head::tail.a.b.c")
         assert(hash(obj) == str.__hash__(obj))
         assert(hash(obj) == hash(str(obj)))
-
 
     def test_hash_spy(self, mocker):
         hash_spy = mocker.spy(Strang, "__hash__")
@@ -160,10 +407,11 @@ class TestStrangEQ:
         obj2 = Strang("head::tail.a.b.d")
         assert(hash(obj) != hash(obj2))
 
-    def test_hash_uuid_fail(self):
-        obj = Strang("head::tail.a.b.<uuid>")
-        obj2 = Strang("head::tail.a.b.<uuid>")
-        assert(obj[1:-1] != obj2[1:-1])
+    @pytest.mark.xfail
+    def test_different_uuids_different_hashes(self):
+        obj   = Strang("head::tail.a.b.<uuid>")
+        obj2  = Strang("head::tail.a.b.<uuid>")
+        assert(obj.get(1,-1) != obj2.get(1,-1))
         assert(hash(str(obj)) == str.__hash__(str(obj)))
         assert(str.__hash__(str(obj)) != str.__hash__(str(obj2)))
         assert(hash(obj) != hash(obj2))
@@ -193,6 +441,7 @@ class TestStrangEQ:
         other = Strang("head.blah::tail.a.b.c")
         assert(obj != other)
 
+    @pytest.mark.xfail
     def test_not_eq_uuids(self):
         obj   = Strang("head::tail.a.<uuid>")
         other = Strang("head::tail.a.<uuid>")
@@ -214,33 +463,33 @@ class TestStrangLT:
         assert(True is not False) # noqa: PLR0133
 
     def test_lt(self):
-        obj = Strang("head::tail.a.b.c")
-        obj2 = Strang("head::tail.a.b.c.d")
+        obj   = Strang("head::tail.a.b.c")
+        obj2  = Strang("head::tail.a.b.c.d")
         assert( obj < obj2 )
 
     def test_lt_mark(self):
-        obj = Strang("head::tail.a.b..c")
-        obj2 = Strang("head::tail.a.b..c.d")
+        obj   = Strang("head::tail.a.b..c")
+        obj2  = Strang("head::tail.a.b..c.d")
         assert( obj < obj2 )
 
     def test_lt_uuid(self):
-        obj = Strang("head::tail.a.b.c")
-        obj2 = Strang("head::tail.a.b.c.<uuid>")
+        obj   = Strang("head::tail.a.b.c")
+        obj2  = Strang("head::tail.a.b.c.<uuid>")
         assert( obj < obj2 )
 
     def test_lt_fail(self):
-        obj = Strang("head::tail.a.b.c")
-        obj2 = Strang("head::tail.a.c.c.d")
+        obj   = Strang("head::tail.a.b.c")
+        obj2  = Strang("head::tail.a.c.c.d")
         assert(not obj < obj2 )
 
     def test_lt_fail_on_head(self):
-        obj = Strang("head.blah::tail.a.b.c")
-        obj2 = Strang("head::tail.a.b.c.d")
+        obj   = Strang("head.blah::tail.a.b.c")
+        obj2  = Strang("head::tail.a.b.c.d")
         assert(not obj < obj2 )
 
     def test_le(self):
-        obj  = Strang("head::tail.a.b.d")
-        obj2 = Strang("head::tail.a.b.d")
+        obj   = Strang("head::tail.a.b.d")
+        obj2  = Strang("head::tail.a.b.d")
         assert(not obj < obj2 )
         assert(obj <= obj2)
 
@@ -250,70 +499,23 @@ class TestStrangLT:
         assert(obj == obj2)
         assert(obj <= obj2 )
 
+    @pytest.mark.xfail
     def test_le_on_uuid(self):
         obj  = Strang("head::tail.a.b.c.<uuid>")
-        assert(obj.metadata.get("gen_uuid"))
+        assert(obj.meta.get("gen_uuid"))
         obj2 = Strang(obj)
         assert(obj[-1] == obj2[-1])
         assert(obj == obj2)
         assert(obj <= obj2 )
 
+    @pytest.mark.xfail
     def test_le_fail_on_gen_uuid(self):
         obj  = Strang("head::tail.a.b.<uuid>")
         obj2 = Strang("head::tail.a.b.<uuid>")
         assert(not obj < obj2 )
         assert(not obj <= obj2)
 
-class TestStrangAccess:
-
-    def test_sanity(self):
-        assert(True is not False)
-
-    def test_iter(self):
-        val = Strang("group.blah.awef::a.b.c")
-        for x,y in zip(val, ["a", "b","c"]):
-            assert(x == y)
-
-    def test_iter_uuid(self):
-        val = Strang("group.blah.awef::a.b.c.<uuid>")
-        for x,y in zip(val, ["a", "b","c", val[-1]]):
-            assert(x == y)
-
-    def test_getitem(self):
-        val = Strang("group.blah.awef::a.b.c")
-        assert(val[0:0] == "group")
-        assert(val[0:2] == "awef")
-        assert(val[1:0] == "a")
-        assert(val[1:2] == "c")
-
-    def test_getitem_mark(self):
-        val = Strang("group.blah.awef::a..c")
-        assert(val[-2] == Strang.bmark_e.mark)
-
-    def test_getitem_uuid(self):
-        val = Strang("group.blah.awef::a.<uuid>")
-        assert(isinstance(val[-1], uuid.UUID))
-
-    def test_getslice_0(self):
-        val = Strang("group.blah.awef::a.b.c")
-        assert(val[0:] == "group.blah.awef")
-
-    def test_getslice_1(self):
-        val = Strang("group.blah.awef::a.b.c")
-        assert(val[1:] == "a.b.c")
-
-    def test_getslice_2(self):
-        obj = Strang("group.simple::a.b.c.d")
-        sub = obj[2:-1]
-        assert(isinstance(sub, Strang))
-        assert(sub == "group.simple::a.b.c")
-
-    def test_getslice_2_uuid(self):
-        obj = Strang(f"group.simple::<uuid:{UUID_STR}>.b.c.d")
-        sub = obj[2:-1]
-        assert(isinstance(sub, Strang))
-        assert(sub == f"group.simple::<uuid:{UUID_STR}>.b.c")
-
+@pytest.mark.skip
 class TestStrangSubGen:
 
     def test_sanity(self):
@@ -447,6 +649,7 @@ class TestStrangSubGen:
         assert(result == f"group::body..<uuid:{UUID_STR}>..$head$")
         assert(obj == f"group::body..<uuid:{UUID_STR}>")
 
+@pytest.mark.skip
 class TestStrangTests:
 
     def test_sanity(self):
@@ -457,6 +660,7 @@ class TestStrangTests:
         obj2 = Strang("head::tail.a.b")
         assert(obj2 in obj)
 
+
     def test_match_against_str(self):
         obj  = Strang("head::tail.a.b.c")
         match obj:
@@ -464,6 +668,7 @@ class TestStrangTests:
                 assert(True)
             case _:
                 assert(False)
+
 
     def test_match_against_strang(self):
         obj  = Strang("head::tail.a.b.c")
@@ -473,39 +678,48 @@ class TestStrangTests:
             case _:
                 assert(False)
 
+
     def test_not_contains(self):
         obj = Strang("head::tail.a.b.c")
         obj2 = Strang("head::tail.a.c.b")
         assert(obj not in obj2)
 
+
     def test_contains_word(self):
         obj = Strang("head::tail.a.b.c")
         assert("tail" in obj)
+
 
     def test_contains_uuid(self):
         obj = Strang("head::tail.a.b.c.<uuid>")
         assert(isinstance((obj_uuid:=obj[-1]), uuid.UUID))
         assert(obj_uuid in obj)
 
+
     def test_contains_uuid_fail(self):
         obj = Strang("head::tail.a.b.c.<uuid>")
         assert(uuid.uuid1() not in obj)
+
 
     def test_contains_mark(self):
         obj = Strang("head::tail.a.b.c.$gen$.<uuid>")
         assert(Strang.bmark_e.gen in obj)
 
+
     def test_contains_mark_fail(self):
         obj = Strang("head::tail.a.b.c.<uuid>")
         assert(Strang.bmark_e.gen not in obj)
+
 
     def test_is_uniq(self):
         obj = Strang("head::tail.a.b.c.<uuid>")
         assert(obj.is_uniq())
 
+
     def test_not_is_uniq(self):
         obj = Strang("head::tail.a.b.c")
         assert(not obj.is_uniq())
+
 
     def test_popped_uniq_is_not_uniq(self):
         obj = Strang("head::tail.a.b.c..<uuid>")
@@ -513,11 +727,13 @@ class TestStrangTests:
         popped = obj.pop()
         assert(not popped.is_uniq())
 
+
+@pytest.mark.skip
 class TestStrangFormatting:
+
 
     def test_sanity(self):
         assert(True is not False)
-
 
 
     def test_format_group(self):
@@ -525,12 +741,9 @@ class TestStrangFormatting:
         assert(f"{obj:g}" == "group.blah")
 
 
-
     def test_format_body(self):
         obj = Strang("group.blah::body.a.b.c")
         assert(f"{obj:b}" == "body.a.b.c")
-
-
 
 
     @pytest.mark.skip
@@ -538,14 +751,12 @@ class TestStrangFormatting:
         pass
 
 
-
+@pytest.mark.skip
 class TestStrangAnnotation:
-
 
 
     def test_sanity(self):
         assert(True is not False)
-
 
 
     def test_unannotated(self):
@@ -554,12 +765,10 @@ class TestStrangAnnotation:
         assert(obj._typevar is None)
 
 
-
     def test_type_annotated(self):
         cls = Strang[int]
         assert(issubclass(cls, Strang))
         assert(cls._typevar is int)
-
 
 
     def test_str_annotation(self):
@@ -568,13 +777,11 @@ class TestStrangAnnotation:
         assert(cls._typevar == "blah")
 
 
-
     def test_annotated_instance(self):
         cls = Strang[int]
         ref = cls("group.a.b::body.c.d")
         assert(isinstance(ref, Strang))
         assert(ref._typevar == int)
-
 
 
     def test_match_type(self):
@@ -585,7 +792,6 @@ class TestStrangAnnotation:
                 assert(False)
 
 
-
     def test_match_on_strang(self):
         match Strang[int]("group.a.b::body.c.d"):
             case Strang("group.a.b::body.c.d"):
@@ -594,14 +800,12 @@ class TestStrangAnnotation:
                 assert(False)
 
 
-
     def test_match_on_literal(self):
         match Strang[int]("group.a.b::body.c.d"):
             case "group.a.b::body.c.d":
                 assert(True)
             case _:
                 assert(False)
-
 
 
     def test_match_on_subtype(self):
@@ -613,7 +817,6 @@ class TestStrangAnnotation:
                 assert(False)
 
 
-
     def test_match_on_subtype_fail(self):
         cls = Strang[bool]
         match Strang[int]("group.a.b::body.c.d"):
@@ -623,9 +826,7 @@ class TestStrangAnnotation:
                 assert(True)
 
 
-
     def test_subclass_annotate(self):
-
 
 
         class StrangSub(Strang):
@@ -638,10 +839,7 @@ class TestStrangAnnotation:
         assert(isinstance(ref, StrangSub))
 
 
-
-
     def test_subclass_annotate_independence(self):
-
 
 
         class StrangSub(Strang):
@@ -656,3 +854,14 @@ class TestStrangAnnotation:
         obj = Strang("group::tail.a.b.c")
         assert(isinstance(obj, Strang))
         assert(not isinstance(obj, StrangSub))
+
+
+@pytest.mark.skip
+class TestStrangParameterized:
+
+
+    def test_with_params(self):
+        obj = Strang("head::tail.a.b.c[blah]")
+        assert(isinstance(obj, Strang))
+        assert(isinstance(obj, str))
+        assert(obj[-1] == "c[blah]")

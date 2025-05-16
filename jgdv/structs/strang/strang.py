@@ -1,9 +1,8 @@
-#!/usr/bin/env python3
+ #!/usr/bin/env python3
 """
 
 """
 # ruff: noqa: B019, PLR2004
-# mypy: disable-error-code="attr-defined,misc,override"
 # Imports:
 from __future__ import annotations
 
@@ -18,7 +17,7 @@ import re
 import time
 import types
 import weakref
-from uuid import UUID, uuid1
+from uuid import uuid1
 
 # ##-- end stdlib imports
 
@@ -27,11 +26,10 @@ from jgdv import Mixin, Proto
 
 # ##-- end 1st party imports
 
-from . import _mixins as s_mix
+from .processor import StrangBasicProcessor
+from .formatter import StrangFormatter
 from . import errors
-from ._interface import (FMT_PATTERN, GEN_K, INST_K, MARK_RE, SEP_DEFAULT,
-                         STRGET, SUBSEP_DEFAULT, UUID_RE, Strang_i, Strang_p,
-                         StrangMarker_e)
+from . import _interface as API # noqa: N812
 from ._meta import StrangMeta
 
 # ##-- types
@@ -44,10 +42,10 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-from . import _interface as API  # noqa: N812
+import enum
+from uuid import UUID
 
 if TYPE_CHECKING:
-    import enum
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -62,7 +60,7 @@ if TYPE_CHECKING:
 
 ##-- logging
 logging = logmod.getLogger(__name__)
-logging.disabled = True
+logging.disabled = False
 ##-- end logging
 
 type BodyMark  = type[enum.StrEnum]
@@ -70,33 +68,8 @@ type GroupMark = type[enum.StrEnum] | type[int]
 
 ##--|
 
-class StrangBuilder_m:
-
-    @staticmethod
-    def build(data:str, *args:Any, **kwargs:Any) -> Strang:  # noqa: ANN401
-        """ Build an appropriate Strang subclass else a Strang,
-        goes from newest to oldest.
-
-        eg: For when you might have a Location or a Name, and want to try to build both
-        """
-        for sub in StrangMeta._forms[::-1]:
-            if sub._typevar is not None:
-                # Skip annotated types for now
-                continue
-            try:
-                return sub(data, *args, strict=True, **kwargs)
-            except (errors.StrangError, ValueError, KeyError):
-                pass
-        else:
-            return Strang(data, *args, **kwargs) # type: ignore
-        ##--|
-
-##--|
-
-@Proto(Strang_i, mod_mro=False)
-@Mixin(*s_mix.PreStrang_m.mro(), *s_mix.PostStrang_m.mro(), allow_inheritance=True)
+@Proto(API.Strang_i, mod_mro=False)
 class Strang(str, metaclass=StrangMeta):
-
     """ A Structured String Baseclass.
 
     A Normal str, but is parsed on construction to extract and validate
@@ -116,94 +89,93 @@ class Strang(str, metaclass=StrangMeta):
         val[1] # d.e.f
 
     """
-
-    _separator    : ClassVar          = SEP_DEFAULT
-    _subseparator : ClassVar          = SUBSEP_DEFAULT
-    _body_types   : ClassVar          = API.BODY_TYPES | API.Strang_p
-    _group_types  : ClassVar          = API.GROUP_TYPES
+    __slots__ = ("data", "meta")
+    ##--|
+    _processor    : ClassVar          = StrangBasicProcessor()
+    _formatter    : ClassVar          = StrangFormatter()
+    _sections     : ClassVar          = API.StrangSections(
+        ("head", API.WORD_DEFAULT, API.SEP_DEFAULT, API.BODY_TYPES | API.Strang_p, API.StrangMarker_e, True),
+        ("body", API.WORD_DEFAULT, None, API.GROUP_TYPES, API.StrangMarker_e, True),
+    )
     _typevar      : ClassVar          = None
-    bmark_e       : ClassVar          = StrangMarker_e
-    gmark_e       : ClassVar          = int
+
 
     @classmethod
-    def __init_subclass__(cls, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
-        StrangMeta._forms.append(cls)
+    def section(cls, arg:Maybe[int|str]=None) -> API.StrangSection:
+        if arg:
+            return cls._sections[arg]
+        return cls._sections
 
-    def __init__(self:Strang_i, *_:Any, **kwargs:Any) -> None:  # noqa: ANN401
+    @classmethod
+    def __init_subclass__[T:API.Strang_i](cls:type[T], *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
+        StrangMeta.register(cls)
+
+    ##--|
+
+    def __init__(self:API.Strang_i, *_:Any, **kwargs:Any) -> None:  # noqa: ANN401
         super().__init__()
-        self._mark_idx     = (None,None)
-        self._base_slices  = (None,None) # For easy head and body str's
-        self.metadata      = dict(kwargs)
-        self._group        = []       # type: ignore[var-annotated]
-        self._body         = []       # type: ignore[var-annotated]
-        self._body_meta    = []       # type: ignore[var-annotated]
-        self._group_meta   = set()    # type: ignore[var-annotated]
+        self.meta          = dict(kwargs)
+        self.data         = API.Strang_d()
 
-    def _post_process(self) -> None:  # noqa: PLR0912
-        """
-        go through body elements, and parse UUIDs, markers, param
-        setting self._body_meta and self._mark_idx
-        """
-        logging.debug("Post-processing Strang: %s", str.__str__(self))
-        max_body        : int                    = len(self._body) # type: ignore
-        self._body_meta = [None for x in range(max_body)]
-        mark_idx        : tuple[int, int]        = (max_body, -1)
-        for i, elem in enumerate(self.body()):
-            match elem:
-                case x if (match:=UUID_RE.match(x)):
-                    self.metadata[INST_K] = min(i, self.metadata.get(INST_K, max_body)) # type: ignore
-                    hex, *_ = match.groups()  # noqa: A001
-                    self.metadata[GEN_K] = True # type: ignore
-                    if hex is not None:
-                        logging.debug("(%s) Found UUID", i)
-                        self._body_meta[i] = UUID(match[1])
-                    else:
-                        logging.debug("(%s) Generating UUID", i)
-                        self._body_meta[i] = uuid1()
-                case x if (match:=MARK_RE.match(x)) and (x_l:=match[1].lower()) in self.bmark_e.__members__:
-                    # Get explicit mark,
-                    logging.debug("(%s) Found Named Marker: %s", i, x_l)
-                    self._body_meta[i] = self.bmark_e[x_l]  # type: ignore[index]
-                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
-                case "_" if i < 2: # _ and + coexist
-                    self._body_meta[i] = self.bmark_e.hide
-                    mark_idx = (mark_idx[0], max(mark_idx[1], i))
-                case "+" if i < 2: # _ and + coexist
-                    self._body_meta[i] = self.bmark_e.extend
-                    mark_idx = (mark_idx[0], max(mark_idx[1], i))
-                case "":
-                    self._body_meta[i] = self.bmark_e.mark
-                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i))
-                case _:
-                    self._body_meta[i] = None
-        else:
-            # Set the root and last mark_idx for popping
-            match mark_idx:
-                case (int() as x, -1):
-                    assert(isinstance(x, int))
-                    self._mark_idx = (x, x)
-                case (int() as x, 0):
-                    assert(isinstance(x, int))
-                    self._mark_idx = (x, x)
-                case (int() as x, int() as y):
-                    assert(isinstance(x, int))
-                    assert(isinstance(y, int))
-                    self._mark_idx = (x, y)
+    ##--| dunders
 
     def __str__(self) -> str:
-        match self.metadata.get(GEN_K, False):
-            case False:
-                return str.__str__(self)
-            case _:
-                return self._expanded_str()
+        if API.INST_K in self.meta:
+            raise TypeError("Building a string of a strang with a UUID")
+        return str.__str__(self)
 
     def __repr__(self) -> str:
-        body = self._subjoin(self.body(no_expansion=True))
-        cls = self.__class__.__name__
-        return f"<{cls}: {self[0:]}{self._separator}{body}>"
+        body = str(self)
+        cls  = self.__class__.__name__
+        return f"<{cls}: {body}>"
+
+    def __format__(self:API.Strang_i, spec:str) -> str:
+        """ Basic formatting  """
+        match spec:
+            case "g":
+                val = self[0:]
+                assert(isinstance(val, str))
+                return val
+            case "b":
+                val = self[1:]
+                assert(isinstance(val, str))
+                return val
+            case _:
+                return super().__format__(spec)
 
     def __hash__(self) -> int:
         return str.__hash__(str(self))
+
+    def __lt__(self:API.Strang_i, other:object) -> bool:
+        match other:
+            case API.Strang_p() | str() as x if not len(self) < len(x):
+                logging.debug("Length mismatch")
+                return False
+            case API.Strang_p():
+                pass
+            case x:
+                logging.debug("Type failure")
+                return False
+
+        if not self[0,:] == other[0,:]:
+            logging.debug("head mismatch")
+            return False
+
+        for x,y in zip(self.words(1), other.words(1), strict=False):
+            if x != y:
+                logging.debug("Faileid on: %s : %s", x, y)
+                return False
+
+        return True
+
+    def __le__(self:API.Strang_i, other:object) -> bool:
+        match other:
+            case API.Strang_p() as x:
+                return hash(self) == hash(other) or (self < x) # type: ignore
+            case str():
+                return hash(self) == hash(other)
+            case x:
+                raise TypeError(type(x))
 
     def __eq__(self, other:object) -> bool:
         return hash(self) == hash(other)
@@ -211,68 +183,216 @@ class Strang(str, metaclass=StrangMeta):
     def __ne__(self, other:object) -> bool:
         return not self == other
 
-    def __iter__(self) -> Iterator[Strang._body_types]:
-        """ iterate the body *not* the group """
-        for x in range(len(self._body)):
-            yield self[x]
+    def __iter__[T:API.Strang_i](self:T) -> Iterator:
+        """ iterate over words """
+        for s in range(len(self.section())):
+            for x in range(len(self.data.slices[s])):
+                yield self.get(s, x)
 
-    def __getitem__(self, i:int|slice) -> Strang._body_types:  # noqa: PLR0911
+    def __getitem__(self, args:int|slice) -> str|API.Strang_i: # type: ignore[override]  # noqa: PLR0912
         """
-        strang[x] -> get a body obj or str
-        strang[0:x] -> a head str
-        strang[0:] -> the entire head str
-        strang[1:x] -> a body obj
-        strang[1:] -> the entire body str
-        strang[2:x] -> clone up to x of body
+        Access sections and words of a Strang,
+        by name or index.
+
+        val = Strang('a.b.c::d.e.f')
+        val[:]          -> (val2:=a.b.c::d.e.f) is not val
+        val[0,:]        -> a.b.c
+        val[0]          -> a.b.c
+        val[0,0]        -> a
+        val[0,:-1]      -> a.b
+        val['head']     -> a.b.c
+        val['head', -1] -> c
+
+        val[1,:]        -> d.e.f
+        val[1]          -> d.e.f
+        val[1,1:]       -> e.f
+        val['body']     -> d.e.f
         """
-        match i:
-            case int():
-                return self._body_meta[i] or str.__getitem__(self, self._body[i])
-            case slice(start=0, stop=None):
-                return str.__getitem__(self, self._base_slices[0]) # type: ignore
-            case slice(start=1, stop=None, step=None):
-                return str.__getitem__(self, self._base_slices[1]) # type: ignore
-            case slice(start=0, stop=x):
-                return str.__getitem__(self, self._group[x])
-            case slice(start=1, stop=int() as x):
-                return self._body_meta[x] or str.__getitem__(self, self._body[x])
-            case slice(start=1, stop=x, step=y):
-                return str.__getitem__(self, slice(self._body[x or 0].start, self._body[y].stop))
-            case slice(start=2, stop=x):
-                return self.__class__(self._expanded_str(stop=x))
-            case slice(start=int()):
-                msg = "Slicing a Strang only supports a start of 0 (group), 1 (body), and 2 (clone)"
-                raise KeyError(msg, i)
+        section_slice  : Maybe[int|slice] = None
+        word_slice     : Maybe[int|slice] = None
+        idx            : int
+        key            : str
+        secs           : slice
+        subs           : tuple[int|slice, ...]
+        match args:
+            case int() | slice() as x: # Normal str-like
+                return API.STRGET(self, x)
+            case [int() as idx, *_] if len(self._sections) < idx:
+                msg = f"{self.__class__.__name__} has no section {idx}, only {len(self._sections)}"
+                raise KeyError(msg)
+            case [str() as key, *_] if key not in self._sections.named:
+                msg = f"{self.__class__.__name__} has no section {key}"
+                raise KeyError(msg)
+            case [slice() as secs, *subs] if len(subs) != len(self.data.slices[secs]):
+                msg = "Mismatch between section slices and word slices"
+                raise KeyError(msg)
+            case [int() as i]:
+                section_slice = i
+            case [str() as k]:
+                section_slice = self._sections.named[k]
+            case [int() as i, int() as x]: # Section-word
+                section_slice  = i
+                word_slice     = x
+            case [str() as k, int() as x]: # SectionName-word
+                section_slice  = self._sections.named[k]
+                word_slice     = x
+            case [int() as i]: # implicit Section-subslice
+                section_slice = i
+            case [str() as k]: # implicit Section-subslice
+                section_slice = self._sections.named[k]
+            case [int() as i, slice() as x]: # Section-subslice
+                section_slice  = i
+                word_slice     = x
+            case [str() as k, slice() as x]: # SectionName-word
+                section_slice = self._sections.named[k]
+                word_slice     = x
             case x:
-                raise TypeError(type(x))
+                raise TypeError(type(x), x)
+
+        match section_slice, word_slice:
+            case int() as sec, None:
+                return API.STRGET(self, self.data.bounds[sec])
+            case slice() as sec, None:
+                idxs = range(len(self._sections))
+                result = []
+                for i in itz.islice(idxs, sec.start, sec.stop, sec.step):
+                    result.append(self.data.bounds[i])
+                    result.append(self._sections[i].end)
+                else:
+                    return "".join()
+            case int() as sec, int() as w:
+                return API.STRGET(self, self.data.slices[sec][w])
+            case int() as sec, slice() as w:
+                case   = self._sections[sec].case
+                words  = [API.STRGET(self, x) for x in self.data.slices[sec][w]]
+                return case.join(words)
+            case None, slice() | int() as w:
+                return API.STRGET(self, self.data.flat[w])
+            case _:
+                msg = "Slice Logic Failed"
+                raise ValueError(msg, section_slice, word_slice)
+
+    def __contains__(self:API.Strang_i, other:object) -> bool:
+        """ test for conceptual containment of names
+        other(a.b.c) ∈ self(a.b) ?
+        ie: self < other
+        """
+        match other:
+            case enum.EnumMeta() as x:
+                return any(x in y for y in self.data.meta if y is not None)
+            case UUID() as uid if self.data.meta is None:
+                return False
+            case UUID() as uid:
+                body_meta = self.data.meta[1]
+                assert(body_meta is not None)
+                return uid in body_meta
+            case str() as needle:
+                return API.STRCON(self, needle)
+            case _:
+                return False
+
+    ##--| Properties
 
     @property
     def base(self) -> Self:
         return self
 
     @property
-    def group(self) -> list[str]:
-        return [STRGET(self, x) for x in self._group]
+    def shape(self) -> tuple[int, ...]:
+        return tuple(len(x) for x in self.data.slices)
+
+    ##--| Rest
+
+    def get(self, *args:int) -> Any:
+        match args:
+            case int() as i:
+                return self[i]
+            case int() as i, int() as w if bool(sm:=self.data.meta[i]) and sm[w] is not None:
+                return self.data.meta[i][w]
+            case int() as i, int() as w:
+                return self[i, w]
+            case x:
+                raise TypeError(type(x))
+
+    def words(self, group:int|str) -> list:
+        match group:
+            case int():
+                pass
+            case str() as k:
+                group = self.sections().named[k]
+
+        return [self.get(group, x) for x in range(len(self.data.slices[group]))]
 
     def body(self, *, reject:Maybe[Callable]=None, no_expansion:bool=False) -> list[str]:
         """ Get the body, as a list of str's,
         with values filtered out if a rejection fn is used
         """
-        if not bool(self._body_meta):
-            return [self._format_subval(STRGET(self, x), no_expansion=no_expansion) for x in self._body]
 
-        body = [self._body_meta[i] or STRGET(self, x) for i, x in enumerate(self._body)]
-        if reject:
-            body = [x for x in body if not reject(x)]
-
-        return [self._format_subval(x, no_expansion=no_expansion) for x in body]
-
-    @property
-    def shape(self) -> tuple[int, int]:
-        return (len(self._group), len(self._body))
+        return [str.__getitem__(self, x) for x in self.data.slices[1]]
 
     def uuid(self) -> Maybe[UUID]:
-        if bool(uuids:=[x for x in self._body_meta if isinstance(x, UUID)]):
-            return uuids[0]
-        return None
+        raise NotImplementedError()
 
+    def is_uniq(self:API.Strang_i) -> bool:
+        """ utility method to test if this name refers to a name with a UUID """
+        raise NotImplementedError()
+
+    def is_head(self:API.Strang_i) -> bool:
+        # TODO shift to doot
+        raise NotImplementedError()
+
+    def format(self, *args:Any, **kwargs:Any) -> str:  # noqa: ANN401
+        """ Advanced formatting for strangs,
+        using the cls._formatter
+        """
+        return self._formatter.format(self, *args, **kwargs)
+
+    def canon(self:API.Strang_i) -> API.Strang_i:
+        """ canonical name. no UUIDs
+        eg: group::a.b.c.$gen$.<uuid>.c.d.e
+        ->  group::a.b.c..c.d.e
+        """
+        raise NotImplementedError()
+
+    def pop(self:API.Strang_i, *, top:bool=False) -> API.Strang_p:
+        """
+        Strip off one marker's worth of the name, or to the top marker.
+        eg:
+        root(test::a.b.c..<UUID>.sub..other) => test::a.b.c..<UUID>.sub
+        root(test::a.b.c..<UUID>.sub..other, top=True) => test::a.b.c
+        """
+        raise NotImplementedError()
+
+    def push(self:API.Strang_i, *vals:str) -> API.Strang_i:
+        """ Add a root marker if the last element isn't already a root marker
+        eg: group::a.b.c => group.a.b.c.
+        (note the trailing '.')
+        """
+        raise NotImplementedError()
+
+    def to_uniq(self:API.Strang_i, *, suffix:Maybe[str]=None) -> API.Strang_i:
+        """ Generate a concrete instance of this name with a UUID appended,
+        optionally can add a suffix
+
+          ie: a.task.group::task.name..{prefix?}.$gen$.<UUID>
+        """
+        raise NotImplementedError()
+
+    def de_uniq(self:API.Strang_i) -> API.Strang_i:
+        """ return the strang up to, but not including, the first instance mark.
+
+        eg: 'group.a::q.w.e.<uuid>.t.<uuid>.y'.de_uniq() -> 'group.a::q.w.e'
+        """
+        raise NotImplementedError()
+
+    def with_head(self:API.Strang_i) -> API.Strang_i:
+        """ generate a canonical group/completion task name for this name
+        eg: (concrete) group::simple.task..$gen$.<UUID> ->  group::simple.task..$gen$.<UUID>..$group$
+        eg: (abstract) group::simple.task. -> group::simple.task..$head$
+
+        """
+        raise NotImplementedError()
+
+    def root(self:API.Strang_i) -> API.Strang_i:
+        """Pop off to the top marker """
+        raise NotImplementedError()

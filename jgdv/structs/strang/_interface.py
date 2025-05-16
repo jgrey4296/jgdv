@@ -2,8 +2,6 @@
 """
 
 """
-# ruff: noqa:
-
 # Imports:
 from __future__ import annotations
 
@@ -16,15 +14,12 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
 import collections
 import contextlib
 import hashlib
 from copy import deepcopy
 from uuid import UUID, uuid1
 from weakref import ref
-import atexit # for @atexit.register
-import faulthandler
 # ##-- end stdlib imports
 
 from jgdv._abstract.str_proto import String_p
@@ -50,7 +45,7 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
-
+    import string
     from types import UnionType
 
 ##--|
@@ -87,20 +82,111 @@ class CodeRefMeta_e(enum.StrEnum):
 FMT_PATTERN    : Final[Rx]                 = re.compile("^(h?)(t?)(p?)")
 UUID_RE        : Final[Rx]                 = re.compile(r"<uuid(?::(.+?))?>")
 MARK_RE        : Final[Rx]                 = re.compile(r"\$(.+?)\$")
+WORD_DEFAULT   : Final[str]                = "."
 SEP_DEFAULT    : Final[str]                = "::"
-SUBSEP_DEFAULT : Final[str]                = "."
 INST_K         : Final[str]                = "instanced"
 GEN_K          : Final[str]                = "gen_uuid"
 STRGET         : Final[Callable]           = str.__getitem__
+STRCON         : Final[Callable]           = str.__contains__
 
+SEC_END_MSG    : Final[str]                = "Only the last section has no end marker"
 ##--|
-type BODY_TYPES  = str|UUID|StrangMarker_e
-type GROUP_TYPES = str
-type BodyMark    = type[enum.StrEnum]
-type GroupMark   = type[enum.StrEnum] | type[int]
+type BODY_TYPES        = str|UUID|StrangMarker_e
+type GROUP_TYPES       = str
+type BodyMark          = type[enum.StrEnum]
+type GroupMark         = type[enum.StrEnum] | type[int]
+type SectionDescriptor = tuple[str, type|UnionType, enum.EnumMeta|type[int], bool]
+type WordDescriptor    = tuple[str]
 # Body:
 
-##--|
+##--| Data
+
+class Sec_d:
+    """ Data of a named Strang section
+
+    for an example section 'a.2.c.+::d'
+    - case     : the word boundary.                    = '.'
+    - end      : the rhs end str.                      = '::'
+    - types    : allowed types.                        = str|int
+    - marks    : StrEnum of words with a meta meaning. = '+'
+    - required : a strang errors if a required section isnt found
+
+    """
+    __slots__ = ("case", "end", "marks", "name", "required", "types")
+
+    def __init__(self, name:str, case:str, end:str, types:type|UnionType, marks:enum.EnumMeta, required:bool=True) -> None:  # noqa: FBT001, FBT002, PLR0913
+        self.name     = name.lower()
+        self.case     = case
+        self.end      = end
+        self.types    = types
+        self.marks    = marks
+        self.required = required
+
+class StrangSections:
+    """
+    An object to hold information about word separation and sections,
+    a strang type is structured into these
+
+    Each Section is a Sec_d
+    """
+    __slots__ = ("named", "order", "types")
+    named  : dict[str, int]
+    order  : list[Sec_d]
+    types  : UnionType
+
+    def __init__(self, *sections:tuple|Sec_d) -> None:
+        self.order = []
+        for sec in sections:
+            match sec:
+                case Sec_d() as s:
+                    self.order.append(s)
+                case xs:
+                    obj = Sec_d(*xs)
+                    self.order.append(obj)
+        else:
+            assert(all(x.end is not None for x in self.order[:-1])), SEC_END_MSG
+            self.named = {x.name:i for i,x in  enumerate(self.order)}
+
+    def __getitem__(self, val:int|str) -> Sec_d:
+        match val:
+            case int() as i:
+                return self.order[i]
+            case str() as k if k in self.named:
+                return self.order[self.named[k]]
+            case x:
+                raise TypeError(type(x))
+
+    def __iter__(self) -> Iterator[Sec_d]:
+        return iter(self.order)
+
+    def __len__(self) -> int:
+        return len(self.order)
+
+class Strang_d:
+    """ Extra Data of a Strang.
+    Sections are accessed by their index, so use cls._sections.named[name] to get the index
+
+    - mark_idx  : tuple[int, int] - the root most body mark, and the leaf mark
+    - bounds    : list[slice] - section slices
+    - slices    : list[list[slice]] - word slices for each section
+    - meta      : list[list] - word level meta data
+
+    """
+    __slots__ = ("bounds", "flat", "mark_idx", "meta", "slices")
+    mark_idx  : tuple[int, int]
+    slices    : tuple[tuple[slice], ...]
+    flat      : tuple[slice, ...]
+    bounds    : tuple[slice, ...]
+    meta      : tuple[Maybe[list], ...]
+
+    def __init__(self, *args) -> None:
+        self.mark_idx  = {}
+        self.slices    = ()
+        self.flat      = ()
+        self.meta      = ()
+        self.bounds    = ()
+
+##--| Protocols
 
 @runtime_checkable
 class Importable_p(Protocol):
@@ -122,16 +208,20 @@ class PreInitProcessed_p(Protocol):
 
     """
 
-    @classmethod
-    def pre_process(cls, data:str, *, strict:bool=False) -> str: ...
+    def pre_process[T:Strang_i](self, cls:type[Strang_i], data:str, *, strict:bool=False) -> str: ...
 
-    def _process(self) -> None: ...
+    def process(self, obj:Strang_i) -> Maybe[Strang_i]: ...
 
-    def _post_process(self) -> None: ...
+    def post_process(self, obj:Strang_i) -> Maybe[Strang_i]: ...
 
-class StrangInternal_p(Protocol):
+class ProcessorHooks(Protocol):
 
-    def _get_slices(self, start:int=0, max:Maybe[int]=None, *, add_offset:bool=False) -> list[slice]: ... # noqa: A002
+    @staticmethod
+    def _pre_process_h[T:Strang_i](cls:type[Strang_i], data:str, *, strict:bool=False) -> str: ... # noqa: PLW0211
+
+    def _process_h(self, obj:Strang_i) -> Maybe[Strang_i]: ...
+
+    def _hpost_process_h(self, obj:Strang_i) -> Maybe[Strang_i]: ...
 
 class StrangTesting_p(Protocol):
 
@@ -153,42 +243,41 @@ class StrangMod_p(Protocol):
 
     def root(self) -> Self: ...
 
+class StrangFormatter_p(Protocol):
+    """ A string.Formatter with some Strang-specific methods """
+
+    def format(self, format_string:str, /, *args:Any, **kwargs:Any) -> str: ... # noqa: ANN401
+
+    def get_value(self, key:str, args, kwargs) -> str:  ...
+
+    def convert_field(self, value, conversion) -> str: ...
+
+    def expanded_str(self, data:Strang_i, *, stop:Maybe[int]=None) -> str: ...
+
 @runtime_checkable
-class Strang_p(StrangTesting_p, StrangMod_p, StrangInternal_p, PreInitProcessed_p, String_p, Protocol):
+class Strang_p(StrangTesting_p, StrangMod_p, String_p, Protocol):
     """  """
 
-    @classmethod
-    def _subjoin(cls, lst:list) -> str: ...
-
     @override
-    def __getitem__(self, i:int|slice) -> BODY_TYPES: ... # type: ignore[override]
+    def __getitem__(self, i:int|slice) -> str|Strang_i: ... # type: ignore[override]
 
     @property
     def base(self) -> Self: ...
 
     @property
-    def group(self) -> list[str]: ...
-
-    @property
-    def shape(self) -> tuple[int, int]: ...
+    def shape(self) -> tuple[int, ...]: ...
 
     def body(self, *, reject:Maybe[Callable]=None, no_expansion:bool=False) -> list[str]: ...
 
+    def get(self, *args:int) -> Any: ...
     def uuid(self) -> Maybe[UUID]: ...
 
-class Strang_i(Strang_p, Protocol):
-    _separator        : ClassVar[str]
-    _subseparator     : ClassVar[str]
-    _body_types       : ClassVar[type|UnionType]
-    _group_types      : ClassVar[type|UnionType]
-    _typevar          : ClassVar[Maybe[type]]
-    bmark_e           : ClassVar[type[enum.StrEnum]]
-    gmark_e           : ClassVar[type[enum.Enum]|type[enum.StrEnum]|int]
+##--| Interfaces
 
-    metadata          : dict
-    _base_slices      : tuple[Maybe[slice], Maybe[slice]]
-    _mark_idx         : tuple[Maybe[int], Maybe[int]]
-    _group            : list[slice]
-    _body             : list[slice]
-    _body_meta        : list[Maybe[BODY_TYPES]]
-    _group_meta       : set[GROUP_TYPES]
+class Strang_i(Strang_p, Protocol):
+    _processor        : ClassVar[PreInitProcessed_p]
+    _formatter        : ClassVar[string.Formatter]
+    _sections         : ClassVar[StrangSections]
+    _typevar          : ClassVar[Maybe[type]]
+    data             : Strang_d
+    meta              : dict

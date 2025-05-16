@@ -49,7 +49,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from ._interface import Strang_i
+    from ._interface import Strang_i, PreInitProcessed_p
 ##--|
 
 # isort: on
@@ -69,7 +69,11 @@ class StrangMeta(StrMeta):
     to turn it into a strang
     """
 
-    _forms : ClassVar[list[type]] = []
+    _forms : ClassVar[list[type[Strang_i]]] = []
+
+    @staticmethod
+    def register(new_cls:type[Strang_i]) -> None:
+        StrangMeta._forms.append(new_cls)
 
     def __call__(cls:type[Strang_i], data:str|pl.Path, *args:Any, **kwargs:Any) -> Strang_i:  # noqa: ANN401, N805
         """ Overrides normal str creation to allow passing args to init """
@@ -81,31 +85,23 @@ class StrangMeta(StrMeta):
             case _:
                 pass
 
-        try:
-            data = cls.pre_process(data, strict=kwargs.get("strict", False))
-        except ValueError as err:
-            msg = "Pre-Strang Error"
-            raise errors.StrangError(msg, cls, err, data) from None
+        processor : PreInitProcessed_p = cls._processor
+        stage : str = "Pre-Process"
 
-        obj = cls.__new__(cls, data)
         try:
+            data = processor.pre_process(cls,
+                                         data,
+                                         strict=kwargs.get("strict", False))
+            stage = "__new__"
+            obj : Strang_i = cls.__new__(cls, data)
+            stage = "__init__"
             cls.__init__(obj, *args, **kwargs)
+            stage = "Process"
+            obj = processor.process(obj) or obj
+            stage = "Post-Process"
+            obj = processor.post_process(obj) or obj
         except ValueError as err:
-            msg = "Strang Init Error"
-            raise errors.StrangError(msg, cls, err, data) from None
-
-        try:
-            # TODO don't call process and post_process if given the metadata in kwargs
-            obj._process()
-        except ValueError as err:
-            msg = "Strang Process Error"
-            raise errors.StrangError(msg, cls, err, data) from None
-
-        try:
-            # TODO allow post-process to override and return a different object?
-            obj._post_process()
-        except ValueError as err:
-            msg = "Post-Strang Error:"
-            raise errors.StrangError(msg, cls, err) from None
-
-        return obj
+            msg = f"[{cls.__name__}] Stage: {stage}"
+            raise errors.StrangError(msg, err, data, cls, processor) from None
+        else:
+            return obj
