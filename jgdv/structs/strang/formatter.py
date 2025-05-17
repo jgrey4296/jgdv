@@ -114,7 +114,7 @@ class StrangFormatter(string.Formatter):
 
         eg: a.b.c.<gen-uuid> -> a.b.c.<UUID:......>
         """
-        return self.join_sections(value)
+        raise NotImplementedError()
 
     def format_subval(self, value:Strang_i, val:str, *, no_expansion:bool=False) -> str:
         match val:
@@ -128,30 +128,25 @@ class StrangFormatter(string.Formatter):
                 msg = "Unknown body type"
                 raise TypeError(msg, val)
 
-    def join_sections(self, obj:Strang_i) -> str:
-        flat = []
-        for i, sec in enumerate(obj._sections.sections):
-            flat.append(obj[i,:])
-            flat.append(sec.end)
-        else:
-            return "".join(flat)
-
-
     def canon(self, obj:Strang_i) -> Strang_i:
         """ canonical name. no UUIDs
         eg: group::a.b.c.$gen$.<uuid>.c.d.e
         ->  group::a.b.c..c.d.e
         """
 
-        def _filter_fn(x:API.BODY_TYPES) -> bool:
-            return (isinstance(x, UUID)
-                    or x == self.bmark_e.gen # type: ignore
-                    )
+        def filter_fn(x:Any) -> bool:  # noqa: ANN401
+            return isinstance(x, UUID)
 
-        group      = cast("str", obj[0:])
-        canon_body = self._subjoin(self.body(reject=_filter_fn))
+        result : list[str] = []
+        for sec in obj.sections():
+            for i, word in enumerate(obj.words(sec.idx)):
+                if filter_fn(word):
+                    result.append(word)
+                else:
+                    result.append(obj[sec.idx, i])
 
-        return self.__class__(f"{group}{self._separator}{canon_body}") # type: ignore
+        else:
+            return obj.__class__("".join(result))
 
     def pop(self:Strang_i, *, top:bool=False) -> Strang_i:
         """
@@ -160,50 +155,14 @@ class StrangFormatter(string.Formatter):
         root(test::a.b.c..<UUID>.sub..other) => test::a.b.c..<UUID>.sub
         root(test::a.b.c..<UUID>.sub..other, top=True) => test::a.b.c
         """
-        end_id = self._mark_idx[0 if top else 1]
-        return cast("Strang_i", self[2:end_id])
-
-    def push(self:Strang_i, *vals:str) -> Strang_i:
-        """ Add a root marker if the last element isn't already a root marker
-        eg: group::a.b.c => group.a.b.c.
-        (note the trailing '.')
-        """
-        return self.__class__(self._subjoin(str(x) for x in [self[2:], # type: ignore
-                                                             self.bmark_e.mark, # type: ignore
-                                                             *vals,
-                                                             ] if x is not None))
-
-    def to_uniq(self:Strang_i, *, suffix:Maybe[str]=None) -> Strang_i:
-        """ Generate a concrete instance of this name with a UUID appended,
-        optionally can add a suffix
-
-          ie: a.task.group::task.name..{prefix?}.$gen$.<UUID>
-        """
-        match self[1:-1]:
-            case UUID():
-                return self
-            case _:
-                return self.push(self.bmark_e.gen, "<uuid>", suffix) # type: ignore
+        raise NotImplementedError()
 
     def de_uniq(self:Strang_i) -> Strang_i:
         """ return the strang up to, but not including, the first instance mark.
 
         eg: 'group.a::q.w.e.<uuid>.t.<uuid>.y'.de_uniq() -> 'group.a::q.w.e'
         """
-        if API.GEN_K not in self.metadata:
-            return self
-        return cast("Strang_i", self[2:self.metadata.get(API.INST_K, None)]).pop()
-
-    def with_head(self:Strang_i) -> Strang_i:
-        """ generate a canonical group/completion task name for this name
-        eg: (concrete) group::simple.task..$gen$.<UUID> ->  group::simple.task..$gen$.<UUID>..$group$
-        eg: (abstract) group::simple.task. -> group::simple.task..$head$
-
-        """
-        if self.is_head():
-            return self
-
-        return self.push(self.bmark_e.head) # type: ignore
+        raise NotImplementedError()
 
     def root(self:Strang_i) -> Strang_i:
         """Pop off to the top marker """

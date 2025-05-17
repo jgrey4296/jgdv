@@ -29,7 +29,8 @@ from pydantic import field_validator, model_validator
 
 # ##-- 1st party imports
 from .strang import Strang
-from ._interface import CodeRefMeta_e
+from . import _interface as API # noqa: N812
+from .processor import CodeRefProcessor
 # ##-- end 1st party imports
 
 # ##-- types
@@ -82,14 +83,15 @@ class CodeReference(Strang):
 
     __call__ imports the reference
     """
+    __slots__ = ()
 
-    _value            : Maybe[type]                        = None
-    _separator        : ClassVar[str]                      = "::"
-    _tail_separator   : ClassVar[str]                      = ":"
-    _body_types       : ClassVar[Any]                      = str
-    gmark_e           : ClassVar[type[CodeRefMeta_e]]     = CodeRefMeta_e
-
-    _value_idx        : slice
+    _processor    : ClassVar          = CodeRefProcessor()
+    _formatter    : ClassVar          = StrangFormatter()
+    _sections     : ClassVar          = API.StrangSections(API.CODEREF_HEAD_SEC,
+                                                           API.CODEREF_MODULE_SEC,
+                                                           API.CODEREF_VAL_SEC,
+                                                           )
+    _typevar      : ClassVar          = None
 
     @classmethod
     def from_value(cls:type[CodeReference], value:Any) -> CodeReference:  # noqa: ANN401
@@ -97,40 +99,9 @@ class CodeReference(Strang):
         val_iden = ":".join([".".join(split_qual[:-1]), split_qual[-1]])
         return cls(f"{value.__module__}:{val_iden}", value=value)
 
-    @classmethod
-    def pre_process(cls, data:str, *, strict:bool=False) -> str:  # noqa: ARG003
-        match data:
-             case Strang():
-                 pass
-             case str() if cls._separator not in data:
-                 data = f"{cls.gmark_e.default}{cls._separator}{data}"  # type: ignore[attr-defined]
-             case _:
-                 pass
-
-        return super().pre_process(data)
-
-    def _post_process(self) -> None:
-        for elem in self.group:
-            self._group_meta.add(self.gmark_e[elem])
-
-        # Modify the last body slice
-        last_slice = self._body.pop()
-        last       = str.__getitem__(self, last_slice)
-        if self._tail_separator not in last:
-            msg = "CodeRef didn't have a final value"
-            raise ValueError(msg, last, str.__str__(self))
-
-        index = last.index(self._tail_separator)
-        self._body.append(slice(last_slice.start, last_slice.start + index))
-        self._value_idx = slice(last_slice.start+index+1, last_slice.stop)
-
     def __init__(self, *_:Any, value:Maybe[type]=None, check:Maybe[type]=None, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
         super().__init__(**kwargs)
         self._value = value
-
-    def __repr__(self) -> str:
-        code_path = str(self)
-        return f"<CodeRef: {code_path}>"
 
     def __call__(self, *, check:SpecialType|type=Any, raise_error:bool=False) -> Result[type, ImportError]:
         """ Tries to import and retrieve the reference,
@@ -164,7 +135,6 @@ class CodeReference(Strang):
 
         self._check_imported_type(check)
         return self._value
-
 
     def _check_imported_type(self, check:Maybe[SpecialType|Protocol|type]) -> None:
         has_mark     = any(x in self for x in [self.gmark_e.fn, self.gmark_e.cls])  # type: ignore[attr-defined]
@@ -208,15 +178,6 @@ class CodeReference(Strang):
 
         msg = "Imported Code Reference is not of correct type"
         raise ImportError(msg, self, check)
-
-    @property
-    def module(self) -> str:
-        return self[1::-1]
-
-
-    @property
-    def value(self) -> str:
-        return str.__getitem__(self, self._value_idx)
 
     def to_alias(self, group:str, plugins:dict|ChainGuard) -> str:
         """ TODO Given a nested dict-like, see if this reference can be reduced to an alias """

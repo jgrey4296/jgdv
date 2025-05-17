@@ -24,6 +24,7 @@ from weakref import ref
 
 from jgdv import Proto, Mixin
 from jgdv.mixins.annotate import SubAnnotate_m
+from .errors import StrangError
 from . import _interface as API  # noqa: N812
 
 # ##-- types
@@ -67,7 +68,7 @@ def name_to_hook(val:str) -> str:
 
 ##--| Body
 
-class StrangBasicProcessor(API.PreInitProcessed_p):
+class StrangBasicProcessor(API.PreProcessor_p):
     """ A processor for basic strangs,
     the instance is assigned into Strang._processor
 
@@ -95,6 +96,10 @@ class StrangBasicProcessor(API.PreInitProcessed_p):
         raise ValueError(msg, data)
 
     def _verify_structure(self, cls:type[Strang_i], val:str) -> bool:
+        """ Verify basic strang structure.
+
+        ie: all necessary sections are, provisionally, there.
+        """
         seps = [x.end for x in cls._sections.order if x.end is not None]
         return all(x in val for x in seps)
 
@@ -118,7 +123,13 @@ class StrangBasicProcessor(API.PreInitProcessed_p):
     ##--|
 
     def process(self, obj:Strang_i) -> Maybe[Strang_i]:
-        """ slice the sections of the strang and populate obj.data """
+        """ slice the sections of the strang
+
+        populates obj.data:
+        - slices
+        - flat
+        - bounds
+        """
         offset      : int
         sec_slices  : list[slice]
         word_slices : list[tuple[slice, ...]]
@@ -197,96 +208,113 @@ class StrangBasicProcessor(API.PreInitProcessed_p):
             case x if callable(x):
                 return x()
             case _:
-                self._default_post_process(obj)
-                return None
+                logging.debug("Post-processing Strang: %s", str.__str__(obj))
+                metas : list = []
+                for i in range(len(obj.sections())):
+                    metas.append(self._post_process_section(obj, i))
+                else:
+                    obj.data.meta = tuple(metas)  # type: ignore[assignment]
+                    self._validate_marks(obj)
+                    self._calc_obj_meta(obj)
+                    return None
 
-    def _default_post_process(self, obj:Strang_i) -> None:
-        """
-        Extract meta information from words
-        go through body elements, and parse UUIDs, markers, param
-        setting obj._body_meta and obj._mark_idx
-        """
-        logging.debug("Post-processing Strang: %s", str.__str__(obj))
-        body_marks      : Final[enum.EnumMeta]            = obj._sections[0].marks
-        max_body        : int                             = len(obj.data.slices[1])
-        body_meta       : list[Maybe[UUID|enum.EnumMeta]] = [None for x in range(max_body)]
-        mark_idx        : tuple[int, int]                 = (max_body, -1)
+    def _post_process_section(self, obj:Strang_i, idx:int) -> tuple:
+        marks  : Final[type[API.StrangMarkBase_e]]       = obj._sections[idx].marks
+        count  : int                                     = len(obj.data.slices[idx])
+        meta   : list[Maybe[UUID|API.StrangMarkBase_e|int]]  = [None for x in range(count)]
 
-        for i, elem_slice in enumerate(obj.data.slices[1]):
-            elem = API.STRGET(obj, elem_slice)
+        for i, elem_slice in enumerate(obj.data.slices[idx]):
+            elem                                       = obj[elem_slice]
             assert(isinstance(elem, str))
+            # Discriminate the str
             match elem:
                 case x if (uuid_elem:=self._make_uuid(x)) is not None:
+                    if obj.data.uuid is not None:
+                        msg = "More than One UUID found"
+                        raise StrangError(msg, obj)
                     logging.debug("Found UUID: %s", i)
-                    body_meta[i] = uuid_elem
-                    obj.meta.update({
-                        API.INST_K : min(i, obj.meta.get(API.INST_K, max_body)), # type: ignore
-                        API.GEN_K: True,
-                    })
-                case x if (mark_elem:=self._explicit_mark(x, body_marks)) is not None:
+                    meta[i] = uuid_elem
+                    obj.data.uuid = (idx, i)
+                case x if (mark_elem:=self._build_mark(x, marks)) is not None:
                     logging.debug("(%s) Found Named Marker: %s", i, mark_elem)
-                    body_meta[i] = mark_elem
-                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i)) # update
-                case x if self._is_head_elem("_", x, i):
-                    # TODO move this to doot strang processor
-                    body_meta[i] = body_marks.hide # type: ignore[attr-defined]
-                    mark_idx = (mark_idx[0], max(mark_idx[1], i)) # update
-                case x if self._is_head_elem("+", x, i):
-                    # TODO move this to doot strang processor
-                    body_meta[i] = body_marks.extend # type: ignore[attr-defined]
-                    mark_idx = (mark_idx[0], max(mark_idx[1], i)) # update
-                case x if x == body_marks.mark:
-                    # TODO move to doot strang processor
-                    body_meta[i] = body_marks.mark # type: ignore[attr-defined]
-                    mark_idx = (min(mark_idx[0], i), max(mark_idx[1], i)) # update
+                    meta[i] = mark_elem
+                case x if (mark_elem:=self._implicit_mark(x, marks, first_or_last=(i in {0,count-1}))) is not None:
+                    logging.debug("(%s) Found Named Marker: %s", i, mark_elem)
+                    meta[i] = mark_elem
                 case x if (int_elem:=self._make_int(x)) is not None:
-                    body_meta[i] = int_elem
+                    meta[i] = int_elem
                 case _: # nothing special
                     pass
         else:
-            # Set the root and last mark_idx for popping
-            match mark_idx:
-                case (int() as i, -1):
-                    assert(isinstance(i, int))
-                    mark_idx = (i, i)
-                case (int() as i, 0):
-                    assert(isinstance(i, int))
-                    mark_idx = (i, i)
-                case (int() as i, int() as y):
-                    assert(isinstance(i, int))
-                    assert(isinstance(y, int))
-                    mark_idx   = (i, y)
+            return tuple(meta)
 
-            obj.data.meta      = (None,tuple(body_meta))  # type: ignore[assignment]
-            obj.data.mark_idx  = tuple(mark_idx)          # type: ignore[assignment]
+    def _calc_obj_meta(self, obj:Strang_i) -> None:
+        """ Set object level meta dict
+
+        ie: mark the obj as an instance
+        """
+        pass
+
+    def _validate_marks(self, obj:Strang_i) -> None:
+        """ Check marks make sense.
+        eg: +|_ are only at obj[1:0]
+
+        """
+        pass
+
+    ##--| utils
 
     def _make_uuid(self, val:str) -> Maybe[UUID]:
-        if not (data:=API.UUID_RE.match(val)):
+        """ Handle <uuid> and <uuid:{val}>.
+        matches using strang._interface.TYPE_RE
+
+        The former creates a new uuid1,
+        The latter re-creates a specific uuid
+
+        """
+        if not (data:=API.TYPE_RE.match(val)):
             return None
 
         match data.groups():
-            case None, *_:
-                return uuid1()
-            case [str() as full_spec]:
+            case ["uuid", str() as full_spec]:
                 return UUID(full_spec)
-
+            case ["uuid", *_]:
+                return uuid1()
         return None
 
-    def _explicit_mark(self, val:str, marks:enum.EnumMeta) -> Maybe[enum.EnumMeta]:
-        if (data:=API.MARK_RE.match(val)) is None:
+    def _build_mark(self, val:str, marks:type[API.StrangMarkBase_e]) -> Maybe[API.StrangMarkBase_e]:
+        """ converts applicable words to mark enum values
+        Matches using strang._interface.MARK_RE
+
+        """
+        match API.MARK_RE.match(val):
+            case re.Match() as x if (key:=x[1].lower()) in marks:
+                return marks(key)
+            case _:
+                return None
+
+    def _implicit_mark(self, val:str, marks:type[API.StrangMarkBase_e], *, first_or_last:bool) -> Maybe[API.StrangMarkBase_e]:
+        """ Builds certain implicit marks,
+        but only for the first and last words of a section
+
+        # TODO handle combined marks like val::+_.blah
+
+        """
+        match marks.skip():
+            case None:
+                pass
+            case x if val == x:
+                return x
+
+        if not (first_or_last and val in marks):
             return None
-
-        if (x_l:=data[1].lower()) not in marks.__members__:
-            return  None
-
-        # Get explicit mark,
-        return marks[x_l]
-
-    def _is_head_elem(self, cmp:str, val:str, idx:int) -> bool:
-        return val == cmp and idx <= HEAD_IDXS
+        return marks(val)
 
     def _make_int(self, val:str) -> Maybe[int]:
         try:
             return int(val)
         except ValueError:
             return None
+
+class CodeRefProcessor(StrangBasicProcessor):
+    pass

@@ -49,7 +49,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from ._interface import Strang_i, PreInitProcessed_p
+    from ._interface import Strang_i, PreProcessable_p
 ##--|
 
 # isort: on
@@ -85,8 +85,8 @@ class StrangMeta(StrMeta):
             case _:
                 pass
 
-        processor : PreInitProcessed_p = cls._processor
-        stage : str = "Pre-Process"
+        processor  : PreProcessable_p  = cls._processor
+        stage      : str               = "Pre-Process"
 
         try:
             data = processor.pre_process(cls,
