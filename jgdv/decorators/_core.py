@@ -16,8 +16,6 @@ import pathlib as pl
 import re
 import sys
 import time
-import types
-import typing
 import weakref
 from uuid import UUID, uuid1
 
@@ -29,31 +27,31 @@ from jgdv.debugging import TraceBuilder
 from jgdv.mixins.annotate import Subclasser
 # ##-- end 1st party imports
 
-from . import _interface as API  # noqa: N812
-
 # ##-- types
 # isort: off
 import abc
 import collections.abc
-from typing import TYPE_CHECKING, cast, assert_type, assert_never
+import typing
+from typing import cast, assert_type, assert_never
 from typing import Generic, NewType
-# Protocols:
-from typing import Protocol, runtime_checkable
-# Typing Decorators:
 from typing import no_type_check, final, override, overload
-if TYPE_CHECKING:
-    from jgdv._abstract.types import Method
+# Protocols and Interfaces:
+from typing import Protocol, runtime_checkable
+from . import _interface as API  # noqa: N812
+from ._interface import Signature, Decorable, Decorated, DForm_e, Decorator_i
+
+if typing.TYPE_CHECKING:
+    import types
     import enum
-    from jgdv import Maybe, Either, Func
-    from typing import Final
-    from typing import ClassVar, Any, LiteralString
-    from typing import Never, Self, Literal
-    from typing import TypeGuard
+    from typing import Final, ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal, TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+    from jgdv import Maybe, Either, Func
+    from jgdv._abstract.types import Method
+
 ##--|
-from ._interface import Signature, Decorable, Decorated, DForm_e, Decorator_i
 # isort: on
 # ##-- end types
 
@@ -70,24 +68,26 @@ class _DecAnnotate_m:
     Annotations for a decorator are stored in a dict entry.
     of the form: '{annotation_prefix}:{data_suffix}'
     """
+
     def data_key(self:Decorator_i) -> str:
         if not self._data_key:
             self._data_key = f"{self._annotation_prefix}:{self._data_suffix}"
 
+        assert(self._data_key is not None)
         return self._data_key
 
     def annotate_decorable(self:Decorator_i, target:Decorable) -> list:
         """
         Essentially: target[data_key] += self.{data_key}[:]
         """
-        current = getattr(target, self._data_key, [])
+        current = target.__annotations__.get(self.data_key(), [])
         match self._build_annotations_h(target, current):
             case []:
                 # No Annotations to add
                 return []
             case [*xs]:
                 logging.info("Applying Annotations to: %s", target)
-                setattr(target, self._data_key, xs)
+                target.__annotations__[self.data_key()] = xs
                 return xs
             case x:
                 msg = "Bad annotation type"
@@ -95,47 +95,51 @@ class _DecAnnotate_m:
 
     def get_annotations(self:Decorator_i, target:Decorable) -> list[str]:
         """ Get the annotations of the target """
-        bottom = self._unwrap(target)
-        data   = getattr(bottom, self._data_key, [])
+        if not hasattr(target, API.ATTR_TARGET):
+            return []
+        bottom  = self._unwrap(target)
+        data    = bottom.__annotations__.get(self.data_key(), [])
         return data[:]
 
     def is_annotated(self:Decorator_i, target:Decorable) -> bool:
-        logging.info("Testing for annotation data: %s : %s", self._data_key, target)
+        logging.info("Testing for annotation data: %s : %s", self.data_key(), target)
         match target:
-            case type():
-                return self._data_key in target.__dict__
-            case x if not hasattr(x, "__dict__"):
+            case x if not hasattr(x, API.ATTR_TARGET):
                 return False
+            case type():
+                return self._data_key in target.__annotations__
             case _:
-                return self._data_key in target.__dict__
+                return self._data_key in target.__annotations__
 
 class _DecMark_m:
     """ For Marking and checking Decorables.
     Marks are for easily testing if Decorator decorated something already
 
     """
+
     def mark_key(self:Decorator_i) -> str:
         if not self._mark_key:
             self._mark_key = f"{self._annotation_prefix}:{self._mark_suffix}"
 
+        assert(self._mark_key is not None)
         return self._mark_key
 
     def apply_mark(self:Decorator_i, *args:Decorable) -> None:
         """ Mark the UNWRAPPED, original target as already decorated """
         logging.info("Applying Mark %s to : %s", self._mark_key, args)
         for x in args:
-            setattr(x, self._mark_key, True)
+            x.__annotations__[self.mark_key()] = True
 
     def is_marked(self:Decorator_i, target:Decorable) -> bool:
         logging.info("Testing for mark: %s : %s", self._mark_key, target)
         match target:
-            case type():
-                return self._mark_key in target.__dict__
-            case x if not hasattr(x, "__dict__"):
+            case x if not hasattr(x, API.ATTR_TARGET):
                 return False
-            case _:
-                return (self._mark_key in target.__dict__
-                        or self._mark_key in type(target).__dict__)
+            case type() as x:
+                return self._mark_key in x.__annotations__
+            case x:
+                local_key = self._mark_key in x.__annotations__
+                return local_key or self.is_marked(type(target))
 
 class _DecWrap_m:
     """ Utils for unwrapping and wrapping a  """
@@ -172,11 +176,12 @@ class _DecWrap_m:
             case self.Form.CLASS:
                 logging.info("Decorating class: %s", target)
                 # Classes are a special case, Maybe modifying instead of wrapping
+                assert(isinstance(target, type))
                 return self._wrap_class_h(target)
             case self.Form.METHOD:
                 logging.info("Decorating Method: %s", target)
                 # TODO if its actually a method type, will need to get the unbound fn
-                return self._wrap_method_h(target)
+                return self._wrap_method_h(cast("types.MethodType", target))
             case self.Form.FUNC:
                 logging.info("Decorating Function: %s", target)
                 return self._wrap_fn_h(target)
@@ -262,7 +267,7 @@ class _DecoratorHooks_m:
     def _validate_sig_h(self:Decorator_i, sig:Signature, form:DForm_e, args:Maybe[list]=None) -> None:
         pass
 
-    def _build_annotations_h(self:Decorator_i, target:Decorable, current:list) -> Maybe[list]:
+    def _build_annotations_h(self, target:Decorable, current:list) -> list:  # noqa: ARG002
         """ Given a list of the current annotation list,
         return its replacement
         """
@@ -282,14 +287,13 @@ class _DecIdempotentLogic_m:
 
 ##--|
 
-class Decorator(_DecoratorCombined_m, Decorator_i):
+class Decorator(_DecoratorCombined_m, Decorator_i): # type: ignore[misc]
     """
     The abstract Superclass of Decorators
     A subclass implements '_decoration_logic'
     """
-    Form                 : ClassVar[enum.EnumMeta] = DForm_e
+    Form                 : ClassVar[type[DForm_e]] = DForm_e
     needs_args           : ClassVar[bool]          = False
-
 
     def __new__[T:Decorator_i](cls:type[T], *args, **kwargs) -> T:  # noqa: ANN002, ANN003
         """ If called on a callable, create a new decorator and decorate,
@@ -303,14 +307,13 @@ class Decorator(_DecoratorCombined_m, Decorator_i):
             case [x, *_] if callable(x) and not cls.needs_args:
                 obj = super().__new__(cls)
                 obj.__init__(*args[1:], **kwargs) # type: ignore[misc]
-                return obj(args[0])
+                return obj(args[0]) # type: ignore[return-value]
             case _:
                 obj = super().__new__(cls)
                 obj.__init__(*args, **kwargs) # type: ignore[misc]
                 return obj
 
-
-    def __init__(self, *args, prefix:Maybe[str]=None, mark:Maybe[str]=None, data:Maybe[str]=None) -> None:  # noqa: ANN002
+    def __init__(self, *args, prefix:Maybe[str]=None, mark:Maybe[str]=None, data:Maybe[str]=None) -> None:  # noqa: ANN002, ARG002
         # Ignores any args
         # TODO use strangs for mark and data key
         self._annotation_prefix   = prefix  or API.ANNOTATIONS_PREFIX
@@ -318,21 +321,17 @@ class Decorator(_DecoratorCombined_m, Decorator_i):
         self._data_suffix         = data    or API.DATA_SUFFIX
         self._wrapper_assignments = list(ftz.WRAPPER_ASSIGNMENTS)
         self._wrapper_updates     = list(ftz.WRAPPER_UPDATES)
-        self._mark_key            = None  # type: ignore[assignment]
-        self._data_key            = None  # type: ignore[assignment]
-
-        self.mark_key()
-        self.data_key()
+        self._mark_key            = None # type: ignore[assignment]
+        self._data_key            = None # type: ignore[assignment]
 
     def __call__(self, target:Decorable) -> Decorated:
         try:
             decorated = self._decoration_logic(target)
-        except Exception as err:
+        except Exception as err:  # noqa: BLE001
             # Capture all decoration exceptions,
             # and turn them into JGDVErrors,
             # So the traceback can be manipulated
-            # raise err.with_traceback(TraceBuilder()[1:])
-            raise
+            raise err.with_traceback(TraceBuilder()[1:]) from None
         else:
             return decorated
 
@@ -382,8 +381,8 @@ class IdempotentDec(Decorator):
     Can annotate targets with metadata without modifying the runtime behaviour,
     or modify the runtime behaviour
 
-    annotations are assigned as setattr(fn, DecoratorBase._data_key, [])
-    the mark is set(fn, DecoratorBase._mark_key, True)
+    annotations are assigned as fn.__annotations[decorator._data_key] = []
+    the mark as fn.__annotations__[decorator._mark_key] = True
 
     Moving data from wrapped to wrapper is taken care of,
     so no need for ftz.wraps in _wrap_method_h or _wrap_fn_h
@@ -443,7 +442,7 @@ class MetaDec(Decorator):
         self._validate_sig_h(sig, form, annotations)
         return top
 
-    def _build_annotations_h(self, target, current:list) -> list:
+    def _build_annotations_h(self, target:Decorable, current:list) -> list:  # noqa: ARG002
         return [*current, *self._data]
 
 class DataDec(IdempotentDec):
@@ -485,5 +484,5 @@ class DataDec(IdempotentDec):
             case x:
                 raise TypeError(type(x))
 
-    def _build_annotations_h(self, target, current:list) -> list:
+    def _build_annotations_h(self, target:Decorable, current:list) -> list:  # noqa: ARG002
         return [*self._data, *current]

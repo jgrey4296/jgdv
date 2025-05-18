@@ -128,26 +128,26 @@ class TestDecorator(_Utils):
     def test_basic_init(self, dec):
         mark = f"{API.ANNOTATIONS_PREFIX}:{dec.__class__.__name__}"
         data = f"{API.ANNOTATIONS_PREFIX}:{API.DATA_SUFFIX}"
-        assert(dec._mark_key == mark)
-        assert(dec._data_key == data)
+        assert(dec.mark_key() == mark)
+        assert(dec.data_key() == data)
 
     @pytest.mark.parametrize("name", ["blah", "bloo", "blee"])
     def test_custom_prefix(self, name):
         dec = Decorator(prefix=name)
-        assert(dec._mark_key == f"{name}:{dec.__class__.__name__}")
-        assert(dec._data_key == f"{name}:{API.DATA_SUFFIX}")
+        assert(dec.mark_key() == f"{name}:{dec.__class__.__name__}")
+        assert(dec.data_key() == f"{name}:{API.DATA_SUFFIX}")
 
     @pytest.mark.parametrize("name", ["blah", "bloo", "blee"])
     def test_custom_mark(self, name):
         dec = Decorator(mark=name)
-        assert(dec._mark_key == f"{API.ANNOTATIONS_PREFIX}:{name}")
-        assert(dec._data_key == f"{API.ANNOTATIONS_PREFIX}:{API.DATA_SUFFIX}")
+        assert(dec.mark_key() == f"{API.ANNOTATIONS_PREFIX}:{name}")
+        assert(dec.data_key() == f"{API.ANNOTATIONS_PREFIX}:{API.DATA_SUFFIX}")
 
     @pytest.mark.parametrize("name", ["blah", "bloo", "blee"])
     def test_custom_data(self, name):
         dec = Decorator(data=name)
-        assert(dec._mark_key == f"{API.ANNOTATIONS_PREFIX}:{dec.__class__.__name__}")
-        assert(dec._data_key == f"{API.ANNOTATIONS_PREFIX}:{name}")
+        assert(dec.mark_key() == f"{API.ANNOTATIONS_PREFIX}:{dec.__class__.__name__}")
+        assert(dec.data_key() == f"{API.ANNOTATIONS_PREFIX}:{name}")
 
 
     def test_decorating_without_instantiation(self):
@@ -201,8 +201,8 @@ class TestMarking(_Utils):
         assert(not dec.is_marked(a_fn))
         dec.apply_mark(a_fn)
         assert(dec.is_marked(a_fn))
-        assert(dec._mark_key in a_fn.__dict__)
-        assert(dec._data_key not in a_fn.__dict__)
+        assert(dec._mark_key in a_fn.__annotations__)
+        assert(dec._data_key not in a_fn.__annotations__)
 
     def test_mark_method(self, a_class, dec):
         assert(not dec.is_marked(a_class))
@@ -390,7 +390,7 @@ class TestMonotonic(_Utils):
         instance = Basic()
         assert(mdec.is_marked(Basic.simple))
         assert(mdec.is_marked(instance.simple))
-        assert(mdec._mark_key in Basic.simple.__dict__)
+        assert(mdec._mark_key in Basic.simple.__annotations__)
 
     def test_fn_retains_correct_type(self):
 
