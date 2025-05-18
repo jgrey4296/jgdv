@@ -139,15 +139,15 @@ class TestStrang_PostProcess_UUIDs:
     def test_head_uuids(self):
         obj = StrangBasicProcessor()
         val = Strang("a.b.c.<uuid>::d.e.f")
-        assert(val.is_uniq())
+        assert(val.uuid())
         val.data.meta = ()
         val.data.uuid = None
         assert(not bool(val.data.meta))
         obj.post_process(val)
         assert(bool(val.data.meta))
-        assert(val.is_uniq())
+        assert(val.uuid())
         match val.data.meta[0][-1]:
-            case UUID():
+            case API.StrangMarkAbstract_e() as x if x == API.DefaultBodyMarks_e.unique:
                 assert(True)
             case x:
                 assert(False), x
@@ -155,48 +155,46 @@ class TestStrang_PostProcess_UUIDs:
     def test_body_uuids(self):
         obj = StrangBasicProcessor()
         val = Strang("a.b.c::d.e.<uuid>")
-        assert(val.is_uniq())
+        assert(val.uuid())
         val.data.meta = ()
         val.data.uuid = None
         assert(not bool(val.data.meta))
         obj.post_process(val)
-        assert(val.is_uniq())
+        assert(val.uuid())
         match val.data.meta[1][-1]:
-            case uuid.UUID():
+            case API.StrangMarkAbstract_e() as x if x == API.DefaultBodyMarks_e.unique:
                 assert(True)
             case x:
                  assert(False), x
 
     def test_exact_uuid(self):
         obj = Strang(f"head::tail.<uuid:{UUID_STR}>")
-        assert(obj.is_uniq())
-        assert(isinstance(obj.data.meta[1][-1], uuid.UUID))
+        assert(obj.uuid())
+        assert(obj.data.meta[1][-1] is API.DefaultBodyMarks_e.unique)
         match obj.get(1,-1):
             case uuid.UUID():
                 assert(True)
             case x:
                  assert(False), type(x)
 
-    @pytest.mark.xfail
     def test_rebuild_uuid(self):
         s1 = Strang(f"head::tail.<uuid:{UUID_STR}>")
         s2 = Strang(str(s1))
-        assert(s1.is_uniq())
-        assert(s2.is_uniq())
+        assert(s1.uuid())
+        assert(s2.uuid())
         assert(isinstance(s1.get(1,-1), uuid.UUID))
         assert(isinstance(s2.get(1,-1), uuid.UUID))
         assert(s1.get(1,-1) == s2.get(1,-1))
         assert(s1[1,-1] == s2[1,-1])
 
-    @pytest.mark.xfail
     def test_rebuild_generated_uuid(self):
         s1 = Strang("head::tail.<uuid>")
         s2 = Strang(str(s1))
-        assert(s1.is_uniq())
-        assert(s2.is_uniq())
+        assert(s1.uuid())
+        assert(s2.uuid())
         assert(isinstance(s1.get(1,-1), uuid.UUID))
         assert(isinstance(s2.get(1,-1), uuid.UUID))
-        assert(s1[1,-1] == s2[1,-1])
+        assert(s1[:,:] == s2[:,:])
 
     def test_multiple_uuids_errors(self):
         with pytest.raises(StrangError):
@@ -208,7 +206,7 @@ class TestStrang_PostProcess_Marks:
         assert(True is not False) # noqa: PLR0133
 
     def test_head_marks(self):
-        head           = API.StrangHeadMarks_e
+        head           = API.DefaultHeadMarks_e
         obj            = StrangBasicProcessor()
         val            = Strang("a.b.$basic$::d.e.f")
         val.data.meta  = ()
@@ -223,7 +221,7 @@ class TestStrang_PostProcess_Marks:
                 assert(False), x
 
     def test_body_marks(self):
-        body = API.StrangBodyMarks_e
+        body = API.DefaultBodyMarks_e
         obj = StrangBasicProcessor()
         val = Strang("a.b.c::d.e.$head$")
         val.data.meta = ()
@@ -238,7 +236,7 @@ class TestStrang_PostProcess_Marks:
                 assert(False), x
 
     def test_implicit_mark_start(self):
-        body = API.StrangBodyMarks_e
+        body = API.DefaultBodyMarks_e
         obj = StrangBasicProcessor()
         val = Strang(f"head::_.tail.blah")
         val.data.meta = ()
@@ -252,7 +250,7 @@ class TestStrang_PostProcess_Marks:
                 assert(False), x
 
     def test_implicit_mark_end(self):
-        body           = API.StrangBodyMarks_e
+        body           = API.DefaultBodyMarks_e
         obj            = StrangBasicProcessor()
         val            = Strang(f"head::tail.blah._")
         val.data.meta  = ()
@@ -266,7 +264,7 @@ class TestStrang_PostProcess_Marks:
                 assert(False), x
 
     def test_implicit_skip_mark(self):
-        body           = API.StrangBodyMarks_e
+        body           = API.DefaultBodyMarks_e
         obj            = StrangBasicProcessor()
         val            = Strang(f"head::tail..blah")
         val.data.meta  = ()
@@ -281,7 +279,7 @@ class TestStrang_PostProcess_Marks:
 
     def test_implicit_mark_fail(self):
         """ An implicit mark, not at the start or end, wont be converted """
-        body = API.StrangBodyMarks_e
+        body = API.DefaultBodyMarks_e
         obj = StrangBasicProcessor()
         val = Strang(f"head::a._.tail.blah")
         val.data.meta = ()

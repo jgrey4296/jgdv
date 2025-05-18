@@ -35,6 +35,7 @@ from jgdv.structs.chainguard import ChainGuard
 # ##-- end 1st party imports
 
 from . import _interface as API  # noqa: N812
+from . import errors
 
 # ##-- types
 # isort: off
@@ -80,8 +81,7 @@ class StrangFormatter(string.Formatter):
             case pl.Path():
                 raise NotImplementedError()
             case _:
-                msg = "Unrecognized expansion type"
-                raise TypeError(msg, key)
+                raise TypeError(errors.FormatterExpansionTypeFail, key)
 
         result = self.vformat(fmt, args, kwargs)
         return result
@@ -106,8 +106,7 @@ class StrangFormatter(string.Formatter):
             case "a":
                 return ascii(value)
             case _:
-                msg = f"Unknown conversion specifier {conversion!s}"
-                raise ValueError(msg)
+                raise ValueError(errors.FormatterConversionUnknownSpec.format(spec=conversion))
 
     def expanded_str(self, value:Strang_i, *, stop:Maybe[int]=None) -> str:
         """ Create a str with generative marks replaced with generated values
@@ -125,8 +124,7 @@ class StrangFormatter(string.Formatter):
             case UUID():
                 return f"<uuid:{val}>"
             case _:
-                msg = "Unknown body type"
-                raise TypeError(msg, val)
+                raise TypeError(errors.FormatterUnkownBodyType, val)
 
     def canon(self, obj:Strang_i) -> Strang_i:
         """ canonical name. no UUIDs

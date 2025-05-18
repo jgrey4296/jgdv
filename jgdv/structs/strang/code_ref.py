@@ -30,7 +30,9 @@ from pydantic import field_validator, model_validator
 # ##-- 1st party imports
 from .strang import Strang
 from . import _interface as API # noqa: N812
+from . import errors
 from .processor import CodeRefProcessor
+from .formatter import StrangFormatter
 # ##-- end 1st party imports
 
 # ##-- types
@@ -87,10 +89,10 @@ class CodeReference(Strang):
 
     _processor    : ClassVar          = CodeRefProcessor()
     _formatter    : ClassVar          = StrangFormatter()
-    _sections     : ClassVar          = API.StrangSections(API.CODEREF_HEAD_SEC,
-                                                           API.CODEREF_MODULE_SEC,
-                                                           API.CODEREF_VAL_SEC,
-                                                           )
+    _sections     : ClassVar          = API.Sections_d(API.CODEREF_HEAD_SEC,
+                                                       API.CODEREF_MODULE_SEC,
+                                                       API.CODEREF_VAL_SEC,
+                                                       )
     _typevar      : ClassVar          = None
 
     @classmethod
@@ -126,8 +128,7 @@ class CodeReference(Strang):
                     err.add_note(f"Origin: {self}")
                     raise
                 except AttributeError as err:
-                    msg = "Attempted import failed, attribute not found"
-                    raise ImportError(msg, str(self), self.value, err.args) from None
+                    raise ImportError(errors.CodeRefImportFailed, str(self), self.value, err.args) from None
                 else:
                     self._value = curr
             case _:
@@ -143,19 +144,15 @@ class CodeReference(Strang):
         if not has_mark:
               pass
         elif self.gmark_e.fn in self and not is_callable:  # type: ignore[attr-defined]
-            msg = "Imported 'Function' was not a callable"
-            raise ImportError(msg, self._value, self)
+            raise ImportError(errors.CodeRefImportNotCallable, self._value, self)
         elif self.gmark_e.cls in self and not is_type:
-            msg = "Imported 'Class' was not a type"
-            raise ImportError(msg, self._value, self)
+            raise ImportError(errors.CodeRefImportNotClass, self._value, self)
 
         match self._typevar:
             case None:
                 pass
             case type() as the_type if not issubclass(self._value, the_type):
-                msg = "Imported Value does not match required type"
-                raise ImportError(msg, the_type, self._value)
-
+                raise ImportError(errors.CodeRefImportCheckFail, the_type, self._value)
         match check:
             case None:
                 return
@@ -176,8 +173,7 @@ class CodeReference(Strang):
                 except TypeError:
                     pass
 
-        msg = "Imported Code Reference is not of correct type"
-        raise ImportError(msg, self, check)
+        raise ImportError(errors..CodeRefImportUnknownFail, self, check)
 
     def to_alias(self, group:str, plugins:dict|ChainGuard) -> str:
         """ TODO Given a nested dict-like, see if this reference can be reduced to an alias """
@@ -189,9 +185,4 @@ class CodeReference(Strang):
         return base_alias
 
     def to_uniq(self) -> Never:
-        msg = "Code References shouldn't need UUIDs"
-        raise NotImplementedError(msg)
-
-    def with_head(self) -> Never:
-        msg = "Code References shouldn't need $head$s"
-        raise NotImplementedError(msg)
+        raise NotImplementedError(errors.CodeRefUUIDFail)

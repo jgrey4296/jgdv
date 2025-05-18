@@ -6,12 +6,18 @@
 """
 # Import:
 from __future__ import annotations
+from typing import Final
 from jgdv.debugging import TraceBuilder
 
+##--| Error Messages
+ErrorMSg_1 : Final[str] = "Test Message"
+
+
+##--| Errors
 class JGDVError(Exception):
     """ A Base Error Class for JGDV """
 
-    def __getitem__(self, val):
+    def __getitem__(self, val:None|int|slice) -> Self:
         """ Use jgdv.debugging.TraceBuilder to control the traceback
         of this error
 

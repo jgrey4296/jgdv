@@ -44,6 +44,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 import enum
 from uuid import UUID
+from collections.abc import Iterator
 
 if TYPE_CHECKING:
     from jgdv import Maybe
@@ -51,7 +52,7 @@ if TYPE_CHECKING:
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
     from typing import TypeGuard
-    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Iterable, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 ##--|
 
@@ -87,14 +88,15 @@ class Strang(str, metaclass=StrangMeta):
 
     """
     __slots__ = ("data", "meta")
+
     ##--|
     _processor    : ClassVar          = StrangBasicProcessor()
     _formatter    : ClassVar          = StrangFormatter()
-    _sections     : ClassVar          = API.StrangSections(API.HEAD_SEC, API.BODY_SEC)
+    _sections     : ClassVar          = API.Sections_d(API.HEAD_SEC, API.BODY_SEC)
     _typevar      : ClassVar          = None
 
     @classmethod
-    def sections(cls) -> API.StrangSections:
+    def sections(cls) -> API.Sections_d:
         return cls._sections
 
     @classmethod
@@ -107,15 +109,15 @@ class Strang(str, metaclass=StrangMeta):
 
     ##--|
 
-    def __init__(self:API.Strang_i, *_:Any, **kwargs:Any) -> None:  # noqa: ANN401
+    def __init__(self:API.Strang_i, *_:Any, uuid:Maybe[UUID]=None, **kwargs:Any) -> None:  # noqa: ANN401
         super().__init__()
         self.meta          = dict(kwargs)
-        self.data         = API.Strang_d()
+        self.data         = API.Strang_d(uuid)
 
     ##--| dunders
 
     def __str__(self) -> str:
-        if self.is_uniq():
+        if self.uuid():
             return self[:,:]
         return str.__str__(self)
 
@@ -175,18 +177,24 @@ class Strang(str, metaclass=StrangMeta):
                 raise TypeError(type(x))
 
     def __eq__(self, other:object) -> bool:
-        return hash(self) == hash(other)
+        match other:
+            case Strang() as x if self.uuid() and x.uuid():
+                return hash(self) == hash(other)
+            case x if self.uuid():
+                h_other = hash(x)
+                return hash(self) == h_other or hash(self[:]) == h_other
+            case x:
+                return hash(self) == hash(x)
 
     def __ne__(self, other:object) -> bool:
         return not self == other
 
-    def __iter__[T:API.Strang_i](self:T) -> Iterator:
+    def __iter__(self) -> Iterator:
         """ iterate over words """
-        for s in range(len(self.sections())):
-            for x in range(len(self.data.slices[s])):
-                yield self.get(s, x)
+        for sec in self.sections():
+            yield from self.words(sec.idx)
 
-    def __getitem__(self, args:Any) -> str: # type: ignore[override]  # noqa: ANN401, PLR0912, PLR0915, PLR0911
+    def __getitem__(self, args:API.ItemIndex) -> str: # type: ignore[override]  # noqa: PLR0912, PLR0911
         """
         Access sections and words of a Strang,
         by name or index.
@@ -200,90 +208,78 @@ class Strang(str, metaclass=StrangMeta):
         val['head']     -> a.b.c
         val['head', -1] -> c
         """
-        section_slice  : Maybe[int|slice] = None
-        word_slice     : Maybe[int|slice] = None
-        words          : list[str]
-        idx            : int
-        key            : str
-        secs           : slice
-        subs           : tuple[int|slice, ...]
-        match args:
-            case int() | slice() as x: # Normal str-like
-                return API.STRGET(self, x)
-            case str() as k: # whole section by name
-                section_slice = self._sections.named[k]
-            case [slice() as secs, slice(start=None, stop=None, step=None) as words]: # type: ignore[misc]
+        match self._discrim_getitem_args(args):
+            case Iterator() as sec_iter:
                 # full expansion
                 result = []
-                sec_it = itz.islice(self.sections(), secs.start, secs.stop, secs.step)
-                for s in sec_it:
+                for s in sec_iter:
                     for word in self.words(s.idx, case=True):
                         match word:
-                            case UUID() as uid:
-                                result.append(f"<uuid:{uid}>")
+                            case UUID() as x:
+                                result.append(f"<uuid:{x}>")
                             case x:
                                 result.append(str(x))
                     else:
                         result.append(s.end or "")
                 else:
                     return "".join(result)
-            case [int() as idx, *_] if len(self._sections) < idx:
-                msg = f"{self.__class__.__name__} has no section {idx}, only {len(self._sections)}"
-                raise KeyError(msg)
-            case [str() as key, *_] if key not in self._sections.named:
-                msg = f"{self.__class__.__name__} has no section {key}"
-                raise KeyError(msg)
-            case [slice() as secs, *subs] if len(subs) != len(self.data.slices[secs]): # type: ignore[misc]
-                msg = "Mismatch between section slices and word slices"
-                raise KeyError(msg)
-            case [int() as i]:
-                section_slice = i
-            case [str() as k]:
-                section_slice = self._sections.named[k]
-            case [int() as i, int() as x]: # Section-word
-                section_slice  = i
-                word_slice     = x
-            case [str() as k, int() as x]: # SectionName-word
-                section_slice  = self._sections.named[k]
-                word_slice     = x
-            case [int() as i]: # implicit Section-subslice
-                section_slice = i
-            case [str() as k]: # implicit SectionName-subslice
-                section_slice = self._sections.named[k]
-            case [int() as i, slice() as x]: # Section-subslice
-                section_slice  = i
-                word_slice     = x
-            case [str() as k, slice() as x]: # SectionName-word
-                section_slice  = self._sections.named[k]
-                word_slice     = x
-            case x:
-                raise TypeError(type(x), x)
 
-        match section_slice, word_slice:
-            case int() as sec, None:
-                return API.STRGET(self, self.data.bounds[sec])
-            case slice() as sec, None:
-                idxs = range(len(self._sections))
-                result = []
-                for i in itz.islice(idxs, sec.start, sec.stop, sec.step):
-                    result.append(API.STRGET(self, self.data.bounds[i]))
-                    result.append(self._sections[i].end)
-                else:
-                    return "".join(result)
-            case int() as sec, int() as w:
-                return API.STRGET(self, self.data.slices[sec][w])
-            case int() as sec, slice() as w:
-                case   = self._sections[sec].case
+            case int()|slice() as section, None:
+                bounds = self.data.bounds[section]
+                return API.STRGET(self, bounds)
+            case None, int() as flat:
+                return API.STRGET(self, self.data.flat[flat])
+            case None, slice() as flat:
+                selection = self.data.flat[flat]
+                return API.STRGET(self, slice(selection[0].start, selection[-1].stop, flat.step))
+            case int()|slice() as section, int() as word:
+                return API.STRGET(self, self.data.slices[section][word])
+            case int()|slice() as section, slice() as word:
+                case   = self._sections[section].case
                 words  = []
-                for x in self.data.slices[sec][w]:
+                for x in self.data.slices[section][word]:
                     words.append(API.STRGET(self, x))
                 else:
                     return case.join(words)
-            case None, slice() | int() as w:
-                return API.STRGET(self, self.data.flat[w])
+            case int()|slice() as basic:
+                return API.STRGET(self, basic)
             case _:
-                msg = "Slice Logic Failed"
-                raise KeyError(msg, section_slice, word_slice)
+                raise KeyError(errors.UnkownSlice, args)
+
+    def _discrim_getitem_args(self, args:API.ItemIndex) -> Iterator|tuple[Maybe[API.ItemIndex], ...]|API.ItemIndex:
+        match args:
+            case int() | slice() as x: # Normal str-like
+                return x
+            case str() as k: # whole section by name
+                return self.section(k).idx, None
+            case [slice() as secs, slice(start=None, stop=None, step=None)]: # type: ignore[misc]
+                sec_it = itz.islice(self.sections(), secs.start, secs.stop, secs.step)
+                return sec_it
+            case [int() as idx, *_] if len(self.sections()) < idx:
+                raise KeyError(errors.MissingSectionIndex.format(cls=self.__class__.__name__,
+                                                            idx=idx,
+                                                            sections=len(self.sections())))
+            case [str() as key, *_] if key not in self._sections.named:
+                raise KeyError(errors.MissingSectionName.format(cls=self.__class__.__name__,
+                                                                key=key))
+            case [slice() as secs, *subs] if len(subs) != len(self.data.slices[secs]): # type: ignore[misc]
+                raise KeyError(errors.SliceMisMatch, len(subs), len(self.data.slices[secs]))
+            case [str()|int() as i, slice()|int() as x]: # Section-word
+                return self.section(i).idx, x
+            case [None, slice()|int() as x]: # Flat slice
+                return None, x
+            case x:
+                raise TypeError(type(x), x)
+
+    def __getattr__(self, val:str) -> str:
+        """ Enables using match statement for entire sections
+
+        eg: case Strang(head=x, body=y):...
+
+        """
+        if val in self.sections().named:
+            return self[val]
+        raise AttributeError(val)
 
     def __contains__(self:API.Strang_i, other:object) -> bool:
         """ test for conceptual containment of names
@@ -291,14 +287,12 @@ class Strang(str, metaclass=StrangMeta):
         ie: self < other
         """
         match other:
-            case API.StrangMarkBase_e() as x:
+            case API.StrangMarkAbstract_e() as x:
                 return any(x in y for y in self.data.meta if y is not None)
-            case UUID() as uid if self.data.meta is None:
+            case UUID() if self.data.meta is None:
                 return False
-            case UUID() as uid:
-                body_meta = self.data.meta[1]
-                assert(body_meta is not None)
-                return uid in body_meta
+            case UUID() as x if x == self.uuid():
+                return True
             case str() as needle:
                 return API.STRCON(self, needle)
             case _:
@@ -316,29 +310,93 @@ class Strang(str, metaclass=StrangMeta):
 
     ##--| Access
 
-    def get(self, *args:int) -> Any:  # noqa: ANN401
-        match args:
-            case int() as i:
-                return self[i]
-            case int() as i, int() as w:
-                try:
-                    val = self.data.meta[i][w] # type: ignore[index]
-                except ValueError:
-                    return self[i, w]
+    def index(self, *sub:API.FindSlice, start:Maybe[int]=None, end:Maybe[int]=None) -> int: # type: ignore[override]
+        """ Extended str.index, to handle marks and word slices """
+        needle  : str|API.StrangMarkAbstract_e
+        word    : int
+        match sub:
+            case [API.StrangMarkAbstract_e() as mark]:
+                for i, meta in enumerate(self.data.meta):
+                    word_idx = [j for j,x in enumerate(meta) if x == mark] # type: ignore[arg-type]
+                    if not bool(word_idx):
+                        continue
+                    return self.data.slices[i][word_idx[0]].start
                 else:
-                    if val is None:
-                        return self[i,w]
-                    return val
-            case int() as i, int() as w:
-                return self[i, w]
+                    raise ValueError(mark)
+            case ["", *_]:
+                raise ValueError(errors.IndexOfEmptyStr, sub)
+            case [str() as needle]:
+                pass
+            case [str()|int() as sec, int() as word]:
+                needle = self.get(sec, word)
+            case _:
+                raise TypeError(type(sub), sub)
+
+        match needle:
+            case API.StrangMarkAbstract_e():
+                return self.index(needle, start=start, end=end)
+            case _:
+                return str.index(self, needle, start, end)
+
+    def rindex(self, *sub:API.FindSlice, start:Maybe[int]=None, end:Maybe[int]=None) -> int: # type: ignore[override]
+        """ Extended str.rindex, to handle marks and word slices """
+        needle  : str
+        word    : int
+        count   : int
+        match sub:
+            case [API.StrangMarkAbstract_e() as mark]:
+                count = len(self.sections())-1
+                for i, meta in enumerate(reversed(self.data.meta)):
+                    word_idx = [j for j,x in enumerate(meta) if x == mark] # type: ignore[arg-type]
+                    if not bool(word_idx):
+                        continue
+                    return self.data.slices[count-i][word_idx[0]].start
+                else:
+                    raise ValueError(mark)
+            case ["", *_]:
+                raise ValueError(errors.IndexOfEmptyStr, sub)
+            case [str() as needle]:
+                pass
+            case [int()|str() as sec, int() as word]:
+                idx = self.section(sec).idx
+                return self.data.slices[idx][word].start
             case x:
-                raise TypeError(type(x))
+                raise ValueError(x)
+
+        return str.rindex(self, needle, start, end)
+
+    def get(self, *args:API.SectionIndex|API.WordIndex) -> Any:  # noqa: ANN401
+        x     : Any
+        sec   : int
+        word  : int
+        match args:
+            case [str() | int() as i]:
+                return self[i]
+            case [int() as sec, int() as word]:
+                pass
+            case [str() as k, int() as word]:
+                sec = self.section(k).idx
+            case x:
+                raise KeyError(x)
+
+        try:
+            val = self.data.meta[sec][word] # type: ignore[index]
+        except ValueError:
+            return self[sec, word]
+        else:
+            match val:
+                case None:
+                    return self[sec,word]
+                case API.StrangMarkAbstract_e() as x if x == API.DefaultBodyMarks_e.unique:
+                    assert(self.uuid())
+                    return self.uuid()
+                case _:
+                    return val
 
     def words(self, idx:int|str, *, select:Maybe[slice]=None, case:bool=False) -> Iterator:
         """ Get the word values of a section.
         case=True adds the case in between values,
         select can be a slice that limits the returned values
-
 
         """
         count    : int
@@ -361,19 +419,10 @@ class Strang(str, metaclass=StrangMeta):
             if case and y is not None:
                 yield section.case
 
-
     ##--| UUIDs
 
     def uuid(self) -> Maybe[UUID]:
-        match self.data.uuid:
-            case None:
-                return None
-            case x,y:
-                return self.get(x,y)
-
-    def is_uniq(self) -> bool:
-        """ utility method to test if this name refers to a name with a UUID """
-        return self.data.uuid is not None
+        return self.data.uuid
 
     def to_uniq(self, *, suffix:Maybe[str]=None) -> API.Strang_p:
         """ Generate a concrete instance of this name with a UUID appended,
@@ -383,7 +432,7 @@ class Strang(str, metaclass=StrangMeta):
         """
         match suffix:
             case None:
-                return self.push(uuid=True)
+                return self.push(API.UUID_WORD)
             case _:
                 raise NotImplementedError()
 
@@ -392,7 +441,7 @@ class Strang(str, metaclass=StrangMeta):
 
         eg: 'group.a::q.w.e.<uuid>.t.y'.de_uniq() -> 'group.a::q.w.e'
         """
-        assert(self.is_uniq()), "Can't de-uniq a non-uniq strang"
+        assert(self.uuid()), "Can't de-uniq a non-uniq strang"
         raise NotImplementedError()
 
     ##--| Other
@@ -410,6 +459,49 @@ class Strang(str, metaclass=StrangMeta):
         """
         raise NotImplementedError()
 
+    def push(self, *args:API.PushVal) -> API.Strang_i:
+        """ extend a strang with values
+
+        Pushed onto the last section, with a section.marks.skip() mark first
+
+        eg: val = Strang('a.b.c::d.e.f')
+        val.push(val.section(1).mark.head) -> 'a.b.c::d.e.f..$head$'
+        val.push(uuid=True) -> 'a.b.c::d.e.f..<uuid>'
+        val.push(uuid=uuid1()) -> 'a.b.c::d.e.f..<uuid:{val}>'
+        """
+        x : Any
+        insert_uuid  : Maybe[UUID]  = self.uuid()
+        case                        = self.section(-1).case
+        words                       = [self[:]]
+        match self.section(-1).marks.skip():
+            case API.StrangMarkAbstract_e() as x:
+                mark = x.value
+                words.append(x.value)
+            case _:
+                raise ValueError(errors.NoSkipMark)
+
+        for word in args:
+            match word:
+                case None:
+                    words.append(mark)
+                case API.StrangMarkAbstract_e() as x if x in type(x).idempotent() and x in self:
+                    pass
+                case API.StrangMarkAbstract_e() as x if x in type(x).idempotent() and x in words:
+                    pass
+                case API.StrangMarkAbstract_e() as x if x in type(x).idempotent() and x in self:
+                    words.append(x.value)
+                case str() as x:
+                    words.append(x)
+                case UUID() as x if not insert_uuid:
+                    words.append(API.UUID_WORD)
+                    insert_uuid = x
+                case UUID() as x:
+                    raise ValueError(errors.TooManyUUIDs)
+                case x:
+                    words.append(str(x))
+        else:
+            return cast("API.Strang_i", Strang(case.join(words), uuid=insert_uuid))
+
     def pop(self) -> API.Strang_i:
         """
         Strip off one marker's worth of the name, or to the top marker.
@@ -417,33 +509,26 @@ class Strang(str, metaclass=StrangMeta):
         root(test::a.b.c..<UUID>.sub..other) => test::a.b.c..<UUID>.sub
         root(test::a.b.c..<UUID>.sub..other, top=True) => test::a.b.c
         """
-        raise NotImplementedError()
-
-    def push(self, *args:Any, mark:Maybe[API.StrangMarkBase_e]=None, uuid:bool|UUID=False) -> API.Strang_i:
-        """ create an extended strang with a mark or uuid appended
-
-        eg: val = Strang('a.b.c::d.e.f')
-        val.with(val.section(1).mark.head) -> 'a.b.c::d.e.f..$head$'
-        val.with(uuid=True) -> 'a.b.c::d.e.f..<uuid>'
-        val.with(uuid=uuid1()) -> 'a.b.c::d.e.f..<uuid:{val}>'
-        """
-        case   = self.section(-1).case
-        dcase  = case * 2
-        match mark, uuid:
-            case None, None:
-                raise NotImplementedError()
-            case x, None:
-                return Strang(f"{self}{dcase}${x}$")
-                raise NotImplementedError()
-            case None, x:
-                raise NotImplementedError()
-            case x, True:
-                return cast("API.Strang_i", Strang(f"{self}{dcase}${x}${case}<uuid>"))
-            case x, UUID() as y:
-                return cast("API.Strang_i", Strang(f"{self}{dcase}${x}${case}<uuid:{y}>"))
-            case x:
-                raise TypeError(type(x))
+        mark = self.section(-1).marks.skip()
+        assert(mark is not None)
+        try:
+            next_mark = self.rindex(mark)
+        except ValueError:
+            return cast("API.Strang_i", self)
+        else:
+            return cast("API.Strang_i", Strang(self[:next_mark]))
 
     def root(self) -> API.Strang_i:
         """Pop off to the top marker """
         raise NotImplementedError()
+
+    def diff_uuids(self, other:UUID) -> str:
+        match self.uuid():
+            case None:
+                raise ValueError(errors.NoUUIDToDiff)
+            case x:
+                this_ing = str(x)
+                that_ing = str(other)
+
+        result = [y if x==y else "_" for x,y in zip(this_ing, that_ing, strict=True)]
+        return "".join(result)

@@ -24,7 +24,7 @@ from weakref import ref
 
 from jgdv import Proto, Mixin
 from jgdv.mixins.annotate import SubAnnotate_m
-from .errors import StrangError
+from . import errors
 from . import _interface as API  # noqa: N812
 
 # ##-- types
@@ -92,8 +92,8 @@ class StrangBasicProcessor(API.PreProcessor_p):
             clean = self._clean_separators(cls, data)
             return clean.strip()
 
-        msg = "Base data malformed"
-        raise ValueError(msg, data)
+
+        raise ValueError(errors.MalformedData, data)
 
     def _verify_structure(self, cls:type[Strang_i], val:str) -> bool:
         """ Verify basic strang structure.
@@ -157,29 +157,25 @@ class StrangBasicProcessor(API.PreProcessor_p):
 
     def _process_section(self, obj:Strang_i, section:API.Sec_d, offset:int=0) -> tuple[slice, tuple[slice], int]:
         """ Set the slices of a section, return the index where the section ends """
-        sec_slice             : slice[int, int]
-        word_slices           : tuple[slice]
-        search_bound          : int = len(obj)
-        bound_extend          : int = 0
-        match section.end: # Calc Search boundary
-            case str():
-                search_bound  = obj.find(section.end, offset)
-                bound_extend  = len(section.end)
-            case None:
-                search_bound  = len(obj)
-
-        match search_bound: # Calc the Section Slice
-            case -1:
-                search_bound  = len(obj)
-                sec_slice     = slice(offset, search_bound)
-            case x:
-                sec_slice = slice(offset, min(x, len(obj)))
-
+        sec_slice     : slice[int, int]
+        word_slices   : tuple[slice]
+        search_bound  : int  = len(obj)
+        bound_extend  : int  = 0
+        match section.end:
+            case None | "":
+                pass
+            case str() as x:
+                try:
+                    bound_extend  = len(x)
+                    search_bound  = obj.index(x, start=offset)
+                except (ValueError, TypeError):
+                    pass
         ##--|
         word_slices = self._slice_section(obj,
                                           case=section.case,
                                           start=offset,
                                           max=search_bound)
+        sec_slice  = slice(offset, search_bound)
 
         return sec_slice, word_slices, bound_extend
 
@@ -188,15 +184,15 @@ class StrangBasicProcessor(API.PreProcessor_p):
         index, end, offset = start, max or len(obj), len(case)
         slices : list[slice] = []
         while -1 < index:
-            match obj.find(case, index, end):
-                case -1 if index == end:
-                    index = -1
-                case -1:
-                    slices.append(slice(index, end))
-                    index = -1
-                case x:
-                    slices.append(slice(index, x))
-                    index = x + offset
+            try:
+                next_idx = obj.index(case, start=index, end=end)
+                if index != end:
+                    slices.append(slice(index, next_idx))
+                    index  = next_idx + offset
+            except ValueError:
+                slices.append(slice(index, end))
+                index = -1
+
         else:
             return cast("tuple[slice]", tuple(slices))
 
@@ -219,22 +215,22 @@ class StrangBasicProcessor(API.PreProcessor_p):
                     return None
 
     def _post_process_section(self, obj:Strang_i, idx:int) -> tuple:
-        marks  : Final[type[API.StrangMarkBase_e]]       = obj._sections[idx].marks
-        count  : int                                     = len(obj.data.slices[idx])
-        meta   : list[Maybe[UUID|API.StrangMarkBase_e|int]]  = [None for x in range(count)]
+        marks     : Final[type[API.StrangMarkAbstract_e]]           = obj._sections[idx].marks
+        count     : int                                         = len(obj.data.slices[idx])
+        meta      : list[Maybe[UUID|API.StrangMarkAbstract_e|int]]  = [None for x in range(count)]
+        new_uuid  : Maybe[UUID]                                 = obj.data.uuid
 
         for i, elem_slice in enumerate(obj.data.slices[idx]):
-            elem                                       = obj[elem_slice]
+            elem = obj[elem_slice]
             assert(isinstance(elem, str))
             # Discriminate the str
             match elem:
-                case x if (uuid_elem:=self._make_uuid(x)) is not None:
-                    if obj.data.uuid is not None:
-                        msg = "More than One UUID found"
-                        raise StrangError(msg, obj)
+                case x if (uuid_elem:=self._make_uuid(x, obj)) is not None:
                     logging.debug("Found UUID: %s", i)
-                    meta[i] = uuid_elem
-                    obj.data.uuid = (idx, i)
+                    if new_uuid and new_uuid != uuid_elem:
+                        raise errors.StrangError(errors.TooManyUUIDs, obj)
+                    meta[i] = API.DefaultBodyMarks_e.unique
+                    new_uuid = uuid_elem
                 case x if (mark_elem:=self._build_mark(x, marks)) is not None:
                     logging.debug("(%s) Found Named Marker: %s", i, mark_elem)
                     meta[i] = mark_elem
@@ -246,6 +242,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
                 case _: # nothing special
                     pass
         else:
+            obj.data.uuid = new_uuid
             return tuple(meta)
 
     def _calc_obj_meta(self, obj:Strang_i) -> None:
@@ -264,7 +261,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
 
     ##--| utils
 
-    def _make_uuid(self, val:str) -> Maybe[UUID]:
+    def _make_uuid(self, val:str, obj:Strang_i) -> Maybe[UUID]:
         """ Handle <uuid> and <uuid:{val}>.
         matches using strang._interface.TYPE_RE
 
@@ -276,13 +273,19 @@ class StrangBasicProcessor(API.PreProcessor_p):
             return None
 
         match data.groups():
+            case ["uuid", None] if obj.data.uuid:
+                return obj.data.uuid
+            case ["uuid", None]:
+                return uuid1()
+            case ["uuid", str() as spec] if obj.data.uuid and spec == str(obj.data.uuid):
+                return obj.data.uuid
             case ["uuid", str() as full_spec]:
                 return UUID(full_spec)
-            case ["uuid", *_]:
-                return uuid1()
+            case x:
+                raise TypeError(type(x))
         return None
 
-    def _build_mark(self, val:str, marks:type[API.StrangMarkBase_e]) -> Maybe[API.StrangMarkBase_e]:
+    def _build_mark(self, val:str, marks:type[API.StrangMarkAbstract_e]) -> Maybe[API.StrangMarkAbstract_e]:
         """ converts applicable words to mark enum values
         Matches using strang._interface.MARK_RE
 
@@ -293,7 +296,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
             case _:
                 return None
 
-    def _implicit_mark(self, val:str, marks:type[API.StrangMarkBase_e], *, first_or_last:bool) -> Maybe[API.StrangMarkBase_e]:
+    def _implicit_mark(self, val:str, marks:type[API.StrangMarkAbstract_e], *, first_or_last:bool) -> Maybe[API.StrangMarkAbstract_e]:
         """ Builds certain implicit marks,
         but only for the first and last words of a section
 

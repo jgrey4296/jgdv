@@ -49,7 +49,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from ._interface import Strang_i, PreProcessable_p
+    from ._interface import Strang_i, PreProcessor_p
 ##--|
 
 # isort: on
@@ -85,7 +85,7 @@ class StrangMeta(StrMeta):
             case _:
                 pass
 
-        processor  : PreProcessable_p  = cls._processor
+        processor  : PreProcessor_p  = cls._processor
         stage      : str               = "Pre-Process"
 
         try:
@@ -93,7 +93,8 @@ class StrangMeta(StrMeta):
                                          data,
                                          strict=kwargs.get("strict", False))
             stage = "__new__"
-            obj : Strang_i = cls.__new__(cls, data)
+            obj = str.__new__(cls, data)
+            obj.__class__ = cls
             stage = "__init__"
             cls.__init__(obj, *args, **kwargs)
             stage = "Process"
@@ -101,7 +102,7 @@ class StrangMeta(StrMeta):
             stage = "Post-Process"
             obj = processor.post_process(obj) or obj
         except ValueError as err:
-            msg = f"[{cls.__name__}] Stage: {stage}"
-            raise errors.StrangError(msg, err, data, cls, processor) from None
+            raise errors.StrangError(errors.StrangCtorFailure.format(cls=cls.__name__, stage=stage),
+                                     err, data, cls, processor) from None
         else:
             return obj
