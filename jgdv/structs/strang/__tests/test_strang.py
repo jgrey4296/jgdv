@@ -166,7 +166,6 @@ class TestStrang_Access:
         ang = Strang(ing)
         assert(ang[:,:] == ing)
 
-
     def test_getitem_multi_slices_not_all_sections(self):
         """
         [:1,:] gets the strang, but uses Strang.get instead of str.__getitem__
@@ -175,7 +174,6 @@ class TestStrang_Access:
         ang = Strang(ing)
         assert(ang[:1,:] == "group.blah.$basic$::")
         assert(ang[1:,:] == "a..$head$")
-
 
     def test_getitem_section_slice_error_on_negative(self):
         """
@@ -195,7 +193,6 @@ class TestStrang_Access:
         uuid_ing = f"group.blah.$basic$::a..<uuid:{ang.uuid()}>"
         assert(ang[:] == ing)
         assert(ang[:,:] == uuid_ing)
-
 
     def test_getitem_multi_slices_with_explicit_uuid(self):
         """
@@ -599,6 +596,15 @@ class TestStrang_Contains:
             case _:
                 assert(False)
 
+    @pytest.mark.xfail
+    def test_match_uuuid(self):
+        obj  = Strang("head::tail.a.b.c.<uuid>")
+        match obj:
+            case Strang(uuid=uuid.UUID()):
+                assert(True)
+            case x:
+                assert(False), x
+
     def test_match_sections(self):
         obj  = Strang("head::tail.a.b.c")
         match obj:
@@ -797,8 +803,6 @@ class TestStrang_Modify:
         assert(result == "group::body.a.b.c")
         assert(obj == "group::body.a.b.c..d")
 
-@pytest.mark.xfail
-class TestRest:
     def test_pop_to_top(self):
         obj = Strang("group::body.a.b.c..d..e")
         assert(isinstance((result:=obj.pop(top=True)), Strang))
@@ -806,9 +810,58 @@ class TestRest:
         assert(obj == "group::body.a.b.c..d..e")
 
     def test_pop_to_top_with_markers(self):
-        obj = Strang("group::+.body.a.b.c").with_head().to_uniq()
+        obj = Strang("group::+.body.a.b.c..$head$..<uuid>")
         assert(isinstance((result:=obj.pop(top=True)), Strang))
         assert(result == "group::+.body.a.b.c")
+
+    ##--| to unique
+
+    def test_to_uniq(self):
+        obj = Strang("group::body.a.b.c")
+        match obj.to_uniq():
+            case Strang() as x:
+                assert(x.uuid())
+                assert(x == f"group::body.a.b.c..<uuid>")
+
+    def test_to_uniq_with_suffix(self):
+        obj = Strang("group::body.a.b.c")
+        assert(isinstance((r1:=obj.to_uniq("simple")), Strang))
+        assert(r1.uuid())
+        assert(r1 == f"group::body.a.b.c..<uuid>.simple")
+
+    def test_to_uniq_pop_returns(self):
+        obj = Strang("group::body.a.b.c")
+        r1 = obj.to_uniq()
+        assert(r1.pop() == obj)
+
+    def test_to_uniq_idempotent(self):
+        obj = Strang("group::body.a.b.c")
+        r1  = obj.to_uniq()
+        r2  = r1.to_uniq()
+        assert(obj != r1)
+        assert(obj != r2)
+        assert(r1 == r2)
+
+    def test_de_uniq(self):
+        obj = Strang("group::body.a.b.c")
+        uniq = obj.to_uniq()
+        match uniq.de_uniq():
+            case Strang("group::body.a.b.c") as x:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_de_uniq_suffixed(self):
+        obj = Strang("group::body.a.b.c")
+        uniq = obj.to_uniq("blah", "bloo","blee")
+        match uniq.de_uniq():
+            case Strang("group::body.a.b.c") as x:
+                assert(True)
+            case x:
+                assert(False), x
+
+@pytest.mark.xfail
+class TestRest:
     ##--| Canon
 
     def test_canon(self):
@@ -823,48 +876,6 @@ class TestRest:
         assert(result == "group::body.a.b.c..e.f.g")
         assert(obj == f"group::body.a.b.c..$gen$.<uuid:{UUID_STR}>.e.f.g")
 
-    ##--| Uniqueness
-
-    def test_to_uniq(self):
-        obj = Strang("group::body.a.b.c")
-        assert(isinstance((r1:=obj.to_uniq()), Strang))
-        assert(isinstance((r1_uuid:=r1[-1]), uuid.UUID))
-        assert(r1 == f"group::body.a.b.c..$gen$.<uuid:{r1_uuid}>")
-
-    def test_to_uniq_idempotent(self):
-        obj = Strang("group::body.a.b.c")
-        r1  = obj.to_uniq()
-        r2  = r1.to_uniq()
-        assert(r1 is r2)
-
-    def test_to_uniq_with_suffix(self):
-        obj = Strang("group::body.a.b.c")
-        assert(isinstance((r1:=obj.to_uniq(suffix="simple")), Strang))
-        assert(isinstance((r1_uuid:=r1[-2]), uuid.UUID))
-        assert(r1 == f"group::body.a.b.c..$gen$.<uuid:{r1_uuid}>.simple")
-
-    def test_de_uniq(self):
-        obj = Strang("group::body.a.b.c")
-        r1 = obj.to_uniq()
-        assert(r1.pop() == obj)
-        assert(r1.de_uniq() == obj)
-
-    def test_to_uniq_pop_returns(self):
-        obj = Strang("group::body.a.b.c")
-        r1 = obj.to_uniq()
-        assert(r1.pop() == obj)
-
-    def test_uuid_with_head(self):
-        obj = Strang(f"group::body.<uuid:{UUID_STR}>")
-        assert(isinstance((result:=obj.with_head()), Strang))
-        assert(result == f"group::body.<uuid:{UUID_STR}>..$head$")
-        assert(obj == f"group::body.<uuid:{UUID_STR}>")
-
-    def test_mark_with_head(self):
-        obj = Strang(f"group::body..<uuid:{UUID_STR}>")
-        assert(isinstance((result:=obj.with_head()), Strang))
-        assert(result == f"group::body..<uuid:{UUID_STR}>..$head$")
-        assert(obj == f"group::body..<uuid:{UUID_STR}>")
 
 @pytest.mark.skip
 class TestStrangFormatting:

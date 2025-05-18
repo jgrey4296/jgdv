@@ -419,46 +419,9 @@ class Strang(str, metaclass=StrangMeta):
             if case and y is not None:
                 yield section.case
 
-    ##--| UUIDs
 
-    def uuid(self) -> Maybe[UUID]:
-        return self.data.uuid
 
-    def to_uniq(self, *, suffix:Maybe[str]=None) -> API.Strang_p:
-        """ Generate a concrete instance of this name with a UUID appended,
-        optionally can add a suffix
-
-          ie: a.task.group::task.name..{prefix?}.$gen$.<UUID>
-        """
-        match suffix:
-            case None:
-                return self.push(API.UUID_WORD)
-            case _:
-                raise NotImplementedError()
-
-    def de_uniq(self) -> API.Strang_i:
-        """ return the strang up to, but not including, the uuid
-
-        eg: 'group.a::q.w.e.<uuid>.t.y'.de_uniq() -> 'group.a::q.w.e'
-        """
-        assert(self.uuid()), "Can't de-uniq a non-uniq strang"
-        raise NotImplementedError()
-
-    ##--| Other
-
-    def format(self, *args:Any, **kwargs:Any) -> str:  # noqa: ANN401
-        """ Advanced formatting for strangs,
-        using the cls._formatter
-        """
-        return self._formatter.format(self, *args, **kwargs)
-
-    def canon(self) -> API.Strang_i:
-        """ canonical name. no UUIDs
-        eg: group::a.b.c.$gen$.<uuid>.c.d.e
-        ->  group::a.b.c..c.d.e
-        """
-        raise NotImplementedError()
-
+    ##--| Modify
     def push(self, *args:API.PushVal) -> API.Strang_i:
         """ extend a strang with values
 
@@ -490,6 +453,8 @@ class Strang(str, metaclass=StrangMeta):
                     pass
                 case API.StrangMarkAbstract_e() as x if x in type(x).idempotent() and x in self:
                     words.append(x.value)
+                case str() as x if x == API.UUID_WORD and insert_uuid:
+                    raise ValueError(errors.TooManyUUIDs)
                 case str() as x:
                     words.append(x)
                 case UUID() as x if not insert_uuid:
@@ -502,7 +467,7 @@ class Strang(str, metaclass=StrangMeta):
         else:
             return cast("API.Strang_i", Strang(case.join(words), uuid=insert_uuid))
 
-    def pop(self) -> API.Strang_i:
+    def pop(self, *, top=True)-> API.Strang_i:
         """
         Strip off one marker's worth of the name, or to the top marker.
         eg:
@@ -512,11 +477,55 @@ class Strang(str, metaclass=StrangMeta):
         mark = self.section(-1).marks.skip()
         assert(mark is not None)
         try:
-            next_mark = self.rindex(mark)
+            match top:
+                case True:
+                    next_mark = self.index(mark)
+                case False:
+                    next_mark = self.rindex(mark)
         except ValueError:
             return cast("API.Strang_i", self)
         else:
             return cast("API.Strang_i", Strang(self[:next_mark]))
+
+    ##--| UUIDs
+
+    def uuid(self) -> Maybe[UUID]:
+        return self.data.uuid
+
+    def to_uniq(self, *args:str) -> API.Strang_p:
+        """ Generate a concrete instance of this name with a UUID appended,
+        optionally can add a suffix
+
+          ie: a.task.group::task.name..{prefix?}.$gen$.<UUID>
+        """
+        try:
+            return self.push(API.UUID_WORD, *args)
+        except ValueError:
+            return self
+
+    def de_uniq(self) -> API.Strang_i:
+        """ return the strang up to, but not including, the uuid
+
+        eg: 'group.a::q.w.e.<uuid>.t.y'.de_uniq() -> 'group.a::q.w.e'
+        """
+        assert(self.uuid()), "Can't de-uniq a non-uniq strang"
+        return cast("API.Strang_i", Strang(self[:self.index(API.DefaultBodyMarks_e.unique)]))
+
+
+    ##--| Other
+
+    def format(self, *args:Any, **kwargs:Any) -> str:  # noqa: ANN401
+        """ Advanced formatting for strangs,
+        using the cls._formatter
+        """
+        return self._formatter.format(self, *args, **kwargs)
+
+    def canon(self) -> API.Strang_i:
+        """ canonical name. no UUIDs
+        eg: group::a.b.c.$gen$.<uuid>.c.d.e
+        ->  group::a.b.c..c.d.e
+        """
+        raise NotImplementedError()
 
     def root(self) -> API.Strang_i:
         """Pop off to the top marker """
