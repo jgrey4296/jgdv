@@ -133,7 +133,9 @@ class CodeRefHeadMarks_e(StrangMarkAbstract_e):
 ##--| Vars
 FMT_PATTERN   : Final[Rx]        = re.compile("^(h?)(t?)(p?)")
 TYPE_RE       : Final[Rx]        = re.compile(r"<(.+?)(?::(.+?))?>")
+TYPE_ITER_RE  : Final[Rx]        = re.compile(r"(<)(.+?)(?::(.+?))?(>)")
 MARK_RE       : Final[Rx]        = re.compile(r"(\$.+?\$)")
+MARK_ITER_RE  : Final[Rx]        = re.compile(r"(\$)(.+?)(\$)")
 CASE_DEFAULT  : Final[str]       = "."
 END_DEFAULT   : Final[str]       = "::"
 INST_K        : Final[str]       = "instanced"
@@ -209,6 +211,7 @@ class Sections_d:
     a strang type is structured into these
 
     Each Section is a Sec_d
+    TODO add format conversion specs
     """
     __slots__ = ("named", "order", "types")
     named  : dict[str, int]
@@ -292,7 +295,7 @@ class PreProcessor_p(Protocol):
 
     """
 
-    def pre_process[T:Strang_i](self, cls:type[Strang_i], data:str, *, strict:bool=False) -> str: ...
+    def pre_process[T:Strang_i](self, cls:type[Strang_i], data:str, *, strict:bool=False) -> tuple[str, dict]: ...
 
     def process(self, obj:Strang_i) -> Maybe[Strang_i]: ...
 
@@ -301,7 +304,7 @@ class PreProcessor_p(Protocol):
 class ProcessorHooks(Protocol):
 
     @classmethod
-    def _pre_process_h[T:Strang_i](cls:type[T], data:str, *, strict:bool=False) -> str: ...
+    def _pre_process_h[T:Strang_i](cls:type[T], data:str, *, strict:bool=False) -> tuple[str, dict]: ...
 
     def _process_h(self, obj:Strang_i) -> Maybe[Strang_i]: ...
 

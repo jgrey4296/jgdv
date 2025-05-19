@@ -44,7 +44,7 @@ class TestStrang_PreProcess:
         ing =  "a.b.c::d.e....f"
         obj = StrangBasicProcessor()
         match obj.pre_process(Strang, ing):
-            case "a.b.c::d.e..f":
+            case "a.b.c::d.e..f", {}:
                 assert(True)
             case x:
                  assert(False), x
@@ -53,7 +53,7 @@ class TestStrang_PreProcess:
         ing = "a.b.c::d.e...."
         obj = StrangBasicProcessor()
         match obj.pre_process(Strang, ing):
-            case "a.b.c::d.e":
+            case "a.b.c::d.e", {}:
                 assert(True)
             case x:
                  assert(False), x
@@ -62,7 +62,7 @@ class TestStrang_PreProcess:
         ing =  "    a.b.c::d.e"
         obj = StrangBasicProcessor()
         match obj.pre_process(Strang, ing):
-            case "a.b.c::d.e":
+            case "a.b.c::d.e", {}:
                 assert(True)
             case x:
                  assert(False), x
@@ -71,6 +71,19 @@ class TestStrang_PreProcess:
         obj = StrangBasicProcessor()
         with pytest.raises(ValueError):
             obj.pre_process(Strang, "a.b.c")
+
+
+    def test_compress_uuid(self):
+        obj         = StrangBasicProcessor()
+        ing         = f"head::a.b.c..<uuid:{UUID_STR}>"
+        simple_ing  = "head::a.b.c..<uuid>"
+        match obj.pre_process(Strang, ing):
+            case str() as x, {"uuid": UUID() as uid}:
+                assert(x == simple_ing)
+                assert(str(uid) == UUID_STR)
+                assert(True)
+            case x:
+                assert(False), x
 
     @pytest.mark.xfail
     def test_verify_structure_fail_surplus(self):
@@ -141,7 +154,6 @@ class TestStrang_PostProcess_UUIDs:
         val = Strang("a.b.c.<uuid>::d.e.f")
         assert(val.uuid())
         val.data.meta = ()
-        val.data.uuid = None
         assert(not bool(val.data.meta))
         obj.post_process(val)
         assert(bool(val.data.meta))
@@ -157,7 +169,6 @@ class TestStrang_PostProcess_UUIDs:
         val = Strang("a.b.c::d.e.<uuid>")
         assert(val.uuid())
         val.data.meta = ()
-        val.data.uuid = None
         assert(not bool(val.data.meta))
         obj.post_process(val)
         assert(val.uuid())
@@ -178,10 +189,10 @@ class TestStrang_PostProcess_UUIDs:
                  assert(False), type(x)
 
     def test_rebuild_uuid(self):
-        s1 = Strang(f"head::tail.<uuid:{UUID_STR}>")
+        ing = f"head::tail.<uuid:{UUID_STR}>"
+        s1 = Strang(ing)
         s2 = Strang(str(s1))
-        assert(s1.uuid())
-        assert(s2.uuid())
+        assert(s1.uuid() == s2.uuid())
         assert(isinstance(s1.get(1,-1), uuid.UUID))
         assert(isinstance(s2.get(1,-1), uuid.UUID))
         assert(s1.get(1,-1) == s2.get(1,-1))

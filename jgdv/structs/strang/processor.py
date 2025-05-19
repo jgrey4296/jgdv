@@ -76,24 +76,22 @@ class StrangBasicProcessor(API.PreProcessor_p):
     the processor uses that for a stage instead
     """
 
-    def pre_process(self, cls:type[Strang_i], data:str, *, strict:bool=False) -> str:
+    def pre_process(self, cls:type[Strang_i], text:str, *, strict:bool=False) -> tuple[str, dict]:
         """ run before str.__new__ is called,
         to do early modification of the string
         Filters out extraneous duplicated separators
         """
-        # TODO expand <uuid> gen tags here
         match getattr(cls, name_to_hook("pre_process"), None):
             case x if callable(x):
-                return x(cls, data, strict=strict)
+                return x(cls, text, strict=strict)
             case None:
                 pass
 
-        if self._verify_structure(cls, data):
-            clean = self._clean_separators(cls, data)
-            return clean.strip()
+        if not self._verify_structure(cls, text):
+            raise ValueError(errors.MalformedData, text)
 
-
-        raise ValueError(errors.MalformedData, data)
+        clean = self._clean_separators(cls, text).strip()
+        return self._compress_types(cls, clean)
 
     def _verify_structure(self, cls:type[Strang_i], val:str) -> bool:
         """ Verify basic strang structure.
@@ -120,6 +118,32 @@ class StrangBasicProcessor(API.PreProcessor_p):
         cleaned    = clean_re.sub(sep * 2, val)
         trimmed    = cleaned.removesuffix(sep).removesuffix(sep)
         return trimmed
+    def _compress_types(self, cls:type[Strang_i], val:str) -> tuple[str, dict]:  # noqa: ARG002
+        """ if there's an explicit uuid, extract its value and build it """
+        curr       : re.Match
+        text       : list  = []
+        extracted  : dict  = {}
+        idx        : int   = 0
+        for curr in API.TYPE_ITER_RE.finditer(val):
+            match curr.groups():
+                case ["<", "uuid", *_] if "uuid" in extracted:
+                    raise errors.StrangError(errors.TooManyUUIDs)
+                case ["<", str() as key, full_spec, ">"] if key == "uuid":
+                    if bool(full_spec):
+                        extracted[key]  = UUID(full_spec)
+                    else:
+                        extracted[key] = uuid1()
+                    _,start         = curr.span(2)
+                    rest,end        = curr.span(4)
+                    text.append(val[idx:start])
+                    text.append(val[rest:end])
+                    idx = end
+                case ["<", str() as other, str() as oval, ">"]:  # noqa: F841
+                    pass
+        else:
+            text.append(val[idx:])
+            return "".join(text), extracted
+
     ##--|
 
     def process(self, obj:Strang_i) -> Maybe[Strang_i]:
@@ -172,27 +196,27 @@ class StrangBasicProcessor(API.PreProcessor_p):
                     pass
         ##--|
         word_slices = self._slice_section(obj,
-                                          case=section.case,
+                                          case=[section.case, section.end],
                                           start=offset,
                                           max=search_bound)
         sec_slice  = slice(offset, search_bound)
 
         return sec_slice, word_slices, bound_extend
 
-    def _slice_section(self, obj:Strang_i, *, case:str, start:int=0, max:int=-1) -> tuple[slice]:  # noqa: A002
+    def _slice_section(self, obj:Strang_i, *, case:list[Maybe[str]], start:int=0, max:int=-1) -> tuple[slice]:  # noqa: A002
         """ Get a list of word slices of a section, with an offset. """
-        index, end, offset = start, max or len(obj), len(case)
-        slices : list[slice] = []
-        while -1 < index:
-            try:
-                next_idx = obj.index(case, start=index, end=end)
-                if index != end:
-                    slices.append(slice(index, next_idx))
-                    index  = next_idx + offset
-            except ValueError:
-                slices.append(slice(index, end))
-                index = -1
-
+        curr    : re.Match
+        slices  : list[slice]  = []
+        end                    = max or len(obj)
+        escaped                = "|".join(re.escape(x) for x in case if x is not None)
+        reg                    = re.compile(f"(.*?)({escaped}|$)")
+        words                  = []
+        for curr in reg.finditer(cast("str", obj), start, end):
+            span = curr.span(1)
+            if span[0] == end:
+                continue
+            slices.append(slice(*span))
+            words.append(obj[span[0]:span[1]])
         else:
             return cast("tuple[slice]", tuple(slices))
 
@@ -225,12 +249,9 @@ class StrangBasicProcessor(API.PreProcessor_p):
             assert(isinstance(elem, str))
             # Discriminate the str
             match elem:
-                case x if (uuid_elem:=self._make_uuid(x, obj)) is not None:
-                    logging.debug("Found UUID: %s", i)
-                    if new_uuid and new_uuid != uuid_elem:
-                        raise errors.StrangError(errors.TooManyUUIDs, obj)
-                    meta[i] = API.DefaultBodyMarks_e.unique
-                    new_uuid = uuid_elem
+                case x if (uuid_mark:=self._make_uuid_mark(x)) is not None:
+                    assert(obj.data.uuid)
+                    meta[i] = uuid_mark
                 case x if (mark_elem:=self._build_mark(x, marks)) is not None:
                     logging.debug("(%s) Found Named Marker: %s", i, mark_elem)
                     meta[i] = mark_elem
@@ -261,7 +282,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
 
     ##--| utils
 
-    def _make_uuid(self, val:str, obj:Strang_i) -> Maybe[UUID]:
+    def _make_uuid_mark(self, val:str) -> Maybe[API.StrangMarkAbstract_e]:
         """ Handle <uuid> and <uuid:{val}>.
         matches using strang._interface.TYPE_RE
 
@@ -273,14 +294,8 @@ class StrangBasicProcessor(API.PreProcessor_p):
             return None
 
         match data.groups():
-            case ["uuid", None] if obj.data.uuid:
-                return obj.data.uuid
             case ["uuid", None]:
-                return uuid1()
-            case ["uuid", str() as spec] if obj.data.uuid and spec == str(obj.data.uuid):
-                return obj.data.uuid
-            case ["uuid", str() as full_spec]:
-                return UUID(full_spec)
+                return API.DefaultBodyMarks_e.unique
             case x:
                 raise TypeError(type(x))
         return None

@@ -117,6 +117,10 @@ class Strang(str, metaclass=StrangMeta):
     ##--| dunders
 
     def __str__(self) -> str:
+        """ Provides a fully expanded string
+
+        eg: a.b.c::d.e.f..<uuid:{val}>
+        """
         if self.uuid():
             return self[:,:]
         return str.__str__(self)
@@ -127,7 +131,7 @@ class Strang(str, metaclass=StrangMeta):
         return f"<{cls}: {body}>"
 
     def __format__(self:API.Strang_i, spec:str) -> str:
-        """ Basic formatting  """
+        """ Basic formatting to get just a section """
         match spec:
             case "g":
                 val = self[0,:]
@@ -520,12 +524,11 @@ class Strang(str, metaclass=StrangMeta):
         """
         return self._formatter.format(self, *args, **kwargs)
 
-    def canon(self) -> API.Strang_i:
-        """ canonical name. no UUIDs
-        eg: group::a.b.c.$gen$.<uuid>.c.d.e
-        ->  group::a.b.c..c.d.e
+    def canon(self) -> str:
+        """ canonical name. compress all uuids
+        eg: group::a.b.c..<uuid>.c.d.e
         """
-        raise NotImplementedError()
+        return self[:]
 
     def root(self) -> API.Strang_i:
         """Pop off to the top marker """

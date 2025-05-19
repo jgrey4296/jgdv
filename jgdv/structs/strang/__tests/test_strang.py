@@ -62,7 +62,7 @@ class TestStrang_Base:
     def test_repr_with_uuid(self):
         obj = Strang(f"head::tail.<uuid:{UUID_STR}>")
         assert(obj.uuid())
-        assert(repr(obj) == f"<Strang: head::tail.<uuid:{UUID_STR}>>")
+        assert(repr(obj) == f"<Strang: head::tail.<uuid>>")
         assert(obj.shape == (1,2))
 
     def test_repr_with_brace_val(self):
@@ -367,7 +367,7 @@ class TestStrang_Access:
         ang = Strang(ing)
         assert(ing.rindex("c") == ang.rindex("c"))
 
-    def test_index_mark_empty_str(self):
+    def test_rindex_mark_empty_str(self):
         """ find('') is useless,
         but find(mark.empty) can
         """
@@ -712,11 +712,12 @@ class TestStrang_Modify:
                 assert(False), x
 
     def test_push_explicit_uuid_str(self):
-        obj       = Strang("group::body.a.b.c")
-        uuid_obj  = uuid.uuid1()
-        ing       = f"group::body.a.b.c..<uuid:{uuid_obj}>"
+        obj         = Strang("group::body.a.b.c")
+        uuid_obj    = uuid.uuid1()
+        ing         = f"group::body.a.b.c..<uuid:{uuid_obj}>"
+        simple_ing  = f"{obj}..<uuid>"
         match obj.push(f"<uuid:{uuid_obj}>"):
-            case Strang(val) as x if val == ing:
+            case Strang(val) as x if val == simple_ing:
                 assert(x.uuid() == uuid_obj)
             case x:
                 assert(False), x
@@ -860,24 +861,41 @@ class TestStrang_Modify:
             case x:
                 assert(False), x
 
-@pytest.mark.xfail
-class TestRest:
-    ##--| Canon
+class TestStrang_UUIDs:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_implicit(self):
+        obj = Strang("group::body.a.b.c..<uuid>")
+        assert(obj.uuid())
+
+    def test_implicit_str(self):
+        ing = "group::body.a.b.c..<uuid>"
+        ang = Strang(ing)
+        assert(ang.uuid())
+        assert(str(ang) == f"group::body.a.b.c..<uuid:{ang.uuid()}>")
+        assert(ang[:] == ing)
+
+    def test_explicit(self):
+        uid_obj = uuid.uuid1()
+        ing = f"group::body.a.b.c..<uuid:{uid_obj}>"
+        ang = Strang(ing)
+        assert(ang.uuid())
+
+    def test_explicit_str(self):
+        uid_obj = uuid.uuid1()
+        ing = f"group::body.a.b.c..<uuid:{uid_obj}>"
+        ang = Strang(ing)
+        assert(ang.uuid())
+        assert(str(ang) == ing)
+        assert(ang[:] == "group::body.a.b.c..<uuid>")
 
     def test_canon(self):
         obj = Strang(f"group::body.a.b.c..<uuid:{UUID_STR}>")
-        assert(isinstance((result:=obj.canon()), Strang))
-        assert(result == "group::body.a.b.c")
-        assert(obj == f"group::body.a.b.c..<uuid:{UUID_STR}>")
+        assert(obj[:] == "group::body.a.b.c..<uuid>")
+        assert(obj.canon() == "group::body.a.b.c..<uuid>")
 
-    def test_canon_extended(self):
-        obj = Strang(f"group::body.a.b.c..$gen$.<uuid:{UUID_STR}>.e.f.g")
-        assert(isinstance((result:=obj.canon()), Strang))
-        assert(result == "group::body.a.b.c..e.f.g")
-        assert(obj == f"group::body.a.b.c..$gen$.<uuid:{UUID_STR}>.e.f.g")
-
-
-@pytest.mark.skip
 class TestStrangFormatting:
 
     def test_sanity(self):
@@ -895,7 +913,7 @@ class TestStrangFormatting:
     def test_todo(self):
         pass
 
-@pytest.mark.skip
+@pytest.mark.xfail
 class TestStrangAnnotation:
 
     def test_sanity(self):
@@ -985,8 +1003,11 @@ class TestStrangAnnotation:
         assert(isinstance(obj, Strang))
         assert(not isinstance(obj, StrangSub))
 
-@pytest.mark.skip
+@pytest.mark.xfail
 class TestStrangParameterized:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
     def test_with_params(self):
         obj = Strang("head::tail.a.b.c[blah]")
