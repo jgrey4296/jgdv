@@ -183,15 +183,15 @@ class Sec_d:
     """
     __slots__ = ("case", "end", "idx", "marks", "name", "required", "types")
 
-    def __init__(self, name:str, case:str, end:str, types:type|UnionType, marks:type[StrangMarkAbstract_e], required:bool=True, *, idx:int=-1) -> None:  # noqa: FBT001, FBT002, PLR0913
+    def __init__(self, name:str, case:str, end:Maybe[str], types:type|UnionType, marks:Maybe[type[StrangMarkAbstract_e]], required:bool=True, *, idx:int=-1) -> None:  # noqa: FBT001, FBT002, PLR0913
         assert(0 <= idx)
-        self.idx       : int                     = idx
-        self.name      : str                     = name.lower()
-        self.case      : str                     = case
-        self.end       : Maybe[str]              = end
-        self.types     : type|UnionType          = types
-        self.marks     : type[StrangMarkAbstract_e]  = marks
-        self.required  : bool                    = required
+        self.idx       : int                                = idx
+        self.name      : str                                = name.lower()
+        self.case      : str                                = case
+        self.end       : Maybe[str]                         = end
+        self.types     : type|UnionType                     = types
+        self.marks     : Maybe[type[StrangMarkAbstract_e]]  = marks
+        self.required  : bool                               = required
 
     def __contains__(self, other:type|StrangMarkAbstract_e) -> bool:
         match other:
@@ -200,7 +200,7 @@ class Sec_d:
             case UnionType() as xs:
                 # Check its contained using its removal of duplicates
                 return (xs | self.types) == self.types
-            case StrangMarkAbstract_e() as x:
+            case StrangMarkAbstract_e() as x if self.marks:
                 return x in self.marks
             case _:
                 return False
@@ -295,7 +295,7 @@ class PreProcessor_p(Protocol):
 
     """
 
-    def pre_process[T:Strang_i](self, cls:type[Strang_i], data:str, *, strict:bool=False) -> tuple[str, dict]: ...
+    def pre_process[T:Strang_i](self, cls:type[Strang_i], data:Any, *args:Any, strict:bool=False, **kwargs:Any) -> tuple[str, dict]: ...  # noqa: ANN401
 
     def process(self, obj:Strang_i) -> Maybe[Strang_i]: ...
 
@@ -304,7 +304,7 @@ class PreProcessor_p(Protocol):
 class ProcessorHooks(Protocol):
 
     @classmethod
-    def _pre_process_h[T:Strang_i](cls:type[T], data:str, *, strict:bool=False) -> tuple[str, dict]: ...
+    def _pre_process_h[T:Strang_i](cls:type[T], data:Any, *args:Any, strict:bool=False, **kwargs:Any) -> tuple[str, dict]: ...  # noqa: ANN401
 
     def _process_h(self, obj:Strang_i) -> Maybe[Strang_i]: ...
 

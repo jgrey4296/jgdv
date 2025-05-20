@@ -13,7 +13,6 @@ import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
-import pathlib as pl
 import re
 import time
 import types
@@ -41,6 +40,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    import pathlib as pl
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -60,7 +60,8 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-StrMeta : Final[type] = type(str)
+StrMeta      : Final[type]  = type(str)
+HasDictFail  : Final[str]   = "The resulting strang has a __dict__. Set the subclass to have __slots__=()"
 # Body:
 
 class StrangMeta(StrMeta):
@@ -77,31 +78,28 @@ class StrangMeta(StrMeta):
 
     def __call__(cls:type[Strang_i], text:str|pl.Path, *args:Any, **kwargs:Any) -> Strang_i:  # noqa: ANN401, N805
         """ Overrides normal str creation to allow passing args to init """
-        match text:
-            case pl.Path():
-                text = str(text)
-            case str():
-                text = str(text)
-            case _:
-                pass
-
         processor  : PreProcessor_p  = cls._processor
         stage      : str               = "Pre-Process"
 
         try:
             text, data = processor.pre_process(cls,
                                                text,
-                                               strict=kwargs.get("strict", False))
+                                               *args,
+                                               strict=kwargs.get("strict", False),
+                                               **kwargs,
+                                               )
             data.update({x:y for x,y in kwargs.items() if y is not None})
             stage = "__new__"
             obj = str.__new__(cls, text)
             obj.__class__ = cls
             stage = "__init__"
-            cls.__init__(obj, *args, **data)
+            cls.__init__(obj, text, *args, **data)
             stage = "Process"
             obj = processor.process(obj) or obj
             stage = "Post-Process"
             obj = processor.post_process(obj) or obj
+            if hasattr(obj, "__dict__"):
+                raise ValueError(HasDictFail)
         except ValueError as err:
             raise errors.StrangError(errors.StrangCtorFailure.format(cls=cls.__name__, stage=stage),
                                      err, text, cls, processor) from None

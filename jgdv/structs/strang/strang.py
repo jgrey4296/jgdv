@@ -110,7 +110,7 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
 
     ##--|
 
-    def __init__(self:API.Strang_i, *_:Any, uuid:Maybe[UUID]=None, **kwargs:Any) -> None:  # noqa: ANN401
+    def __init__(self:API.Strang_i, _:str, *args:Any, uuid:Maybe[UUID]=None, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
         super().__init__()
         self.meta          = dict(kwargs)
         self.data         = API.Strang_d(uuid)
@@ -441,7 +441,8 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         insert_uuid  : Maybe[UUID]  = self.uuid()
         case                        = self.section(-1).case
         words                       = [self[:]]
-        match self.section(-1).marks.skip():
+        marks = self.section(-1).marks or API.DefaultBodyMarks_e
+        match marks.skip():
             case API.StrangMarkAbstract_e() as x:
                 mark = x.value
                 words.append(x.value)
@@ -479,7 +480,7 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         root(test::a.b.c..<UUID>.sub..other) => test::a.b.c..<UUID>.sub
         root(test::a.b.c..<UUID>.sub..other, top=True) => test::a.b.c
         """
-        mark = self.section(-1).marks.skip()
+        mark = (self.section(-1).marks or API.DefaultBodyMarks_e).skip()
         assert(mark is not None)
         try:
             match top:

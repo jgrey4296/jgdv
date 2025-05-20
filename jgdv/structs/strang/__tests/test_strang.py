@@ -2,7 +2,7 @@
 """
 
 """
-# ruff: noqa: ANN202, B011
+# ruff: noqa: ANN202, B011, PLR2004, ANN001
 from __future__ import annotations
 
 import uuid
@@ -49,6 +49,13 @@ class TestStrang_Base:
         assert(not obj.uuid())
         assert(obj.shape == (2, 2))
 
+    def test_ctor_with_multi_args(self):
+        ing = "head.a::tail"
+        args = ["a","b","c"]
+        obj = Strang(ing, *args)
+        assert(obj is not ing)
+        assert(obj == "head.a::tail.a.b.c")
+
     def test_initial(self):
         obj = Strang("head::tail")
         assert(isinstance(obj, Strang))
@@ -62,7 +69,7 @@ class TestStrang_Base:
     def test_repr_with_uuid(self):
         obj = Strang(f"head::tail.<uuid:{UUID_STR}>")
         assert(obj.uuid())
-        assert(repr(obj) == f"<Strang: head::tail.<uuid>>")
+        assert(repr(obj) == "<Strang: head::tail.<uuid>>")
         assert(obj.shape == (1,2))
 
     def test_repr_with_brace_val(self):
@@ -633,7 +640,7 @@ class TestStrang_Contains:
     def test_match_missing_sections_fail(self):
         obj  = Strang("head::tail.a.b.c")
         match obj:
-            case Strang(head=x, tail=y):
+            case Strang(head=_, tail=_):
                 assert(False)
             case _:
                 assert(True)
@@ -718,6 +725,7 @@ class TestStrang_Modify:
         simple_ing  = f"{obj}..<uuid>"
         match obj.push(f"<uuid:{uuid_obj}>"):
             case Strang(val) as x if val == simple_ing:
+                assert(str(x) == ing)
                 assert(x.uuid() == uuid_obj)
             case x:
                 assert(False), x
@@ -822,13 +830,13 @@ class TestStrang_Modify:
         match obj.to_uniq():
             case Strang() as x:
                 assert(x.uuid())
-                assert(x == f"group::body.a.b.c..<uuid>")
+                assert(x == "group::body.a.b.c..<uuid>")
 
     def test_to_uniq_with_suffix(self):
         obj = Strang("group::body.a.b.c")
         assert(isinstance((r1:=obj.to_uniq("simple")), Strang))
         assert(r1.uuid())
-        assert(r1 == f"group::body.a.b.c..<uuid>.simple")
+        assert(r1 == "group::body.a.b.c..<uuid>.simple")
 
     def test_to_uniq_pop_returns(self):
         obj = Strang("group::body.a.b.c")
@@ -896,7 +904,7 @@ class TestStrang_UUIDs:
         assert(obj[:] == "group::body.a.b.c..<uuid>")
         assert(obj.canon() == "group::body.a.b.c..<uuid>")
 
-class TestStrangFormatting:
+class TestStrang_Formatting:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -909,12 +917,14 @@ class TestStrangFormatting:
         obj = Strang("group.blah::body.a.b.c")
         assert(f"{obj:b}" == "body.a.b.c")
 
-    @pytest.mark.skip
-    def test_todo(self):
-        pass
+    def test_format_word(self):
+        obj = Strang("group.blah::body.a.b.c")
+        assert(f"{obj[1,0]}" == "body")
 
-@pytest.mark.xfail
-class TestStrangAnnotation:
+class TestStrang_Annotation:
+    """ Test custom parameterized subclassing
+
+    """
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -925,59 +935,239 @@ class TestStrangAnnotation:
         assert(obj._typevar is None)
 
     def test_type_annotated(self):
-        cls = Strang[int]
-        assert(issubclass(cls, Strang))
-        assert(cls._typevar is int)
+
+        class IntStrang(Strang[int]):
+            __slots__ = ()
+            pass
+
+        assert(issubclass(IntStrang, Strang))
+        assert(IntStrang._typevar is int)
+        inst = IntStrang("blah::a.b.c")
+        assert(inst._typevar is int)
+        assert(not hasattr(inst, "__dict__"))
+
+    def test_type_reannotate(self):
+        cls   = Strang[int]
+        cls2  = Strang[int]
+        assert(cls is cls2)
 
     def test_str_annotation(self):
-        cls = Strang["blah"]
-        assert(issubclass(cls, Strang))
-        assert(cls._typevar == "blah")
+
+        class BlahStrang(Strang['blah']):
+            __slots__ = ()
+            pass
+
+        assert(issubclass(BlahStrang, Strang))
+        assert(BlahStrang._typevar == "blah")
 
     def test_annotated_instance(self):
-        cls = Strang[int]
-        ref = cls("group.a.b::body.c.d")
+
+        class IntStrang(Strang[int]):
+            __slots__ = ()
+            pass
+
+        ref = IntStrang("group.a.b::body.c.d")
         assert(isinstance(ref, Strang))
+        assert(issubclass(IntStrang, Strang))
         assert(ref._typevar is int)
 
     def test_match_type(self):
-        match Strang[int]("group.a.b::body.c.d"):
-            case Strang():
+
+        class IntStrang(Strang[int]):
+            __slots__ = ()
+            pass
+
+        match IntStrang("group.a.b::body.c.d"):
+            case IntStrang():
                 assert(True)
             case _:
                 assert(False)
 
     def test_match_on_strang(self):
-        match Strang[int]("group.a.b::body.c.d"):
+
+        class IntStrang(Strang[int]):
+            __slots__ = ()
+            pass
+
+        match IntStrang("group.a.b::body.c.d"):
             case Strang("group.a.b::body.c.d"):
                 assert(True)
             case _:
                 assert(False)
 
     def test_match_on_literal(self):
-        match Strang[int]("group.a.b::body.c.d"):
+
+        class IntStrang(Strang[int]):
+            __slots__ = ()
+            pass
+
+        match IntStrang("group.a.b::body.c.d"):
             case "group.a.b::body.c.d":
                 assert(True)
             case _:
                 assert(False)
 
+    def test_match_on_str(self):
+
+        class IntStrang(Strang[int]):
+            __slots__ = ()
+            pass
+
+        match IntStrang("group.a.b::body.c.d"):
+            case str():
+                assert(True)
+            case _:
+                assert(False)
+
     def test_match_on_subtype(self):
-        cls = Strang[int]
-        match Strang[int]("group.a.b::body.c.d"):
-            case cls():
+        subtype = Strang[int]
+
+        class IntStrang(Strang[int]):
+            __slots__ =()
+            pass
+
+        match IntStrang("group.a.b::body.c.d"):
+            case x if isinstance(x, subtype):
                 assert(True)
             case _:
                 assert(False)
 
     def test_match_on_subtype_fail(self):
-        cls = Strang[bool]
-        match Strang[int]("group.a.b::body.c.d"):
-            case cls():
-                assert(False)
-            case _:
+
+        class IntStrang(Strang[int]):
+            __slots__ =()
+            pass
+
+        match Strang("group.a.b::body.c.d"):
+            case IntStrang() as x:
+                assert(False), type(x)
+            case x:
                 assert(True)
 
-    def test_subclass_annotate(self):
+    def test_match_on_subtype_fail_b(self):
+        cls     = Strang[int]
+        notcls  = Strang[float]
+        match Strang[int]("group.a.b::body.c.d"):
+            case notcls(): # type: ignore[misc]
+                assert(False)
+            case cls(): # type: ignore[misc]
+                assert(True)
+            case _:
+                assert(False)
+
+class TestStrang_Subclassing:
+    """ Check some basic variations of Strang Subclasses,
+    like changing the sections
+
+    """
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_three_sections(self) -> None:
+
+        class ThreeSections(Strang):
+            """ A strang with 3 sections """
+            __slots__ = ()
+            _sections : ClassVar = API.Sections_d(
+                # name, case, end, types, marks, required
+                ("first", ".", "::", str, None, True),
+                ("second", "/", ":|:", str, None, True),
+                ("third", ".", "", str, None, True),
+            )
+
+        assert(issubclass(ThreeSections, Strang))
+        match ThreeSections("a.b.c::d/e/f:|:g"):
+            case ThreeSections() as val:
+                assert(not hasattr(val, "__dict__"))
+                assert(val.first == "a.b.c")
+                assert(val.second == "d/e/f")
+                assert(val.third == "g")
+            case x:
+                assert(False), x
+
+    def test_three_sections_errors_on_malformed(self) -> None:
+
+        class ThreeSections(Strang):
+            """ A strang with 3 sections """
+            __slots__ = ()
+            _sections : ClassVar = API.Sections_d(
+                # name, case, end, types, marks, required
+                ("first", ".", "::", str, None, True),
+                ("second", "/", ":|:", str, None, True),
+                ("third", ".", "", str, None, True),
+            )
+
+        assert(issubclass(ThreeSections, Strang))
+        # Check it  errors on malformed
+        with pytest.raises(StrangError):
+            ThreeSections("a.b.c::d.e.f")
+
+    def test_single_section(self) -> None:
+
+        class OneSection(Strang):
+            """ A strang with one section """
+            __slots__ = ()
+            _sections : ClassVar = API.Sections_d(
+                # name, case, end, types, marks, required
+                ("first", ".", None, str, None, True),
+            )
+
+        assert(issubclass(OneSection, Strang))
+        match OneSection("a.b.c::d.e.f"):
+            case OneSection() as x:
+                assert(x.first == "a.b.c::d.e.f")
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_end_section(self) -> None:
+
+        class EndSectionStrang(Strang):
+            """ A strang with one section """
+            __slots__ = ()
+            _sections : ClassVar = API.Sections_d(
+                # name, case, end, types, marks, required
+                ("first", ".", "::", str, None, True),
+                ("second", ".", "$", str, None, True),
+            )
+
+        assert(issubclass(EndSectionStrang, Strang))
+        with pytest.raises(StrangError):
+            EndSectionStrang("a.b.c::d.e.f")
+
+        match EndSectionStrang("a.b.c::d.e.f$"):
+            case EndSectionStrang() as x:
+                assert(x == "a.b.c::d.e.f$")
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_optional_section(self) -> None:
+
+        class OptSectionStrang(Strang):
+            """ A strang with one section """
+            __slots__ = ()
+            _sections : ClassVar = API.Sections_d(
+                # name, case, end, types, marks, required
+                ("first", ".", "::", str, None, True),
+                ("second", ".", "::", str, None, False),
+                ("third", ".", "$", str, None, True),
+            )
+
+        assert(issubclass(OptSectionStrang, Strang))
+        ang1 = OptSectionStrang("a.b.c::d.e.f$")
+        ang2 = OptSectionStrang("a.b.c::j.k.l::d.e.f$")
+
+        assert(ang1.first == ang2.first)
+        assert(ang1.second == "")
+        assert(ang2.second == "j.k.l")
+        assert(ang1.third == ang2.third)
+
+    @pytest.mark.xfail
+    def test_subclass_annotate(self) -> None:
 
         class StrangSub(Strang):
             _separator : ClassVar[str] = ":|:"
@@ -988,7 +1178,8 @@ class TestStrangAnnotation:
         assert(isinstance(ref, Strang))
         assert(isinstance(ref, StrangSub))
 
-    def test_subclass_annotate_independence(self):
+    @pytest.mark.xfail
+    def test_subclass_annotate_independence(self) -> None:
 
         class StrangSub(Strang):
             _separator : ClassVar[str] = ":|:"

@@ -47,7 +47,7 @@ class TestStrang_PreProcess:
             case "a.b.c::d.e..f", {}:
                 assert(True)
             case x:
-                 assert(False), x
+                assert(False), x
 
     def test_trim_rhs(self):
         ing = "a.b.c::d.e...."

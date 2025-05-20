@@ -76,16 +76,20 @@ class StrangBasicProcessor(API.PreProcessor_p):
     the processor uses that for a stage instead
     """
 
-    def pre_process(self, cls:type[Strang_i], text:str, *, strict:bool=False) -> tuple[str, dict]:
+    def pre_process[T:Strang_i](self, cls:type[Strang_i], data:Any, *args:Any, strict:bool=False, **kwargs:Any) -> tuple[str, dict]: # noqa: ANN401
         """ run before str.__new__ is called,
         to do early modification of the string
         Filters out extraneous duplicated separators
         """
+        text : str
         match getattr(cls, name_to_hook("pre_process"), None):
             case x if callable(x):
-                return x(cls, text, strict=strict)
+                return x(cls, data, *args, strict=strict, **kwargs)
             case None:
                 pass
+
+        case = cls.section(-1).case
+        text = case.join(str(x) for x in [data, *args])
 
         if not self._verify_structure(cls, text):
             raise ValueError(errors.MalformedData, text)
@@ -172,7 +176,9 @@ class StrangBasicProcessor(API.PreProcessor_p):
             sec_slices.append(sec)
             word_slices.append(words)
             flat_slices += words
-            offset = sec.stop + extend
+            offset = sec.stop
+            if bool(words):
+                offset = sec.stop + extend
         else:
             obj.data.bounds = tuple(sec_slices)
             obj.data.slices = tuple(word_slices) # type: ignore[arg-type]
@@ -183,11 +189,11 @@ class StrangBasicProcessor(API.PreProcessor_p):
         """ Set the slices of a section, return the index where the section ends """
         sec_slice     : slice[int, int]
         word_slices   : tuple[slice]
-        search_bound  : int  = len(obj)
+        search_bound  : int  = offset
         bound_extend  : int  = 0
         match section.end:
             case None | "":
-                pass
+                search_bound = len(obj)
             case str() as x:
                 try:
                     bound_extend  = len(x)
@@ -239,13 +245,20 @@ class StrangBasicProcessor(API.PreProcessor_p):
                     return None
 
     def _post_process_section(self, obj:Strang_i, idx:int) -> tuple:
-        marks     : Final[type[API.StrangMarkAbstract_e]]           = obj._sections[idx].marks
-        count     : int                                         = len(obj.data.slices[idx])
+        match obj.section(idx).marks:
+            case None:
+                return ()
+            case type() as m if issubclass(m, API.StrangMarkAbstract_e):
+                marks = m
+            case m:
+                raise TypeError(m)
+
+        count     : int                                             = len(obj.data.slices[idx])
         meta      : list[Maybe[UUID|API.StrangMarkAbstract_e|int]]  = [None for x in range(count)]
-        new_uuid  : Maybe[UUID]                                 = obj.data.uuid
+        new_uuid  : Maybe[UUID]                                     = obj.data.uuid
 
         for i, elem_slice in enumerate(obj.data.slices[idx]):
-            elem = obj[elem_slice]
+            elem                                                    = obj[elem_slice]
             assert(isinstance(elem, str))
             # Discriminate the str
             match elem:
