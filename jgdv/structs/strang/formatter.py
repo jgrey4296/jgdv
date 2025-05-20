@@ -30,7 +30,6 @@ import sh
 # ##-- 1st party imports
 from jgdv import Mixin
 from jgdv._abstract.protocols import SpecStruct_p
-from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
 

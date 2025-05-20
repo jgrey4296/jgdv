@@ -31,6 +31,7 @@ from .formatter import StrangFormatter
 from . import errors
 from . import _interface as API # noqa: N812
 from ._meta import StrangMeta
+from jgdv.mixins.annotate import SubAnnotate_m
 
 # ##-- types
 # isort: off
@@ -67,7 +68,7 @@ logging.disabled = False
 ##--|
 
 @Proto(API.Strang_i, mod_mro=False)
-class Strang(str, metaclass=StrangMeta):
+class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
     """ A Structured String Baseclass.
 
     A Normal str, but is parsed on construction to extract and validate
@@ -426,7 +427,7 @@ class Strang(str, metaclass=StrangMeta):
 
 
     ##--| Modify
-    def push(self, *args:API.PushVal) -> API.Strang_i:
+    def push(self, *args:API.PushVal) -> API.Strang_i:  # noqa: PLR0912
         """ extend a strang with values
 
         Pushed onto the last section, with a section.marks.skip() mark first
@@ -471,7 +472,7 @@ class Strang(str, metaclass=StrangMeta):
         else:
             return cast("API.Strang_i", Strang(case.join(words), uuid=insert_uuid))
 
-    def pop(self, *, top=True)-> API.Strang_i:
+    def pop(self, *, top:bool=True)-> API.Strang_i:
         """
         Strip off one marker's worth of the name, or to the top marker.
         eg:
@@ -496,7 +497,7 @@ class Strang(str, metaclass=StrangMeta):
     def uuid(self) -> Maybe[UUID]:
         return self.data.uuid
 
-    def to_uniq(self, *args:str) -> API.Strang_p:
+    def to_uniq(self, *args:str) -> API.Strang_i:
         """ Generate a concrete instance of this name with a UUID appended,
         optionally can add a suffix
 
@@ -505,7 +506,7 @@ class Strang(str, metaclass=StrangMeta):
         try:
             return self.push(API.UUID_WORD, *args)
         except ValueError:
-            return self
+            return cast("API.Strang_i", self)
 
     def de_uniq(self) -> API.Strang_i:
         """ return the strang up to, but not including, the uuid
