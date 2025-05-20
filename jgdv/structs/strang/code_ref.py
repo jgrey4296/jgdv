@@ -68,7 +68,9 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-ProtoMeta : Final[type] = type(Protocol)
+ProtoMeta             : Final[type] = type(Protocol)
+
+SpecialTypeCheckFail  : Final[str] = "Checking Special Types like generics is not supported yet"
 ##--|
 
 class CodeReference(Strang):
@@ -85,7 +87,7 @@ class CodeReference(Strang):
 
     __call__ imports the reference
     """
-    __slots__ = ()
+    __slots__ = ("_value")
 
     _processor    : ClassVar          = CodeRefProcessor()
     _formatter    : ClassVar          = StrangFormatter()
@@ -101,8 +103,9 @@ class CodeReference(Strang):
         val_iden = ":".join([".".join(split_qual[:-1]), split_qual[-1]])
         return cls(f"{value.__module__}:{val_iden}", value=value)
 
-    def __init__(self, *_:Any, value:Maybe[type]=None, check:Maybe[type]=None, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
-        super().__init__(**kwargs)
+
+    def __init__(self, text:str, *args:Any, value:Maybe[type]=None, check:Maybe[type]=None, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
+        super().__init__(text, **kwargs)
         self._value = value
 
     def __call__(self, *, check:SpecialType|type=Any, raise_error:bool=False) -> Result[type, ImportError]:
@@ -118,7 +121,7 @@ class CodeReference(Strang):
                 raise
             return err
 
-    def _do_import(self, *, check:Maybe[SpecialType|Protocol|type]) -> Any:  # noqa: ANN401, PLR0912
+    def _do_import(self, *, check:Maybe[SpecialType|type]) -> Any:  # noqa: ANN401
         match self._value:
             case None:
                 try:
@@ -137,15 +140,18 @@ class CodeReference(Strang):
         self._check_imported_type(check)
         return self._value
 
-    def _check_imported_type(self, check:Maybe[SpecialType|Protocol|type]) -> None:
-        has_mark     = any(x in self for x in [self.gmark_e.fn, self.gmark_e.cls])  # type: ignore[attr-defined]
+    def _check_imported_type(self, check:Maybe[SpecialType|type]) -> None:  # noqa: PLR0912
+        assert(self._value is not None)
+        marks        = self.section(0).marks
+        assert(marks is not None)
+        has_mark     = any(x in self for x in [marks.fn, marks.cls])  # type: ignore[attr-defined]
         is_callable  = callable(self._value)
         is_type      = isinstance(self._value, type)
         if not has_mark:
               pass
-        elif self.gmark_e.fn in self and not is_callable:  # type: ignore[attr-defined]
+        elif marks.fn in self and not is_callable:  # type: ignore[attr-defined]
             raise ImportError(errors.CodeRefImportNotCallable, self._value, self)
-        elif self.gmark_e.cls in self and not is_type:
+        elif marks.cls in self and not is_type: # type: ignore[attr-defined]
             raise ImportError(errors.CodeRefImportNotClass, self._value, self)
 
         match self._typevar:
@@ -156,24 +162,22 @@ class CodeReference(Strang):
         match check:
             case None:
                 return
-            case types.UnionType() if isinstance(self._value, check):
+            case types.UnionType() if isinstance(self._value, check): # type: ignore[arg-type]
                 return
             case typing._SpecialForm():
-                raise NotImplementedError("Checking Special Types like generics is not supported yet", check, self._value)
+                raise NotImplementedError(SpecialTypeCheckFail, check, self._value)
             case x if x is Any:
                 return
-            case x if issubclass(x, Protocol):
+            case x if issubclass(x, Protocol): # type: ignore[arg-type]
                 if isinstance(self._value, x):
                     return
             case type() as x:
-                try:
-                    match = isinstance(self._value, x)
-                    match |= issubclass(self._value, x)
-                    return
-                except TypeError:
-                    pass
+                val_match = isinstance(self._value, x)
+                val_match |= issubclass(self._value, x)
+                if not val_match:
+                    raise TypeError(self._value, x)
 
-        raise ImportError(errors..CodeRefImportUnknownFail, self, check)
+        raise ImportError(errors.CodeRefImportUnknownFail, self, check)
 
     def to_alias(self, group:str, plugins:dict|ChainGuard) -> str:
         """ TODO Given a nested dict-like, see if this reference can be reduced to an alias """
@@ -184,5 +188,6 @@ class CodeReference(Strang):
 
         return base_alias
 
-    def to_uniq(self) -> Never:
+
+    def to_uniq(self, *, suffix:Maybe[str]=None) -> Never: # type: ignore[override]
         raise NotImplementedError(errors.CodeRefUUIDFail)

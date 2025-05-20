@@ -102,7 +102,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
 
         ie: all necessary sections are, provisionally, there.
         """
-        seps = [x.end for x in cls._sections.order if x.end is not None]
+        seps = [x.end for x in cls._sections.order if x.end is not None and x.required]
         return all(x in val for x in seps)
 
     def _clean_separators(self, cls:type[Strang_i], val:str) -> str:

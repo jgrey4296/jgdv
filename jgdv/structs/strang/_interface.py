@@ -161,8 +161,8 @@ type PushVal       = Maybe[str | StrangMarkAbstract_e | UUID]
 HEAD_SEC            : Final[tuple]  = ("head", CASE_DEFAULT, END_DEFAULT, BODY_TYPES, DefaultHeadMarks_e, True)
 BODY_SEC            : Final[tuple]  = ("body", CASE_DEFAULT, None, HEAD_TYPES, DefaultBodyMarks_e, True)
 
-CODEREF_HEAD_SEC    : Final[tuple]  = ("head",   CASE_DEFAULT, None, HEAD_TYPES, CodeRefHeadMarks_e, True)
-CODEREF_MODULE_SEC  : Final[tuple]  = ("module", CASE_DEFAULT, None, HEAD_TYPES, DefaultBodyMarks_e, True)
+CODEREF_HEAD_SEC    : Final[tuple]  = ("head",   CASE_DEFAULT, END_DEFAULT, HEAD_TYPES, CodeRefHeadMarks_e, False)
+CODEREF_MODULE_SEC  : Final[tuple]  = ("module", CASE_DEFAULT, ":", HEAD_TYPES, DefaultBodyMarks_e, True)
 CODEREF_VAL_SEC     : Final[tuple]  = ("value",  CASE_DEFAULT, None, HEAD_TYPES, CodeRefHeadMarks_e, True)
 ##--| Data
 
