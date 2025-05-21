@@ -24,8 +24,7 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from jgdv._abstract.protocols import SpecStruct_p
-from .._interface import ExpInst_d
-from .._meta import DKey
+from .._interface import ExpInst_d, Key_p
 # ##-- end 1st party imports
 
 # ##-- types
@@ -106,7 +105,7 @@ class ChainGetter:
         """
         for spec in target:
             match spec:
-                case ExpInst_d(val=DKey()):
+                case ExpInst_d(val=Key_p()):
                     return spec
                 case ExpInst_d(literal=True):
                     return spec

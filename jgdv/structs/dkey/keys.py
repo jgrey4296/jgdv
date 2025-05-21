@@ -21,10 +21,9 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from ._meta import DKey, DKeyMeta
-from ._base import DKeyBase
+from . import _interface as API # noqa: N812
+from .dkey import DKey
 from ._util.expander import Expander
-from ._util.parser import RawKey
 from ._interface import INDIRECT_SUFFIX, DKeyMark_e, RAWKEY_ID, ExpInst_d
 # ##-- end 1st party imports
 
@@ -57,11 +56,12 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class SingleDKey(DKeyBase,   mark=DKeyMark_e.FREE):
+class SingleDKey(DKey, mark=DKeyMark_e.FREE, core=True):
     """
       A Single key with no extras.
       ie: {x}. not {x}{y}, or {x}.blah.
     """
+    __slots__ = ()
 
     def __init__(self, data, **kwargs) -> None:
         super().__init__(data, **kwargs)
@@ -125,7 +125,7 @@ class SingleDKey(DKeyBase,   mark=DKeyMark_e.FREE):
 
         return format(result, rem)
 
-class MultiDKey[X](DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
+class MultiDKey[X](DKey, mark=DKeyMark_e.MULTI, multi=True, core=True):
     """ Multi keys allow 1+ explicit subkeys.
 
     They have additional fields:
@@ -133,20 +133,17 @@ class MultiDKey[X](DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
     _subkeys  : parsed information about explicit subkeys
 
     """
-
-    _subkeys : list[RawKey]
+    __slots__ = ("_anon")
+    anon : str
 
     def __init__(self, data:str|pl.Path, **kwargs) -> None:
         super().__init__(str(data), **kwargs)
-        match kwargs.get(RAWKEY_ID, None):
-            case [*xs]:
-                self._subkeys = xs
-            case None | []:
-                msg = "Tried to build a multi key with no subkeys"
-                raise ValueError(msg, data)
+        if not bool(self.data.raw):
+            msg = "Tried to build a multi key with no subkeys"
+            raise ValueError(msg, data, kwargs)
 
         # remove the names for the keys, to allow expanding positionally
-        self._anon       = "".join(x.anon() for x in self._subkeys)
+        self._anon       = "".join(x.anon() for x in self.data.raw)
 
     def __format__(self, spec:str) -> str:
         """
@@ -159,7 +156,7 @@ class MultiDKey[X](DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
 
     def keys(self) -> list[Key_i]:
         return [DKey(key.joined(), implicit=True)
-                for key in self._subkeys
+                for key in self.data.raw
                 if bool(key)
                 ]
 
@@ -192,7 +189,7 @@ class MultiDKey[X](DKeyBase, mark=DKeyMark_e.MULTI, multi=True):
         else:
             return ExpInst_d(val=self._anon.format(*flat), literal=True)
 
-class NonDKey(DKeyBase,      mark=DKeyMark_e.NULL):
+class NonDKey(DKey, mark=DKeyMark_e.NULL, core=True):
     """ Just a string, not a key.
 
     ::
@@ -200,13 +197,13 @@ class NonDKey(DKeyBase,      mark=DKeyMark_e.NULL):
         But this lets you call no-ops for key specific methods.
         It can coerce itself though
     """
+    __slots__ = ()
 
     def __init__(self, data, **kwargs) -> None:
         super().__init__(data, **kwargs)
         if (fb:=kwargs.get('fallback', None)) is not None and fb != self:
             msg = "NonKeys can't have a fallback, did you mean to use an explicit key?"
             raise ValueError(msg, self)
-        self.nonkey = True
 
     def __format__(self, spec) -> str:
         rem, _, _ = self._consume_format_params(spec)
@@ -219,7 +216,7 @@ class NonDKey(DKeyBase,      mark=DKeyMark_e.NULL):
     def expand(self, *args, **kwargs) -> Maybe:
         """ A Non-key just needs to be coerced into the correct str format """
         val = ExpInst_d(val=str(self))
-        match Expander.coerce_result(val, kwargs, source=self):
+        match self._expander  .coerce_result(val, kwargs, source=self):
             case None if (fallback:=kwargs.get("fallback")) is not None:
                 return ExpInst_d(val=fallback, literal=True)
             case None:
@@ -230,14 +227,14 @@ class NonDKey(DKeyBase,      mark=DKeyMark_e.NULL):
                 msg = "Nonkey coercion didn't return an ExpInst_d"
                 raise TypeError(msg, x)
 
-class IndirectDKey(DKeyBase, mark=DKeyMark_e.INDIRECT, conv="I"):
+class IndirectDKey(DKey, mark=DKeyMark_e.INDIRECT, conv="I", core=True):
     """
       A Key for getting a redirected key.
       eg: RedirectionDKey(key) -> SingleDKey(value)
 
       re_mark :
     """
-
+    __slots__ = ()
     __hash__                                            = str.__hash__
 
     def __init__(self, data, multi=False, re_mark=None, **kwargs) -> None:

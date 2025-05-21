@@ -26,6 +26,7 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
+from jgdv import identity_fn
 from jgdv.mixins.enum_builders import EnumBuilder_m
 
 # ##-- types
@@ -47,11 +48,11 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
-    from ._meta import DKey
+    from ._facade import DKey
 
-    type KeyMark = DKeyMark_e|str|type
-    type LookupList = list[list[ExpInst_d]]
-    type LitFalse   = Literal[False]
+    type KeyMark     = DKeyMarkAbstract_e|str|type
+    type LookupList  = list[list[ExpInst_d]]
+    type LitFalse    = Literal[False]
 ##--|
 
 # isort: on
@@ -83,9 +84,37 @@ DEFAULT_DKEY_KWARGS : Final[list[str]] = [
     "named",
     RAWKEY_ID, FORCE_ID,
     ]
-# Body:
 
-class DKeyMark_e(EnumBuilder_m, enum.StrEnum):
+##--| Error Messages
+NestedFailure           : Final[str]  = "Nested ExpInst_d"
+NoValueFailure          : Final[str]  = "ExpInst_d's must have a val"
+UnexpectedData          : Final[str]  = "Unexpected kwargs given to ExpInst_d"
+UnknownDKeyCtorType     : Final[str]  = "Unknown type passed to construct dkey"
+InsistentKeyFailure     : Final[str]  = "An insistent key was not built"
+KeyBuildFailure         : Final[str]  = "No key was built"
+NoMark                  : Final[str]  = "Mark has to be a value"
+MarkConflictsWithMulti  : Final[str]  = "Mark is MULTI but multi=False"
+MarkLacksACtor          : Final[str]  = "Couldn't find a ctor for mark"
+MarkConversionConflict  : Final[str]  = "Kwd Mark/Conversion Conflict"
+UnexpectedKwargs        : Final[str]  = "Key got unexpected kwargs"
+RegistryLacksMark       : Final[str]  = "Can't register when the mark is None"
+RegistryConflict        : Final[str]  = "API.Key_p Registry conflict"
+ConvParamTooLong        : Final[str]  = "Conversion Parameters For Dkey's Can't Be More Than A Single Char"
+ConvParamConflict       : Final[str]  = "Conversion Param Conflict"
+# Enums:
+
+class DKeyMarkAbstract_e(enum.StrEnum):
+
+    @classmethod
+    def default(cls) -> Maybe: ...
+
+    @classmethod
+    def null(cls) -> Maybe: ...
+
+    @classmethod
+    def multi(cls) -> Maybe: ...
+
+class DKeyMark_e(EnumBuilder_m, DKeyMarkAbstract_e):
     """
       Enums for how to use/build a dkey
 
@@ -102,60 +131,132 @@ class DKeyMark_e(EnumBuilder_m, enum.StrEnum):
     NULL     = enum.auto() # -> None
     MULTI    = enum.auto()
 
-    default  = FREE
-##--|
+    @classmethod
+    def default(cls) -> str:
+        return cls.FREE
 
-@runtime_checkable
-class Key_p(Protocol):
-    """ The protocol for a Key, something that used in a template system"""
 
-    @property
-    def multi(self) -> bool: ...
+    @classmethod
+    def null(cls) -> str:
+        return cls.NULL
 
-    def keys(self) -> list[Key_p]: ...
+    @classmethod
+    def multi(cls) -> str:
+        return cls.MULTI
 
-    def redirect(self, spec=None) -> Key_p: ...
 
-    def expand(self, spec=None, state=None, *, rec=False, insist=False, chain:Maybe[list[Key_p]]=None, on_fail=Any, locs:Maybe[Mapping]=None, **kwargs) -> str: ...  # noqa: PLR0913
+##--| Data
+class RawKey_d:
+    """ Utility class for parsed {}-format string parameters.
 
-    def var_name(self) -> str: ...
+    ::
 
-@runtime_checkable
-class Expandable_p(Protocol):
-    """ An expandable, like a DKey,
-    uses these hooks to customise the expansion
+        see: https://peps.python.org/pep-3101/
+        and: https://docs.python.org/3/library/string.html#format-string-syntax
+
+    Provides the data from string.Formatter.parse, but in a structure
+    instead of a tuple.
     """
+    __slots__ = ("prefix", "key", "format", "conv")
+    prefix  : Maybe[str]
+    key     : Maybe[str]
+    format  : Maybe[str]
+    conv    : Maybe[str]
 
-    def expand(self, *args, **kwargs) -> Maybe: ...
+    def __init__(self, **kwargs):
+        self.prefix       = kwargs.pop("prefix", None)
+        self.key          = kwargs.pop("key")
+        self.format       = kwargs.pop("format")
+        self.conv         = kwargs.pop("conv")
 
-    def exp_extra_sources_h(self) -> Maybe[list]: ...
+    def __getitem__(self, i):
+        match i:
+            case 0:
+                return self.prefix
+            case 1:
+                return self.key
+            case 2:
+                return self.format
+            case 3:
+                return self.conv
+            case _:
+                raise ValueError("Tried to access a bad element of DKeyParams", i)
 
-    def exp_pre_lookup_h(self, sources, opts) -> Maybe[LookupList]: ...
+    def __bool__(self):
+        return bool(self.key)
 
-    def exp_pre_recurse_h(self, vals:list[ExpInst_d], sources, opts) -> Maybe[list[ExpInst_d]]: ...
+    def joined(self) -> str:
+        """ Returns the key and params as one string
 
-    def exp_flatten_h(self, vals:list[ExpInst_d], opts) -> Maybe[LitFalse|ExpInst_d]: ...
+        eg: blah, fmt=5, conv=p -> blah:5!p
+        """
+        args : list[str]
+        if not bool(self.key):
+            return ""
 
-    def exp_coerce_h(self, val:ExpInst_d, opts) -> Maybe[ExpInst_d]: ...
+        assert(self.key is not None)
+        args = [self.key]
+        if bool(self.format):
+            assert(self.format is not None)
+            args += [":", self.format]
+        if bool(self.conv):
+            assert(self.conv is not None)
+            args += ["!", self.conv]
 
-    def exp_final_h(self, val:ExpInst_d, opts) -> Maybe[LitFalse|ExpInst_d]: ...
+        return "".join(args)
 
-    def exp_check_result_h(self, val:ExpInst_d, opts) -> None: ...
+    def wrapped(self) -> str:
+        """ Returns this key in simple wrapped form
 
-class Key_i(Key_p, Expandable_p, Protocol):
-    _mark               : KeyMark
-    _expansion_type     : Ctor
-    _typecheck          : CHECKTYPE
-    _fallback           : Maybe[Any]
-    _fmt_params         : Maybe[FmtStr]
-    _conv_params        : Maybe[FmtStr]
-    _help               : Maybe[str]
-    _named              : Maybe[str]
+        (it ignores format, conv params and prefix)
 
-    _extra_kwargs       : ClassVar[set[str]]
-    __hash__            : Callable
+        eg: blah -> {blah}
+        """
+        return "{%s}" % self.key
 
-##--|
+    def anon(self) -> str:
+        """ Make a format str of this key, with anon variables.
+
+        eg: blah {key:f!p} -> blah {}
+        """
+        if bool(self.key):
+            return "%s{}" % self.prefix
+
+
+        return self.prefix or ""
+
+    def direct(self) -> str:
+        """ Returns this key in direct form
+
+        ::
+
+            eg: blah -> blah
+                blah_ -> blah
+        """
+        return (self.key or "").removesuffix(INDIRECT_SUFFIX)
+
+    def indirect(self) -> str:
+        """ Returns this key in indirect form
+
+        ::
+
+            eg: blah -> blah_
+                blah_ -> blah_
+        """
+        match self.key:
+            case str() as k if k.endswith(INDIRECT_SUFFIX):
+                return k
+            case str() as k:
+                return f"{k}{INDIRECT_SUFFIX}"
+            case _:
+                return ""
+
+    def is_indirect(self) -> bool:
+        match self.key:
+            case str() as k if k.endswith(INDIRECT_SUFFIX):
+                return True
+            case _:
+                return False
 
 class ExpInst_d:
     """ The lightweight holder of expansion instructions, passed through the
@@ -163,22 +264,25 @@ class ExpInst_d:
     Uses slots to make it as lightweight as possible
 
     """
-    __slots__ = "convert", "fallback", "lift", "literal", "rec", "total_recs", "val"
+    __slots__ = ("convert", "fallback", "lift", "literal", "rec", "total_recs", "val")
+    convert     : Maybe[str]
+    fallback    : Maybe[str]
+    lift        : bool
+    literal     : bool
+    rec         : int
+    total_recs  : int
 
     def __init__(self, **kwargs) -> None:
         match kwargs:
             case {"val": ExpInst_d() as val }:
-                msg = "Nested ExpInst_d"
-                raise TypeError(msg, val)
+                raise TypeError(NestedFailure, val)
             case {"val": val}:
-                self.val        = val
+                self.val = val
             case x:
-                 msg = "ExpInst_d's must have a val"
-                 raise ValueError(msg, x)
+                 raise ValueError(NoValueFailure, x)
 
         if bool(extra:=kwargs.keys() - ExpInst_d.__slots__):
-            msg = "Unexpected kwargs given to ExpInst_d"
-            raise ValueError(msg, extra)
+            raise ValueError(UnexpectedData, extra)
 
         self.convert    = kwargs.get("convert", None)
         self.fallback   = kwargs.get("fallback", None)
@@ -190,3 +294,84 @@ class ExpInst_d:
     def __repr__(self) -> str:
         lit = "(Lit)" if self.literal else ""
         return f"<ExpInst_d:{lit} {self.val!r} / {self.fallback!r} (R:{self.rec},L:{self.lift},C:{self.convert})>"
+
+class DKey_d:
+    """ Data of a DKey """
+    __slots__ = ("raw", "convert", "expansion_type", "fallback", "format", "help", "mark", "max_expansions", "multi", "name", "typecheck")
+    name            : Maybe[str]
+    raw             : tuple[RawKey_d, ...]
+    mark            : KeyMark
+    expansion_type  : Ctor
+    typecheck       : CHECKTYPE
+    fallback        : Maybe[Any]
+    format          : Maybe[FmtStr]
+    convert         : Maybe[FmtStr]
+    help            : Maybe[str]
+    max_expansions  : Maybe[int]
+    multi           : bool
+
+    def __init__(self, **kwargs) -> None:
+        self.name            = kwargs.pop("name", None)
+        self.raw             = kwargs.pop(RAWKEY_ID, ())
+        self.mark            = kwargs.pop("mark", DKeyMark_e.default())
+        self.expansion_type  = kwargs.pop("etype", identity_fn)
+        self.typecheck       = kwargs.pop("check", Any)
+        self.fallback        = kwargs.pop("fallback", None)
+        self.format          = kwargs.pop("format", None)
+        self.convert         = kwargs.pop("convert", None)
+        self.help            = kwargs.pop("help", None)
+        self.max_expansions  = kwargs.pop("max_expansion", None)
+        self.multi           = kwargs.pop("multi", False)
+
+##--| Protocols
+
+class ExpansionHooks_p(Protocol):
+
+    def exp_extra_sources_h(self) -> Maybe[list]: ...
+
+    def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> Maybe[LookupList]: ...
+
+    def exp_pre_recurse_h(self, vals:list[ExpInst_d], sources:list[dict], opts:dict) -> Maybe[list[ExpInst_d]]: ...
+
+    def exp_flatten_h(self, vals:list[ExpInst_d], opts:dict) -> Maybe[LitFalse|ExpInst_d]: ...
+
+    def exp_coerce_h(self, val:ExpInst_d, opts:dict) -> Maybe[ExpInst_d]: ...
+
+    def exp_final_h(self, val:ExpInst_d, opts:dict) -> Maybe[LitFalse|ExpInst_d]: ...
+
+    def exp_check_result_h(self, val:ExpInst_d, opts:dict) -> None: ...
+
+class Expandable_p(Protocol):
+    """ An expandable, like a DKey,
+    uses these hooks to customise the expansion
+    """
+
+    def expand(self, *sources, **kwargs) -> Maybe: ...
+
+@runtime_checkable
+class Key_p(Protocol):
+    """ The protocol for a Key, something that used in a template system"""
+
+    @classmethod
+    def MarkOf[T:Key_p](cls:type[T]|T) -> KeyMark: ...
+    def keys(self) -> list[Key_p]: ...
+
+    def redirect(self, spec=None) -> Key_p: ...
+
+    def expand(self, *sources, rec=False, insist=False, chain:Maybe[list[Key_p]]=None, on_fail=Any, locs:Maybe[Mapping]=None, **kwargs) -> str: ...
+
+    def var_name(self) -> str: ...
+
+@runtime_checkable
+class MultiKey_p(Protocol):
+
+    def _multi(self) -> Never: ...
+
+##--| Combined Interfaces
+
+class Key_i(Key_p, Protocol):
+    data : DKey_d
+    _extra_kwargs       : ClassVar[set[str]]
+    __hash__            : Callable
+
+##--|

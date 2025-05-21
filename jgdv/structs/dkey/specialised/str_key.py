@@ -59,7 +59,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class StrDKey(SingleDKey, mark=DKeyMark_e.STR, conv="s"):
+class StrDKey(SingleDKey[DKeyMark_e.STR], conv="s"):
     """
     A Simple key that always expands to a string
     """

@@ -28,7 +28,7 @@ import faulthandler
 import _string
 # ##-- end stdlib imports
 
-from .._interface import INDIRECT_SUFFIX
+from .. import _interface as API # noqa: N812
 
 # ##-- types
 # isort: off
@@ -63,110 +63,6 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-class RawKey(BaseModel):
-    """ Utility class for parsed {}-format string parameters.
-
-    ::
-
-        see: https://peps.python.org/pep-3101/
-        and: https://docs.python.org/3/library/string.html#format-string-syntax
-
-    Provides the data from string.Formatter.parse, but in a structure
-    instead of a tuple.
-    """
-
-    prefix : Maybe[str] = ""
-    key    : Maybe[str] = None
-    format : Maybe[str] = None
-    conv   : Maybe[str] = None
-
-    @field_validator("format")
-    def _validate_format(cls, val:str) -> str:
-        """ Ensure the format params are valid """
-        return val
-
-    @field_validator("conv")
-    def _validate_conv(cls, val):
-        """ Ensure the conv params are valid """
-        return val
-
-    def __getitem__(self, i):
-        match i:
-            case 0:
-                return self.prefix
-            case 1:
-                return self.key
-            case 2:
-                return self.format
-            case 3:
-                return self.conv
-            case _:
-                raise ValueError("Tried to access a bad element of DKeyParams", i)
-
-    def __bool__(self):
-        return bool(self.key)
-
-    def joined(self) -> str:
-        """ Returns the key and params as one string
-
-        eg: blah, fmt=5, conv=p -> blah:5!p
-        """
-        if not bool(self.key):
-            return ""
-
-        args = [self.key]
-        if bool(self.format):
-            args += [":", self.format]
-        if bool(self.conv):
-            args += ["!", self.conv]
-
-        return "".join(args)
-
-    def wrapped(self) -> str:
-        """ Returns this key in simple wrapped form
-
-        (it ignores format, conv params and prefix)
-
-        eg: blah -> {blah}
-        """
-        return "{%s}" % self.key
-
-    def anon(self) -> str:
-        """ Make a format str of this key, with anon variables.
-
-        eg: blah {key:f!p} -> blah {}
-        """
-        if bool(self.key):
-            return "%s{}" % self.prefix
-
-        return self.prefix
-
-    def direct(self) -> str:
-        """ Returns this key in direct form
-
-        ::
-
-            eg: blah -> blah
-                blah_ -> blah
-        """
-        return self.key.removesuffix(INDIRECT_SUFFIX)
-
-    def indirect(self) -> str:
-        """ Returns this key in indirect form
-
-        ::
-
-            eg: blah -> blah_
-                blah_ -> blah_
-        """
-        if self.key.endswith(INDIRECT_SUFFIX):
-            return self.key
-
-        return f"{self.key}{INDIRECT_SUFFIX}"
-
-    def is_indirect(self) -> bool:
-        return self.key.endswith(INDIRECT_SUFFIX)
-
 class DKeyParser:
     """ Parser for extracting {}-format params from strings.
 
@@ -176,7 +72,7 @@ class DKeyParser:
         and: https://docs.python.org/3/library/string.html#format-string-syntax
     """
 
-    def parse(self, format_string, *, implicit=False) -> Iterator[RawKey]:
+    def parse(self, format_string, *, implicit=False) -> Iterator[API.RawKey_d]:
         if implicit and "{" in format_string:
             raise ValueError("Implicit key already has braces", format_string)
 
@@ -189,9 +85,8 @@ class DKeyParser:
         except ValueError as err:
             yield self.make_param(format_string, "","","")
 
-
     def make_param(self, *args):
-        return RawKey(prefix=args[0],
-                      key=args[1] or "",
-                      format=args[2] or "",
-                      conv=args[3] or "")
+        return API.RawKey_d(prefix=args[0],
+                            key=args[1] or "",
+                            format=args[2] or "",
+                            conv=args[3] or "")

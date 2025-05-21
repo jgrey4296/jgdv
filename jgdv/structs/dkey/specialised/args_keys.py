@@ -60,7 +60,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 
-class ArgsDKey(SingleDKey, mark=DKeyMark_e.ARGS):
+class ArgsDKey(SingleDKey[DKeyMark_e.ARGS]):
     """ A Key representing the action spec's args """
 
     def __init__(self, *args, **kwargs) -> None:
@@ -78,7 +78,7 @@ class ArgsDKey(SingleDKey, mark=DKeyMark_e.ARGS):
         else:
             return []
 
-class KwargsDKey(SingleDKey, mark=DKeyMark_e.KWARGS):
+class KwargsDKey(SingleDKey[DKeyMark_e.KWARGS]):
     """ A Key representing all of an action spec's kwargs """
 
     def __init__(self, *args, **kwargs) -> None:

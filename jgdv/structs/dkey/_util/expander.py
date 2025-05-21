@@ -37,8 +37,7 @@ from jgdv import identity_fn
 from jgdv.decorators import DoMaybe
 from jgdv.structs.strang import CodeReference, Strang
 from .getter import ChainGetter as CG  # noqa: N817
-from .._meta import DKey
-from .._interface import DKeyMark_e, MAX_KEY_EXPANSIONS, DEFAULT_COUNT, PAUSE_COUNT, RECURSION_GUARD, ExpInst_d
+from .. import _interface as API # noqa: N812
 # ##-- end 1st party imports
 
 # ##-- types
@@ -52,7 +51,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, overload
 
 if TYPE_CHECKING:
-   from jgdv import Maybe, M_, Func, RxStr, Rx, Ident, FmtStr
+   from .._interface import Expandable_p, Key_p
    from typing import Final
    from typing import ClassVar, Any, LiteralString
    from typing import Never, Self, Literal
@@ -60,8 +59,8 @@ if TYPE_CHECKING:
    from collections.abc import Iterable, Iterator, Callable, Generator
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+   from jgdv import Maybe, M_, Func, RxStr, Rx, Ident, FmtStr, Ctor
 ##--|
-from .._interface import Expandable_p, Key_p
 # isort: on
 # ##-- end types
 
@@ -91,7 +90,7 @@ class Expander:
 
     All of those steps are fallible.
     When one of them fails, then the expansion tries to return, in order::
-    
+
         - a fallback value passed into the expansion call
         - a fallback value stored on construction of the key
         - None
@@ -110,36 +109,39 @@ class Expander:
 
     """
 
-    @staticmethod
-    def redirect(source:Expandable_p, *sources, **kwargs) -> list[DKey]:
-            return [Expander.expand(source, *sources, limit=1, **kwargs)]
 
-    @staticmethod
-    def expand(source:Expandable_p, *sources, **kwargs) -> Maybe[ExpInst_d]:
+
+    def __init__(self, ctor:Maybe[Ctor[Key_p]]=None) -> None:
+        self._ctor = ctor
+
+    def redirect(self, source:Expandable_p, *sources:dict, **kwargs:Any) -> list[API.Key_p]:  # noqa: ANN401
+            return [self.expand(source, *sources, limit=0, **kwargs)]
+
+    def expand(self, source:Expandable_p, *sources:dict, **kwargs:Any) -> Maybe[API.ExpInst_d]:  # noqa: ANN401, PLR0912
         logging.info("- Locally Expanding: %s : %s : multi=%s", repr(source), kwargs, source.multi)
-        if source._mark is DKeyMark_e.NULL:
-            return ExpInst_d(val=source, literal=True)
+        if source._mark is API.DKeyMark_e.NULL:
+            return API.ExpInst_d(val=source, literal=True)
 
         match kwargs.get("fallback", source._fallback):
             case None:
                 fallback = None
             case type() as ctor:
                 x = ctor()
-                fallback = ExpInst_d(val=x, literal=True)
-            case ExpInst_d() as x:
+                fallback = API.ExpInst_d(val=x, literal=True)
+            case API.ExpInst_d() as x:
                 fallback = x
                 logging.debug("Fallback %s -> %s", source, fallback.val)
             case x:
-                fallback = ExpInst_d(val=x, literal=True)
+                fallback = API.ExpInst_d(val=x, literal=True)
                 logging.debug("Fallback %s -> %s", source, fallback.val)
 
         full_sources = list(sources)
-        full_sources += [x for x in Expander.extra_sources(source) if x not in full_sources]
+        full_sources += [x for x in self.extra_sources(source) if x not in full_sources]
         # Limit defaults to -1 / until completion
         # but recursions can pass in limits
         match kwargs.get("limit", None):
             case 0:
-                return fallback or ExpInst_d(val=source, literal=True)
+                return fallback or API.ExpInst_d(val=source, literal=True)
             case None | -1:
                 limit = -1
             case x if x < -1:
@@ -147,29 +149,29 @@ class Expander:
             case x:
                 limit = x - 1
 
-        targets       = Expander.pre_lookup(sources, kwargs, source=source)
+        targets       = self.pre_lookup(sources, kwargs, source=source)
         # These are Maybe monads:
-        vals          = Expander.do_lookup(targets, full_sources, kwargs, source=source)
-        vals          = Expander.pre_recurse(vals, sources, kwargs, source=source)
-        vals          = Expander.do_recursion(vals, full_sources, kwargs, max_rec=limit, source=source)
-        flattened     = Expander.flatten(vals, kwargs, source=source)
-        coerced       = Expander.coerce_result(flattened, kwargs, source=source)
-        final_val     = Expander.finalise(coerced, kwargs, source=source)
-        Expander.check_result(source, final_val, kwargs)
+        vals          = self.do_lookup(targets, full_sources, kwargs, source=source)
+        vals          = self.pre_recurse(vals, sources, kwargs, source=source)
+        vals          = self.do_recursion(vals, full_sources, kwargs, max_rec=limit, source=source)
+        flattened     = self.flatten(vals, kwargs, source=source)
+        coerced       = self.coerce_result(flattened, kwargs, source=source)
+        final_val     = self.finalise(coerced, kwargs, source=source)
+        self.check_result(source, final_val, kwargs)
         match final_val:
             case None:
                 logging.debug("Expansion Failed, using fallback")
                 return fallback
-            case ExpInst_d(literal=False) as x:
-                raise ValueError("Expansion didn't result in a literal", x, source)
-            case ExpInst_d() as x:
+            case API.ExpInst_d(literal=False) as x:
+                msg = "Expansion didn't result in a literal"
+                raise ValueError(msg, x, source)
+            case API.ExpInst_d() as x:
                 logging.info("- %s -> %s", source, final_val)
                 return x
             case x:
                 raise TypeError(type(x))
 
-    @staticmethod
-    def extra_sources(source) -> list[Any]:
+    def extra_sources(self, source:dict) -> list[Any]:
         match source.exp_extra_sources_h():
             case None:
                 return []
@@ -178,8 +180,7 @@ class Expander:
             case x:
                 raise TypeError(type(x))
 
-    @staticmethod
-    def pre_lookup(sources, opts, *, source) -> list[list[ExpInst_d]]:
+    def pre_lookup(self, sources:dict, opts:dict, *, source:Expandable_p) -> list[list[API.ExpInst_d]]:
         """
         returns a list (L1) of lists (L2) of target tuples (T).
         When looked up, For each L2, the first T that returns a value is added
@@ -188,17 +189,16 @@ class Expander:
         match source.exp_pre_lookup_h(sources, opts):
             case [] | None:
                 return [[
-                    ExpInst_d(val=f"{source:d}"),
-                    ExpInst_d(val=f"{source:i}", lift=True),
+                    API.ExpInst_d(val=f"{source:d}"),
+                    API.ExpInst_d(val=f"{source:i}", lift=True),
                 ]]
             case list() as xs:
                 return xs
             case x:
                 raise TypeError(type(x))
 
-    @staticmethod
     @DoMaybe
-    def do_lookup(targets:list[list[ExpInst_d]], sources:list, opts:dict, *, source) -> Maybe[list]:
+    def do_lookup(self, targets:list[list[API.ExpInst_d]], sources:list, opts:dict, *, source:Expandable_p) -> Maybe[list]:
             """ customisable method for each key subtype
             Target is a list (L1) of lists (L2) of target tuples (T).
             For each L2, the first T that returns a value is added to the final result
@@ -209,20 +209,19 @@ class Expander:
                     case None:
                         logging.debug("Lookup Failed for: %s", target)
                         return []
-                    case ExpInst_d(val=DKey() as key, rec=-1) as res if source == key:
-                        res.rec = RECURSION_GUARD
+                    case API.ExpInst_d(val=API.Key_p() as key, rec=-1) as res if source == key:
+                        res.rec = API.RECURSION_GUARD
                         result.append(res)
-                    case ExpInst_d() as x:
+                    case API.ExpInst_d() as x:
                         result.append(x)
                     case x:
-                        msg = "LookupTarget didn't return an ExpInst_d"
+                        msg = "LookupTarget didn't return an API.ExpInst_d"
                         raise TypeError(msg, x)
             else:
                 return result
 
-    @staticmethod
     @DoMaybe
-    def pre_recurse(vals:list[ExpInst_d], sources, opts, *, source) -> Maybe[list[ExpInst_d]]:
+    def pre_recurse(self, vals:list[API.ExpInst_d], sources:list[dict], opts:dict, *, source:Expandable_p) -> Maybe[list[API.ExpInst_d]]:
         """ Produces a list[Key|Val|(Key, rec:int)]"""
         match source.exp_pre_recurse_h(vals, sources, opts):
             case None:
@@ -232,9 +231,8 @@ class Expander:
             case x:
                 raise TypeError(type(x))
 
-    @staticmethod
     @DoMaybe
-    def do_recursion(vals:list[ExpInst_d], sources, opts, max_rec=RECURSION_GUARD, *, source) -> Maybe[list[ExpInst_d]]:
+    def do_recursion(self, vals:list[API.ExpInst_d], sources:list[dict], opts:dict, max_rec:int=API.RECURSION_GUARD, *, source:Expandable_p) -> Maybe[list[API.ExpInst_d]]:
         """
         For values that can expand futher, try to expand them
 
@@ -243,36 +241,36 @@ class Expander:
         logging.debug("Recursing: %r", source)
         for x in vals:
             match x:
-                case ExpInst_d(literal=True) | ExpInst_d(rec=0) as res:
+                case API.ExpInst_d(literal=True) | API.ExpInst_d(rec=0) as res:
                     result.append(res)
-                case ExpInst_d(val=DKey() as key, rec=-1) if key is source or key == source:
+                case API.ExpInst_d(val=API.Key_p() as key, rec=-1) if key is source or key == source:
                     msg = "Unrestrained Recursive Expansion"
                     raise RecursionError(msg, source)
-                case ExpInst_d(val=str() as key, rec=-1, fallback=fallback, lift=lift):
-                    as_key = DKey(key)
-                    match Expander.expand(as_key, *sources, limit=max_rec, fallback=fallback):
+                case API.ExpInst_d(val=str() as key, rec=-1, fallback=fallback, lift=lift):
+                    as_key = self._ctor(key)
+                    match self.expand(as_key, *sources, limit=max_rec, fallback=fallback):
                         case None if lift:
-                            return [ExpInst_d(val=as_key, literal=True)]
+                            return [API.ExpInst_d(val=as_key, literal=True)]
                         case None:
                             return []
-                        case ExpInst_d() as exp if lift:
+                        case API.ExpInst_d() as exp if lift:
                             exp.convert = False
                             result.append(exp)
-                        case ExpInst_d() as exp:
+                        case API.ExpInst_d() as exp:
                             result.append(exp)
-                case ExpInst_d(val=str() as key, rec=rec, fallback=fallback, lift=lift):
+                case API.ExpInst_d(val=str() as key, rec=rec, fallback=fallback, lift=lift):
                     new_limit = min(max_rec, rec)
-                    as_key = DKey(key)
-                    match Expander.expand(as_key, *sources, limit=new_limit, fallback=fallback):
+                    as_key = self._ctor(key)
+                    match self.expand(as_key, *sources, limit=new_limit, fallback=fallback):
                         case None if lift:
-                            return [ExpInst_d(val=as_key, literal=True)]
+                            return [API.ExpInst_d(val=as_key, literal=True)]
                         case None:
                             return []
-                        case ExpInst_d() as exp:
+                        case API.ExpInst_d() as exp:
                             result.append(exp)
                         case x:
                             raise TypeError(type(x))
-                case ExpInst_d() as x:
+                case API.ExpInst_d() as x:
                     result.append(x)
                 case x:
                     msg = "Unexpected Recursion Value"
@@ -281,9 +279,8 @@ class Expander:
             logging.debug("Finished Recursing: %r : %r", source, result)
             return result
 
-    @staticmethod
     @DoMaybe
-    def flatten(vals:list[ExpInst_d], opts, *, source) -> Maybe[ExpInst_d]:
+    def flatten(self, vals:list[API.ExpInst_d], opts, *, source) -> Maybe[API.ExpInst_d]:
         match vals:
             case []:
                 return None
@@ -293,56 +290,54 @@ class Expander:
                 return vals[0]
             case False:
                 return None
-            case ExpInst_d() as x:
+            case API.ExpInst_d() as x:
                 return x
             case x:
                 raise TypeError(type(x))
 
-    @staticmethod
     @DoMaybe
-    def coerce_result(val:ExpInst_d, opts, *, source) -> Maybe[ExpInst_d]:
+    def coerce_result(self, val:API.ExpInst_d, opts, *, source) -> Maybe[API.ExpInst_d]:
         """
         Coerce the expanded value accoring to source's expansion type ctor
         """
         logging.debug("%r Type Coercion: %r : %s", source, val, source._conv_params)
         match source.exp_coerce_h(val, opts):
-            case ExpInst_d() as x:
+            case API.ExpInst_d() as x:
                 return x
             case None:
                 pass
 
         match val:
-            case ExpInst_d(convert=False):
+            case API.ExpInst_d(convert=False):
                 # Conversion is off
                 val.literal = True
                 return val
-            case ExpInst_d(val=value, convert=None) if isinstance(source._expansion_type, type) and isinstance(value, source._expansion_type):
+            case API.ExpInst_d(val=value, convert=None) if isinstance(source._expansion_type, type) and isinstance(value, source._expansion_type):
                 # Type is already correct
                 val.literal = True
                 return val
-            case ExpInst_d(val=value, convert=None) if source._expansion_type is not identity_fn:
+            case API.ExpInst_d(val=value, convert=None) if source._expansion_type is not identity_fn:
                 # coerce a real ctor
                 val.val = source._expansion_type(value)
                 val.literal = True
                 return val
-            case ExpInst_d(convert=None) if source._conv_params is None:
+            case API.ExpInst_d(convert=None) if source._conv_params is None:
                 # No conv params
                 val.literal = True
                 return val
-            case ExpInst_d(convert=str() as conv):
+            case API.ExpInst_d(convert=str() as conv):
                 # Conv params in expinst
-                return Expander._coerce_result_by_conv_param(val, conv, opts, source=source)
+                return self._coerce_result_by_conv_param(val, conv, opts, source=source)
             case _ if source._conv_params:
                 #  Conv params in source
-                return Expander._coerce_result_by_conv_param(val, source._conv_params, opts, source=source)
-            case ExpInst_d():
+                return self._coerce_result_by_conv_param(val, source._conv_params, opts, source=source)
+            case API.ExpInst_d():
                 return val
             case x:
                 raise TypeError(type(x))
 
-    @staticmethod
     @DoMaybe
-    def _coerce_result_by_conv_param(val, conv, opts, *, source) -> Maybe[ExpInst_d]:
+    def _coerce_result_by_conv_param(self, val, conv, opts, *, source) -> Maybe[API.ExpInst_d]:
         """ really, keys with conv params should been built as a
         specialized registered type, to use an exp_final_hook
         """
@@ -365,23 +360,21 @@ class Expander:
 
         return val
 
-    @staticmethod
     @DoMaybe
-    def finalise(val:ExpInst_d, opts, *, source) -> Maybe[ExpInst_d]:
+    def finalise(self, val:API.ExpInst_d, opts, *, source) -> Maybe[API.ExpInst_d]:
         match source.exp_final_h(val, opts):
             case None:
                 val.literal = True
                 return val
             case False:
                 return None
-            case ExpInst_d() as x:
+            case API.ExpInst_d() as x:
                 return x
             case x:
                 raise TypeError(type(x))
 
-    @staticmethod
     @DoMaybe
-    def check_result(source, val:ExpInst_d, opts) -> None:
+    def check_result(self, source, val:API.ExpInst_d, opts) -> None:
         """ check the type of the expansion is correct,
         throw a type error otherwise
         """

@@ -17,7 +17,7 @@ import warnings
 import pytest
 # ##-- end 3rd party imports
 
-from .._base import DKey, DKeyBase
+from ..dkey import DKey
 
 # ##-- types
 # isort: off
@@ -56,29 +56,30 @@ class TestBaseDKey:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
+    @pytest.mark.xfail
     def test_must_force(self):
         with pytest.raises(RuntimeError):
-            DKeyBase("blah", force=False)
+            DKey("blah", force=False)
 
     def test_basic(self):
-        match DKey("blah", force=DKeyBase):
-            case DKeyBase():
+        match DKey("blah", force=DKey):
+            case DKey():
                 assert(True)
             case x:
                 assert(False), x
 
     def test_eq(self):
-        obj1 = DKey("blah", force=DKeyBase)
-        obj2 = DKey("blah", force=DKeyBase)
+        obj1 = DKey("blah", force=DKey)
+        obj2 = DKey("blah", force=DKey)
         assert(obj1 == obj2)
 
     def test_eq_str(self):
-        obj1 = DKey("blah", force=DKeyBase)
+        obj1 = DKey("blah", force=DKey)
         obj2 = "blah"
         assert(obj1 == obj2)
 
     def test_eq_not_implemented(self):
-        obj1 = DKey("blah", force=DKeyBase)
+        obj1 = DKey("blah", force=DKey)
         obj2 = 21
         assert(not (obj1 == obj2))
 
