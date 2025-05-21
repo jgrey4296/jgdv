@@ -63,7 +63,8 @@ class TestBaseDKey:
 
     def test_basic(self):
         match DKey("blah", force=DKey):
-            case DKey():
+            case DKey() as obj:
+                assert(not hasattr(obj, "__dict__"))
                 assert(True)
             case x:
                 assert(False), x

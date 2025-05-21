@@ -234,8 +234,8 @@ class IndirectDKey(DKey, mark=DKeyMark_e.INDIRECT, conv="I", core=True):
 
       re_mark :
     """
-    __slots__ = ()
-    __hash__                                            = str.__hash__
+    __slots__  = ("multi_redir", "re_mark")
+    __hash__   = str.__hash__
 
     def __init__(self, data, multi=False, re_mark=None, **kwargs) -> None:
         kwargs.setdefault("fallback", Self)

@@ -63,6 +63,7 @@ logging = logmod.getLogger(__file__)
 
 class DKeyFormatting_m:
     """ General formatting for dkeys """
+    __slots__ = ()
 
     def __format__(self, spec:str) -> str:
         """

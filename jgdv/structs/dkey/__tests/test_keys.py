@@ -65,6 +65,7 @@ class TestSingleDKey:
     def test_basic(self):
         match DKey("blah", implicit=True, force=SingleDKey):
             case SingleDKey() as x:
+                assert(not hasattr(x, "__dict__"))
                 assert(True)
             case x:
                 assert(False), x
@@ -102,7 +103,7 @@ class TestMultiDKey:
     def test_basic(self):
         match DKey("{blah} {bloo}", force=MultiDKey):
             case MultiDKey() as x:
-                assert(True)
+                assert(not hasattr(x, "__dict__"))
             case x:
                 assert(False), x
 
@@ -152,8 +153,8 @@ class TestNonDKey:
 
     def test_basic(self):
         match DKey("blah", force=NonDKey):
-            case NonDKey():
-                assert(True)
+            case NonDKey() as x:
+                assert(not hasattr(x, "__dict__"))
             case x:
                 assert(False), x
 
@@ -190,8 +191,8 @@ class TestIndirectDKey:
     @pytest.mark.parametrize("name", ["blah", "blah_"])
     def test_basic(self, name):
         match DKey(name, force=IndirectDKey):
-            case IndirectDKey():
-                assert(True)
+            case IndirectDKey() as x:
+                assert(not hasattr(x, "__dict__"))
             case x:
                 assert(False), x
 
