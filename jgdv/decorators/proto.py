@@ -254,7 +254,7 @@ class Proto(MonotonicDec):
         try:
             if self._mod_mro:
                 modified = self._build_mro(cls)
-                customized = Subclasser.make_subclass(new_name, cls, mro=modified)
+                customized = self._builder.make_subclass(new_name, cls, mro=modified)
             else:
                 customized = cls
         except TypeError as err:

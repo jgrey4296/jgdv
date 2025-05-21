@@ -233,6 +233,7 @@ class _DecInspect_m:
 
 class _DecoratorHooks_m:
     """ The main hooks used to actually specify the decoration """
+    _builder : ClassVar[Subclasser] = Subclasser()
 
     def _wrap_method_h[**In, Out](self:Decorator_i, meth:Method[In,Out]) -> Decorated[Method[In, Out]]:
         """ Override this to add a decoration function to method """
@@ -256,7 +257,7 @@ class _DecoratorHooks_m:
 
     def _wrap_class_h(self:Decorator_i, cls:type) -> Maybe[Decorated]:
         """ Override this to decorate a class """
-        return Subclasser.make_subclass("DefaultWrappedClass", cls)
+        return self._builder.make_subclass("DefaultWrappedClass", cls)
 
     def _validate_target_h(self:Decorator_i, target:Decorable, form:DForm_e, args:Maybe[list]=None) -> None:
         """ Abstract class for specialization.

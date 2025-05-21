@@ -138,6 +138,7 @@ class Mixin(MonotonicDec):
                 new_name  = self.__builder.decorate_name(cls, self._name_mod)
             case True:
                 new_name = cls.__name__
+
         mixed     = self.__builder.make_subclass(new_name, cls, mro=new_mro)
         self.annotate_decorable(mixed)
         return mixed
