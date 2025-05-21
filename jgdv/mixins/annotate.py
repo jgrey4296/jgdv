@@ -191,8 +191,8 @@ class Subclasser:
         assert(not issubclass(cls, BaseModel)), cls
         mod_name  : str
         mcls      : type[type]  = type(cls)
-        if name == cls.__name__:
-            name = f"{name}<+>"
+        # if name == cls.__name__:
+        #     name = f"{name}<+>"
 
         match namespace:
             case dict():
@@ -267,7 +267,7 @@ class SubAnnotate_m:
 
     @classmethod
     @ftz.cache
-    def __class_getitem__[T:SubAnnotate_m](cls:type[T], *params:Any) -> type[T]:  # noqa: ANN401
+    def __class_getitem__[T:SubAnnotate_m](cls:type[T], *params:Any) -> type[T]:  # noqa: ANN400
         """ Auto-subclass as {cls.__name__}[param]
 
         Caches results to avoid duplicates

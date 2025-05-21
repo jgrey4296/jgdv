@@ -57,6 +57,13 @@ class TestSubClasser_Decoration:
             case x:
                  assert(False), x
 
+
+    def test_decorate_name_idempotent(self):
+        target = f"{BasicEx.__name__}<+test>"
+        r1 = Subclasser.decorate_name(BasicEx, "test")
+        r2 = Subclasser.decorate_name(r1, "test")
+        assert(target == r1 == r2)
+
     def test_redecorate_name_with_extras(self):
         target = f"{BasicEx.__name__}<+test>"
         curr = BasicEx.__name__
