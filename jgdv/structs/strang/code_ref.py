@@ -87,14 +87,11 @@ class CodeReference(Strang):
 
     __call__ imports the reference
     """
-    __slots__ = ("_value")
+    __slots__ = ("_value",)
 
     _processor    : ClassVar          = CodeRefProcessor()
     _formatter    : ClassVar          = StrangFormatter()
-    _sections     : ClassVar          = API.Sections_d(API.CODEREF_HEAD_SEC,
-                                                       API.CODEREF_MODULE_SEC,
-                                                       API.CODEREF_VAL_SEC,
-                                                       )
+    _sections     : ClassVar          = API.Sections_d(*API.CODEREF_DEFAULT_SECS)
     _typevar      : ClassVar          = None
 
     @classmethod
@@ -104,8 +101,8 @@ class CodeReference(Strang):
         return cls(f"{value.__module__}:{val_iden}", value=value)
 
 
-    def __init__(self, text:str, *args:Any, value:Maybe[type]=None, check:Maybe[type]=None, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
-        super().__init__(text, **kwargs)
+    def __init__(self, *args:Any, value:Maybe[type]=None, check:Maybe[type]=None, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
+        super().__init__(**kwargs)
         self._value = value
 
     def __call__(self, *, check:SpecialType|type=Any, raise_error:bool=False) -> Result[type, ImportError]:
@@ -189,5 +186,5 @@ class CodeReference(Strang):
         return base_alias
 
 
-    def to_uniq(self, *, suffix:Maybe[str]=None) -> Never: # type: ignore[override]
+    def to_uniq(self, *args:str) -> Never:
         raise NotImplementedError(errors.CodeRefUUIDFail)

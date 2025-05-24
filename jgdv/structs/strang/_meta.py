@@ -76,32 +76,31 @@ class StrangMeta(StrMeta):
     def register(new_cls:type[Strang_i]) -> None:
         StrangMeta._forms.append(new_cls)
 
-    def __call__(cls:type[Strang_i], text:str|pl.Path, *args:Any, **kwargs:Any) -> Strang_i:  # noqa: ANN401, N805
+    def __call__[T:Strang_i](cls:type[T], text:str|pl.Path, *args:Any, **kwargs:Any) -> Strang_i:  # noqa: ANN401, N805
         """ Overrides normal str creation to allow passing args to init """
         processor  : PreProcessor_p  = cls._processor
-        stage      : str               = "Pre-Process"
+        stage      : str             = "Pre-Process"
 
         try:
             text, data = processor.pre_process(cls,
                                                text,
                                                *args,
-                                               strict=kwargs.get("strict", False),
+                                               strict=kwargs.pop("strict", False),
                                                **kwargs,
                                                )
-            data.update({x:y for x,y in kwargs.items() if y is not None})
-            stage = "__new__"
-            obj = str.__new__(cls, text)
-            obj.__class__ = cls
-            stage = "__init__"
-            cls.__init__(obj, text, *args, **data)
-            stage = "Process"
-            obj = processor.process(obj) or obj
-            stage = "Post-Process"
-            obj = processor.post_process(obj) or obj
-            if hasattr(obj, "__dict__"):
-                raise ValueError(HasDictFail)
+            stage  = "__new__"
+            obj : Strang_i = cls.__new__(cls, text)
+            stage  = "__init__"
+            cls.__init__(obj, *args, **kwargs)
+            stage  = "Process"
+            obj    = processor.process(obj, data=data) or obj
+            stage  = "Post-Process"
+            obj    = processor.post_process(obj, data=data) or obj
         except ValueError as err:
             raise errors.StrangError(errors.StrangCtorFailure.format(cls=cls.__name__, stage=stage),
-                                     err, text, cls, processor) from None
+                                     err, text, cls, processor)
         else:
+            assert(isinstance(obj, str))
+            if hasattr(obj, "__dict__"):
+                raise ValueError(HasDictFail)
             return obj

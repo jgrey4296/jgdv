@@ -83,17 +83,18 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
 
     strang[x] and strang[x:y] are changed to allow structured access::
 
-        val = Strang("a.b.c::d.e.f")
+        val         = Strang("a.b.c::d.e.f")
         val[0] # a.b.c
         val[1] # d.e.f
 
     """
-    __slots__ = ("data", "meta")
+    __slots__       = ("data", "meta")
+    __match_args__  = ("head", "body")
 
     ##--|
     _processor    : ClassVar          = StrangBasicProcessor()
     _formatter    : ClassVar          = StrangFormatter()
-    _sections     : ClassVar          = API.Sections_d(API.HEAD_SEC, API.BODY_SEC)
+    _sections     : ClassVar          = API.STRANG_ALT_SECS
     _typevar      : ClassVar          = None
 
     @classmethod
@@ -110,38 +111,45 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
 
     ##--|
 
-    def __init__(self:API.Strang_i, _:str, *args:Any, uuid:Maybe[UUID]=None, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
+    def __init__(self:API.Strang_i, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
         super().__init__()
-        self.meta          = dict(kwargs)
-        self.data         = API.Strang_d(uuid)
+        self.meta  = dict(kwargs)
+        self.data  = API.Strang_d()
 
-    ##--| dunders
+   ##--| dunders
 
     def __str__(self) -> str:
         """ Provides a fully expanded string
 
         eg: a.b.c::d.e.f..<uuid:{val}>
         """
-        if self.uuid():
-            return self[:,:]
-        return str.__str__(self)
+        return format(self, "a+")
 
     def __repr__(self) -> str:
-        body = str.__str__(self)
+        body = self[:]
         cls  = self.__class__.__name__
         return f"<{cls}: {body}>"
 
     def __format__(self:API.Strang_i, spec:str) -> str:
         """ Basic formatting to get just a section """
         match spec:
-            case "g":
-                val = self[0,:]
-                assert(isinstance(val, str))
-                return val
-            case "b":
-                val = self[1,:]
-                assert(isinstance(val, str))
-                return val
+            case "a" | "a-" | "a+" if not self.data.args_start:
+                return self[:,:]
+            case "a-": # No Args, No Expansion
+                return self[:self.data.args_start]
+            case "a+" if self.data.args_start: # Full Args
+                return f"{self[:,:]}[<uuid:{self.uuid()}>]"
+            case "a" if self.data.args_start: # Simple Args
+                return self[:]
+            case "a=" if self.data.args_start: # only args
+                return self[self.data.args_start+1:-1]
+            case "a=":
+                return ""
+            case "u" if self.data.uuid:
+                val = self.data.uuid
+                return f"<uuid:{val}>"
+            case "u":
+                raise ValueError()
             case _:
                 return super().__format__(spec)
 
@@ -185,6 +193,8 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         match other:
             case Strang() as x if self.uuid() and x.uuid():
                 return hash(self) == hash(other)
+            case UUID() as x:
+                return self.uuid() == x
             case x if self.uuid():
                 h_other = hash(x)
                 return hash(self) == h_other or hash(self[:]) == h_other
@@ -198,6 +208,7 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         """ iterate over words """
         for sec in self.sections():
             yield from self.words(sec.idx)
+
 
     def __getitem__(self, args:API.ItemIndex) -> str: # type: ignore[override]  # noqa: PLR0912, PLR0911
         """
@@ -213,45 +224,43 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         val['head']     -> a.b.c
         val['head', -1] -> c
         """
+        sec : API.Sec_d
         match self._discrim_getitem_args(args):
-            case Iterator() as sec_iter:
-                # full expansion
+            case Iterator() as sec_iter: # full expansion
                 result = []
-                for s in sec_iter:
-                    for word in self.words(s.idx, case=True):
+                for sec in sec_iter:
+                    for word in self.words(sec.idx, case=True):
                         match word:
                             case UUID() as x:
                                 result.append(f"<uuid:{x}>")
                             case x:
                                 result.append(str(x))
                     else:
-                        result.append(s.end or "")
+                        result.append(sec.end or "")
                 else:
                     return "".join(result)
 
             case int()|slice() as section, None:
-                bounds = self.data.bounds[section]
+                bounds = self.data.sections[section]
                 return API.STRGET(self, bounds)
             case None, int() as flat:
-                return API.STRGET(self, self.data.flat[flat])
+                return API.STRGET(self, self.data.words[flat])
             case None, slice() as flat:
-                selection = self.data.flat[flat]
+                selection = self.data.words[flat]
                 return API.STRGET(self, slice(selection[0].start, selection[-1].stop, flat.step))
-            case int()|slice() as section, int() as word:
-                return API.STRGET(self, self.data.slices[section][word])
-            case int()|slice() as section, slice() as word:
-                case   = self._sections[section].case
-                words  = []
-                for x in self.data.slices[section][word]:
-                    words.append(API.STRGET(self, x))
-                else:
-                    return case.join(words)
+            case int() as section, int() as word:
+                idx = self.data.sec_words[section][word]
+                return API.STRGET(self, self.data.words[idx])
+            case int() as section, slice() as word:
+                case   : str       = self.section(section).case
+                words  : list[str] = [API.STRGET(self, self.data.words[i]) for i in self.data.sec_words[section][word]]
+                return case.join(words)
             case int()|slice() as basic:
                 return API.STRGET(self, basic)
             case _:
                 raise KeyError(errors.UnkownSlice, args)
 
-    def _discrim_getitem_args(self, args:API.ItemIndex) -> Iterator|tuple[Maybe[API.ItemIndex], ...]|API.ItemIndex:
+    def _discrim_getitem_args(self, args:API.ItemIndex) -> Iterator[API.Sec_d]|tuple[Maybe[API.ItemIndex], ...]|API.ItemIndex:
         match args:
             case int() | slice() as x: # Normal str-like
                 return x
@@ -267,8 +276,8 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
             case [str() as key, *_] if key not in self._sections.named:
                 raise KeyError(errors.MissingSectionName.format(cls=self.__class__.__name__,
                                                                 key=key))
-            case [slice() as secs, *subs] if len(subs) != len(self.data.slices[secs]): # type: ignore[misc]
-                raise KeyError(errors.SliceMisMatch, len(subs), len(self.data.slices[secs]))
+            case [slice() as secs, *subs] if len(subs) != len(self.data.sec_words[secs]): # type: ignore[misc]
+                raise KeyError(errors.SliceMisMatch, len(subs), len(self.data.sec_words[secs]))
             case [str()|int() as i, slice()|int() as x]: # Section-word
                 return self.section(i).idx, x
             case [None, slice()|int() as x]: # Flat slice
@@ -282,9 +291,11 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         eg: case Strang(head=x, body=y):...
 
         """
-        if val in self.sections().named:
-            return self[val]
-        raise AttributeError(val)
+        match val:
+            case str() as x if x in self.sections():
+                return self[val]
+            case _:
+                raise AttributeError(val)
 
     def __contains__(self:API.Strang_i, other:object) -> bool:
         """ test for conceptual containment of names
@@ -293,11 +304,9 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         """
         match other:
             case API.StrangMarkAbstract_e() as x:
-                return any(x in y for y in self.data.meta if y is not None)
-            case UUID() if self.data.meta is None:
-                return False
-            case UUID() as x if x == self.uuid():
-                return True
+                return x in self.data.meta
+            case UUID() as x:
+                return (x == self.uuid() or x in self.data.meta)
             case str() as needle:
                 return API.STRCON(self, needle)
             case _:
@@ -311,7 +320,7 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
 
     @property
     def shape(self) -> tuple[int, ...]:
-        return tuple(len(x) for x in self.data.slices)
+        return tuple(len(x) for x in self.data.sec_words)
 
     ##--| Access
 
@@ -321,13 +330,8 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         word    : int
         match sub:
             case [API.StrangMarkAbstract_e() as mark]:
-                for i, meta in enumerate(self.data.meta):
-                    word_idx = [j for j,x in enumerate(meta) if x == mark] # type: ignore[arg-type]
-                    if not bool(word_idx):
-                        continue
-                    return self.data.slices[i][word_idx[0]].start
-                else:
-                    raise ValueError(mark)
+                idx = self.data.meta.index(mark)
+                return self.data.words[idx].start
             case ["", *_]:
                 raise ValueError(errors.IndexOfEmptyStr, sub)
             case [str() as needle]:
@@ -347,24 +351,20 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         """ Extended str.rindex, to handle marks and word slices """
         needle  : str
         word    : int
-        count   : int
         match sub:
             case [API.StrangMarkAbstract_e() as mark]:
-                count = len(self.sections())-1
-                for i, meta in enumerate(reversed(self.data.meta)):
-                    word_idx = [j for j,x in enumerate(meta) if x == mark] # type: ignore[arg-type]
-                    if not bool(word_idx):
-                        continue
-                    return self.data.slices[count-i][word_idx[0]].start
-                else:
+                word_idx  = max(-1, *(i for i,x in enumerate(self.data.meta) if x == mark))
+                if word_idx == -1:
                     raise ValueError(mark)
+                return self.data.words[word_idx].start
             case ["", *_]:
                 raise ValueError(errors.IndexOfEmptyStr, sub)
             case [str() as needle]:
                 pass
             case [int()|str() as sec, int() as word]:
                 idx = self.section(sec).idx
-                return self.data.slices[idx][word].start
+                word_idx = self.data.sec_words[idx][word]
+                return self.data.words[word_idx].start
             case x:
                 raise ValueError(x)
 
@@ -374,27 +374,26 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         x     : Any
         sec   : int
         word  : int
+        idx   : int
         match args:
             case [str() | int() as i]:
                 return self[i]
             case [int() as sec, int() as word]:
-                pass
+                idx = self.data.sec_words[sec][word]
             case [str() as k, int() as word]:
                 sec = self.section(k).idx
+                idx = self.data.sec_words[sec][word]
             case x:
                 raise KeyError(x)
 
         try:
-            val = self.data.meta[sec][word] # type: ignore[index]
+            val = self.data.meta[idx] # type: ignore[index]
         except ValueError:
             return self[sec, word]
         else:
             match val:
                 case None:
                     return self[sec,word]
-                case API.StrangMarkAbstract_e() as x if x == API.DefaultBodyMarks_e.unique:
-                    assert(self.uuid())
-                    return self.uuid()
                 case _:
                     return val
 
@@ -408,7 +407,10 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         gen      : Iterator
         section  : API.Sec_d
         section  = self.section(idx)
-        count    = len(self.data.slices[section.idx])
+        count    = len(self.data.sec_words[section.idx])
+        if count == 0:
+            return
+
         match select:
             case None:
                 select = slice(None)
@@ -424,10 +426,9 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
             if case and y is not None:
                 yield section.case
 
-
-
     ##--| Modify
-    def push(self, *args:API.PushVal) -> API.Strang_i:  # noqa: PLR0912
+
+    def push(self, *args:API.PushVal) -> Self:
         """ extend a strang with values
 
         Pushed onto the last section, with a section.marks.skip() mark first
@@ -437,11 +438,11 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         val.push(uuid=True) -> 'a.b.c::d.e.f..<uuid>'
         val.push(uuid=uuid1()) -> 'a.b.c::d.e.f..<uuid:{val}>'
         """
-        x : Any
-        insert_uuid  : Maybe[UUID]  = self.uuid()
-        case                        = self.section(-1).case
-        words                       = [self[:]]
-        marks = self.section(-1).marks or API.DefaultBodyMarks_e
+        word  : API.PushVal
+        x     : API.PushVal
+        case   = self.section(-1).case
+        words  = [format(self, "a-")]
+        marks  = self.section(-1).marks or API.DefaultBodyMarks_e
         match marks.skip():
             case API.StrangMarkAbstract_e() as x:
                 mark = x.value
@@ -451,27 +452,22 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
 
         for word in args:
             match word:
-                case None:
-                    words.append(mark)
                 case API.StrangMarkAbstract_e() as x if x in type(x).idempotent() and x in self:
                     pass
                 case API.StrangMarkAbstract_e() as x if x in type(x).idempotent() and x in words:
                     pass
                 case API.StrangMarkAbstract_e() as x if x in type(x).idempotent() and x in self:
                     words.append(x.value)
-                case str() as x if x == API.UUID_WORD and insert_uuid:
-                    raise ValueError(errors.TooManyUUIDs)
                 case str() as x:
                     words.append(x)
-                case UUID() as x if not insert_uuid:
-                    words.append(API.UUID_WORD)
-                    insert_uuid = x
                 case UUID() as x:
-                    raise ValueError(errors.TooManyUUIDs)
+                    words.append(f"<uuid:{x}>")
+                case None:
+                    words.append(mark)
                 case x:
                     words.append(str(x))
         else:
-            return cast("API.Strang_i", Strang(case.join(words), uuid=insert_uuid))
+            return self.__class__(*words)
 
     def pop(self, *, top:bool=True)-> API.Strang_i:
         """
@@ -493,30 +489,51 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         else:
             return cast("API.Strang_i", Strang(self[:next_mark]))
 
+    def mark(self, mark:str|API.StrangMarkAbstract_e) -> Self:
+        """ Add a given mark if it is last section appropriate  """
+        appropriate = self.section(-1).marks
+        assert(appropriate is not None)
+        match mark:
+            case str() as x if x in appropriate:
+                return self.push(appropriate(x))
+            case API.StrangMarkAbstract_e() as x if x in appropriate:
+                return self.push(x)
+            case x:
+                raise ValueError(x)
+
     ##--| UUIDs
 
     def uuid(self) -> Maybe[UUID]:
         return self.data.uuid
 
-    def to_uniq(self, *args:str) -> API.Strang_i:
-        """ Generate a concrete instance of this name with a UUID appended,
-        optionally can add a suffix
+    def to_uniq(self, *args:str) -> Self:
+        """ Generate a concrete instance of this name with a UUID prepended,
 
           ie: a.task.group::task.name..{prefix?}.$gen$.<UUID>
         """
-        try:
-            return self.push(API.UUID_WORD, *args)
-        except ValueError:
-            return cast("API.Strang_i", self)
+        match args:
+            case [] if self.uuid():
+                return self
+            case [] if bool(curr:=f"{self:a=}"):
+                return self.__class__(f"{self:a-}[{curr},<uuid>]")
+            case []:
+                return self.__class__(f"{self:a-}[<uuid>]")
+            case [*xs, x] if bool(curr:=f"{self:a=}"):
+                return self.__class__(f"{self:a-}", *xs, f"{x}[<uuid>]")
+            case [x]:
+                return self.__class__(f"{self:a-}", f"{x}[<uuid>]")
+            case x:
+                raise TypeError(type(x))
 
-    def de_uniq(self) -> API.Strang_i:
-        """ return the strang up to, but not including, the uuid
+    def de_uniq(self) -> Self:
+        """ a.b.c::d.e.f[<uuid>] -> a.b.c::d.e.f
 
-        eg: 'group.a::q.w.e.<uuid>.t.y'.de_uniq() -> 'group.a::q.w.e'
         """
-        assert(self.uuid()), "Can't de-uniq a non-uniq strang"
-        return cast("API.Strang_i", Strang(self[:self.index(API.DefaultBodyMarks_e.unique)]))
-
+        match self.uuid():
+            case None:
+                return self
+            case _:
+                return self.__class__(f"{self[:,:]}")
 
     ##--| Other
 
@@ -525,24 +542,3 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         using the cls._formatter
         """
         return self._formatter.format(self, *args, **kwargs)
-
-    def canon(self) -> str:
-        """ canonical name. compress all uuids
-        eg: group::a.b.c..<uuid>.c.d.e
-        """
-        return self[:]
-
-    def root(self) -> API.Strang_i:
-        """Pop off to the top marker """
-        raise NotImplementedError()
-
-    def diff_uuids(self, other:UUID) -> str:
-        match self.uuid():
-            case None:
-                raise ValueError(errors.NoUUIDToDiff)
-            case x:
-                this_ing = str(x)
-                that_ing = str(other)
-
-        result = [y if x==y else "_" for x,y in zip(this_ing, that_ing, strict=True)]
-        return "".join(result)
