@@ -92,10 +92,13 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
     __match_args__  = ("head", "body")
 
     ##--|
-    _processor    : ClassVar          = StrangBasicProcessor()
-    _formatter    : ClassVar          = StrangFormatter()
-    _sections     : ClassVar          = API.STRANG_ALT_SECS
-    _typevar      : ClassVar          = None
+    _processor  : ClassVar  = StrangBasicProcessor()
+    _formatter  : ClassVar  = StrangFormatter()
+    _sections   : ClassVar  = API.STRANG_ALT_SECS
+    _typevar    : ClassVar  = None
+
+    data        : API.Strang_d
+    meta        : dict
 
     @classmethod
     def sections(cls) -> API.Sections_d:
@@ -132,26 +135,29 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
 
     def __format__(self:API.Strang_i, spec:str) -> str:
         """ Basic formatting to get just a section """
+        result : str
         match spec:
             case "a" | "a-" | "a+" if not self.data.args_start:
-                return self[:,:]
+                result = self[:,:]
             case "a-": # No Args, No Expansion
-                return self[:self.data.args_start]
+                result = self[:self.data.args_start]
             case "a+" if self.data.args_start: # Full Args
-                return f"{self[:,:]}[<uuid:{self.uuid()}>]"
+                result = f"{self[:,:]}[<uuid:{self.uuid()}>]"
             case "a" if self.data.args_start: # Simple Args
-                return self[:]
+                result = self[:]
             case "a=" if self.data.args_start: # only args
-                return self[self.data.args_start+1:-1]
+                result = self[self.data.args_start+1:-1]
             case "a=":
-                return ""
+                result = ""
             case "u" if self.data.uuid:
                 val = self.data.uuid
-                return f"<uuid:{val}>"
+                result = f"<uuid:{val}>"
             case "u":
                 raise ValueError()
             case _:
-                return super().__format__(spec)
+                result = super().__format__(spec)
+
+        return result
 
     def __hash__(self) -> int:
         return str.__hash__(str(self))
@@ -252,7 +258,7 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
                 idx = self.data.sec_words[section][word]
                 return API.STRGET(self, self.data.words[idx])
             case int() as section, slice() as word:
-                case   : str       = self.section(section).case
+                case   = self.section(section).case or ""
                 words  : list[str] = [API.STRGET(self, self.data.words[i]) for i in self.data.sec_words[section][word]]
                 return case.join(words)
             case int()|slice() as basic:
@@ -440,7 +446,6 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         """
         word  : API.PushVal
         x     : API.PushVal
-        case   = self.section(-1).case
         words  = [format(self, "a-")]
         marks  = self.section(-1).marks or API.DefaultBodyMarks_e
         match marks.skip():

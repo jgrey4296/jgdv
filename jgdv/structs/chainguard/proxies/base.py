@@ -66,9 +66,9 @@ logging = logmod.getLogger(__name__)
 
 class GuardProxy:
     """ A Base Class for Proxies """
+    __slots__ = ("_types", "_data", "__index")
 
-    def __init__(self, data:GuardBase, types:Any=None, index:Maybe[list[str]]=None, fallback:TomlTypes|Never=Never):
-        super().__init__()
+    def __init__(self, data:GuardBase, types:Any=None, index:Maybe[list[str]]=None, fallback:TomlTypes|Literal[Never]=Never):
         self._types                         = types or Any
         self._data                          = data
         self.__index : list[str]            = index or ["<root>"]

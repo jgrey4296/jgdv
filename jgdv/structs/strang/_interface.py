@@ -179,14 +179,14 @@ class Sec_d:
     __slots__ = ("case", "end", "idx", "marks", "name", "required", "types")
     idx       : int
     name      : Final[str]
-    case      : Final[str]
+    case      : Final[Maybe[str]]
     end       : Final[Maybe[str]]
     types     : Final[type|UnionType]
     marks     : Final[Maybe[type[StrangMarkAbstract_e]]]
     required  : Final[bool]
 
-    def __init__(self, name:str, case:str, end:Maybe[str], types:type|UnionType, marks:Maybe[type[StrangMarkAbstract_e]], required:bool=True, owner:bool=False, *, idx:int=-1) -> None:  # noqa: FBT001, FBT002, PLR0913
-        assert(bool(case))
+    def __init__(self, name:str, case:str, end:Maybe[str], types:type|UnionType, marks:Maybe[type[StrangMarkAbstract_e]], required:bool=True, *, idx:int=-1) -> None:  # noqa: FBT001, FBT002, PLR0913
+        assert(case is None or bool(case))
         assert(end is None or bool(end))
         self.idx       = idx
         self.name      = name.lower()
@@ -294,7 +294,7 @@ CODEREF_VAL_SEC      : Final[Sec_d]       = Sec_d("value",  CASE_DEFAULT, None, 
 
 STRANG_DEFAULT_SECS  : Final[Sections_d]  = Sections_d(HEAD_SEC, BODY_SEC)
 STRANG_ALT_SECS      : Final[Sections_d]  = Sections_d(
-    Sec_d("head", CASE_DEFAULT, END_DEFAULT, HEAD_TYPES, DefaultHeadMarks_e, True, True),  # noqa: FBT003
+    Sec_d("head", CASE_DEFAULT, END_DEFAULT, HEAD_TYPES, DefaultHeadMarks_e, True),  # noqa: FBT003
     Sec_d("body", CASE_DEFAULT, None, BODY_TYPES, DefaultBodyMarks_e, True),  # noqa: FBT003
 )
 CODEREF_DEFAULT_SECS : Final[Sections_d] = Sections_d(CODEREF_HEAD_SEC, CODEREF_MODULE_SEC, CODEREF_VAL_SEC)

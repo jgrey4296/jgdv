@@ -89,7 +89,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
             case None:
                 pass
 
-        case = cls.section(-1).case
+        case = cls.section(-1).case or ""
         text = case.join(str(x) for x in [data, *args])
 
         if not self._verify_structure(cls, text):
@@ -123,21 +123,21 @@ class StrangBasicProcessor(API.PreProcessor_p):
         """
         # TODO join the seps
         seps = [x.case for x in cls._sections.order]
-        sep = seps[0]
+        sep = seps[0] or ""
         sep_double = re.escape(sep * 2)
         clean_re   = re.compile(f"{sep_double}+")
         # Don't reuse sep_double, as thats been escaped
         cleaned    = clean_re.sub(sep * 2, val)
         trimmed    = cleaned.removesuffix(sep).removesuffix(sep)
         return trimmed
-    def _compress_types(self, cls:type[Strang_i], val:str) -> tuple[str, dict]:  # noqa: ARG1
+
+    def _compress_types(self, cls:type[Strang_i], val:str) -> tuple[str, dict]:  # noqa: ARG002
         """ Extract values of explicitly typed words.
 
         allows the base str of the Strang to be readable,
         and for post-process to insert types as necessary
 
         eg: a.b.c::d.e.<uuid:....> -> (a.b.c::d.e.<uuid>, {uuids:[UUIDstr]}
-
 
         """
         curr       : re.Match
@@ -157,8 +157,6 @@ class StrangBasicProcessor(API.PreProcessor_p):
                     extracted.append((key, None))
         else:
             text.append(val[idx:])
-            # Reversed so value can be popped easily during post processing
-            # extracted.reverse()
             return "".join(text), {'types': extracted}
 
     def _get_args(self, val:str) -> Maybe[int]:
@@ -166,9 +164,10 @@ class StrangBasicProcessor(API.PreProcessor_p):
             idx : int = val.rindex(API.ARGS_CHARS[0])
             assert(val[-1] == API.ARGS_CHARS[-1])
             assert(API.ARGS_RE.match(val[idx:]))
-            return idx
         except ValueError:
             return None
+        else:
+            return idx
 
     ##--|
 
@@ -214,10 +213,10 @@ class StrangBasicProcessor(API.PreProcessor_p):
             self._process_args(obj, data=data)
             return None
 
-    def _process_section(self, obj:Strang_i, section:API.Sec_d, *, start:int=-1) -> tuple[slice, tuple[slice], int]:
+    def _process_section(self, obj:Strang_i, section:API.Sec_d, *, start:int=-1) -> tuple[slice, tuple[slice, ...], int]:
         """ Set the slices of a section, return the index where the section ends """
         word_slices   : tuple[slice]
-        search_end    : int = obj.data.args_start or len(obj)
+        search_end    : int  = obj.data.args_start or len(obj)
         bound_extend  : int  = 0
         match section.end:
             case str() as x:
@@ -229,6 +228,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
             case None:
                 pass
         ##--|
+
         word_slices = self._slice_section(obj,
                                           case=[section.case, section.end],
                                           start=start,
@@ -277,8 +277,6 @@ class StrangBasicProcessor(API.PreProcessor_p):
                 case _:
                     pass
 
-            # Done with args, so reverse for post processing
-            data['types'].reverse()
     ##--|
 
     def post_process(self, obj:Strang_i, data:Maybe[dict]=None) -> Maybe[Strang_i]:
@@ -289,6 +287,9 @@ class StrangBasicProcessor(API.PreProcessor_p):
         """
         data   = data or {}
         metas  : list  = []
+        if 'types' in data:
+            data['types'].reverse()
+
         match getattr(obj, name_to_hook("process"), None):
             case x if callable(x):
                 return x(data)
@@ -342,7 +343,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
 
     ##--| utils
 
-    def _make_type(self, val:str, *, sec:API.Sec_d, data:dict, obj:API.Strang_i) -> Maybe[Any]:
+    def _make_type(self, val:str, *, sec:API.Sec_d, data:dict, obj:API.Strang_i) -> Maybe[Any]:  # noqa: ARG002
         """ Handle <type> words, which may have had data extracted during pre-processing.
 
         """
@@ -357,7 +358,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
                 pass
 
         match word.groups()[0], typeval:
-            case x, y if x != key: # Mismatch between types
+            case x, _ if x != key: # Mismatch between types
                 raise ValueError(x, key)
             case "uuid", None:
                 result = uuid1()
@@ -370,7 +371,6 @@ class StrangBasicProcessor(API.PreProcessor_p):
 
         ##--|
         return result
-
 
     def _build_mark(self, val:str, *, sec:API.Sec_d, data:dict) -> Maybe[API.StrangMarkAbstract_e]:  # noqa: ARG002
         """ converts applicable words to mark enum values
@@ -411,7 +411,6 @@ class StrangBasicProcessor(API.PreProcessor_p):
         if not (first_or_last and val in marks):
             return None
         return marks(val)
-
 
 class CodeRefProcessor(StrangBasicProcessor):
     pass
