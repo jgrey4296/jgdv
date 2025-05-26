@@ -2,6 +2,7 @@
 """
 
 """
+# ruff: noqa: ANN202, ANN001, B011, ANN204, ANN002, ANN003
 # Imports:
 from __future__ import annotations
 
@@ -23,7 +24,7 @@ import pytest
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from .. import _interface as API
+from .. import _interface as API  # noqa: N812
 from .._core import (
     Decorator,
     MonotonicDec,
@@ -85,7 +86,7 @@ class _Utils:
 class TestDFormDiscrimination(_Utils):
 
     def test_sanity(self):
-        assert(True is not False)
+        assert(True is not False) # noqa: PLR0133
 
     def test_is_fn(self, dec, a_fn):
         match dec._discrim_form(a_fn):
@@ -346,7 +347,6 @@ class TestIdempotent(_Utils):
         assert(True is not False) # noqa: PLR0133
 
     def test_mark_of_class_persists_to_instances(self, idec):
-
         class Basic:
 
             @idec
@@ -473,18 +473,17 @@ class TestClassDecoration(_Utils):
 
     def test_add_new_method(self):
         """ Modify the decorated class"""
-
         class ExDecorator(IdempotentDec):
 
             def bmethod(self, val):
                 return val + self._val
 
-            def _wrap_class_h(self, target:cls):
+            def _wrap_class_h(self, target:type):
                 # Gets the unbound method and binds it to the target
                 setattr(target, "bmethod", self.__class__.bmethod) # noqa: B010
-                return None
 
-        @ExDecorator()
+
+        @ExDecorator
         class Basic:
 
             def __init__(self, val=None):

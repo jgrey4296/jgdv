@@ -44,9 +44,9 @@ __all__ = ( # noqa: RUF022
 from jgdv._abstract.types import Func, Method
 
 ##--| Primary Types
-type Signature                = inspect.Signature
-type Decorable                = type | Func | Method
-type Decorated[F:Decorable]   = F
+type Signature          = inspect.Signature
+type Decorable[**I, O]  = Callable[I, O]
+type Decorated[**I, O]  = Callable[I, O]
 
 ##--| Val
 WRAPPED             : Final[str]  = "__wrapped__"
@@ -68,11 +68,11 @@ class DForm_e(enum.Enum):
 
 class DecoratorHooks_p(Protocol):
 
-    def _wrap_method_h[**In, Out](self, meth:Method[In,Out]) -> Decorated[Method[In, Out]]: ...
+    def _wrap_method_h[**In, Out](self, meth:Method[In,Out]) -> Decorated[In, Out]: ...
 
-    def _wrap_fn_h[**In, Out](self, fn:Func[In, Out]) -> Decorated[Func[In, Out]]: ...
+    def _wrap_fn_h[**In, Out](self, fn:Func[In, Out]) -> Decorated[In, Out]: ...
 
-    def _wrap_class_h(self, cls:type) -> Maybe[Decorated]: ...
+    def _wrap_class_h[T](self, cls:type[T]) -> Maybe[Decorated[[], T]]: ...
 
     def _validate_target_h(self, target:Decorable, form:DForm_e, args:Maybe[list]=None) -> None: ...
 
@@ -97,7 +97,7 @@ class DecoratorUtils_p(Protocol):
 @runtime_checkable
 class Decorator_p(DecoratorHooks_p, DecoratorUtils_p, Protocol):
 
-    def __call__[T:Decorable](self, target:T) -> Maybe[Decorated[T]]: ...
+    def __call__[**I, O](self, target:Decorable[I, O]) -> Maybe[Decorated[I, O]]: ...
 
     def data_key(self) -> str: ...
 

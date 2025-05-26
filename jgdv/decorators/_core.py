@@ -61,7 +61,32 @@ logging = logmod.getLogger(__name__)
 
 # TODO use ideas from pytest.mark
 # TODO use strang for mark/data keys
+ProtoMeta : Final[type] = type(Protocol)
 #--|
+
+class DecoratorMeta(ProtoMeta):
+
+    @overload
+    def __call__[T](cls:type[API.Decorator_i], target:type[T], *args:Any, **kwargs:Any) -> type[T]: ...  # noqa: ANN401, N805
+
+    @overload
+    def __call__(cls:type[API.Decorator_i], *args:Any, **kwargs:Any) -> type[API.Decorator_i]: ...  # noqa: ANN401, N805
+
+    def __call__(cls, *args:Any, **kwargs:Any):  # noqa: N805
+        """ When called with a class as the first arg, builds and calls the decorator on it """
+        dec : API.Decorator_p
+        match args:
+            case [target, *_] if callable(target):
+                assert(not bool(kwargs))
+                dec = cls.__new__(cls)
+                assert(isinstance(dec, cls))
+                dec.__init__() # type: ignore[misc]
+                return dec(target)
+            case _:
+                dec = cls.__new__(cls)
+                assert(isinstance(dec, cls))
+                dec.__init__(*args, **kwargs) # type: ignore[misc]
+                return dec
 
 class _DecAnnotate_m:
     """ Utils for manipulating annotations related to the decorator
@@ -160,7 +185,7 @@ class _DecWrap_m:
         depth           = 0
         recursion_limit = sys.getrecursionlimit()
         while not isinstance(f, type) and hasattr(f, API.WRAPPED):
-            f = f.__wrapped__
+            f = f.__wrapped__ # type: ignore[attr-defined]
             depth += 1
             id_func = id(f)
             if (id_func in memo) or (len(memo) >= recursion_limit):
@@ -170,14 +195,14 @@ class _DecWrap_m:
         else:
             return depth
 
-    def _build_wrapper(self:Decorator_i, form:DForm_e, target:Decorable) -> Maybe[Decorated]:
+    def _build_wrapper[**I,O](self:Decorator_i, form:DForm_e, target:Decorable[I,O]) -> Maybe[Decorated[I,O]]:
         """ Create a new decoration using the appropriate hook """
         match form:
             case self.Form.CLASS:
                 logging.info("Decorating class: %s", target)
                 # Classes are a special case, Maybe modifying instead of wrapping
                 assert(isinstance(target, type))
-                return self._wrap_class_h(target)
+                return cast("Maybe[Decorated[I,O]]", self._wrap_class_h(target))
             case self.Form.METHOD:
                 logging.info("Decorating Method: %s", target)
                 # TODO if its actually a method type, will need to get the unbound fn
@@ -235,7 +260,7 @@ class _DecoratorHooks_m:
     """ The main hooks used to actually specify the decoration """
     _builder : ClassVar[Subclasser] = Subclasser()
 
-    def _wrap_method_h[**In, Out](self:Decorator_i, meth:Method[In,Out]) -> Decorated[Method[In, Out]]:
+    def _wrap_method_h[**In, Out](self:Decorator_i, meth:Method[In,Out]) -> Decorated[In, Out]:
         """ Override this to add a decoration function to method """
         dec_name = self.dec_name()
 
@@ -245,7 +270,7 @@ class _DecoratorHooks_m:
 
         return cast("Method", _default_method_wrapper)
 
-    def _wrap_fn_h[**In, Out](self:Decorator_i, fn:Func[In, Out]) -> Decorated[Func[In, Out]]:
+    def _wrap_fn_h[**In, Out](self:Decorator_i, fn:Func[In, Out]) -> Decorated[In, Out]:
         """ override this to add a decorator to a function """
         dec_name = self.dec_name()
 
@@ -255,7 +280,7 @@ class _DecoratorHooks_m:
 
         return cast("Method", _default_fn_wrapper)
 
-    def _wrap_class_h(self:Decorator_i, cls:type) -> Maybe[Decorated]:
+    def _wrap_class_h[**I,O](self, cls:type[O]) -> Maybe[Decorated[I,O]]:
         """ Override this to decorate a class """
         return self._builder.make_subclass("DefaultWrappedClass", cls)
 
@@ -288,7 +313,7 @@ class _DecIdempotentLogic_m:
 
 ##--|
 
-class Decorator(_DecoratorCombined_m, Decorator_i): # type: ignore[misc]
+class Decorator(_DecoratorCombined_m, Decorator_i, metaclass=DecoratorMeta): # type: ignore[misc]
     """
     The abstract Superclass of Decorators
     A subclass implements '_decoration_logic'
@@ -296,25 +321,8 @@ class Decorator(_DecoratorCombined_m, Decorator_i): # type: ignore[misc]
     Form                 : ClassVar[type[DForm_e]] = DForm_e
     needs_args           : ClassVar[bool]          = False
 
-    def __new__[T:Decorator_i](cls:type[T], *args, **kwargs) -> T:  # noqa: ANN002, ANN003
-        """ If called on a callable, create a new decorator and decorate,
-        otherwise create the new object
-        """
-        match args:
-            case []:
-                obj = super().__new__(cls)
-                obj.__init__(*args, **kwargs) # type: ignore[misc]
-                return obj
-            case [x, *_] if callable(x) and not cls.needs_args:
-                obj = super().__new__(cls)
-                obj.__init__(*args[1:], **kwargs) # type: ignore[misc]
-                return obj(args[0]) # type: ignore[return-value]
-            case _:
-                obj = super().__new__(cls)
-                obj.__init__(*args, **kwargs) # type: ignore[misc]
-                return obj
 
-    def __init__(self, *args, prefix:Maybe[str]=None, mark:Maybe[str]=None, data:Maybe[str]=None) -> None:  # noqa: ANN002, ARG002
+    def __init__(self, *args:Any, prefix:Maybe[str]=None, mark:Maybe[str]=None, data:Maybe[str]=None) -> None:  # noqa: ANN401, ARG002
         # Ignores any args
         # TODO use strangs for mark and data key
         self._annotation_prefix   = prefix  or API.ANNOTATIONS_PREFIX
@@ -334,9 +342,10 @@ class Decorator(_DecoratorCombined_m, Decorator_i): # type: ignore[misc]
             # So the traceback can be manipulated
             raise err.with_traceback(TraceBuilder()[1:]) from None
         else:
+            assert(decorated is not None)
             return decorated
 
-    def _decoration_logic(self, target:Decorable) -> Decorated:
+    def _decoration_logic[**I, O](self, target:Decorable[I,O]) -> Decorated[I,O]:
         """
         # need to wrap with my wrapper
         annotations = self.get_annotations(target)
@@ -359,7 +368,7 @@ class MonotonicDec(Decorator):
     Monotonic's don't annotate
     """
 
-    def _decoration_logic(self, target:Decorable) -> Decorated:
+    def _decoration_logic[**I, O](self, target:Decorable[I,O]) -> Decorated[I,O]:
         top, bottom = target, self._unwrap(target)
         form, sig = self._discrim_form(bottom), self._signature(bottom)
 
