@@ -268,7 +268,7 @@ class ExpInst_d:
 
     """
     __slots__ = ("convert", "fallback", "lift", "literal", "rec", "total_recs", "value")
-    convert     : Maybe[str]
+    convert     : Maybe[str|bool]
     fallback    : Maybe[str]
     lift        : bool
     literal     : bool
@@ -288,13 +288,13 @@ class ExpInst_d:
             case ExpInst_d() as val:
                 raise TypeError(NestedFailure, val)
             case None:
-                 raise ValueError(NoValueFailure, x)
+                 raise ValueError(NoValueFailure)
         if bool(kwargs):
             raise ValueError(UnexpectedData, kwargs)
 
     def __repr__(self) -> str:
         lit  = "(Lit)" if self.literal else ""
-        return f"<ExpInst_d:{lit} {self.val!r} / {self.fallback!r} (R:{self.rec},L:{self.lift},C:{self.convert})>"
+        return f"<ExpInst_d:{lit} {self.value!r} / {self.fallback!r} (R:{self.rec},L:{self.lift},C:{self.convert})>"
 
 class DKey_d(StrangAPI.Strang_d):
     """ Data of a DKey """
@@ -356,7 +356,7 @@ class Expandable_p(Protocol):
     def expand(self, *sources, **kwargs) -> Maybe: ...
 
 @runtime_checkable
-class Key_p(StrangAPI.Strang_p, Protocol):
+class Key_p(ExpansionHooks_p, StrangAPI.Strang_p, Protocol):
     """ The protocol for a Key, something that used in a template system"""
     _mark          : ClassVar[KeyMark]
     _extra_kwargs  : ClassVar[set[str]]
@@ -381,8 +381,3 @@ class MultiKey_p(Protocol):
     def _multi(self) -> Never: ...
 
 ##--| Combined Interfaces
-
-class Key_i(ExpansionHooks_p, Key_p, StrangAPI.Strang_i, Protocol):
-    data           : DKey_d
-
-##--|

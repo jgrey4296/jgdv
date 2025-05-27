@@ -49,7 +49,6 @@ if TYPE_CHECKING:
    from jgdv._abstract.protocols import SpecStruct_p
 
    from . import _interface as API # noqa: N812
-   from ._interface import Key_i
 
 # isort: on
 # ##-- end types

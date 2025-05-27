@@ -131,10 +131,10 @@ class Expander:
                 fallback = API.ExpInst_d(val=x, literal=True)
             case API.ExpInst_d() as x:
                 fallback = x
-                logging.debug("Fallback %s -> %s", source, fallback.val)
+                logging.debug("Fallback %s -> %s", source, fallback.value)
             case x:
                 fallback = API.ExpInst_d(val=x, literal=True)
-                logging.debug("Fallback %s -> %s", source, fallback.val)
+                logging.debug("Fallback %s -> %s", source, fallback.value)
 
         full_sources = list(sources)
         full_sources += [x for x in self.extra_sources(source) if x not in full_sources]
@@ -210,7 +210,7 @@ class Expander:
                     case None:
                         logging.debug("Lookup Failed for: %s", target)
                         return []
-                    case API.ExpInst_d(val=API.Key_p() as key, rec=-1) as res if source == key:
+                    case API.ExpInst_d(value=API.Key_p() as key, rec=-1) as res if source == key:
                         res.rec = API.RECURSION_GUARD
                         result.append(res)
                     case API.ExpInst_d() as x:
@@ -244,10 +244,10 @@ class Expander:
             match x:
                 case API.ExpInst_d(literal=True) | API.ExpInst_d(rec=0) as res:
                     result.append(res)
-                case API.ExpInst_d(val=API.Key_p() as key, rec=-1) if key is source or key == source:
+                case API.ExpInst_d(value=API.Key_p() as key, rec=-1) if key is source or key == source:
                     msg = "Unrestrained Recursive Expansion"
                     raise RecursionError(msg, source)
-                case API.ExpInst_d(val=str() as key, rec=-1, fallback=fallback, lift=lift):
+                case API.ExpInst_d(value=str() as key, rec=-1, fallback=fallback, lift=lift):
                     as_key = self._ctor(key)
                     match self.expand(as_key, *sources, limit=max_rec, fallback=fallback):
                         case None if lift:
@@ -259,7 +259,7 @@ class Expander:
                             result.append(exp)
                         case API.ExpInst_d() as exp:
                             result.append(exp)
-                case API.ExpInst_d(val=str() as key, rec=rec, fallback=fallback, lift=lift):
+                case API.ExpInst_d(value=str() as key, rec=rec, fallback=fallback, lift=lift):
                     new_limit = min(max_rec, rec)
                     as_key = self._ctor(key)
                     match self.expand(as_key, *sources, limit=new_limit, fallback=fallback):
@@ -269,8 +269,8 @@ class Expander:
                             return []
                         case API.ExpInst_d() as exp:
                             result.append(exp)
-                        case x:
-                            raise TypeError(type(x))
+                        case other:
+                            raise TypeError(type(other))
                 case API.ExpInst_d() as x:
                     result.append(x)
                 case x:
@@ -313,13 +313,13 @@ class Expander:
                 # Conversion is off
                 val.literal = True
                 return val
-            case API.ExpInst_d(val=value, convert=None) if isinstance(source.data.expansion_type, type) and isinstance(value, source.data.expansion_type):
+            case API.ExpInst_d(value=val, convert=None) if isinstance(source.data.expansion_type, type) and isinstance(val, source.data.expansion_type):
                 # Type is already correct
                 val.literal = True
                 return val
-            case API.ExpInst_d(val=value, convert=None) if source.data.expansion_type is not identity_fn:
+            case API.ExpInst_d(value=value, convert=None) if source.data.expansion_type is not identity_fn:
                 # coerce a real ctor
-                val.val = source.data.expansion_type(value)
+                val.value = source.data.expansion_type(value)
                 val.literal = True
                 return val
             case API.ExpInst_d(convert=None) if source.data.convert is None:
@@ -344,17 +344,17 @@ class Expander:
         """
         match conv:
             case "p":
-                val.val = pl.Path(val.val).expanduser().resolve()
+                val.value = pl.Path(val.value).expanduser().resolve()
             case "s":
-                val.val = str(val.val)
+                val.value = str(val.value)
             case "S":
-                val.val = Strang(val.val)
+                val.value = Strang(val.value)
             case "c":
-                val.val = CodeReference(val.val)
+                val.value = CodeReference(val.value)
             case "i":
-                val.val = int(val.val)
+                val.value = int(val.value)
             case "f":
-                val.val = float(val.val)
+                val.value = float(val.value)
             case x:
                 logging.warning("Unknown Conversion Parameter: %s", x)
                 return None

@@ -61,7 +61,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from .._interface import Key_i
     from jgdv.decorators._interface import Decorated, Decorable
     type Signature = inspect.Signature
 # isort: on
