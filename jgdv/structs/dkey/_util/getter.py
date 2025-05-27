@@ -95,7 +95,7 @@ class ChainGetter:
 
 
     @staticmethod
-    def lookup(target:list[ExpInst_d], sources:list)-> Maybe[ExpInst_d]:
+    def lookup(target:list[ExpInst_d], sources:list)-> Maybe[ExpInst_d]:  # noqa: PLR0911, PLR0912
         """ Handle lookup instructions
 
         | pass through DKeys and (DKey, ..)
@@ -136,3 +136,6 @@ class ChainGetter:
                             return ExpInst_d(val=y, fallback=fallback)
                 case x:
                     return ExpInst_d(val=x, fallback=fallback)
+
+        else:
+            raise ValueError()

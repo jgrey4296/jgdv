@@ -28,7 +28,6 @@ from jgdv import Proto, Mixin
 from jgdv.mixins.annotate import SubAnnotate_m
 from jgdv.structs.strang import Strang
 from ._util.expander import Expander
-from ._util.format import DKeyFormatting_m
 from .processor import DKeyProcessor
 
 # ##-- types
