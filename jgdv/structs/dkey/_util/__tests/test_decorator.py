@@ -19,8 +19,14 @@ from jgdv.decorators import DForm_e
 from ... import DKey, DKeyed
 from ..decorator import DKeyMetaDecorator, DKeyedMeta, DKeyedRetrieval
 from ..decorator import DKeyExpansionDecorator as DKexd
+from ...errors import DecorationMismatch
 
-logging = logmod.root
+logging  = logmod.root
+
+KEY_1    : Final[str] =  "blah"
+KEY_2    : Final[str] =  "bloo"
+KEY_W1   : Final[str] =  "{blah}"
+KEY_W2   : Final[str] =  "{bloo}"
 
 class TestDkeyDecorator:
 
@@ -32,7 +38,7 @@ class TestDkeyDecorator:
         assert(isinstance(value, DKexd))
 
     def test_with_key(self):
-        value = DKexd([DKey("test")])
+        value = DKexd([DKey(KEY_1)])
         assert(isinstance(value, DKexd))
         assert(bool(value._data))
 
@@ -88,8 +94,8 @@ class TestDkeyDecorator:
             pass
 
         sig = dec._signature(simple)
-        dec._validate_sig_h(sig, ttype, [DKey("bloo"), DKey("blee")])
-        assert(True)
+        with pytest.raises(DecorationMismatch):
+            dec._validate_sig_h(sig, ttype, [DKey(KEY_W1), DKey(KEY_W2)])
 
     def test_validate_sig_method_tail_fail(self):
         dec   = DKexd([])
@@ -100,17 +106,17 @@ class TestDkeyDecorator:
 
         sig = dec._signature(simple)
         with pytest.raises(JGDVError):
-            dec._validate_sig_h(sig, ttype, [DKey("bloo"), DKey("blah")])
+            dec._validate_sig_h(sig, ttype, [DKey(KEY_W1), DKey(KEY_W2)])
 
     def test_validate_sig_func_tail(self):
         dec   = DKexd([])
         ttype = DForm_e.FUNC
 
-        def simple(spec, state, bloo, blee):
+        def simple(spec, state, blah, bloo):
             pass
 
         sig = dec._signature(simple)
-        dec._validate_sig_h(sig, ttype, [DKey("bloo"), DKey("blee")])
+        dec._validate_sig_h(sig, ttype, [DKey(KEY_W1), DKey(KEY_W2)])
         assert(True)
 
     def test_validate_sig_func_tail_fail(self):
@@ -122,7 +128,7 @@ class TestDkeyDecorator:
 
         sig = dec._signature(simple)
         with pytest.raises(JGDVError):
-            dec._validate_sig_h(sig, ttype, [DKey("bloo"), DKey("blah")])
+            dec._validate_sig_h(sig, ttype, [DKey(KEY_W1), DKey(KEY_W2)])
 
     def test_validate_sig_incomplete_tail(self):
         dec   = DKexd([])
@@ -132,8 +138,8 @@ class TestDkeyDecorator:
             pass
 
         sig = dec._signature(simple)
-        dec._validate_sig_h(sig, ttype, [DKey("blee"), DKey("blob")])
-        assert(True)
+        with pytest.raises(DecorationMismatch):
+            dec._validate_sig_h(sig, ttype, [DKey(KEY_W1), DKey(KEY_W2)])
 
     def test_validate_sig_skip_ignores(self):
         dec   = DKexd([])
@@ -143,7 +149,7 @@ class TestDkeyDecorator:
             pass
 
         sig = dec._signature(simple)
-        dec._validate_sig_h(sig, ttype, [DKey("awef"), DKey("aweg"), DKey("blob")])
+        dec._validate_sig_h(sig, ttype, [DKey(KEY_W1), DKey(KEY_W2), DKey("{blob}")])
         assert(True)
 
 class TestDKeyDecoratorExpansion:

@@ -6,7 +6,7 @@ from ._interface      import Key_p, DKeyMark_e, ExpInst_d
 from .errors          import DKeyError
 from .dkey            import DKey
 # from ._util.formatter import DKeyFormatter
-# from ._util.decorator import DKeyed, DKeyExpansionDecorator
+from ._util.decorator import DKeyed, DKeyExpansionDecorator
 
 from .keys import SingleDKey, MultiDKey, NonDKey, IndirectDKey
 
