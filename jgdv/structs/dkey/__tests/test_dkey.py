@@ -17,7 +17,9 @@ import warnings
 import pytest
 # ##-- end 3rd party imports
 
+from jgdv.structs.strang import Strang
 from ..dkey import DKey
+from ..keys import SingleDKey
 
 # ##-- types
 # isort: off
@@ -56,31 +58,33 @@ class TestBaseDKey:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    @pytest.mark.xfail
-    def test_must_force(self):
-        with pytest.raises(RuntimeError):
-            DKey("blah", force=False)
-
     def test_basic(self):
-        match DKey("blah", force=DKey):
+        match DKey("blah"):
             case DKey() as obj:
                 assert(not hasattr(obj, "__dict__"))
-                assert(True)
+                assert(isinstance(obj, str))
+                assert(isinstance(obj, Strang))
+                assert(hasattr(obj, "__hash__"))
             case x:
                 assert(False), x
 
+
+    def test_hashable(self):
+        obj = DKey("blah")
+        assert(hash(obj))
+
     def test_eq(self):
-        obj1 = DKey("blah", force=DKey)
-        obj2 = DKey("blah", force=DKey)
+        obj1 = DKey("blah")
+        obj2 = DKey("blah")
         assert(obj1 == obj2)
 
     def test_eq_str(self):
-        obj1 = DKey("blah", force=DKey)
+        obj1 = DKey("blah")
         obj2 = "blah"
         assert(obj1 == obj2)
 
     def test_eq_not_implemented(self):
-        obj1 = DKey("blah", force=DKey)
+        obj1 = DKey("blah")
         obj2 = 21
         assert(not (obj1 == obj2))
 

@@ -28,6 +28,7 @@ import faulthandler
 
 from jgdv import identity_fn
 from jgdv.mixins.enum_builders import EnumBuilder_m
+from jgdv.structs.strang import _interface as StrangAPI # noqa: N812
 
 # ##-- types
 # isort: off
@@ -157,19 +158,19 @@ class RawKey_d:
     Provides the data from string.Formatter.parse, but in a structure
     instead of a tuple.
     """
-    __slots__ = ("prefix", "key", "format", "conv")
+    __slots__ = ("conv", "format", "key", "prefix")
     prefix  : Maybe[str]
     key     : Maybe[str]
     format  : Maybe[str]
     conv    : Maybe[str]
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs) -> None:
         self.prefix       = kwargs.pop("prefix", None)
-        self.key          = kwargs.pop("key")
-        self.format       = kwargs.pop("format")
-        self.conv         = kwargs.pop("conv")
+        self.key          = kwargs.pop("key", None)
+        self.format       = kwargs.pop("format", None)
+        self.conv         = kwargs.pop("conv", None)
 
-    def __getitem__(self, i):
+    def __getitem__(self, i) -> Maybe[str]:
         match i:
             case 0:
                 return self.prefix
@@ -180,9 +181,10 @@ class RawKey_d:
             case 3:
                 return self.conv
             case _:
-                raise ValueError("Tried to access a bad element of DKeyParams", i)
+                msg = "Tried to access a bad element of DKeyParams"
+                raise ValueError(msg, i)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return bool(self.key)
 
     def joined(self) -> str:
@@ -212,7 +214,7 @@ class RawKey_d:
 
         eg: blah -> {blah}
         """
-        return "{%s}" % self.key
+        return "{%s}" % self.key  # noqa: UP031
 
     def anon(self) -> str:
         """ Make a format str of this key, with anon variables.
@@ -220,7 +222,7 @@ class RawKey_d:
         eg: blah {key:f!p} -> blah {}
         """
         if bool(self.key):
-            return "%s{}" % self.prefix
+            return "%s{}" % self.prefix  # noqa: UP031
 
 
         return self.prefix or ""
@@ -295,9 +297,9 @@ class ExpInst_d:
         lit = "(Lit)" if self.literal else ""
         return f"<ExpInst_d:{lit} {self.val!r} / {self.fallback!r} (R:{self.rec},L:{self.lift},C:{self.convert})>"
 
-class DKey_d:
+class DKey_d(StrangAPI.Strang_d):
     """ Data of a DKey """
-    __slots__ = ("raw", "convert", "expansion_type", "fallback", "format", "help", "mark", "max_expansions", "multi", "name", "typecheck")
+    __slots__ = ("convert", "expansion_type", "fallback", "format", "help", "mark", "max_expansions", "multi", "name", "raw", "typecheck")
     name            : Maybe[str]
     raw             : tuple[RawKey_d, ...]
     mark            : KeyMark
@@ -311,6 +313,7 @@ class DKey_d:
     multi           : bool
 
     def __init__(self, **kwargs) -> None:
+        super().__init__()
         self.name            = kwargs.pop("name", None)
         self.raw             = kwargs.pop(RAWKEY_ID, ())
         self.mark            = kwargs.pop("mark", DKeyMark_e.default())
@@ -323,6 +326,11 @@ class DKey_d:
         self.max_expansions  = kwargs.pop("max_expansion", None)
         self.multi           = kwargs.pop("multi", False)
 
+
+##--| Section Specs
+DKEY_SECTIONS : Final[StrangAPI.Sections_d] = StrangAPI.Sections_d(
+    StrangAPI.Sec_d("body", None, None, str, None, True),  # noqa: FBT003
+)
 ##--| Protocols
 
 class ExpansionHooks_p(Protocol):
@@ -349,11 +357,13 @@ class Expandable_p(Protocol):
     def expand(self, *sources, **kwargs) -> Maybe: ...
 
 @runtime_checkable
-class Key_p(Protocol):
+class Key_p(StrangAPI.Strang_p, Protocol):
     """ The protocol for a Key, something that used in a template system"""
+    _mark          : ClassVar[KeyMark]
+    _extra_kwargs  : ClassVar[set[str]]
 
     @classmethod
-    def MarkOf[T:Key_p](cls:type[T]|T) -> KeyMark: ...
+    def MarkOf[T:Key_p](cls:type[T]) -> KeyMark: ...  # noqa: N802
     def keys(self) -> list[Key_p]: ...
 
     def redirect(self, spec=None) -> Key_p: ...
@@ -362,6 +372,9 @@ class Key_p(Protocol):
 
     def var_name(self) -> str: ...
 
+    @property
+    def data(self) -> DKey_d: ...
+
 @runtime_checkable
 class MultiKey_p(Protocol):
 
@@ -369,9 +382,7 @@ class MultiKey_p(Protocol):
 
 ##--| Combined Interfaces
 
-class Key_i(Key_p, Protocol):
-    data : DKey_d
-    _extra_kwargs       : ClassVar[set[str]]
-    __hash__            : Callable
+class Key_i(ExpansionHooks_p, Key_p, StrangAPI.Strang_i, Protocol):
+    data           : DKey_d
 
 ##--|

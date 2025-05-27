@@ -39,12 +39,8 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
-from jgdv import Maybe
 
 if TYPE_CHECKING:
-    from jgdv import Ident
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
@@ -52,6 +48,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+    from jgdv import Maybe, Ident
 # isort: on
 # ##-- end types
 
@@ -60,7 +57,8 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-
+OBRACE : Final[str] = "{"
+CBRACE : Final[str] = "}"
 # Body:
 
 class DKeyParser:
@@ -72,21 +70,22 @@ class DKeyParser:
         and: https://docs.python.org/3/library/string.html#format-string-syntax
     """
 
-    def parse(self, format_string, *, implicit=False) -> Iterator[API.RawKey_d]:
-        if implicit and "{" in format_string:
-            raise ValueError("Implicit key already has braces", format_string)
+    def parse(self, format_string:str, *, implicit:bool=False) -> Generator[API.RawKey_d]:
+        if implicit and OBRACE in format_string:
+            msg = "Implicit key already has braces"
+            raise ValueError(msg, format_string)
 
-        if implicit:
-            format_string = "".join(["{", format_string, "}"])
+        if implicit: # Wrap implicit keys with braces, to extract format and conv parameters
+            format_string = "".join([OBRACE, format_string, CBRACE])  # noqa: FLY002
 
         try:
             for x in _string.formatter_parser(format_string):
                 yield self.make_param(*x)
-        except ValueError as err:
-            yield self.make_param(format_string, "","","")
+        except ValueError:
+            yield self.make_param(format_string)
 
-    def make_param(self, *args):
-        return API.RawKey_d(prefix=args[0],
-                            key=args[1] or "",
-                            format=args[2] or "",
-                            conv=args[3] or "")
+    def make_param(self, prefix:str, key:Maybe[str]=None, format:Maybe[str]=None, conv:Maybe[str]=None) -> API.RawKey_d:  # noqa: A002
+        return API.RawKey_d(prefix=prefix,
+                            key=key       or "",
+                            format=format or "",
+                            conv=conv     or "")

@@ -21,7 +21,6 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from . import _interface as API # noqa: N812
 from .dkey import DKey
 from ._util.expander import Expander
 from ._interface import INDIRECT_SUFFIX, DKeyMark_e, RAWKEY_ID, ExpInst_d
@@ -47,6 +46,8 @@ if TYPE_CHECKING:
    from collections.abc import Iterable, Iterator, Callable, Generator
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
    from jgdv._abstract.protocols import SpecStruct_p
+
+   from . import _interface as API # noqa: N812
    from ._interface import Key_i
 
 # isort: on
@@ -63,12 +64,11 @@ class SingleDKey(DKey, mark=DKeyMark_e.FREE, core=True):
     """
     __slots__ = ()
 
-    def __init__(self, data, **kwargs) -> None:
-        super().__init__(data, **kwargs)
-        match kwargs.get(RAWKEY_ID, None):
-            case [x]:
-                self._set_params(fmt=kwargs.get("fmt", None) or x.format,
-                                 conv=kwargs.get("conv", None) or x.conv)
+    def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+        super().__init__(*args, **kwargs)
+        match self.data.raw:
+            case [_]:
+                pass
             case None | []:
                 msg = "A Single Key has no raw key data"
                 raise ValueError(msg)
@@ -76,24 +76,8 @@ class SingleDKey(DKey, mark=DKeyMark_e.FREE, core=True):
                 msg = "A Single Key got multiple raw key data"
                 raise ValueError(msg, xs)
 
-    def _set_params(self, *, fmt:Maybe[str]=None, conv:Maybe[str]=None) -> None:
-        """ str formatting and conversion parameters.
-        These only make sense for single keys, as they need to be wrapped.
-        see: https://docs.python.org/3/library/string.html#format-string-syntax
-        """
-        match fmt:
-            case None:
-                pass
-            case str() if bool(fmt):
-                self._fmt_params = fmt
 
-        match conv:
-            case None:
-                pass
-            case str() if bool(conv):
-                self._conv_params = conv
-
-    def __format__(self, spec:str) -> str:
+    def not__format__(self, spec:str) -> str:
         """
           Extends standard string format spec language:
             [[fill]align][sign][z][#][0][width][grouping_option][. precision][type]
@@ -125,7 +109,7 @@ class SingleDKey(DKey, mark=DKeyMark_e.FREE, core=True):
 
         return format(result, rem)
 
-class MultiDKey[X](DKey, mark=DKeyMark_e.MULTI, multi=True, core=True):
+class MultiDKey(DKey, mark=DKeyMark_e.MULTI, multi=True, core=True):
     """ Multi keys allow 1+ explicit subkeys.
 
     They have additional fields:
@@ -133,19 +117,19 @@ class MultiDKey[X](DKey, mark=DKeyMark_e.MULTI, multi=True, core=True):
     _subkeys  : parsed information about explicit subkeys
 
     """
-    __slots__ = ("_anon")
-    anon : str
+    __slots__ = ("anon",)
+    anon  : str
 
-    def __init__(self, data:str|pl.Path, **kwargs) -> None:
-        super().__init__(str(data), **kwargs)
-        if not bool(self.data.raw):
-            msg = "Tried to build a multi key with no subkeys"
-            raise ValueError(msg, data, kwargs)
+    def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+        super().__init__(*args, **kwargs)
+        match self.data.raw:
+            case [] | None:
+                msg = "Tried to build a multi key with no subkeys"
+                raise ValueError(msg, self.data.raw, kwargs)
+            case [*xs]:
+                self.anon  = "".join(x.anon() for x in xs)
 
-        # remove the names for the keys, to allow expanding positionally
-        self._anon       = "".join(x.anon() for x in self.data.raw)
-
-    def __format__(self, spec:str) -> str:
+    def not__format__(self, spec:str) -> str:
         """
           Multi keys have no special formatting
 
@@ -154,20 +138,22 @@ class MultiDKey[X](DKey, mark=DKeyMark_e.MULTI, multi=True, core=True):
         rem, wrap, direct = self._consume_format_params(spec) # type: ignore
         return format(str(self), rem)
 
-    def keys(self) -> list[Key_i]:
-        return [DKey(key.joined(), implicit=True)
-                for key in self.data.raw
-                if bool(key)
-                ]
+    @override
+    def keys(self) -> list[DKey]: # type: ignore[override]
+        result = [DKey(key.joined(), implicit=True)
+                  for key in self.data.raw
+                  if bool(key)
+                  ]
+        return result
 
     @property
     def multi(self) -> bool:
         return True
 
-    def __contains__(self, other) -> bool:
+    def __contains__(self, other:object) -> bool:
          return other in self.keys()
 
-    def exp_pre_lookup_h(self, sources, opts) -> list[list[ExpInst_d]]:
+    def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
         """ Lift subkeys to expansion instructions """
         targets = []
         for key in self.keys():
@@ -175,7 +161,7 @@ class MultiDKey[X](DKey, mark=DKeyMark_e.MULTI, multi=True, core=True):
         else:
             return targets
 
-    def exp_flatten_h(self, vals:list[ExpInst_d], opts) -> Maybe[ExpInst_d]:
+    def exp_flatten_h(self, vals:list[ExpInst_d], opts:dict) -> Maybe[ExpInst_d]:  # noqa: ARG002
         """ Flatten the multi-key expansion into a single string,
         by using the anon-format str
         """
@@ -187,7 +173,7 @@ class MultiDKey[X](DKey, mark=DKeyMark_e.MULTI, multi=True, core=True):
                 case ExpInst_d(val=x):
                     flat.append(str(x))
         else:
-            return ExpInst_d(val=self._anon.format(*flat), literal=True)
+            return ExpInst_d(val=self.anon.format(*flat), literal=True)
 
 class NonDKey(DKey, mark=DKeyMark_e.NULL, core=True):
     """ Just a string, not a key.
@@ -199,24 +185,20 @@ class NonDKey(DKey, mark=DKeyMark_e.NULL, core=True):
     """
     __slots__ = ()
 
-    def __init__(self, data, **kwargs) -> None:
-        super().__init__(data, **kwargs)
+    def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
+        super().__init__(*args, **kwargs)
         if (fb:=kwargs.get('fallback', None)) is not None and fb != self:
             msg = "NonKeys can't have a fallback, did you mean to use an explicit key?"
             raise ValueError(msg, self)
 
-    def __format__(self, spec) -> str:
-        rem, _, _ = self._consume_format_params(spec)
-        return format(str(self), rem)
-
-    def format(self, fmt) -> str:
+    def format(self, *args, **kwargs) -> str:  # noqa: ANN002, ANN003
         """ Just does normal str formatting """
-        return format(self, fmt)
+        return format(self, *args, **kwargs)
 
-    def expand(self, *args, **kwargs) -> Maybe:
+    def expand(self, *args, **kwargs) -> Maybe:  # noqa: ANN002, ANN003, ARG002
         """ A Non-key just needs to be coerced into the correct str format """
         val = ExpInst_d(val=str(self))
-        match self._expander  .coerce_result(val, kwargs, source=self):
+        match self._expander.coerce_result(val, kwargs, source=self):
             case None if (fallback:=kwargs.get("fallback")) is not None:
                 return ExpInst_d(val=fallback, literal=True)
             case None:
@@ -235,22 +217,21 @@ class IndirectDKey(DKey, mark=DKeyMark_e.INDIRECT, conv="I", core=True):
       re_mark :
     """
     __slots__  = ("multi_redir", "re_mark")
-    __hash__   = str.__hash__
 
-    def __init__(self, data, multi=False, re_mark=None, **kwargs) -> None:
+    def __init__(self, *, multi:bool=False, re_mark:Maybe[API.KeyMark]=None, **kwargs) -> None:  # noqa: ANN003
         kwargs.setdefault("fallback", Self)
-        super().__init__(data, **kwargs)
+        super().__init__(**kwargs)
         self.multi_redir      = multi
         self.re_mark          = re_mark
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other:object) -> bool:
         match other:
             case str() if other.endswith(INDIRECT_SUFFIX):
                 return f"{self:i}" == other
             case _:
                 return super().__eq__(other)
 
-    def exp_pre_lookup_h(self, sources, opts) -> list[list[ExpInst_d]]:
+    def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
         """ Lookup the indirect version, the direct version, then use the fallback """
         fallback = opts.get("fallback", self._fallback) or self
         return [[

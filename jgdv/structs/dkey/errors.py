@@ -5,9 +5,9 @@
 
 from __future__ import annotations
 
-from jgdv import JGDVError
+from jgdv.structs.strang.errors import StrangError
 
-class DKeyError(JGDVError):
+class DKeyError(StrangError):
     pass
 
 class DecorationMismatch(DKeyError):

@@ -17,6 +17,7 @@ import warnings
 import pytest
 # ##-- end 3rd party imports
 
+from jgdv.structs.strang import Strang
 from ..dkey import DKey
 from ..keys import SingleDKey, MultiDKey, NonDKey, IndirectDKey
 
@@ -57,16 +58,14 @@ class TestSingleDKey:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    @pytest.mark.xfail
-    def test_must_force(self):
-        with pytest.raises(RuntimeError):
-            SingleDKey("blah", force=False)
-
     def test_basic(self):
         match DKey("blah", implicit=True, force=SingleDKey):
             case SingleDKey() as x:
                 assert(not hasattr(x, "__dict__"))
-                assert(True)
+                assert(isinstance(x, SingleDKey))
+                assert(isinstance(x, DKey))
+                assert(isinstance(x, Strang))
+                assert(isinstance(x, str))
             case x:
                 assert(False), x
 
@@ -95,15 +94,14 @@ class TestMultiDKey:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    @pytest.mark.xfail
-    def test_must_force(self):
-        with pytest.raises(RuntimeError):
-            MultiDKey("blah", force=False)
-
     def test_basic(self):
         match DKey("{blah} {bloo}", force=MultiDKey):
             case MultiDKey() as x:
                 assert(not hasattr(x, "__dict__"))
+                assert(isinstance(x, MultiDKey))
+                assert(isinstance(x, DKey))
+                assert(isinstance(x, Strang))
+                assert(isinstance(x, str))
             case x:
                 assert(False), x
 
@@ -123,18 +121,19 @@ class TestMultiDKey:
         assert(not (obj1 == obj2))
 
     def test_subkeys(self):
-        obj = DKey("{first} {second} {third}")
+        obj = DKey("{first} {second} {third}", force=MultiDKey)
         for sub in obj.keys():
             assert(isinstance(sub, SingleDKey))
 
     def test_anon(self):
-        obj = DKey("{first} {second} {third}")
-        assert(obj._anon == "{} {} {}")
+        obj = DKey("{first} {second} {third}", force=MultiDKey)
+        assert(isinstance(obj, MultiDKey))
+        assert(obj.anon == "{} {} {}")
 
     def test_anon_2(self):
         obj = DKey("{b}", mark=DKey.Marks.MULTI, multi=True)
         assert(isinstance(obj, MultiDKey))
-        assert(obj._anon == "{}")
+        assert(obj.anon == "{}")
 
     def test_hash(self):
         obj1 = DKey("{blah}", mark=DKey.Marks.MULTI, multi=True)
@@ -146,15 +145,14 @@ class TestNonDKey:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    @pytest.mark.xfail
-    def test_must_force(self):
-        with pytest.raises(RuntimeError):
-            NonDKey("blah", force=False)
-
     def test_basic(self):
         match DKey("blah", force=NonDKey):
             case NonDKey() as x:
                 assert(not hasattr(x, "__dict__"))
+                assert(isinstance(x, NonDKey))
+                assert(isinstance(x, DKey))
+                assert(isinstance(x, Strang))
+                assert(isinstance(x, str))
             case x:
                 assert(False), x
 
@@ -183,16 +181,15 @@ class TestIndirectDKey:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    @pytest.mark.xfail
-    def test_must_force(self):
-        with pytest.raises(RuntimeError):
-            IndirectDKey("blah", force=False)
-
     @pytest.mark.parametrize("name", ["blah", "blah_"])
     def test_basic(self, name):
         match DKey(name, force=IndirectDKey):
             case IndirectDKey() as x:
                 assert(not hasattr(x, "__dict__"))
+                assert(isinstance(x, IndirectDKey))
+                assert(isinstance(x, DKey))
+                assert(isinstance(x, Strang))
+                assert(isinstance(x, str))
             case x:
                 assert(False), x
 

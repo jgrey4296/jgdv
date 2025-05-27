@@ -74,7 +74,6 @@ class TestDKeyMeta:
         # assert(f"{key:i}" == "test_")
         assert(str(key)   == "test")
 
-    @pytest.mark.xfail
     def test_basic_explicit_with_format_params(self):
         key  = dkey.DKey("{test:w}")
         assert(isinstance(key, dkey.SingleDKey))
