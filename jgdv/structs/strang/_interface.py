@@ -48,6 +48,7 @@ from collections import UserString
 from types import UnionType
 
 if TYPE_CHECKING:
+    from jgdv._abstract.pre_processable import PreProcessor_p
     from jgdv import Maybe, Rx
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -68,22 +69,22 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 ##--| Vars
-FMT_PATTERN   : Final[Rx]               = re.compile("^(h?)(t?)(p?)")
-TYPE_RE       : Final[Rx]               = re.compile(r"<(.+?)(?::(.+?))?>") # TODO name the groups
-TYPE_ITER_RE  : Final[Rx]               = re.compile(r"(<)(.+?)(?::(.+?))?(>)")
-MARK_RE       : Final[Rx]               = re.compile(r"(\$.+?\$)")
-MARK_ITER_RE  : Final[Rx]               = re.compile(r"(\$)(.+?)(\$)")
-ARGS_RE       : Final[Rx]               = re.compile(r"\[(.+?)\]$")
-ARGS_CHARS    : Final[tuple[str, str]]  = "[", ",", "]"
-CASE_DEFAULT  : Final[str]              = "."
-END_DEFAULT   : Final[str]              = "::"
-INST_K        : Final[str]              = "instanced"
-GEN_K         : Final[str]              = "gen_uuid"
-STRGET        : Final[Callable]         = str.__getitem__
-STRCON        : Final[Callable]         = str.__contains__
-UUID_WORD     : Final[str]              = "<uuid>"
+FMT_PATTERN   : Final[Rx]                    = re.compile("^(h?)(t?)(p?)")
+TYPE_RE       : Final[Rx]                    = re.compile(r"<(.+?)(?::(.+?))?>") # TODO name the groups
+TYPE_ITER_RE  : Final[Rx]                    = re.compile(r"(<)(.+?)(?::(.+?))?(>)")
+MARK_RE       : Final[Rx]                    = re.compile(r"(\$.+?\$)")
+MARK_ITER_RE  : Final[Rx]                    = re.compile(r"(\$)(.+?)(\$)")
+ARGS_RE       : Final[Rx]                    = re.compile(r"\[(.+?)\]$")
+ARGS_CHARS    : Final[tuple[str, str, str]]  = "[", ",", "]"
+CASE_DEFAULT  : Final[str]                   = "."
+END_DEFAULT   : Final[str]                   = "::"
+INST_K        : Final[str]                   = "instanced"
+GEN_K         : Final[str]                   = "gen_uuid"
+STRGET        : Final[Callable]              = str.__getitem__
+STRCON        : Final[Callable]              = str.__contains__
+UUID_WORD     : Final[str]                   = "<uuid>"
 
-SEC_END_MSG   : Final[str]              = "Only the last section has no end marker"
+SEC_END_MSG   : Final[str]                   = "Only the last section has no end marker"
 
 ##--| Enums
 
@@ -185,7 +186,7 @@ class Sec_d:
     marks     : Final[Maybe[type[StrangMarkAbstract_e]]]
     required  : Final[bool]
 
-    def __init__(self, name:str, case:str, end:Maybe[str], types:type|UnionType, marks:Maybe[type[StrangMarkAbstract_e]], required:bool=True, *, idx:int=-1) -> None:  # noqa: FBT001, FBT002, PLR0913
+    def __init__(self, name:str, case:Maybe[str], end:Maybe[str], types:type|UnionType, marks:Maybe[type[StrangMarkAbstract_e]], required:bool=True, *, idx:int=-1) -> None:  # noqa: FBT001, FBT002, PLR0913
         assert(case is None or bool(case))
         assert(end is None or bool(end))
         self.idx       = idx
@@ -305,36 +306,6 @@ class Importable_p(Protocol):
     """  """
     pass
 
-class PreProcessor_p(Protocol):
-    """ Protocol for things like Strang,
-    whose metaclass preprocess the initialisation data before even __new__ is called.
-
-    Is used in a metatype.__call__ as::
-
-        cls._pre_process(...)
-        obj = cls.__new__(...)
-        obj.__init__(...)
-        obj._process()
-        obj._post_process()
-        return obj
-
-    """
-
-    def pre_process[T:Strang_i](self, cls:type[Strang_i], data:Any, *args:Any, strict:bool=False, **kwargs:Any) -> tuple[str, dict]: ...  # noqa: ANN401
-
-    def process(self, obj:Strang_i, *, data:Maybe[dict]) -> Maybe[Strang_i]: ...
-
-    def post_process(self, obj:Strang_i, *, data:Maybe[dict]) -> Maybe[Strang_i]: ...
-
-class ProcessorHooks(Protocol):
-
-    @classmethod
-    def _pre_process_h[T:Strang_i](cls:type[T], data:Any, *args:Any, strict:bool=False, **kwargs:Any) -> tuple[str, dict]: ...  # noqa: ANN401
-
-    def _process_h(self) -> Maybe[Strang_i]: ...
-
-    def _post_process_h(self, data:dict) -> Maybe[Strang_i]: ...
-
 class StrangUUIDs_p(Protocol):
 
     def to_uniq(self, *args:str) -> Self: ...
@@ -352,9 +323,9 @@ class StrangFormatter_p(Protocol):
 
     def format(self, format_string:str, /, *args:Any, **kwargs:Any) -> str: ... # noqa: ANN401
 
-    def get_value(self, key:str, args:Any, kwargs:Any) -> str:  ...
+    def get_value(self, key:str, args:Any, kwargs:Any) -> str:  ...  # noqa: ANN401
 
-    def convert_field(self, value:Any, conversion:Any) -> str: ...
+    def convert_field(self, value:Any, conversion:Any) -> str: ...  # noqa: ANN401
 
     def expanded_str(self, data:Strang_i, *, stop:Maybe[int]=None) -> str: ...
 

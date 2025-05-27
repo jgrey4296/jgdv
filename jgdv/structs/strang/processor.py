@@ -24,6 +24,7 @@ from weakref import ref
 
 from collections import defaultdict
 from jgdv import Proto, Mixin
+from jgdv._abstract.pre_processable import PreProcessor_p
 from jgdv.mixins.annotate import SubAnnotate_m
 from . import errors
 from . import _interface as API  # noqa: N812
@@ -39,6 +40,8 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 from collections.abc import Callable
+from jgdv._abstract.pre_processable import InstanceData
+from jgdv._abstract.pre_processable import PostInstanceData
 
 if TYPE_CHECKING:
     import enum
@@ -51,6 +54,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
     from ._interface import Strang_i
+    from jgdv._abstract.pre_processable import PreProcessResult
 ##--|
 
 # isort: on
@@ -69,7 +73,7 @@ def name_to_hook(val:str) -> str:
 
 ##--| Body
 
-class StrangBasicProcessor(API.PreProcessor_p):
+class StrangBasicProcessor[T:Strang_i](PreProcessor_p):
     """ A processor for basic strangs,
     the instance is assigned into Strang._processor
 
@@ -77,12 +81,14 @@ class StrangBasicProcessor(API.PreProcessor_p):
     the processor uses that for a stage instead
     """
 
-    def pre_process[T:Strang_i](self, cls:type[Strang_i], data:Any, *args:Any, strict:bool=False, **kwargs:Any) -> tuple[str, dict]:
+    def pre_process(self, cls:type[T], data:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult[T]:  # noqa: ANN401
         """ run before str.__new__ is called,
         to do early modification of the string
         Filters out extraneous duplicated separators
         """
-        text : str
+        text       : str
+        inst_data  : InstanceData      = InstanceData({})
+        post_data  : PostInstanceData  = PostInstanceData({})
         match getattr(cls, name_to_hook("pre_process"), None):
             case x if callable(x):
                 return x(cls, data, *args, strict=strict, **kwargs)
@@ -97,15 +103,17 @@ class StrangBasicProcessor(API.PreProcessor_p):
 
         clean      = self._clean_separators(cls, text).strip()
         val, extracted = self._compress_types(cls, clean)
+        post_data.update(extracted)
         match self._get_args(val):
             case int() as args_start:
-                extracted['args_start']  = args_start
+                post_data['args_start']  = args_start
             case _:
                 pass
 
-        return val, extracted
 
-    def _verify_structure(self, cls:type[Strang_i], val:str) -> bool:
+        return val, inst_data, post_data, None
+
+    def _verify_structure(self, cls:type[T], val:str) -> bool:
         """ Verify basic strang structure.
 
         ie: all necessary sections are, provisionally, there.
@@ -113,7 +121,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
         seps = [x.end for x in cls._sections.order if x.end is not None and x.required]
         return all(x in val for x in seps)
 
-    def _clean_separators(self, cls:type[Strang_i], val:str) -> str:
+    def _clean_separators(self, cls:type[T], val:str) -> str:
         """ Clean even repetitions of the separator down to single uses
 
         eg: for sep='.',
@@ -131,7 +139,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
         trimmed    = cleaned.removesuffix(sep).removesuffix(sep)
         return trimmed
 
-    def _compress_types(self, cls:type[Strang_i], val:str) -> tuple[str, dict]:  # noqa: ARG002
+    def _compress_types(self, cls:type[T], val:str) -> tuple[str, dict]:  # noqa: ARG002
         """ Extract values of explicitly typed words.
 
         allows the base str of the Strang to be readable,
@@ -171,7 +179,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
 
     ##--|
 
-    def process(self, obj:Strang_i, *, data:Maybe[dict]=None) -> Maybe[Strang_i]:
+    def process(self, obj:T, *, data:PostInstanceData) -> Maybe[T]:
         """ slice the sections of the strang
 
         populates obj.data:
@@ -183,7 +191,6 @@ class StrangBasicProcessor(API.PreProcessor_p):
         word_indices  : list[tuple[int, ...]]
         sec_slices    : list[slice]
         flat_slices   : list[slice]
-        data          = data or {}
         match getattr(obj, name_to_hook("process"), None):
             case x if callable(x): # call the hook method
                 return x(data=data)
@@ -213,7 +220,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
             self._process_args(obj, data=data)
             return None
 
-    def _process_section(self, obj:Strang_i, section:API.Sec_d, *, start:int=-1) -> tuple[slice, tuple[slice, ...], int]:
+    def _process_section(self, obj:T, section:API.Sec_d, *, start:int=-1) -> tuple[slice, tuple[slice, ...], int]:
         """ Set the slices of a section, return the index where the section ends """
         word_slices   : tuple[slice]
         search_end    : int  = obj.data.args_start or len(obj)
@@ -240,7 +247,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
             case _:
                 return slice(start, search_end), word_slices, bound_extend
 
-    def _slice_section(self, obj:Strang_i, *, case:list[Maybe[str]], start:int=0, max:int=-1) -> tuple[slice]:  # noqa: A002
+    def _slice_section(self, obj:T, *, case:list[Maybe[str]], start:int=0, max:int=-1) -> tuple[slice]:  # noqa: A002
         """ Get a list of word slices of a section, with an offset. """
         curr    : re.Match
         slices  : list[slice]  = []
@@ -257,7 +264,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
         else:
             return cast("tuple[slice]", tuple(slices))
 
-    def _process_args(self, obj:Strang_i, *, data:dict) -> None:
+    def _process_args(self, obj:T, *, data:dict) -> None:
         """ Extract args and set values as necessary """
         if not (arg_s:=obj.data.args_start):
             return
@@ -279,13 +286,12 @@ class StrangBasicProcessor(API.PreProcessor_p):
 
     ##--|
 
-    def post_process(self, obj:Strang_i, data:Maybe[dict]=None) -> Maybe[Strang_i]:
+    def post_process(self, obj:T, data:PostInstanceData) -> Maybe[T]:
         """ With the strang cleaned and slices, build meta data for words
 
         takes the data extracted during pre-processing.
 
         """
-        data   = data or {}
         metas  : list  = []
         if 'types' in data:
             data['types'].reverse()
@@ -303,7 +309,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
                     self._calc_obj_meta(obj)
                     return None
 
-    def _post_process_section(self, obj:Strang_i, idx:int, data:dict) -> list:
+    def _post_process_section(self, obj:T, idx:int, data:dict) -> list:
         type MetaTypes              = Maybe[UUID|API.StrangMarkAbstract_e|int]
         elem     : str
         section  : API.Sec_d        = obj.section(idx)
@@ -327,14 +333,14 @@ class StrangBasicProcessor(API.PreProcessor_p):
         else:
             return meta
 
-    def _calc_obj_meta(self, obj:Strang_i) -> None:
+    def _calc_obj_meta(self, obj:T) -> None:
         """ Set object level meta dict
 
         ie: mark the obj as an instance
         """
         pass
 
-    def _validate_marks(self, obj:Strang_i) -> None:
+    def _validate_marks(self, obj:T) -> None:
         """ Check marks make sense.
         eg: +|_ are only at obj[1:0]
 
@@ -343,7 +349,7 @@ class StrangBasicProcessor(API.PreProcessor_p):
 
     ##--| utils
 
-    def _make_type(self, val:str, *, sec:API.Sec_d, data:dict, obj:API.Strang_i) -> Maybe[Any]:  # noqa: ARG002
+    def _make_type(self, val:str, *, sec:API.Sec_d, data:dict, obj:T) -> Maybe[Any]:  # noqa: ARG002
         """ Handle <type> words, which may have had data extracted during pre-processing.
 
         """

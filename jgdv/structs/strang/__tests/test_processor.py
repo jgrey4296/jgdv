@@ -44,7 +44,7 @@ class TestStrang_PreProcess:
         ing =  "a.b.c::d.e....f"
         obj = StrangBasicProcessor()
         match obj.pre_process(Strang, ing):
-            case "a.b.c::d.e..f", {}:
+            case "a.b.c::d.e..f", {}, {}, None:
                 assert(True)
             case x:
                 assert(False), x
@@ -53,7 +53,7 @@ class TestStrang_PreProcess:
         ing = "a.b.c::d.e...."
         obj = StrangBasicProcessor()
         match obj.pre_process(Strang, ing):
-            case "a.b.c::d.e", {}:
+            case "a.b.c::d.e", {}, {}, None:
                 assert(True)
             case x:
                  assert(False), x
@@ -62,7 +62,7 @@ class TestStrang_PreProcess:
         ing =  "    a.b.c::d.e"
         obj = StrangBasicProcessor()
         match obj.pre_process(Strang, ing):
-            case "a.b.c::d.e", {}:
+            case "a.b.c::d.e", {}, {}, None:
                 assert(True)
             case x:
                  assert(False), x
@@ -78,7 +78,7 @@ class TestStrang_PreProcess:
         ing         = f"head::a.b.c..<uuid:{UUID_STR}>"
         simple_ing  = "head::a.b.c..<uuid>"
         match obj.pre_process(Strang, ing):
-            case str() as x, {"types": [("uuid", str() as uid)]}:
+            case str() as x, {}, {"types": [("uuid", str() as uid)]}, None:
                 assert(x == simple_ing)
                 assert(str(uid) == UUID_STR)
                 assert(True)
@@ -96,7 +96,7 @@ class TestStrang_PreProcess:
         ing =  "a.b.c::d.e.f[<uuid>]"
         obj = StrangBasicProcessor()
         match obj.pre_process(Strang, ing):
-            case str() as x, dict() as data:
+            case str() as x, {}, dict() as data, None:
                 assert(data.get('args_start', False))
             case x:
                 assert(False), x
@@ -106,7 +106,7 @@ class TestStrang_PreProcess:
         ing =  "a.b.c::d.e.f[<uuid>,blah,bloo]"
         obj = StrangBasicProcessor()
         match obj.pre_process(Strang, ing):
-            case str() as x, dict() as data:
+            case str() as x, {}, dict() as data, None:
                 assert(data.get('args_start', False))
             case x:
                 assert(False), x
@@ -116,7 +116,7 @@ class TestStrang_PreProcess:
         ing =  "a.b.c::d.e.f"
         obj = StrangBasicProcessor()
         match obj.pre_process(Strang, ing):
-            case str() as x, dict() as data:
+            case str() as x, {}, dict() as data, None:
                 assert("args_start" not in data)
             case x:
                 assert(False), x
@@ -132,7 +132,7 @@ class TestStrang_Process:
         base                = Strang(ing)
         base.data.sections  = ()
         assert(not bool(base.data.sections))
-        obj.process(base)
+        obj.process(base, data={})
         assert(bool(base.data.sections))
         match base.data.sections:
             case [slice() as head, slice() as body]:
@@ -149,7 +149,7 @@ class TestStrang_Process:
         words            = ["a","b","c","blah","d","e","f"]
         base.data.words  = ()
         assert(not bool(base.data.words))
-        obj.process(base)
+        obj.process(base, data={})
         assert(bool(base.data.words))
         match base.data.words:
             case [*xs]:
@@ -167,7 +167,7 @@ class TestStrang_Process:
         target_words            = ["a","b","c","blah","d","e","f"]
         base.data.sec_words = ()
         assert(not bool(base.data.sec_words))
-        obj.process(base)
+        obj.process(base, data={})
         assert(bool(base.data.sec_words))
         actual_words = [base.data.words[y] for x in base.data.sec_words for y in x]
         for x,sl in zip(target_words, actual_words, strict=True):
@@ -180,7 +180,7 @@ class TestStrang_Process:
         base             = Strang(ing)
         base.data.words  = ()
         assert(not bool(base.data.words))
-        obj.process(base)
+        obj.process(base, data={})
         match base.data.words:
             case [*xs]:
                 assert(len(xs) == 7)
@@ -196,7 +196,7 @@ class TestStrang_Process:
         obj             = StrangBasicProcessor()
         ang             = Strang(ing)
         ang.data.args = None
-        obj.process(ang)
+        obj.process(ang, data={})
         assert(ang.data.args_start == ing.rindex(API.ARGS_CHARS[0]))
         assert(ang.data.sections[-1].stop <= ing.rindex(API.ARGS_CHARS[0]))
         assert(bool(ang.data.args))
@@ -207,10 +207,10 @@ class TestStrang_Process:
         ing                         = "a.b.c.blah::d.e.f[<uuid>]"
         words                       = ["a","b","c","blah","d","e","f"]
         obj                         = StrangBasicProcessor()
-        _, data                     = obj.pre_process(Strang, ing)
+        _, _, post_data, _  = obj.pre_process(Strang, ing)
         ang                         = Strang(ing)
         ang.data.args               = None
-        obj.process(ang, data=data)
+        obj.process(ang, data=post_data)
         assert(ang.data.args_start  == ing.rindex(API.ARGS_CHARS[0]))
         assert(ang.data.sections[-1].stop <= ing.rindex(API.ARGS_CHARS[0]))
         assert(bool(ang.data.args))

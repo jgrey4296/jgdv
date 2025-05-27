@@ -49,7 +49,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from ._interface import Strang_i, PreProcessor_p
+    from ._interface import Strang_i
+    from jgdv._abstract.pre_processable import PreProcessor_p, PreProcessResult, InstanceData, PostInstanceData
 ##--|
 
 # isort: on
@@ -82,20 +83,21 @@ class StrangMeta(StrMeta):
         stage      : str             = "Pre-Process"
 
         try:
-            text, data = processor.pre_process(cls,
-                                               text,
-                                               *args,
-                                               strict=kwargs.pop("strict", False),
-                                               **kwargs,
-                                               )
+            text, inst_data, post_data, ctor = processor.pre_process(cls,
+                                                     text,
+                                                     *args,
+                                                     strict=kwargs.pop("strict", False),
+                                                     **kwargs,
+                                                     )
+            ctor = ctor or cls
             stage  = "__new__"
-            obj : Strang_i = cls.__new__(cls, text)
+            obj : Strang_i = ctor.__new__(ctor, text)
             stage  = "__init__"
-            cls.__init__(obj, *args, **kwargs)
+            obj.__init__(*args, **kwargs, **inst_data)
             stage  = "Process"
-            obj    = processor.process(obj, data=data) or obj
+            obj    = processor.process(obj, data=post_data) or obj
             stage  = "Post-Process"
-            obj    = processor.post_process(obj, data=data) or obj
+            obj    = processor.post_process(obj, data=post_data) or obj
         except ValueError as err:
             raise errors.StrangError(errors.StrangCtorFailure.format(cls=cls.__name__, stage=stage),
                                      err, text, cls, processor)

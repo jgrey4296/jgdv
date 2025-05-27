@@ -114,7 +114,7 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
 
     ##--|
 
-    def __init__(self:API.Strang_i, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
+    def __init__(self, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
         super().__init__()
         self.meta  = dict(kwargs)
         self.data  = API.Strang_d()
@@ -133,7 +133,7 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         cls  = self.__class__.__name__
         return f"<{cls}: {body}>"
 
-    def __format__(self:API.Strang_i, spec:str) -> str:
+    def __format__(self, spec:str) -> str:
         """ Basic formatting to get just a section """
         result : str
         match spec:
