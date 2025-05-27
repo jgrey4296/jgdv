@@ -2,7 +2,7 @@
 """
 
 """
-
+# ruff: noqa: ANN002, ANN003, ARG002
 # Imports:
 from __future__ import annotations
 
@@ -42,12 +42,13 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
+from typing import Literal
 
 if TYPE_CHECKING:
     from jgdv import Maybe, Ident, RxStr, Rx
     from typing import Final
     from typing import ClassVar, Any, LiteralString
-    from typing import Never, Self, Literal
+    from typing import Never, Self
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
@@ -60,7 +61,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 
-class ArgsDKey(SingleDKey[DKeyMark_e.ARGS]):
+class ArgsDKey(SingleDKey[Literal[DKeyMark_e.ARGS]]):
     """ A Key representing the action spec's args """
 
     def __init__(self, *args, **kwargs) -> None:

@@ -64,22 +64,23 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-DEFAULT_COUNT       : Final[int]       = 0
-FMT_PATTERN         : Final[Rx]        = re.compile("[wdi]+")
-INDIRECT_SUFFIX     : Final[Ident]     = "_"
-KEY_PATTERN         : Final[RxStr]     = "{(.+?)}"
-MAX_DEPTH           : Final[int]       = 10
-MAX_KEY_EXPANSIONS  : Final[int]       = 200
-PAUSE_COUNT         : Final[int]       = 0
-RECURSION_GUARD     : Final[int]       = 5
-PARAM_IGNORES       : Final[tuple[str, str]] = ("_", "_ex")
+DEFAULT_COUNT        : Final[int]              = 0
+FMT_PATTERN          : Final[Rx]               = re.compile("[wdi]+")
+INDIRECT_SUFFIX      : Final[Ident]            = "_"
+KEY_PATTERN          : Final[RxStr]            = "{(.+?)}"
+OBRACE               : Final[str]              = "{"
+MAX_DEPTH            : Final[int]              = 10
+MAX_KEY_EXPANSIONS   : Final[int]              = 200
+PAUSE_COUNT          : Final[int]              = 0
+RECURSION_GUARD      : Final[int]              = 5
+PARAM_IGNORES        : Final[tuple[str, str]]  = ("_", "_ex")
 
-RAWKEY_ID           : Final[str]       = "_rawkeys"
-FORCE_ID            : Final[str]       = "force"
-ARGS_K              : Final[Ident]     = "args"
-KWARGS_K            : Final[Ident]     = "kwargs"
+RAWKEY_ID            : Final[str]              = "_rawkeys"
+FORCE_ID             : Final[str]              = "force"
+ARGS_K               : Final[Ident]            = "args"
+KWARGS_K             : Final[Ident]            = "kwargs"
 
-DEFAULT_DKEY_KWARGS : Final[list[str]] = [
+DEFAULT_DKEY_KWARGS  : Final[list[str]]        = [
     "ctor", "check", "mark", "fallback",
     "max_exp", "fmt", "help", "implicit", "conv",
     "named",
@@ -159,13 +160,13 @@ class RawKey_d:
     instead of a tuple.
     """
     __slots__ = ("conv", "format", "key", "prefix")
-    prefix  : Maybe[str]
+    prefix  : str
     key     : Maybe[str]
     format  : Maybe[str]
     conv    : Maybe[str]
 
     def __init__(self, **kwargs) -> None:
-        self.prefix       = kwargs.pop("prefix", None)
+        self.prefix       = kwargs.pop("prefix")
         self.key          = kwargs.pop("key", None)
         self.format       = kwargs.pop("format", None)
         self.conv         = kwargs.pop("conv", None)
@@ -266,7 +267,7 @@ class ExpInst_d:
     Uses slots to make it as lightweight as possible
 
     """
-    __slots__ = ("convert", "fallback", "lift", "literal", "rec", "total_recs", "val")
+    __slots__ = ("convert", "fallback", "lift", "literal", "rec", "total_recs", "value")
     convert     : Maybe[str]
     fallback    : Maybe[str]
     lift        : bool
@@ -275,26 +276,24 @@ class ExpInst_d:
     total_recs  : int
 
     def __init__(self, **kwargs) -> None:
-        match kwargs:
-            case {"val": ExpInst_d() as val }:
+        self.value       = kwargs.pop("value")
+        self.convert     = kwargs.pop("convert", None)
+        self.fallback    = kwargs.pop("fallback", None)
+        self.lift        = kwargs.pop("lift", False)
+        self.literal     = kwargs.pop("literal", False)
+        self.rec         = kwargs.pop("rec", -1)
+        self.total_recs  = kwargs.pop("total_recs", 1)
+
+        match self.value:
+            case ExpInst_d() as val:
                 raise TypeError(NestedFailure, val)
-            case {"val": val}:
-                self.val = val
-            case x:
+            case None:
                  raise ValueError(NoValueFailure, x)
-
-        if bool(extra:=kwargs.keys() - ExpInst_d.__slots__):
-            raise ValueError(UnexpectedData, extra)
-
-        self.convert    = kwargs.get("convert", None)
-        self.fallback   = kwargs.get("fallback", None)
-        self.lift       = kwargs.get("lift", False)
-        self.literal    = kwargs.get("literal", False)
-        self.rec        = kwargs.get("rec", -1)
-        self.total_recs = kwargs.get("total_recs", 1)
+        if bool(kwargs):
+            raise ValueError(UnexpectedData, kwargs)
 
     def __repr__(self) -> str:
-        lit = "(Lit)" if self.literal else ""
+        lit  = "(Lit)" if self.literal else ""
         return f"<ExpInst_d:{lit} {self.val!r} / {self.fallback!r} (R:{self.rec},L:{self.lift},C:{self.convert})>"
 
 class DKey_d(StrangAPI.Strang_d):
@@ -315,7 +314,7 @@ class DKey_d(StrangAPI.Strang_d):
     def __init__(self, **kwargs) -> None:
         super().__init__()
         self.name            = kwargs.pop("name", None)
-        self.raw             = kwargs.pop(RAWKEY_ID, ())
+        self.raw             = tuple(kwargs.pop(RAWKEY_ID, ()))
         self.mark            = kwargs.pop("mark", DKeyMark_e.default())
         self.expansion_type  = kwargs.pop("etype", identity_fn)
         self.typecheck       = kwargs.pop("check", Any)
@@ -361,6 +360,7 @@ class Key_p(StrangAPI.Strang_p, Protocol):
     """ The protocol for a Key, something that used in a template system"""
     _mark          : ClassVar[KeyMark]
     _extra_kwargs  : ClassVar[set[str]]
+    _processor     : ClassVar
 
     @classmethod
     def MarkOf[T:Key_p](cls:type[T]) -> KeyMark: ...  # noqa: N802

@@ -35,13 +35,14 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Self
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
+from typing import Never
 
 if TYPE_CHECKING:
    import pathlib as pl
    from jgdv import Maybe
    from typing import Final
    from typing import ClassVar, Any, LiteralString
-   from typing import Never, Literal
+   from typing import Literal
    from typing import TypeGuard
    from collections.abc import Iterable, Iterator, Callable, Generator
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
@@ -77,7 +78,8 @@ class SingleDKey(DKey, mark=DKeyMark_e.FREE, core=True):
                 raise ValueError(msg, xs)
 
 
-    def not__format__(self, spec:str) -> str:
+
+    def __format__(self, spec:str) -> str:
         """
           Extends standard string format spec language:
             [[fill]align][sign][z][#][0][width][grouping_option][. precision][type]
@@ -93,21 +95,20 @@ class SingleDKey(DKey, mark=DKeyMark_e.FREE, core=True):
           f'{ikey:d} -> 'test'
 
         """
+        result = self[:]
         if not bool(spec):
-            return str(self)
-        rem, wrap, direct = self._consume_format_params(spec) # type: ignore
+            return result
+
+        rem, wrap, direct = self._processor.consume_format_params(spec) # type: ignore
 
         # format
-        result = str(self)
-        if direct:
-            result = result.removesuffix(INDIRECT_SUFFIX)
-        elif not result.endswith(INDIRECT_SUFFIX):
+        if not direct:
             result = f"{result}{INDIRECT_SUFFIX}"
 
         if wrap:
             result = "".join(["{", result, "}"])  # noqa: FLY002
 
-        return format(result, rem)
+        return result
 
 class MultiDKey(DKey, mark=DKeyMark_e.MULTI, multi=True, core=True):
     """ Multi keys allow 1+ explicit subkeys.
@@ -129,26 +130,15 @@ class MultiDKey(DKey, mark=DKeyMark_e.MULTI, multi=True, core=True):
             case [*xs]:
                 self.anon  = "".join(x.anon() for x in xs)
 
-    def not__format__(self, spec:str) -> str:
-        """
-          Multi keys have no special formatting
-
-          ... except stripping dkey particular format specs out of the result?
-        """
-        rem, wrap, direct = self._consume_format_params(spec) # type: ignore
-        return format(str(self), rem)
+    def __str__(self) -> str:
+        return self[:]
 
     @override
     def keys(self) -> list[DKey]: # type: ignore[override]
-        result = [DKey(key.joined(), implicit=True)
-                  for key in self.data.raw
-                  if bool(key)
-                  ]
-        return result
+        return [DKey(x, implicit=True) for x in self.data.meta]
 
-    @property
-    def multi(self) -> bool:
-        return True
+    def _multi(self) -> Never:
+        raise NotImplementedError()
 
     def __contains__(self, other:object) -> bool:
          return other in self.keys()
@@ -168,9 +158,9 @@ class MultiDKey(DKey, mark=DKeyMark_e.MULTI, multi=True, core=True):
         flat : list[str] = []
         for x in vals:
             match x:
-                case ExpInst_d(val=IndirectDKey() as k):
+                case ExpInst_d(value=IndirectDKey() as k):
                     flat.append(f"{k:wi}")
-                case ExpInst_d(val=x):
+                case ExpInst_d(value=x):
                     flat.append(str(x))
         else:
             return ExpInst_d(val=self.anon.format(*flat), literal=True)
@@ -204,12 +194,12 @@ class NonDKey(DKey, mark=DKeyMark_e.NULL, core=True):
             case None:
                 return self._fallback
             case ExpInst_d() as x:
-                return x.val
+                return x.value
             case x:
                 msg = "Nonkey coercion didn't return an ExpInst_d"
                 raise TypeError(msg, x)
 
-class IndirectDKey(DKey, mark=DKeyMark_e.INDIRECT, conv="I", core=True):
+class IndirectDKey(SingleDKey, mark=DKeyMark_e.INDIRECT, conv="I", core=True):
     """
       A Key for getting a redirected key.
       eg: RedirectionDKey(key) -> SingleDKey(value)
@@ -217,8 +207,10 @@ class IndirectDKey(DKey, mark=DKeyMark_e.INDIRECT, conv="I", core=True):
       re_mark :
     """
     __slots__  = ("multi_redir", "re_mark")
+    __hash__ = SingleDKey.__hash__
 
     def __init__(self, *, multi:bool=False, re_mark:Maybe[API.KeyMark]=None, **kwargs) -> None:  # noqa: ANN003
+        assert(not self.endswith(INDIRECT_SUFFIX)), self[:]
         kwargs.setdefault("fallback", Self)
         super().__init__(**kwargs)
         self.multi_redir      = multi
@@ -239,3 +231,5 @@ class IndirectDKey(DKey, mark=DKeyMark_e.INDIRECT, conv="I", core=True):
             ExpInst_d(val=f"{self:d}", convert=False),
             ExpInst_d(val=fallback, literal=True, convert=False),
         ]]
+
+

@@ -103,6 +103,7 @@ class DKey(Strang):
     """
     __slots__                                           = ("data",)
     __match_args                                        = ()
+    _annotate_to    : ClassVar[str]                     = "_mark"
     _processor      : ClassVar                          = DKeyProcessor()
     _sections       : ClassVar                          = API.DKEY_SECTIONS
     _expander       : ClassVar[Expander]                = Expander()
@@ -111,7 +112,7 @@ class DKey(Strang):
 
     _extra_kwargs   : ClassVar[set[str]]                = set()
     _extra_sources  : ClassVar[list[dict]]              = []
-    Marks           : ClassVar[API.DKeyMarkAbstract_e]  = API.DKeyMark_e
+    Marks           : ClassVar[API.DKeyMarkAbstract_e]  = API.DKeyMark_e # type: ignore[assignment]
     data            : API.DKey_d
 
     ##--| Class Utils
@@ -119,7 +120,11 @@ class DKey(Strang):
     @override
     def __class_getitem__(cls:type[API.Key_p], *params:Any) -> type[API.Key_p]: # type: ignore[override]
         assert(isinstance(cls._processor, DKeyProcessor))
-        return cls._processor.get_subtype(*params, multi=True)
+        try:
+            return cls._processor.get_subtype(*params)
+        except ValueError:
+            assert(hasattr(Strang, "__class_getitem__"))
+            return super(Strang, cls).__class_getitem__(*params) # type: ignore[misc]
 
     def __init_subclass__(cls:type[API.Key_p], *, mark:M_[API.KeyMark]=None, conv:M_[str]=None, multi:bool=False, core:bool=False) -> None:
         """ Registered the subclass as a DKey and sets the Mark enum this class associates with """
@@ -145,6 +150,7 @@ class DKey(Strang):
     ##--| Class Main
 
     def __init__(self, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
+        assert(not self.endswith(API.INDIRECT_SUFFIX)), self[:]
         super().__init__(*args, **kwargs)
         self.data = API.DKey_d(**kwargs)
 
@@ -161,29 +167,6 @@ class DKey(Strang):
             case _:
                 return NotImplemented
 
-    def __format__(self, spec:str) -> str:
-        """
-        In addition to Strang's formatting options, provides:
-
-        w -> wrap the key
-        d -> the direct key
-        i -> the indirect_ key
-        wi -> the wrapped indirect key
-        """
-        result : str = self[:]
-        match spec:
-            case "wi":
-                pass
-            case "w":
-                pass
-            case "d":
-                pass
-            case "i":
-                pass
-            case _:
-                result = super().__format__(spec)
-
-        return result
 
     def __hash__(self) -> int:
         return hash(self[:])
@@ -203,7 +186,7 @@ class DKey(Strang):
 
     def expand(self, *args:Any, **kwargs:Any) -> Maybe:  # noqa: ANN401
         kwargs.setdefault("limit", self.data.max_expansions)
-
+        assert(isinstance(self, API.Key_p))
         match self._expander.expand(self, *args, **kwargs):
             case API.ExpInst_d(val=val, literal=True):
                 return val
@@ -211,9 +194,10 @@ class DKey(Strang):
                 return None
 
     def redirect(self, *args:Any, **kwargs:Any) -> list[API.Key_p]:  # noqa: ANN401
-        return [DKey(x.value) for x in self._expander.redirect(self, *args, **kwargs) if x is not None]
+        assert(isinstance(self, API.Key_p))
+        result = [DKey(x.value) for x in self._expander.redirect(self, *args, **kwargs) if x is not None]
+        return result
 
-    ##--| Expansion Hooks
 
     def exp_extra_sources_h(self) -> list:
         return DKey._extra_sources

@@ -99,15 +99,17 @@ class DKeyRegistry:
             case str()|DKeyMark_e() as x if multi:
                 ctor = self.multi.get(x, None)
                 ctor = ctor or self.single.get(x, None)
-            case str()|DKeyMark_e() as x:
-                ctor = self.single.get(x, None)
+            case str()|DKeyMark_e() as x if x in self.single:
+                ctor = self.single.get(x)
+            case str()|DKeyMark_e() as x if x in self.multi:
+                ctor = self.multi.get(x)
 
         if ctor is None:
             raise ValueError(API.MarkLacksACtor, mark)
 
         return ctor
 
-    def register_key_type(self, ctor:type, mark:KeyMark, convert:Maybe[str]=None, *, multi:bool=False, core:bool=False) -> None:  # noqa: PLR0912
+    def register_key_type(self, ctor:type, mark:KeyMark, *, convert:Maybe[str]=None, multi:bool=False, core:bool=False) -> None:  # noqa: PLR0912
         """ Register a DKeyBase implementation to a mark
 
         Can be a single key, or a multi key,
@@ -192,15 +194,23 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
 
         Extracts subkeys, and refines the type of key to build
         """
-        raw        : tuple[API.RawKey_d, ...]
         text       : str
         ctor       : Ctor[T]
+        mark       : API.KeyMark
         inst_data  : InstanceData      = InstanceData({})
         post_data  : PostInstanceData  = PostInstanceData({})
-        is_multi   : bool              = False
+        is_multi   : bool              = kwargs.pop("multi", False)
+        force      : Maybe[Ctor[T]]    = kwargs.pop('force', None)
         implicit   : bool              = kwargs.pop("implicit", False)  # is key wrapped? ie: {key}
         insist     : bool              = kwargs.pop("insist", False)    # must produce key, not nullkey
-        mark       : API.KeyMark       = kwargs.pop("mark", API.DKeyMark_e.default())
+        match force, kwargs.pop('mark', None):
+            case type(), _:
+                mark = force.MarkOf()
+                is_multi = isinstance(force, API.MultiKey_p)
+            case None, None:
+                mark = API.DKeyMark_e.default()
+            case None, x:
+                mark = x
 
         # TODO use class hook if it exists
 
@@ -214,15 +224,18 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
                 text = str(input)
 
         ##--| Get pre-parsed keys
-        match kwargs.pop(API.RAWKEY_ID, None):
-            case tuple() as xs:
-                raw = xs
-            case None:
-                raw = self.extract_raw_keys(text, implicit=implicit)
+        match kwargs.pop(API.RAWKEY_ID, None) or self.extract_raw_keys(text, implicit=implicit):
+            case [x]:
+                inst_data[API.RAWKEY_ID] = [x]
+            case [*xs]:
+                inst_data[API.RAWKEY_ID] = xs
+            case []:
+                inst_data[API.RAWKEY_ID] = []
+            case x:
+                raise TypeError(type(x))
 
-        inst_data['raw'] = raw
         ##--| discriminate raw keys
-        match self.discriminate_raw(raw, kwargs, mark=mark):
+        match self.discriminate_raw(inst_data[API.RAWKEY_ID], kwargs, mark=mark, is_multi=is_multi):
             case dict() as extra:
                 # use overrides
                 is_multi  = extra.pop("multi", is_multi)
@@ -234,7 +247,7 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         ##--|
         assert(bool(text))
         assert(bool(inst_data))
-        ctor = self.select_ctor(cls, insist=insist, mark=mark, multi=is_multi, force=kwargs.pop('force', None))
+        ctor = self.select_ctor(cls, insist=insist, mark=mark, multi=is_multi, force=force)
         self.registry.validate_init_kwargs(ctor, kwargs)
         ##--| return
         return text, inst_data, post_data, ctor
@@ -243,37 +256,68 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
     def process(self, obj:T, *, data:Maybe[dict]=None) -> Maybe[T]:
         """ The key constructed, build slices """
         # TODO use class hook if it exists
-
-        if not bool(obj.data.raw): # Nothing to do
+        full        : str
+        wrapped     : bool
+        start       : int
+        stop        : int
+        key_slices  : list[slice]
+        raw_keys    : list[API.RawKey_d]
+        if not bool(obj.data.raw):  # Nothing to do
             return None
 
-        # TODO Add a word slice for each sub key
-        obj.data.sec_words  = () # tuple[tuple[slice, ...]]
-        obj.data.flat_idx   = tuple((i,j) for i,x in enumerate(obj.data.sec_words) for j in range(len(x)))
-        obj.data.sections   = (slice(0, len(obj)),) # a single, whole str slice
-        obj.data.words      = ()
+        key_slices  = []
+        raw_keys    = []
+        wrapped     = API.OBRACE in obj[:]
+        if wrapped and 1 < len(obj.data.raw):
+            raw_keys += obj.data.raw
 
-        return None
+        for key in raw_keys:
+            if not key.key:
+                continue
+
+            full = key.joined()
+            if wrapped:
+                full = f"{{{full}}}"
+
+            start = obj.index(full)
+            stop  = start + len(full)
+            key_slices.append(slice(start, stop))
+
+        else:
+            # TODO Add a word slice for each sub key
+            obj.data.sec_words  = (tuple(range(len(obj.data.raw))),) # tuple[tuple[slice, ...]]
+            obj.data.words      = tuple(key_slices)
+            obj.data.flat_idx   = tuple((i,j) for i,x in enumerate(obj.data.sec_words) for j in range(len(x)))
+            obj.data.sections   = (slice(0, len(obj)),) # a single, whole str slice
+
+            return None
 
     @override
     def post_process(self, obj:T, data:Maybe[dict]=None) -> Maybe[T]:
-        """
-        Set metadata for each subkey
+        """ Build subkeys if necessary
+
         """
         # TODO use class hook if it exists
 
-        # for each subkey...
+        # for each subkey, build it...
+        key_meta : list[Maybe[str|API.Key_p]] = []
+        raw : list[API.RawKey_d] = []
+        if isinstance(obj, API.MultiKey_p):
+            raw = obj.data.raw
+        for x in raw:
+            key_meta.append(x.key)
+        else:
+            obj.data.meta = tuple(key_meta)
+            return None
 
-        return None
     ##--| Utils
 
-    def discriminate_raw(self, raw_keys:Iterable[API.RawKey_d], kdata:dict, *, mark:Maybe[API.KeyMark]=None) -> dict:
+    def discriminate_raw(self, raw_keys:Iterable[API.RawKey_d], kdata:dict, *, mark:Maybe[API.KeyMark]=None, is_multi:bool=False) -> dict:
         """ Take extracted keys of the text,
         and determine features of them, returning a dict,
 
         """
         assert(all(isinstance(x, API.RawKey_d) for x in raw_keys))
-        is_multi          : bool  = kdata.pop("multi", False)
         multi_compatible  : bool  = mark is None or mark in self.registry.multi
         data                = {
             'mark'         : mark or DKeyMark_e.default(),
@@ -283,26 +327,22 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         match raw_keys:
             case [x] if not bool(x) and bool(x.prefix) and not is_multi: # No keys found, use NullDKey
                 data['mark'] = DKeyMark_e.NULL
-            case [x] if is_multi and not multi_compatible: # One key, declared as a multi key
+            case [x] if is_multi and not multi_compatible: # One key, declared as a multi key, coerce to multi
                 data['mark'] = DKeyMark_e.MULTI
             case [x] if is_multi: # One Key, able to be multi
                 pass
-            case [x] if not bool(x.prefix) and x.is_indirect(): # One Key_ found with no extra text
-                # so truncate to just the exact key
-                data['mark'] = DKeyMark_e.INDIRECT
-                data['text'] = x.indirect()
-            case [x] if not bool(x.prefix): # one key, no extra text
+            case [x] if not bool(x.prefix): # One key, no non-key text. not multi. trim it.
+                data['text'] = x.direct()
+                if x.is_indirect():
+                    data['mark'] = DKeyMark_e.INDIRECT
                 conv_mark = self.registry.convert.get(x.conv, None) # type: ignore[arg-type]
                 if conv_mark and (mark != conv_mark):
                     raise ValueError(API.MarkConversionConflict, mark, conv_mark)
                 elif conv_mark:
                     data['mark'] = conv_mark
-
-                # so truncate to just the exact key
-                data['text'] = x.direct()
             case [_, *_] if is_multi and multi_compatible: # Keys, multi compatible
                 pass
-            case [_, *_]: # Multiple keys found
+            case [_, *_]: # Multiple keys found, coerce to multi
                 data['mark']   = DKeyMark_e.MULTI
                 data['multi']  = True
             case x:
@@ -339,7 +379,7 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         return tuple(self.parser.parse(data, implicit=implicit))
 
     def mark_alias(self, val:Any) -> Maybe[KeyMark]:  # noqa: ANN401
-        """ aliases for marks """
+        """ Translate an alias of a mark into the actual mark """
         match val:
             case DKeyMark_e() | str():
                 return val
@@ -353,3 +393,15 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
                 return DKeyMark_e.NULL
             case _:
                 return None
+
+
+    def consume_format_params(self, spec:str) -> tuple[str, bool, bool]:
+        """
+          return (remaining, wrap, direct)
+        """
+        wrap     = 'w' in spec
+        indirect = 'i' in spec
+        direct   = 'd' in spec
+        remaining = API.FMT_PATTERN.sub("", spec)
+        assert(not (direct and indirect))
+        return remaining, wrap, (direct or (not indirect))

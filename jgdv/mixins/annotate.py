@@ -144,8 +144,8 @@ class Subclasser:
                 p_str = param
             case [param]:
                 p_str = str(param)
-            case [param, *params]:  # type: ignore[misc]
-                raise NotImplementedError(MultiParamFail)
+            case [_, *_]:  # type: ignore[misc]
+                raise NotImplementedError(MultiParamFail, params)
             case _:
                 raise ValueError(BadParamFail, params)
 
@@ -267,7 +267,7 @@ class SubAnnotate_m:
 
     @classmethod
     @ftz.cache
-    def __class_getitem__[T:SubAnnotate_m](cls:type[T], *params:Any) -> type[T]:  # noqa: ANN400
+    def __class_getitem__[T:SubAnnotate_m](cls:type[T], *params:Any) -> type[T]:  # noqa: ANN401
         """ Auto-subclass as {cls.__name__}[param]
 
         Caches results to avoid duplicates

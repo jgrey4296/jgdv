@@ -2,7 +2,7 @@
 """
 
 """
-
+# ruff: noqa: ANN002, ANN003
 # Imports:
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ from jgdv.structs.strang import CodeReference
 
 # ##-- end 1st party imports
 
-from .._interface import DKeyMark_e
+from .._interface import DKeyMark_e, KeyMark
 from .._base import DKeyBase
 from .._meta import DKey
 from ..keys import MultiDKey, NonDKey, SingleDKey
@@ -59,12 +59,13 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class StrDKey(SingleDKey[DKeyMark_e.STR], conv="s"):
+
+class StrDKey(SingleDKey, mark=DKeyMark_e.STR, conv="s"):
     """
     A Simple key that always expands to a string
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._expansion_type  = str
         self._typecheck       = str

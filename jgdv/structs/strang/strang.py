@@ -412,7 +412,9 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         count    : int
         gen      : Iterator
         section  : API.Sec_d
+        sec_case : str
         section  = self.section(idx)
+        sec_case = section.case or ""
         count    = len(self.data.sec_words[section.idx])
         if count == 0:
             return
@@ -430,7 +432,7 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         for x,y in itz.zip_longest(*offbyone, fillvalue=None):
             yield self.get(section.idx, x)
             if case and y is not None:
-                yield section.case
+                yield sec_case
 
     ##--| Modify
 
