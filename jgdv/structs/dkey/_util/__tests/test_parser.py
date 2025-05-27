@@ -168,3 +168,13 @@ class TestParser:
                 assert(True)
             case x:
                  assert(False), x
+
+
+    def test_close_brace(self):
+        match next(DKeyParser().parse("blah}")):
+            case RawKey_d() as x:
+                assert(x.key == "")
+                assert(x.prefix == "blah}")
+                assert(True)
+            case x:
+                 assert(False), x
