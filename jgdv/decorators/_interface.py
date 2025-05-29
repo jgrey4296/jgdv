@@ -17,6 +17,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    from jgdv._abstract.types import Func, Method
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -40,8 +41,6 @@ __all__ = ( # noqa: RUF022
 )
 # ##-- end Generated Exports
 
-##--| Util Types
-from jgdv._abstract.types import Func, Method
 
 ##--| Primary Types
 type Signature          = inspect.Signature
@@ -84,18 +83,28 @@ class DecoratorUtils_p(Protocol):
 
     def _decoration_logic(self, target:Decorable) -> Decorated: ...
 
-    def _unwrap(self:Decorator_i, target:Decorated) -> Decorable: ...
+    def _unwrap(self:Decorator_p, target:Decorated) -> Decorable: ...
 
-    def _unwrapped_depth(self:Decorator_i, target:Decorated) -> int: ...
+    def _unwrapped_depth(self:Decorator_p, target:Decorated) -> int: ...
 
-    def _build_wrapper(self:Decorator_i, form:DForm_e, target:Decorable) -> Maybe[Decorated]: ...
+    def _build_wrapper(self:Decorator_p, form:DForm_e, target:Decorable) -> Maybe[Decorated]: ...
 
-    def _apply_onto(self:Decorator_i, wrapper:Decorated, target:Decorable) -> Decorated: ...
+    def _apply_onto(self:Decorator_p, wrapper:Decorated, target:Decorable) -> Decorated: ...
 
-    def _signature(self:Decorator_i, target:Decorable) -> Signature: ...
+    def _signature(self:Decorator_p, target:Decorable) -> Signature: ...
 
 @runtime_checkable
 class Decorator_p(DecoratorHooks_p, DecoratorUtils_p, Protocol):
+    Form                 : ClassVar[type[DForm_e]]
+    needs_args           : ClassVar[bool]
+
+    _annotation_prefix   : str
+    _data_key            : Maybe[str]
+    _data_suffix         : str
+    _mark_key            : Maybe[str]
+    _mark_suffix         : str
+    _wrapper_assignments : list[str]
+    _wrapper_updates     : list[str]
 
     def __call__[**I, O](self, target:Decorable[I, O]) -> Maybe[Decorated[I, O]]: ...
 
@@ -116,15 +125,3 @@ class Decorator_p(DecoratorHooks_p, DecoratorUtils_p, Protocol):
     def get_annotations(self, target:Decorable) -> list[str]: ...
 
 ##--| Interface
-class Decorator_i(Decorator_p, Protocol):
-
-    Form                 : ClassVar[type[DForm_e]]
-    needs_args           : ClassVar[bool]
-
-    _annotation_prefix   : str
-    _data_key            : Maybe[str]
-    _data_suffix         : str
-    _mark_key            : Maybe[str]
-    _mark_suffix         : str
-    _wrapper_assignments : list[str]
-    _wrapper_updates     : list[str]

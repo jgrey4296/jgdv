@@ -137,7 +137,6 @@ class DKeyMark_e(EnumBuilder_m, DKeyMarkAbstract_e):
     def default(cls) -> str:
         return cls.FREE
 
-
     @classmethod
     def null(cls) -> str:
         return cls.NULL
@@ -146,8 +145,8 @@ class DKeyMark_e(EnumBuilder_m, DKeyMarkAbstract_e):
     def multi(cls) -> str:
         return cls.MULTI
 
-
 ##--| Data
+
 class RawKey_d:
     """ Utility class for parsed {}-format string parameters.
 
@@ -159,17 +158,18 @@ class RawKey_d:
     Provides the data from string.Formatter.parse, but in a structure
     instead of a tuple.
     """
-    __slots__ = ("conv", "format", "key", "prefix")
+    __slots__ = ("convert", "format", "key", "prefix")
     prefix  : str
     key     : Maybe[str]
     format  : Maybe[str]
-    conv    : Maybe[str]
+    convert : Maybe[str]
 
     def __init__(self, **kwargs) -> None:
         self.prefix       = kwargs.pop("prefix")
         self.key          = kwargs.pop("key", None)
         self.format       = kwargs.pop("format", None)
-        self.conv         = kwargs.pop("conv", None)
+        self.convert      = kwargs.pop("convert", None)
+        assert(not bool(kwargs)), kwargs
 
     def __getitem__(self, i) -> Maybe[str]:
         match i:
@@ -180,13 +180,16 @@ class RawKey_d:
             case 2:
                 return self.format
             case 3:
-                return self.conv
+                return self.convert
             case _:
                 msg = "Tried to access a bad element of DKeyParams"
                 raise ValueError(msg, i)
 
     def __bool__(self) -> bool:
         return bool(self.key)
+
+    def __repr__(self) -> str:
+        return f"<RawkKey: {self.joined()}>"
 
     def joined(self) -> str:
         """ Returns the key and params as one string
@@ -202,9 +205,9 @@ class RawKey_d:
         if bool(self.format):
             assert(self.format is not None)
             args += [":", self.format]
-        if bool(self.conv):
-            assert(self.conv is not None)
-            args += ["!", self.conv]
+        if bool(self.convert):
+            assert(self.convert is not None)
+            args += ["!", self.convert]
 
         return "".join(args)
 
@@ -224,7 +227,6 @@ class RawKey_d:
         """
         if bool(self.key):
             return "%s{}" % self.prefix  # noqa: UP031
-
 
         return self.prefix or ""
 
@@ -268,6 +270,7 @@ class ExpInst_d:
 
     """
     __slots__ = ("convert", "fallback", "lift", "literal", "rec", "total_recs", "value")
+    value       : Any
     convert     : Maybe[str|bool]
     fallback    : Maybe[str]
     lift        : bool
@@ -316,7 +319,7 @@ class DKey_d(StrangAPI.Strang_d):
         self.name            = kwargs.pop("name", None)
         self.raw             = tuple(kwargs.pop(RAWKEY_ID, ()))
         self.mark            = kwargs.pop("mark", DKeyMark_e.default())
-        self.expansion_type  = kwargs.pop("etype", identity_fn)
+        self.expansion_type  = kwargs.pop("ctor", identity_fn)
         self.typecheck       = kwargs.pop("check", Any)
         self.fallback        = kwargs.pop("fallback", None)
         self.format          = kwargs.pop("format", None)
@@ -325,12 +328,21 @@ class DKey_d(StrangAPI.Strang_d):
         self.max_expansions  = kwargs.pop("max_expansion", None)
         self.multi           = kwargs.pop("multi", False)
 
-
 ##--| Section Specs
 DKEY_SECTIONS : Final[StrangAPI.Sections_d] = StrangAPI.Sections_d(
     StrangAPI.Sec_d("body", None, None, str, None, True),  # noqa: FBT003
 )
 ##--| Protocols
+
+class Expander_p(Protocol):
+
+    def set_ctor(self, ctor:Ctor[Key_p]) -> None: ...
+
+    def redirect(self, source:Key_p, *sources:dict, **kwargs:Any) -> list[Maybe[ExpInst_d]]:  ...  # noqa: ANN401
+
+    def expand(self, source:Key_p, *sources:dict, **kwargs:Any) -> Maybe[ExpInst_d]:  ...  # noqa: ANN401
+
+    def extra_sources(self, source:Key_p) -> list[Any]: ...
 
 class ExpansionHooks_p(Protocol):
 
@@ -338,15 +350,15 @@ class ExpansionHooks_p(Protocol):
 
     def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> Maybe[LookupList]: ...
 
-    def exp_pre_recurse_h(self, vals:list[ExpInst_d], sources:list[dict], opts:dict) -> Maybe[list[ExpInst_d]]: ...
+    def exp_pre_recurse_h(self, insts:list[ExpInst_d], sources:list[dict], opts:dict) -> Maybe[list[ExpInst_d]]: ...
 
-    def exp_flatten_h(self, vals:list[ExpInst_d], opts:dict) -> Maybe[LitFalse|ExpInst_d]: ...
+    def exp_flatten_h(self, insts:list[ExpInst_d], opts:dict) -> Maybe[LitFalse|ExpInst_d]: ...
 
-    def exp_coerce_h(self, val:ExpInst_d, opts:dict) -> Maybe[ExpInst_d]: ...
+    def exp_coerce_h(self, inst:ExpInst_d, opts:dict) -> Maybe[ExpInst_d]: ...
 
-    def exp_final_h(self, val:ExpInst_d, opts:dict) -> Maybe[LitFalse|ExpInst_d]: ...
+    def exp_final_h(self, inst:ExpInst_d, opts:dict) -> Maybe[LitFalse|ExpInst_d]: ...
 
-    def exp_check_result_h(self, val:ExpInst_d, opts:dict) -> None: ...
+    def exp_check_result_h(self, inst:ExpInst_d, opts:dict) -> None: ...
 
 class Expandable_p(Protocol):
     """ An expandable, like a DKey,
@@ -364,6 +376,7 @@ class Key_p(ExpansionHooks_p, StrangAPI.Strang_p, Protocol):
 
     @classmethod
     def MarkOf[T:Key_p](cls:type[T]) -> KeyMark: ...  # noqa: N802
+
     def keys(self) -> list[Key_p]: ...
 
     def redirect(self, spec=None) -> Key_p: ...
@@ -375,9 +388,17 @@ class Key_p(ExpansionHooks_p, StrangAPI.Strang_p, Protocol):
     @property
     def data(self) -> DKey_d: ...
 
+    @property
+    def _expander(self) -> Expander_p: ...
+
 @runtime_checkable
 class MultiKey_p(Protocol):
 
-    def _multi(self) -> Never: ...
+    def _multi(self) -> Literal[True]: ...
 
+
+@runtime_checkable
+class IndirectKey_p(Protocol):
+
+    def _indirect(self) -> Literal[True]: ...
 ##--| Combined Interfaces

@@ -25,7 +25,8 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
-from jgdv.structs.strang._interface import Strang_i, Strang_p
+from jgdv.structs.strang import _interface as StrangAPI # noqa: N812
+from jgdv.structs.strang._interface import Strang_p
 
 # ##-- types
 # isort: off
@@ -40,9 +41,7 @@ from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
     import datetime
-    from jgdv.structs.dkey._interface import Key_i
     import pathlib as pl
-    from jgdv import Maybe, Ident
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
@@ -50,7 +49,10 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    TimeDelta = datetime.timedelta
+    from jgdv import Maybe, Ident, Traceback
+    from jgdv.structs.dkey._interface import Key_p
+
+    type TimeDelta = datetime.timedelta
 ##--|
 
 # isort: on
@@ -67,14 +69,14 @@ LOC_SUBSEP : Final[str]   = "/"
 
 # Body:
 
-class WildCard_e(enum.StrEnum):
+class WildCard_e(StrangAPI.StrangMarkAbstract_e):
     """ Ways a path can have a wildcard. """
     glob       = "*"
     rec_glob   = "**"
     select     = "?"
     key        = "{"
 
-class LocationMeta_e(enum.StrEnum):
+class LocationMeta_e(StrangAPI.StrangMarkAbstract_e):
     """ Available metadata attachable to a location """
 
     location     = "location"
@@ -94,10 +96,16 @@ class LocationMeta_e(enum.StrEnum):
     dir          = directory
     loc          = location
 
-    default      = loc
+    @classmethod
+    def default(cls) -> Maybe:
+        return cls.location
 
 ##--|
 
+LocationSections : Final[StrangAPI.Sections_d] = StrangAPI.Sections_d(
+    StrangAPI.Sec_d("head", ".", LOC_SEP, str|LocationMeta_e, LocationMeta_e, False),  # noqa: FBT003
+    StrangAPI.Sec_d("body", LOC_SUBSEP, None, str|WildCard_e, WildCard_e, True),  # noqa: FBT003
+)
 ##--|
 
 @runtime_checkable
@@ -105,9 +113,6 @@ class Location_p(Strang_p, Protocol):
     """ Something which describes a file system location,
     with a possible identifier, and metadata
     """
-
-    @override
-    def __getitem__(self, i:int|slice) -> str|WildCard_e: ...
 
     def __lt__(self, other:TimeDelta|str|pl.Path|Location_p) -> bool: ...
 
@@ -123,17 +128,36 @@ class Location_p(Strang_p, Protocol):
     @property
     def stem(self) -> Maybe[str|tuple[WildCard_e, str]]: ...
 
+    @property
+    def key(self) -> Maybe[str|Key_p]: ...
+
     def ext(self, *, last:bool=False) -> Maybe[str|tuple[WildCard_e, str]]: ...
 
-    def check_wildcards(self, other:Self) -> bool: ...
+    def check_wildcards(self, other:pl.Path|Location_p) -> bool: ...
 
     def is_concrete(self) -> bool: ...
 
-class Location_i(Location_p, Protocol):
-    key   : Maybe[str|Key_i]
-    path  : pl.Path
-    meta  : enum.EnumMeta
-
 @runtime_checkable
 class Locator_p(Protocol):
-    pass
+
+    def __getattr__(self, key:str) -> Location_p: ...
+
+    def __getitem__(self, val:str|pl.Path|Location_p|Key_p) -> pl.Path: ...
+
+    def __contains__(self, key:str|pl.Path|Location_p|Key_p) -> bool: ...
+
+    def __bool__(self) -> bool: ...
+
+    def __len__(self) -> int: ...
+
+    def __iter__(self) -> Generator[str|Key_p]: ...
+
+    def __call__(self, new_root:Maybe[pl.Path]=None) -> Locator_p: ...
+
+    def __enter__(self) -> Locator_p: ...
+
+    def __exit__(self, etype:Maybe[type[Exception]], err:Maybe[Exception], tb:Maybe[Traceback]) -> bool: ...
+
+    def clear(self) -> None: ...
+
+    def update(self, extra:dict|Location_p|Locator_p, *, strict:bool=True) -> Self: ...
