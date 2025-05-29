@@ -99,7 +99,7 @@ class Location(Strang):
     """
     __slots__              = ()
 
-    _processor : ClassVar  = LocationProcessor
+    _processor : ClassVar  = LocationProcessor()
     _sections  : ClassVar  = API.LocationSections
     Marks      : ClassVar  = API.LocationMeta_e
     Wild       : ClassVar  = API.WildCard_e
@@ -121,14 +121,15 @@ class Location(Strang):
         match other:
             case self.Marks() as x:
                 return x in self.data.meta
-            case pl.Path()|API.Location_p() if self.Marks.abstract in self.data.meta:
+            case pl.Path() | API.Location_p() if self.Marks.abstract in self.data.meta:
                 return self.check_wildcards(other)
             case API.Location_p():
                 return self < other
             case _:
-                return super().__contains__(other)
+                return super().__contains__(other) # type: ignore[misc]
 
-    def __lt__(self, other:TimeDelta|str|pl.Path|Location) -> bool:
+    @override
+    def __lt__(self, other:TimeDelta|str|pl.Path|Location) -> bool: # type: ignore[override]
         """ self < path|location
             self < delta : self.modtime < (now - delta)
         """
@@ -138,68 +139,14 @@ class Location(Strang):
             case TimeDelta():
                 raise NotImplementedError()
             case _:
-                return super().__lt__(str(other))
-
-    def is_concrete(self) -> bool:
-        return self.gmark_e.abstract not in self.data.meta
-
-    def check_wildcards(self, other:pl.Path|API.Location_p) -> bool:  # noqa: PLR0912
-        """ Return True if other is within self, accounting for wildcards """
-        logging.debug("Checking %s < %s", self, other)
-        if self.is_concrete():
-            return self < other
-
-        # Compare path
-        for x,y in zip(self.body_parent, other.body_parent, strict=False):
-            match x, y:
-                case _, _ if x == y:
-                    pass
-                case self.Wild.rec_glob, _:
-                    break
-                case self.Wild(), str():
-                    pass
-                case str(), self.Wild():
-                    pass
-                case str(), str():
-                    return False
-
-        if self.gmark_e.file not in self.data.meta:
-            return True
-
-        logging.debug("%s and %s match on path", self, other)
-        # Compare the stem/ext
-        match self.stem, other.stem:
-            case (xa, ya), (xb, yb) if xa == xb and ya == yb:
-                pass
-            case (xa, ya), str():
-                pass
-            case str() as x, str() as y if x == y:
-                pass
-            case _, _:
-                return False
-
-        logging.debug("%s and %s match on stem", self, other)
-        match self.ext(), other.ext():
-            case None, None:
-                pass
-            case (xa, ya), (xb, yb) if xa == xb and ya == yb:
-                pass
-            case (x, y), _:
-                pass
-            case str() as x, str() as y if x == y:
-                pass
-            case _, _:
-                return False
-
-        logging.debug("%s and %s match", self, other)
-        return True
+                return super().__lt__(str(other)) # type: ignore[misc]
 
     @property
     def path(self) -> pl.Path: # type: ignore
         return pl.Path(self[1,:])
 
     @property
-    def body_parent(self) -> list[Location._body_types]:
+    def body_parent(self) -> list[str|API.WildCard_e]:
         if self.Marks.file in self:
             return list(itz.islice(self.words(1), len(self.data.sec_words[1])-1))
 
@@ -208,8 +155,9 @@ class Location(Strang):
     @property
     def stem(self) -> Maybe[str|tuple[API.WildCard_e, str]]: # type: ignore
         """ Return the stem, or a tuple describing how it is a wildcard """
+        result : Maybe[str|tuple[API.WildCard_e, str]] = None
         if self.Marks.file not in self.data.meta:
-            return None
+            return result
 
         match self[1,-1]:
             case str() as elem:
@@ -219,15 +167,25 @@ class Location(Strang):
 
         match elem.split(".")[0]:
             case str() as elem if (wc:=self.Wild.glob) in elem:
-                return (wc, elem)
+                result = (wc, elem)
             case str() as elem if (wc:=self.Wild.select) in elem:
-                return (wc, elem)
+                result = (wc, elem)
             case str() as elem if (wc:=self.Wild.key) in elem:
-                return (wc, elem)
+                result = (wc, elem)
             case str() as elem:
-                return elem
+                result = elem
             case _:
-                return None
+                pass
+
+        return result
+
+    @property
+    def keys(self) -> set[str]:
+        raise NotImplementedError()
+
+    @property
+    def key(self) -> Maybe[str|API.Key_p]:
+        raise NotImplementedError()
 
     def ext(self, *, last:bool=False) -> Maybe[str|tuple[API.WildCard_e, str]]: # type: ignore # noqa: PLR0911
         """ return the ext, or a tuple of how it is a wildcard.
@@ -259,6 +217,71 @@ class Location(Strang):
             case ext:
                 return ext
 
-    @property
-    def keys(self) -> set[str]:
-        raise NotImplementedError()
+    def is_concrete(self) -> bool:
+        return self.Marks.abstract not in self.data.meta
+
+    def check_wildcards(self, other:pl.Path|API.Location_p) -> bool:  # noqa: PLR0912
+        """ Return True if other is within self, accounting for wildcards """
+        logging.debug("Checking %s < %s", self, other)
+        x            : Any
+        other_ext    : Any
+        other_parts  : list[str]
+        wildcards    : set[str]
+        if self.is_concrete():
+            return self < other
+
+        match other:
+            case pl.Path() as x:
+                other_parts  = list(x.parts)
+                other_ext    = x.suffix
+            case API.Location_p() as x:
+                other_parts = other.body_parent
+                other_ext = other.ext()
+
+        wildcards = {x.value for x in self.section(1).marks}
+        # Compare path up to the file
+        for x,y in zip(self.body_parent, other_parts, strict=False):
+            match x, y:
+                case str(), str() if x == y:
+                    pass
+                case str(), str() if x not in self.Wild and y not in self.Wild:
+                    return False
+                case x, _ if self.Wild(x) is self.Wild.rec_glob:
+                    break
+                case x, str() if x in self.Wild:
+                    pass
+                case str(), y if y in self.Wild:
+                    pass
+                case str(), str():
+                    pass
+
+        if self.Marks.file not in self.data.meta:
+            return True
+
+        logging.debug("%s and %s match on path", self, other)
+        # Compare the stem/ext
+        match self.stem, other.stem:
+            case (xa, ya), (xb, yb) if xa == xb and ya == yb:
+                pass
+            case (xa, ya), str():
+                pass
+            case str() as x, str() as y if x == y:
+                pass
+            case _, _:
+                return False
+
+        logging.debug("%s and %s match on stem", self, other)
+        match self.ext(), other_ext:
+            case None, None:
+                pass
+            case (xa, ya), (xb, yb) if xa == xb and ya == yb:
+                pass
+            case (x, y), _:
+                pass
+            case str() as x, str() as y if x == y:
+                pass
+            case _, _:
+                return False
+
+        logging.debug("%s and %s match", self, other)
+        return True

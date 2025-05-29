@@ -64,14 +64,19 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-class LocationProcessor[T:API.Location_p](PreProcessor_p):
+class LocationProcessor[T:API.Location_p](StrangBasicProcessor):
 
     @override
     def pre_process(self, cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult[T]: # type: ignore[override]
         x             : Any
+        y             : Any
         default_mark  : StrangAPI.StrangMarkAbstract_e
-        head_sep      : str
+        head_end      : str
         text          : str
+        head_case     : str                                   = cls.section(0).case
+        body_case     : str                                   = cls.section(1).case
+        head_text     : set[str]                              = set()
+        body_text     : list[str]                             = []
         inst_data     : InstanceData                          = InstanceData({})
         post_data     : PostInstanceData                      = PostInstanceData({})
         marks         : type[StrangAPI.StrangMarkAbstract_e]  = cls.Marks  # type: ignore[attr-defined]
@@ -80,68 +85,50 @@ class LocationProcessor[T:API.Location_p](PreProcessor_p):
             case None:
                 raise ValueError()
             case str() as x:
-                head_sep = x
+                head_end                                      = x
 
         match marks.default():
             case None:
                 raise ValueError()
             case x:
                 default_mark  = marks.default()
-
+        ##--| clean the input
         match input:
-            case StrangAPI.Strang_p():
-                text = input[:,:]
-            case pl.Path() as x if not strict and bool(x.suffix):
-                text = f"{marks.file}{head_sep}{x}"
-            case pl.Path() if not strict:
-                text = f"{default_mark}{head_sep}{data}"
-            case str() as x if head_sep not in x:
-                return self.pre_process(cls, pl.Path(x), *args, strict=strict, **kwargs)
-            case str() as x:
-                text = x
-            case _:
-                text = str(x)
+            case StrangAPI.Strang_p() as val:
+                x, m, y = val[:,:].partition(head_end)
+                if bool(m):
+                    head_text.update(x.split(head_case))
+                    body_text.append(y)
+                else:
+                    body_text.append(x)
+            case pl.Path() as val if bool(val.suffix):
+                head_text.add(marks.file)
+                body_text.append(str(val))
+            case str() as val:
+                x, m, y = val.partition(head_end)
+                if bool(m):
+                    head_text.update(x.split(head_case))
+                    body_text.append(y)
+                else:
+                    body_text.append(x)
+            case val:
+                x, m, y = str(val).partition(head_end)
+                if bool(m):
+                    head_text.update(x.split(head_case))
+                    body_text.append(y)
+                else:
+                    body_text.append(x)
 
+
+        body : str = body_case.join(body_text)
+        if any(x.value in body for x in cls.section(1).marks):
+            head_text.add(marks.abstract.value)
+        if "." in body:
+            head_text.add(marks.file.value)
+
+        if not bool(head_text):
+            head_text.add(default_mark)
+        assert(bool(body_text))
+        text = head_end.join([head_case.join(head_text), body])
         return text, inst_data, post_data, ctor
 
-    @override
-    def process(self, obj:T, *, data:Maybe[dict]=None) -> Maybe[T]:
-        pass
-
-    @override
-    def post_process(self, obj:T, data:Maybe[dict]=None) -> Maybe[T]:
-        max_body         = len(self._body)
-        self._body_meta  = [None for x in range(max_body)]
-
-        # Group metadata
-        for elem in self.group:
-            self._group_meta.add(self.gmark_e[elem]) # type: ignore
-
-        # Body wildycards
-        for i, elem in enumerate(self.body()):
-            match elem:
-                case self.bmark_e.glob:
-                    self._group_meta.add(self.gmark_e.abstract)
-                    self._body_meta[i] = self.bmark_e.glob
-                case self.bmark_e.rec_glob:
-                    self._group_meta.add(self.gmark_e.abstract)
-                    self._body_meta[i] = self.bmark_e.rec_glob
-                case self.bmark_e.select:
-                    self._group_meta.add(self.gmark_e.abstract)
-                    self._body_meta[i] = self.bmark_e.select
-                case str() if self.bmark_e.key in elem:
-                    self._group_meta.add(self.gmark_e.abstract)
-                    self._body_meta[i] = self.bmark_e.key
-        else:
-            match self.stem:
-                case (self.bmark_e(), _):
-                    self._group_meta.add(self.gmark_e.abstract)
-                    self._group_meta.add(self.gmark_e.expand)
-                case _:
-                    pass
-
-            match self.ext():
-                case (self.bmark_e(), _):
-                    self._group_meta.add(self.gmark_e.abstract)
-                case _:
-                    pass

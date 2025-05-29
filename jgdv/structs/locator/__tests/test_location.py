@@ -13,6 +13,7 @@ import warnings
 
 import pytest
 
+from .. import _interface as API # noqa: N812
 from jgdv.structs.dkey import DKey
 from jgdv.structs.strang import Strang, StrangError
 from jgdv.structs.locator import JGDVLocator, Location
@@ -29,6 +30,7 @@ class TestLocation:
         assert(loc is not None)
         assert(isinstance(loc, Strang))
         assert(isinstance(loc, Location))
+        assert(isinstance(loc, API.Location_p))
         assert(isinstance(loc, str))
 
     def test_simple_file(self):
@@ -38,6 +40,16 @@ class TestLocation:
         assert(isinstance(loc, Location))
         assert(isinstance(loc, str))
         assert(Location.Marks.file in loc)
+
+
+    def test_simple_abstract(self):
+        target = "test/*/path.py"
+        loc = Location("file::>test/*/path.py")
+        assert(loc is not None)
+        assert(isinstance(loc, Location))
+        assert(loc[1,:] == target)
+        assert(Location.Marks.file in loc)
+        assert(Location.Marks.abstract in loc)
 
     def test_file_stem(self):
         loc = Location("file::>test/path.py")
@@ -63,56 +75,56 @@ class TestLocation:
         val = Location("bad::test/path.py")
 
     def test_file_with_metadata(self):
-        loc = Location("file/clean::>test/path.py")
+        loc = Location("file.clean::>test/path.py")
         assert(isinstance(loc, Location))
-        assert(Location.gmark_e.file in loc._group_meta)
-        assert(Location.gmark_e.clean in loc._group_meta)
-        assert(Location.gmark_e.abstract not in loc._group_meta)
+        assert(Location.Marks.file in loc.data.meta)
+        assert(Location.Marks.clean in loc.data.meta)
+        assert(Location.Marks.abstract not in loc.data.meta)
 
     def test_glob_path(self):
         loc = Location("file::>test/*/path.py")
         assert(isinstance(loc, Location))
-        assert(Location.gmark_e.abstract in loc._group_meta)
+        assert(Location.Marks.abstract in loc.data.meta)
         assert(not loc.is_concrete())
-        assert(loc[1:1] is loc.bmark_e.glob)
+        assert(loc.get(1,1) == loc.Wild.glob)
 
     def test_rec_glob_path(self):
         loc = Location("file::>test/**/path.py")
         assert(isinstance(loc, Location))
-        assert(Location.gmark_e.abstract in loc._group_meta)
+        assert(Location.Marks.abstract in loc.data.meta)
         assert(not loc.is_concrete())
-        assert(loc[1:1] is loc.bmark_e.rec_glob)
+        assert(loc.get(1,1) == loc.Wild.rec_glob)
 
     def test_select_path(self):
         loc = Location("file::>test/?/path.py")
         assert(isinstance(loc, Location))
-        assert(Location.gmark_e.abstract in loc._group_meta)
+        assert(Location.Marks.abstract in loc.data.meta)
         assert(not loc.is_concrete())
-        assert(loc[1:1] is loc.bmark_e.select)
+        assert(loc.get(1,1) == loc.Wild.select)
 
     def test_glob_stem(self):
         loc = Location("file::>test/blah/*ing.py")
         assert(isinstance(loc, Location))
-        assert(Location.gmark_e.abstract in loc._group_meta)
+        assert(Location.Marks.abstract in loc.data.meta)
         assert(not loc.is_concrete())
-        assert(loc.stem == (loc.bmark_e.glob, "*ing"))
+        assert(loc.stem == (loc.Wild.glob, "*ing"))
 
     def test_select_stem(self):
         loc = Location("file::>test/blah/?ing.py")
         assert(isinstance(loc, Location))
-        assert(Location.gmark_e.abstract in loc._group_meta)
+        assert(Location.Marks.abstract in loc.data.meta)
         assert(not loc.is_concrete())
-        assert(loc.stem == (loc.bmark_e.select, "?ing"))
+        assert(loc.stem == (loc.Wild.select, "?ing"))
 
     def test_earlycwd_expansion(self):
         loc = Location("file/earlycwd::>a/b/c.py")
-        assert(loc[1:] == "a/b/c.py")
+        assert(loc[1,:] == "a/b/c.py")
         assert(loc.path == pl.Path("a/b/c.py"))
 
     def test_earlycwd_expansion_uses_initial_cwd(self):
-        loc = Location("file/earlycwd::>a/b/c.py")
-        orig_cwd = pl.Path.cwd()
-        sub_cwd = [x for x in orig_cwd.iterdir() if not x.is_file()][0]
+        loc       = Location("file.earlycwd::>a/b/c.py")
+        orig_cwd  = pl.Path.cwd()
+        sub_cwd   = [x for x in orig_cwd.iterdir() if not x.is_file()][0]
         with JGDVLocator(sub_cwd) as loclookup:
             assert(pl.Path.cwd() != orig_cwd)
             assert(pl.Path.cwd() == sub_cwd)
@@ -129,6 +141,8 @@ class TestLocation_Definite:
     def test_definite_contained_in_indefinite(self):
         definite = Location("a/b/c.py")
         indef    = Location("a/b/*.py")
+        assert(Location.Marks.abstract in indef)
+        assert(Location.Marks.abstract not in definite)
         assert(definite in indef)
 
 class TestLocation_Indefinite:
@@ -139,23 +153,23 @@ class TestLocation_Indefinite:
 
     def test_indef_ext_not_concrete(self):
         basic = Location(pl.Path("a/b/c.*"))
-        assert(basic.ext() == (Location.bmark_e.glob, ".*"))
+        assert(basic.ext() == (Location.Wild.glob, ".*"))
         assert(not basic.is_concrete())
 
     def test_indef_path_not_concrete(self):
         basic = Location(pl.Path("a/*/c.py"))
-        assert(basic.bmark_e.glob in basic.body())
+        assert(basic.Wild.glob in basic.body)
         assert(not basic.is_concrete())
 
     def test_indef_path_not_concrete_2(self):
         basic = Location(pl.Path("a/**/c.py"))
-        assert(basic.bmark_e.rec_glob in basic.body())
+        assert(basic.Wild.rec_glob in basic.body)
         assert(not basic.is_concrete())
 
     def test_indef_suffix_contains_definite(self):
         definite = Location(pl.Path("a/b/c.py"))
         indef    = Location(pl.Path("a/b/c.*"))
-        assert(indef.ext() == (indef.bmark_e.glob, ".*"))
+        assert(indef.ext() == (indef.Wild.glob, ".*"))
         assert(definite in indef)
 
     def test_indef_suffix_contain_fail(self):

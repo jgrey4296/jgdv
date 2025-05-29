@@ -53,6 +53,7 @@ if TYPE_CHECKING:
     from jgdv.structs.dkey._interface import Key_p
 
     type TimeDelta = datetime.timedelta
+    type WordDesc = tuple[StrangAPI.StrangMarkAbstract_e, str]
 ##--|
 
 # isort: on
@@ -113,6 +114,8 @@ class Location_p(Strang_p, Protocol):
     """ Something which describes a file system location,
     with a possible identifier, and metadata
     """
+    Marks  : ClassVar[StrangAPI.StrangMarkAbstract_e]
+    Wild   : ClassVar[StrangAPI.StrangMarkAbstract_e]
 
     def __lt__(self, other:TimeDelta|str|pl.Path|Location_p) -> bool: ...
 
@@ -123,15 +126,15 @@ class Location_p(Strang_p, Protocol):
     def path(self) -> pl.Path: ...
 
     @property
-    def body_parent(self) -> list[str|WildCard_e]: ...
+    def body_parent(self) -> list[WordDesc]: ...
 
     @property
-    def stem(self) -> Maybe[str|tuple[WildCard_e, str]]: ...
+    def stem(self) -> Maybe[str|WordDesc]: ...
 
     @property
     def key(self) -> Maybe[str|Key_p]: ...
 
-    def ext(self, *, last:bool=False) -> Maybe[str|tuple[WildCard_e, str]]: ...
+    def ext(self, *, last:bool=False) -> Maybe[str|WordDesc|tuple[str|WordDesc, ...]]: ...
 
     def check_wildcards(self, other:pl.Path|Location_p) -> bool: ...
 

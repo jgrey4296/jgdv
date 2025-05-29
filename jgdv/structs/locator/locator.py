@@ -101,6 +101,8 @@ logging = logmod.getLogger(__name__)
 
 class SoftFailMultiDKey(MultiDKey, mark="soft.fail", multi=True):
 
+    __slots__ = ()
+
     def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> list:
         """ Expands subkeys, to be merged into the main key"""
         targets = []
@@ -340,7 +342,7 @@ class _LocatorAccess_m:
             case False:
                 return DKey(current, ctor=pl.Path, mark="soft.fail")
             case True:
-                return DKey(current, ctor=pl.Path, mark=DKey.Mark.MULTI) # type: ignore
+                return DKey(current, ctor=pl.Path, mark=DKey.Marks.MULTI) # type: ignore
 
 ##--|
 
