@@ -28,9 +28,8 @@ from jgdv.structs.strang import CodeReference
 
 # ##-- end 1st party imports
 
-from .._interface import DKeyMark_e, KeyMark
-from .._base import DKeyBase
-from .._meta import DKey
+from .._interface import DKeyMark_e
+from .. import DKey
 from ..keys import MultiDKey, NonDKey, SingleDKey
 
 # ##-- types
@@ -44,13 +43,15 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    from jgdv import Maybe, Ident, RxStr, Rx
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    from jgdv import Maybe, Ident, RxStr, Rx
+    from .._interface import KeyMark
 
 # isort: on
 # ##-- end types

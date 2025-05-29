@@ -139,7 +139,7 @@ class MultiDKey(DKey, mark=DKeyMark_e.MULTI, multi=True, core=True):
 
     @override
     def keys(self) -> list[DKey]: # type: ignore[override]
-        return [DKey(x, implicit=True) for x in self.data.meta]
+        return [DKey(x, implicit=True) for x in self.data.meta if bool(x)]
 
     def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
         """ Lift subkeys to expansion instructions """

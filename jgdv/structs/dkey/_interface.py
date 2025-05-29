@@ -105,7 +105,7 @@ ConvParamTooLong        : Final[str]  = "Conversion Parameters For Dkey's Can't 
 ConvParamConflict       : Final[str]  = "Conversion Param Conflict"
 # Enums:
 
-class DKeyMarkAbstract_e(enum.StrEnum):
+class DKeyMarkAbstract_e(StrangAPI.StrangMarkAbstract_e):
 
     @classmethod
     def default(cls) -> Maybe: ...
@@ -325,7 +325,7 @@ class DKey_d(StrangAPI.Strang_d):
         self.format          = kwargs.pop("format", None)
         self.convert         = kwargs.pop("convert", None)
         self.help            = kwargs.pop("help", None)
-        self.max_expansions  = kwargs.pop("max_expansion", None)
+        self.max_expansions  = kwargs.pop("max_exp", None)
         self.multi           = kwargs.pop("multi", False)
 
 ##--| Section Specs
@@ -373,6 +373,8 @@ class Key_p(ExpansionHooks_p, StrangAPI.Strang_p, Protocol):
     _mark          : ClassVar[KeyMark]
     _extra_kwargs  : ClassVar[set[str]]
     _processor     : ClassVar
+    _expander      : ClassVar[Expander_p]
+    data           : DKey_d
 
     @classmethod
     def MarkOf[T:Key_p](cls:type[T]) -> KeyMark: ...  # noqa: N802
@@ -384,12 +386,6 @@ class Key_p(ExpansionHooks_p, StrangAPI.Strang_p, Protocol):
     def expand(self, *sources, rec=False, insist=False, chain:Maybe[list[Key_p]]=None, on_fail=Any, locs:Maybe[Mapping]=None, **kwargs) -> str: ...
 
     def var_name(self) -> str: ...
-
-    @property
-    def data(self) -> DKey_d: ...
-
-    @property
-    def _expander(self) -> Expander_p: ...
 
 @runtime_checkable
 class MultiKey_p(Protocol):

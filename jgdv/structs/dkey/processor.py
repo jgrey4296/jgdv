@@ -66,8 +66,6 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-StrMeta : Final[type] = type(str)
-
 ##--| Body:
 
 class DKeyRegistry:
@@ -94,12 +92,12 @@ class DKeyRegistry:
         match mark:
             case None:
                 raise ValueError(API.NoMark)
-            case str()|DKeyMark_e() as x if multi:
+            case str()|API.DKeyMarkAbstract_e() as x if multi:
                 ctor = self.multi.get(x, None)
                 ctor = ctor or self.single.get(x, None)
-            case str()|DKeyMark_e() as x if x in self.single:
+            case str()|API.DKeyMarkAbstract_e() as x if x in self.single:
                 ctor = self.single.get(x)
-            case str()|DKeyMark_e() as x if x in self.multi:
+            case str()|API.DKeyMarkAbstract_e() as x if x in self.multi:
                 ctor = self.multi.get(x)
 
         if ctor is None:
@@ -125,7 +123,7 @@ class DKeyRegistry:
         match mark:
             case None:
                 raise ValueError(API.RegistryLacksMark, ctor)
-            case DKeyMark_e():
+            case API.DKeyMarkAbstract_e():
                 pass
             case str():
                 pass
@@ -201,6 +199,7 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         force      : Maybe[Ctor[T]]    = kwargs.pop('force', None)
         implicit   : bool              = kwargs.pop("implicit", False)  # is key wrapped? ie: {key}
         insist     : bool              = kwargs.pop("insist", False)    # must produce key, not nullkey
+
         match force, kwargs.pop('mark', None):
             case type(), _:
                 mark = force.MarkOf()
@@ -243,7 +242,7 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
             case _:
                 raise ValueError()
         ##--|
-        assert(bool(text))
+        assert(bool(text)), breakpoint()
         assert(bool(inst_data))
         ctor = self.select_ctor(cls, insist=insist, mark=mark, multi=is_multi, force=force)
         self.registry.validate_init_kwargs(ctor, kwargs)
@@ -311,7 +310,7 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
 
     ##--| Utils
 
-    def discriminate_raw(self, raw_keys:Iterable[API.RawKey_d], kdata:dict, *, mark:Maybe[API.KeyMark]=None, is_multi:bool=False) -> dict:
+    def discriminate_raw(self, raw_keys:Iterable[API.RawKey_d], kdata:dict, *, mark:Maybe[API.KeyMark]=None, is_multi:bool=False) -> dict:  # noqa: ARG002
         """ Take extracted keys of the text,
         and determine features of them, returning a dict,
 
@@ -335,7 +334,9 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
                 if x.is_indirect():
                     data['mark'] = DKeyMark_e.INDIRECT
                 conv_mark = self.registry.convert.get(x.convert, None) # type: ignore[arg-type]
-                if conv_mark and (mark != conv_mark):
+                if mark is not DKeyMark_e.default() and conv_mark and (mark != conv_mark):
+                    breakpoint()
+                    pass
                     raise ValueError(API.MarkConversionConflict, mark, conv_mark)
                 elif conv_mark:
                     data['mark'] = conv_mark
