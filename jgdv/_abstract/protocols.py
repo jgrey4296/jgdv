@@ -56,31 +56,33 @@ logging = logmod.getLogger(__name__)
 class ArtifactStruct_p(Protocol):
     """ Base class for artifacts, for type matching """
 
-    def exists(self, *, data=None) -> bool:  # noqa: ANN001
-        pass
+    def exists(self, *, data=None) -> bool: ...  # noqa: ANN001
 
 @runtime_checkable
 class UpToDate_p(Protocol):
     """ For things (often artifacts) which might need to have actions done if they were created too long ago """
 
-    def is_stale(self, *, other:Any=None) -> bool:  # noqa: ANN401
-        """ Query whether the task's artifacts have become stale and need to be rebuilt"""
-        pass
+    def is_stale(self, *, other:Any=None) -> bool: ...  # noqa: ANN401
+    """ Query whether the task's artifacts have become stale and need to be rebuilt"""
 
 @runtime_checkable
 class StubStruct_p(Protocol):
     """ Base class for stubs, for type matching """
 
-    def to_toml(self) -> str:
-        pass
+    def to_toml(self) -> str: ...
 
 @runtime_checkable
 class SpecStruct_p(Protocol):
     """ Base class for specs, for type matching """
 
     @property
-    def params(self) -> dict|ChainGuard:
-        pass
+    def params(self) -> dict|ChainGuard: ...
+
+    @property
+    def args(self) -> list: ...
+
+    @property
+    def kwargs(self) -> dict: ...
 
 @runtime_checkable
 class TomlStubber_p(Protocol):
@@ -89,37 +91,31 @@ class TomlStubber_p(Protocol):
     """
 
     @classmethod
-    def class_help(cls) -> str:
-        pass
+    def class_help(cls) -> str: ...
 
     @classmethod
-    def stub_class(cls, stub:StubStruct_p) -> None:
-        """
+    def stub_class(cls, stub:StubStruct_p) -> None: ...
+    """
         Specialize a StubStruct_p to describe this class
-        """
-        pass
+    """
 
-    def stub_instance(self, stub:StubStruct_p) -> None:
-        """
-          Specialize a StubStruct_p with the settings of this specific instance
-        """
-        pass
+    def stub_instance(self, stub:StubStruct_p) -> None: ...
+    """
+        Specialize a StubStruct_p with the settings of this specific instance
+    """
 
     @property
-    def short_doc(self) -> str:
-        """ Generate Job Class 1 line help string """
-        pass
+    def short_doc(self) -> str: ...
+    """ Generate Job Class 1 line help string """
 
     @property
-    def doc(self) -> list[str]:
-        pass
+    def doc(self) -> list[str]: ...
 
 @runtime_checkable
 class ActionGrouper_p(Protocol):
     """ For things have multiple named groups of actions """
 
-    def get_group(self, name:str) -> Maybe[list]:
-        pass
+    def get_group(self, name:str) -> Maybe[list]: ...
 
 @runtime_checkable
 class Loader_p(Protocol):
@@ -127,11 +123,9 @@ class Loader_p(Protocol):
     TODO add a type parameter
     """
 
-    def setup(self, extra_config:ChainGuard) -> Self:
-        pass
+    def setup(self, extra_config:ChainGuard) -> Self: ...
 
-    def load(self) -> ChainGuard:
-        pass
+    def load(self) -> ChainGuard: ...
 
 @runtime_checkable
 class Buildable_p(Protocol):
@@ -140,8 +134,7 @@ class Buildable_p(Protocol):
     """
 
     @classmethod
-    def build(cls, *args:Any) -> Self:  # noqa: ANN401
-        pass
+    def build(cls, *args:Any) -> Self: ...  # noqa: ANN401
 
 @runtime_checkable
 class Factory_p[T](Protocol):
@@ -150,34 +143,27 @@ class Factory_p[T](Protocol):
     """
 
     @classmethod
-    def build(cls:Ctor[T], *args:Any, **kwargs:Any) -> T:  # noqa: ANN401
-        pass
+    def build(cls:Ctor[T], *args:Any, **kwargs:Any) -> T: ...  # noqa: ANN401
 
 @runtime_checkable
 class Nameable_p(Protocol):
     """ The core protocol of something use as a name """
 
-    def __hash__(self) -> int:
-        pass
+    def __hash__(self) -> int: ...
 
-    def __eq__(self, other:object) -> bool:
-        pass
+    def __eq__(self, other:object) -> bool: ...
 
-    def __lt__(self, other:Nameable_p) -> bool:
-        pass
+    def __lt__(self, other:Nameable_p) -> bool: ...
 
-    def __contains__(self, other:Nameable_p) -> bool:
-        pass
+    def __contains__(self, other:Nameable_p) -> bool: ...
 
 @runtime_checkable
 class InstantiableSpecification_p(Protocol):
     """ A Specification that can be instantiated further """
 
-    def instantiate_onto(self, data:Maybe[Self]) -> Self:
-        pass
+    def instantiate_onto(self, data:Maybe[Self]) -> Self: ...
 
-    def make(self) -> Self:
-        pass
+    def make(self) -> Self: ...
 
 @runtime_checkable
 class ExecutableTask(Protocol):
@@ -185,73 +171,57 @@ class ExecutableTask(Protocol):
       instead of using their default logic
     """
 
-    def setup(self) -> None:
-        """ """
-        pass
+    def setup(self) -> None: ...
+    """ """
 
-    def expand(self) -> list:
-        """ For expanding a job into tasks """
-        pass
+    def expand(self) -> list: ...
+    """ For expanding a job into tasks """
 
-    def execute(self) -> None:
-        """ For executing a task """
-        pass
+    def execute(self) -> None: ...
+    """ For executing a task """
 
-    def teardown(self) -> None:
-        """ For Cleaning up the task """
-        pass
+    def teardown(self) -> None: ...
+    """ For Cleaning up the task """
 
-    def check_entry(self) -> bool:
-        """ For signifiying whether to expand/execute this object """
-        pass
+    def check_entry(self) -> bool: ...
+    """ For signifiying whether to expand/execute this object """
 
-    def execute_action_group(self, group_name:str) -> enum.Enum|list:
-        """ Optional but recommended """
-        pass
+    def execute_action_group(self, group_name:str) -> enum.Enum|list: ...
+    """ Optional but recommended """
 
-    def execute_action(self) -> None:
-        """ For executing a single action """
-        pass
+    def execute_action(self) -> None: ...
+    """ For executing a single action """
 
-    def current_status(self) -> enum.Enum:
-        pass
+    def current_status(self) -> enum.Enum: ...
 
-    def force_status(self, status:enum.Enum) -> None:
-        pass
+    def force_status(self, status:enum.Enum) -> None: ...
 
-    def current_priority(self) -> int:
-        pass
+    def current_priority(self) -> int: ...
 
-    def decrement_priority(self) -> None:
-        pass
+    def decrement_priority(self) -> None: ...
 
 @runtime_checkable
 class Persistent_p(Protocol):
     """ A Protocol for persisting data """
 
-    def write(self, target:pl.Path) -> None:
-        """ Write this object to the target path """
-        pass
+    def write(self, target:pl.Path) -> None: ...
+    """ Write this object to the target path """
 
-    def read(self, target:pl.Path) -> None:
-        """ Read the target file, creating a new object """
-        pass
+    def read(self, target:pl.Path) -> None: ...
+    """ Read the target file, creating a new object """
 
 @runtime_checkable
 class FailHandler_p(Protocol):
 
-    def handle_failure(self, err:Exception, *args:Any, **kwargs:Any) -> Maybe[Any]:  # noqa: ANN401
-        pass
+    def handle_failure(self, err:Exception, *args:Any, **kwargs:Any) -> Maybe[Any]: ...  # noqa: ANN401
 
 @runtime_checkable
 class Visitor_p(Protocol):
 
-    def visit(self, **kwargs:Any) -> Any:  # noqa: ANN401
-        pass
+    def visit(self, **kwargs:Any) -> Any: ...  # noqa: ANN401
 
 @runtime_checkable
 class DILogger_p(Protocol):
     """ Protocol for classes with a dependency injectable logger """
 
-    def logger(self) -> Logger:
-        pass
+    def logger(self) -> Logger: ...
