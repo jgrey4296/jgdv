@@ -69,7 +69,6 @@ EXTRA_KEY         : Final[str]  = "_extra_"
 NON_DEFAULT_KEY   : Final[str]  = "_non_default_"
 # Body:
 
-@dataclass
 class ParseResult_d:
     __slots__ = ("args", "name", "non_default")
     name        : str
@@ -84,6 +83,7 @@ class ParseResult_d:
     def to_dict(self) -> dict:
         return {"name":self.name, "args":self.args, NON_DEFAULT_KEY:self.non_default}
 ##--|
+
 @runtime_checkable
 class ParamStruct_p(Protocol):
     """ Base class for CLI param specs, for type matching
@@ -96,7 +96,6 @@ class ParamStruct_p(Protocol):
 
     def consume(self, args:list[str], *, offset:int=0) -> Maybe[tuple[dict, int]]:
         pass
-
 
 @runtime_checkable
 class ArgParser_p(Protocol):
@@ -121,7 +120,6 @@ class ParamSource_p(Protocol):
 
     def param_specs(self) -> list[ParamStruct_p]:
         raise NotImplementedError()
-
 
 @runtime_checkable
 class CLIParamProvider_p(Protocol):
