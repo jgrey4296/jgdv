@@ -75,18 +75,10 @@ class DecoratorMeta(ProtoMeta):
     def __call__(cls, *args:Any, **kwargs:Any):  # noqa: N805
         """ When called with a class as the first arg, builds and calls the decorator on it """
         dec : API.Decorator_p
-        match args:
-            case [target, *_] if callable(target):
-                assert(not bool(kwargs))
-                dec = cls.__new__(cls)
-                assert(isinstance(dec, cls))
-                dec.__init__() # type: ignore[misc]
-                return dec(target)
-            case _:
-                dec = cls.__new__(cls)
-                assert(isinstance(dec, cls))
-                dec.__init__(*args, **kwargs) # type: ignore[misc]
-                return dec
+        dec = cls.__new__(cls)
+        assert(isinstance(dec, cls))
+        dec.__init__(*args, **kwargs) # type: ignore[misc]
+        return dec
 
 class _DecAnnotate_m:
     """ Utils for manipulating annotations related to the decorator
