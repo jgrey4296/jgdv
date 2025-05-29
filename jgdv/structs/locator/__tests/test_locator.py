@@ -102,7 +102,7 @@ class TestLocator:
         assert(not bool(simple._data))
         simple.update({"a": "dir::>blah"})
         assert("a" in simple)
-        simple._clear()
+        simple.clear()
         assert("a" not in simple)
 
     @pytest.mark.xfail
