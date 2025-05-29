@@ -167,19 +167,19 @@ class TestRepeatableParam:
             case _:
                 assert(False), x
 
-@pytest.mark.xfail
+@pytest.mark.skip
 class TestChoiceParam:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-@pytest.mark.xfail
+@pytest.mark.skip
 class TestEntryParam:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-@pytest.mark.xfail
+@pytest.mark.skip
 class TestConstrainedParam:
 
     def test_sanity(self):

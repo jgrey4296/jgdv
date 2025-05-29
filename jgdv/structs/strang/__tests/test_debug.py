@@ -62,7 +62,7 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-@pytest.mark.xfail
+@pytest.mark.skip
 class TestStrangDebug:
 
     def test_sanity(self):

@@ -227,6 +227,9 @@ class TestDKeyDecoratorExpansion:
 
 
     def test_redirects_expansion_doesnt_recurse(self):
+        """
+        other_ -> {blah} -X-> bloo
+        """
 
         @DKeyed.redirects("other_")
         def simple(spec, state, _other):

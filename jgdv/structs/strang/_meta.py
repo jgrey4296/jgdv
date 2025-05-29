@@ -84,11 +84,11 @@ class StrangMeta(StrMeta):
 
         try:
             text, inst_data, post_data, ctor = processor.pre_process(cls,
-                                                     text,
-                                                     *args,
-                                                     strict=kwargs.pop("strict", False),
-                                                     **kwargs,
-                                                     )
+                                                                     text,
+                                                                     *args,
+                                                                     strict=kwargs.pop("strict", False),
+                                                                     **kwargs,
+                                                                     )
             ctor = ctor or cls
             stage  = "__new__"
             obj : Strang_p = ctor.__new__(ctor, text)
