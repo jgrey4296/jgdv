@@ -35,6 +35,9 @@ class TestPathy:
         assert(not issubclass(pl.Path, Pathy))
         assert(not issubclass(Pathy[Pure], pl.Path))
 
+    def test_annotation(self):
+        assert(Pathy[Pure].pathy_type == Pure)
+
     def test_pathy_build(self):
         val : Pathy = Pathy("a/test")
         assert(isinstance(val, pl.PurePath))

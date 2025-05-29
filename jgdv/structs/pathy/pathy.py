@@ -115,7 +115,7 @@ class _PathyTime_m:
                 return False
 
 ##--|
-class Pathy(SubRegistry_m, annotate_to="pathy_type"):
+class Pathy(SubRegistry_m, _annotate_to="pathy_type"):
     """
     The Main Accessor to Pathy.
     You don't build Pathy's directly eg: Pathy("a/loc/test.txt"),
@@ -152,7 +152,7 @@ class Pathy(SubRegistry_m, annotate_to="pathy_type"):
 
     def __new__(cls, *args, **kwargs) -> Pathy:
         """ When instantiating a Pathy, get the right subtype """
-        use_cls = cls._maybe_subclass_form() or PathyPure
+        use_cls = cls.maybe_subclass() or PathyPure
         if use_cls is Pathy:
             use_cls = PathyPure
 
@@ -160,7 +160,7 @@ class Pathy(SubRegistry_m, annotate_to="pathy_type"):
         obj.__init__(*args, **kwargs)
         return obj
 
-    def __init__(self, *paths:str|pl.Path, key=None, **kwargs):
+    def __init__(self, *paths:str|pl.Path, key:Maybe[str]=None, **kwargs:Any) -> None:
         super().__init__(*paths)
         self._meta        = {}
         self._key         = key

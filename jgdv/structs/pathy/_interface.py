@@ -65,3 +65,14 @@ File = NewType("File", None)
 Dir  = NewType("Dir", None)
 Wild = NewType("Wild", None)
 # Body:
+
+class Pathy_p(Protocol):
+
+    _meta  : dict
+    _key   : Maybe[str]
+
+    @staticmethod
+    def cwd() -> Pathy_p: ...
+
+    @staticmethod
+    def home() -> Pathy_p: ...
