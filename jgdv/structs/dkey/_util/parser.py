@@ -84,8 +84,5 @@ class DKeyParser:
         except ValueError:
             yield self.make_param(format_string)
 
-    def make_param(self, prefix:str, key:Maybe[str]=None, format:Maybe[str]=None, conv:Maybe[str]=None) -> API.RawKey_d:  # noqa: A002
-        return API.RawKey_d(prefix=prefix,
-                            key=key       or "",
-                            format=format or "",
-                            conv=conv     or "")
+    def make_param(self, prefix:str, key:Maybe[str]=None, format:Maybe[str]=None, convert:Maybe[str]=None) -> API.RawKey_d:  # noqa: A002
+        return API.RawKey_d(prefix=prefix, key=key, format=format, convert=convert)

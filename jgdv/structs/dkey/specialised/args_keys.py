@@ -29,8 +29,7 @@ from jgdv.structs.strang import CodeReference
 # ##-- end 1st party imports
 
 from .._interface import DKeyMark_e
-from .._base import DKeyBase
-from .._meta import DKey
+from .. import DKey
 from ..keys import MultiDKey, NonDKey, SingleDKey
 
 # ##-- types
@@ -61,7 +60,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 
-class ArgsDKey(SingleDKey[Literal[DKeyMark_e.ARGS]]):
+class ArgsDKey(SingleDKey, mark=DKeyMark_e.ARGS):
     """ A Key representing the action spec's args """
 
     def __init__(self, *args, **kwargs) -> None:
@@ -79,7 +78,7 @@ class ArgsDKey(SingleDKey[Literal[DKeyMark_e.ARGS]]):
         else:
             return []
 
-class KwargsDKey(SingleDKey[DKeyMark_e.KWARGS]):
+class KwargsDKey(SingleDKey, mark=DKeyMark_e.KWARGS):
     """ A Key representing all of an action spec's kwargs """
 
     def __init__(self, *args, **kwargs) -> None:
@@ -87,7 +86,7 @@ class KwargsDKey(SingleDKey[DKeyMark_e.KWARGS]):
         self._expansion_type  = dict
         self._typecheck = dict
 
-    def expand(self, *sources, fallback=None, **kwargs) -> dict:
+    def expand(self, *sources, fallback:Maybe=None, **kwargs) -> dict:
         """ kwargs are easy, just get the first specstruct's kwargs value """
         for source in sources:
             if not isinstance(source, SpecStruct_p):

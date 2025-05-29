@@ -94,8 +94,6 @@ class DKeyRegistry:
         match mark:
             case None:
                 raise ValueError(API.NoMark)
-            case DKeyMark_e() as x if x is DKeyMark_e.MULTI and not multi:
-                raise ValueError(API.MarkConflictsWithMulti)
             case str()|DKeyMark_e() as x if multi:
                 ctor = self.multi.get(x, None)
                 ctor = ctor or self.single.get(x, None)
@@ -304,8 +302,9 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         raw : list[API.RawKey_d] = []
         if isinstance(obj, API.MultiKey_p):
             raw = obj.data.raw
+
         for x in raw:
-            key_meta.append(x.key)
+            key_meta.append(x.joined())
         else:
             obj.data.meta = tuple(key_meta)
             return None
@@ -335,7 +334,7 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
                 data['text'] = x.direct()
                 if x.is_indirect():
                     data['mark'] = DKeyMark_e.INDIRECT
-                conv_mark = self.registry.convert.get(x.conv, None) # type: ignore[arg-type]
+                conv_mark = self.registry.convert.get(x.convert, None) # type: ignore[arg-type]
                 if conv_mark and (mark != conv_mark):
                     raise ValueError(API.MarkConversionConflict, mark, conv_mark)
                 elif conv_mark:

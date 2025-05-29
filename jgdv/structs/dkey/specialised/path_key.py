@@ -28,8 +28,7 @@ from jgdv.structs.strang import CodeReference
 # ##-- end 1st party imports
 
 from .._interface import DKeyMark_e, ExpInst_d
-from .._base import DKeyBase
-from .._meta import DKey
+from .. import DKey
 from ..keys import MultiDKey, NonDKey, SingleDKey
 
 # ##-- types
@@ -63,15 +62,16 @@ class PathDKey(SingleDKey[DKeyMark_e.PATH], conv="p"):
     """
     A Simple key that always expands to a path, and is then normalised
     """
+    __slots__ = ()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._conv_params     = "p"
-        self._expansion_type  = pl.Path
-        self._typecheck       = pl.Path
+        self.data.convert         = "p"
+        self.data.expansion_type  = pl.Path
+        self.data.typecheck       = pl.Path
 
 
-    def exp_final_h(self, val:ExpInst_d, opts) -> Maybe[ExpInst_d]:
-        return ExpInst_d(val=pl.Path(val.val).expanduser().resolve(),
+    def exp_final_h(self, inst:ExpInst_d, opts) -> Maybe[ExpInst_d]:
+        return ExpInst_d(value=pl.Path(inst.value).expanduser().resolve(),
                          literal=True
                          )

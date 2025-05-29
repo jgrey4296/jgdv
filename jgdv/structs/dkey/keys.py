@@ -22,8 +22,8 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from .dkey import DKey
-from ._util.expander import Expander
 from ._interface import INDIRECT_SUFFIX, DKeyMark_e, RAWKEY_ID, ExpInst_d
+from . import _interface as API # noqa: N812
 # ##-- end 1st party imports
 
 # ##-- types
@@ -48,8 +48,6 @@ if TYPE_CHECKING:
    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
    from jgdv._abstract.protocols import SpecStruct_p
 
-   from . import _interface as API # noqa: N812
-
 # isort: on
 # ##-- end types
 
@@ -67,6 +65,9 @@ class SingleDKey(DKey, mark=DKeyMark_e.FREE, core=True):
     def __init__(self, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         super().__init__(*args, **kwargs)
         match self.data.raw:
+            case [x] if self.data.convert is None:
+                self.data.convert  = x.convert
+                self.data.format   = x.format
             case [_]:
                 pass
             case None | []:
@@ -75,8 +76,6 @@ class SingleDKey(DKey, mark=DKeyMark_e.FREE, core=True):
             case [*xs]:
                 msg = "A Single Key got multiple raw key data"
                 raise ValueError(msg, xs)
-
-
 
     def __format__(self, spec:str) -> str:
         """
@@ -132,21 +131,21 @@ class MultiDKey(DKey, mark=DKeyMark_e.MULTI, multi=True, core=True):
     def __str__(self) -> str:
         return self[:]
 
+    def __contains__(self, other:object) -> bool:
+         return other in self.keys()
+
+    def _multi(self) -> Literal[True]:
+        return True
+
     @override
     def keys(self) -> list[DKey]: # type: ignore[override]
         return [DKey(x, implicit=True) for x in self.data.meta]
-
-    def _multi(self) -> Never:
-        raise NotImplementedError()
-
-    def __contains__(self, other:object) -> bool:
-         return other in self.keys()
 
     def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
         """ Lift subkeys to expansion instructions """
         targets = []
         for key in self.keys():
-            targets.append([ExpInst_d(val=key, fallback=None)])
+            targets.append([ExpInst_d(value=key, fallback=None)])
         else:
             return targets
 
@@ -159,10 +158,12 @@ class MultiDKey(DKey, mark=DKeyMark_e.MULTI, multi=True, core=True):
             match x:
                 case ExpInst_d(value=IndirectDKey() as k):
                     flat.append(f"{k:wi}")
+                case ExpInst_d(value=API.Key_p() as k):
+                    flat.append(k[:])
                 case ExpInst_d(value=x):
                     flat.append(str(x))
         else:
-            return ExpInst_d(val=self.anon.format(*flat), literal=True)
+            return ExpInst_d(value=self.anon.format(*flat), literal=True)
 
 class NonDKey(DKey, mark=DKeyMark_e.NULL, core=True):
     """ Just a string, not a key.
@@ -186,12 +187,12 @@ class NonDKey(DKey, mark=DKeyMark_e.NULL, core=True):
 
     def expand(self, *args, **kwargs) -> Maybe:  # noqa: ANN002, ANN003, ARG002
         """ A Non-key just needs to be coerced into the correct str format """
-        val = ExpInst_d(val=str(self))
+        val = ExpInst_d(value=self[:])
         match self._expander.coerce_result(val, kwargs, source=self):
             case None if (fallback:=kwargs.get("fallback")) is not None:
-                return ExpInst_d(val=fallback, literal=True)
+                return ExpInst_d(value=fallback, literal=True)
             case None:
-                return self._fallback
+                return self.data.fallback
             case ExpInst_d() as x:
                 return x.value
             case x:
@@ -222,13 +223,20 @@ class IndirectDKey(SingleDKey, mark=DKeyMark_e.INDIRECT, conv="I", core=True):
             case _:
                 return super().__eq__(other)
 
+    def _indirect(self) -> Literal[True]:
+        return True
+
     def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
         """ Lookup the indirect version, the direct version, then use the fallback """
-        fallback = opts.get("fallback", self._fallback) or self
+        match opts.get("fallback", self.data.fallback):
+            case x if x is Self:
+                fallback = self
+            case None:
+                fallback = self
+            case x:
+                fallback = x
         return [[
-            ExpInst_d(val=f"{self:i}", lift=True),
-            ExpInst_d(val=f"{self:d}", convert=False),
-            ExpInst_d(val=fallback, literal=True, convert=False),
+            ExpInst_d(value=f"{self:i}", lift=True),
+            ExpInst_d(value=f"{self:d}", convert=False),
+            ExpInst_d(value=fallback, literal=True, convert=False),
         ]]
-
-

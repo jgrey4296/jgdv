@@ -27,7 +27,7 @@ from weakref import ref
 from jgdv import Proto, Mixin
 from jgdv.mixins.annotate import SubAnnotate_m
 from jgdv.structs.strang import Strang
-from ._util.expander import Expander
+from ._util.expander import DKeyExpander
 from .processor import DKeyProcessor
 
 # ##-- types
@@ -90,8 +90,6 @@ class DKey(Strang):
       Base class for implementing actual DKeys.
       adds:
       `_mark`
-      `_expansion_type`
-      `_typecheck`
 
       plus some util methods
 
@@ -105,7 +103,7 @@ class DKey(Strang):
     _annotate_to    : ClassVar[str]                     = "_mark"
     _processor      : ClassVar                          = DKeyProcessor()
     _sections       : ClassVar                          = API.DKEY_SECTIONS
-    _expander       : ClassVar[Expander]                = Expander()
+    _expander       : ClassVar[DKeyExpander]            = DKeyExpander()
     _typevar        : ClassVar                          = None
     _mark           : ClassVar                          = "dkey"
 
@@ -130,11 +128,13 @@ class DKey(Strang):
         assert(isinstance(cls._processor, DKeyProcessor))
         logging.debug("Registering DKey Subclass: %s : %s", cls, mark)
         cls._mark = mark or cls._mark
+        cls._expander.set_ctor(DKey)
         match cls._mark:
             case str() | type() | API.DKeyMarkAbstract_e() as x:
                 cls._processor.register_key_type(cls, x, convert=conv, multi=multi, core=core)
             case _:
                 logging.info("No Mark to Register Key Subtype: %s", cls)
+
 
     @classmethod
     def MarkOf[T:API.Key_p](cls) -> API.KeyMark: # noqa: N802
@@ -187,7 +187,7 @@ class DKey(Strang):
         kwargs.setdefault("limit", self.data.max_expansions)
         assert(isinstance(self, API.Key_p))
         match self._expander.expand(self, *args, **kwargs):
-            case API.ExpInst_d(val=val, literal=True):
+            case API.ExpInst_d(value=val, literal=True):
                 return val
             case _:
                 return None

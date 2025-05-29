@@ -29,8 +29,7 @@ from jgdv.structs.strang import CodeReference
 # ##-- end 1st party imports
 
 from .._interface import DKeyMark_e
-from .._base import DKeyBase
-from .._meta import DKey
+from .. import DKey
 from ..keys import MultiDKey, NonDKey, SingleDKey
 
 # ##-- types
@@ -63,8 +62,9 @@ class ImportDKey(SingleDKey[DKeyMark_e.CODE], conv="c"):
     """
       Subclass for dkey's which expand to CodeReferences
     """
+    __slots__ = ()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._expansion_type  = CodeReference
-        self._typecheck       = CodeReference
+        self.data.expansion_type = CodeReference
+        self.data.typecheck = CodeReference
