@@ -1250,6 +1250,7 @@ class TestStrang_Subclassing:
             )
 
         assert(issubclass(ThreeSections, Strang))
+        assert(isinstance(ThreeSections, API.Strang_p))
         match ThreeSections("a.b.c::d/e/f:|:g"):
             case ThreeSections() as val:
                 assert(not hasattr(val, "__dict__"))
@@ -1370,6 +1371,40 @@ class TestStrang_Subclassing:
         obj = Strang("group::tail.a.b.c")
         assert(isinstance(obj, Strang))
         assert(not isinstance(obj, StrangSub))
+
+
+    def test_subclass_matches_protocol(self) -> None:
+
+        class StrangSub(Strang):
+            __slots__ = ()
+            _sections : ClassVar = API.Sections_d(
+                # name, case, end, types, marks, required
+                ("first", ".", ":|:",  str, None, True),
+                ("third", ".", None,   str, None, True),
+            )
+
+        match StrangSub("group:|:tail.a.b.c"):
+            case API.Strang_p():
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_subclass_matches_strang(self) -> None:
+
+        class StrangSub(Strang):
+            __slots__ = ()
+            _sections : ClassVar = API.Sections_d(
+                # name, case, end, types, marks, required
+                ("first", ".", ":|:",  str, None, True),
+                ("third", ".", None,   str, None, True),
+            )
+
+        match StrangSub("group:|:tail.a.b.c"):
+            case Strang():
+                assert(True)
+            case x:
+                assert(False), x
 
 class TestStrang_Args:
 

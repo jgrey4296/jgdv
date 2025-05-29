@@ -22,3 +22,4 @@ for easily importing code::
 from ._interface import Strang_p, Importable_p
 from .strang import Strang
 from .code_ref import CodeReference
+from .errors import StrangError

@@ -56,7 +56,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from ._interface import Strang_i
+    from ._interface import Strang_p
 
 # isort: on
 # ##-- end types
@@ -107,14 +107,14 @@ class StrangFormatter(string.Formatter):
             case _:
                 raise ValueError(errors.FormatterConversionUnknownSpec.format(spec=conversion))
 
-    def expanded_str(self, value:Strang_i, *, stop:Maybe[int]=None) -> str:
+    def expanded_str(self, value:Strang_p, *, stop:Maybe[int]=None) -> str:
         """ Create a str with generative marks replaced with generated values
 
         eg: a.b.c.<gen-uuid> -> a.b.c.<UUID:......>
         """
         raise NotImplementedError()
 
-    def format_subval(self, value:Strang_i, val:str, *, no_expansion:bool=False) -> str:
+    def format_subval(self, value:Strang_p, val:str, *, no_expansion:bool=False) -> str:
         match val:
             case str():
                 return val

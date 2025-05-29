@@ -67,7 +67,7 @@ logging.disabled = False
 
 ##--|
 
-@Proto(API.Strang_i, mod_mro=False)
+@Proto(API.Strang_p, mod_mro=False)
 class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
     """ A Structured String Baseclass.
 
@@ -109,7 +109,7 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         return cls._sections[arg]
 
     @classmethod
-    def __init_subclass__[T:API.Strang_i](cls:type[T], *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
+    def __init_subclass__[T:API.Strang_p](cls:type[T], *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
         StrangMeta.register(cls)
 
     ##--|
@@ -162,7 +162,7 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
     def __hash__(self) -> int:
         return str.__hash__(str(self))
 
-    def __lt__(self:API.Strang_i, other:object) -> bool:
+    def __lt__(self:API.Strang_p, other:object) -> bool:
         match other:
             case API.Strang_p() | str() as x if not len(self) < len(x):
                 logging.debug("Length mismatch")
@@ -186,7 +186,7 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
 
         return True
 
-    def __le__(self:API.Strang_i, other:object) -> bool:
+    def __le__(self:API.Strang_p, other:object) -> bool:
         match other:
             case API.Strang_p() as x:
                 return hash(self) == hash(other) or (self < x) # type: ignore
@@ -272,6 +272,8 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
                 return x
             case str() as k: # whole section by name
                 return self.section(k).idx, None
+            case [slice(), slice()] if not bool(self.data.words):
+                return self.data.sections[0]
             case [slice() as secs, slice(start=None, stop=None, step=None)]: # type: ignore[misc]
                 sec_it = itz.islice(self.sections(), secs.start, secs.stop, secs.step)
                 return sec_it
@@ -303,7 +305,7 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
             case _:
                 raise AttributeError(val)
 
-    def __contains__(self:API.Strang_i, other:object) -> bool:
+    def __contains__(self:API.Strang_p, other:object) -> bool:
         """ test for conceptual containment of names
         other(a.b.c) ∈ self(a.b) ?
         ie: self < other
@@ -394,7 +396,7 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
 
         try:
             val = self.data.meta[idx] # type: ignore[index]
-        except ValueError:
+        except (ValueError, IndexError):
             return self[sec, word]
         else:
             match val:
@@ -416,6 +418,8 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         section  = self.section(idx)
         sec_case = section.case or ""
         count    = len(self.data.sec_words[section.idx])
+        if not bool(self.data.words):
+            return
         if count == 0:
             return
 
@@ -476,7 +480,7 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         else:
             return self.__class__(*words)
 
-    def pop(self, *, top:bool=True)-> API.Strang_i:
+    def pop(self, *, top:bool=True)-> API.Strang_p:
         """
         Strip off one marker's worth of the name, or to the top marker.
         eg:
@@ -492,9 +496,9 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
                 case False:
                     next_mark = self.rindex(mark)
         except ValueError:
-            return cast("API.Strang_i", self)
+            return cast("API.Strang_p", self)
         else:
-            return cast("API.Strang_i", Strang(self[:next_mark]))
+            return cast("API.Strang_p", Strang(self[:next_mark]))
 
     def mark(self, mark:str|API.StrangMarkAbstract_e) -> Self:
         """ Add a given mark if it is last section appropriate  """

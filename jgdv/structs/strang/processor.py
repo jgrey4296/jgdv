@@ -53,7 +53,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from ._interface import Strang_i
+    from ._interface import Strang_p
     from jgdv._abstract.pre_processable import PreProcessResult
 ##--|
 
@@ -73,7 +73,7 @@ def name_to_hook(val:str) -> str:
 
 ##--| Body
 
-class StrangBasicProcessor[T:Strang_i](PreProcessor_p):
+class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
     """ A processor for basic strangs,
     the instance is assigned into Strang._processor
 

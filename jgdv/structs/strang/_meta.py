@@ -49,7 +49,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from ._interface import Strang_i
+    from ._interface import Strang_p
     from jgdv._abstract.pre_processable import PreProcessor_p, PreProcessResult, InstanceData, PostInstanceData
 ##--|
 
@@ -71,13 +71,13 @@ class StrangMeta(StrMeta):
     to turn it into a strang
     """
 
-    _forms : ClassVar[list[type[Strang_i]]] = []
+    _forms : ClassVar[list[type[Strang_p]]] = []
 
     @staticmethod
-    def register(new_cls:type[Strang_i]) -> None:
+    def register(new_cls:type[Strang_p]) -> None:
         StrangMeta._forms.append(new_cls)
 
-    def __call__[T:Strang_i](cls:type[T], text:str|pl.Path, *args:Any, **kwargs:Any) -> Strang_i:  # noqa: ANN401, N805
+    def __call__[T:Strang_p](cls:type[T], text:str|pl.Path, *args:Any, **kwargs:Any) -> Strang_p:  # noqa: ANN401, N805
         """ Overrides normal str creation to allow passing args to init """
         processor  : PreProcessor_p  = cls._processor
         stage      : str             = "Pre-Process"
@@ -91,7 +91,7 @@ class StrangMeta(StrMeta):
                                                      )
             ctor = ctor or cls
             stage  = "__new__"
-            obj : Strang_i = ctor.__new__(ctor, text)
+            obj : Strang_p = ctor.__new__(ctor, text)
             stage  = "__init__"
             obj.__init__(*args, **kwargs, **inst_data)
             stage  = "Process"

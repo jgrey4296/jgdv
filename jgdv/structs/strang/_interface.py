@@ -314,9 +314,9 @@ class StrangUUIDs_p(Protocol):
 
 class StrangMod_p(Protocol):
 
-    def pop(self, *, top:bool=False) -> Strang_i: ...
+    def pop(self, *, top:bool=False) -> Strang_p: ...
 
-    def push(self, *vals:PushVal) -> Strang_i: ...
+    def push(self, *vals:PushVal) -> Strang_p: ...
 
 class StrangFormatter_p(Protocol):
     """ A string.Formatter with some Strang-specific methods """
@@ -327,11 +327,16 @@ class StrangFormatter_p(Protocol):
 
     def convert_field(self, value:Any, conversion:Any) -> str: ...  # noqa: ANN401
 
-    def expanded_str(self, data:Strang_i, *, stop:Maybe[int]=None) -> str: ...
+    def expanded_str(self, data:Strang_p, *, stop:Maybe[int]=None) -> str: ...
 
 @runtime_checkable
 class Strang_p(StrangUUIDs_p, StrangMod_p, String_p, Protocol):
     """  """
+    _processor  : ClassVar[PreProcessor_p]
+    _formatter  : ClassVar[string.Formatter]
+    _sections   : ClassVar[Sections_d]
+    _typevar    : ClassVar[Maybe[type]]
+    data        : Strang_d
 
     @classmethod
     def sections(cls) -> Sections_d: ...
@@ -359,13 +364,3 @@ class Strang_p(StrangUUIDs_p, StrangMod_p, String_p, Protocol):
     def get(self, *args:SectionIndex|WordIndex) -> Any: ...  # noqa: ANN401
 
     def uuid(self) -> Maybe[UUID]: ...
-
-##--| Interfaces
-
-class Strang_i(Strang_p, Protocol):
-    _processor  : ClassVar[PreProcessor_p]
-    _formatter  : ClassVar[string.Formatter]
-    _sections   : ClassVar[Sections_d]
-    _typevar    : ClassVar[Maybe[type]]
-    data        : Strang_d
-    meta        : dict

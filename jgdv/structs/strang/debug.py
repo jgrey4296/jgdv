@@ -2,7 +2,7 @@
 """
 
 """
-# ruff: noqa:
+# ruff: noqa: PLW0211, ARG004
 
 # Imports:
 from __future__ import annotations
@@ -20,7 +20,7 @@ import collections
 import contextlib
 import hashlib
 from copy import deepcopy
-from uuid import UUID, uuid1
+from uuid import uuid1
 from weakref import ref
 import atexit # for @atexit.register
 import faulthandler
@@ -43,6 +43,7 @@ from typing import no_type_check, final, override, overload
 from typing import Protocol
 
 if typing.TYPE_CHECKING:
+    from uuid import UUID
     from . import _interface as API # noqa: N812
 
     from typing import Final, ClassVar, Any, Self
@@ -67,9 +68,9 @@ logging = logmod.getLogger(__name__)
 class StrangDebug:
 
     @staticmethod
-    def debug(cls:type[API.Strang_i], text:str) -> str:
+    def debug(cls:type[API.Strang_p], text:str) -> str:
         """ Return a str of details about a str -> strang """
-        hooks         = list(x for x in dir(cls) if x.endswith("_h"))
+        hooks         = [x for x in dir(cls) if x.endswith("_h")]
         abs_sections  = StrangDebug._describe_section_specs(cls._sections)
         ang           = cls(text)
         sections      = StrangDebug._describe_text(cls, ang)
@@ -86,7 +87,7 @@ class StrangDebug:
             *sections,
             *raw_data,
             "----",
-            f"Result:",
+            "Result:",
             f"type(ang)  = {type(ang)}",
             f"str(ang)   = {ang:s}",
             f"ang[:]     = {ang[:]}",
@@ -101,7 +102,7 @@ class StrangDebug:
         return "\n".join(result)
 
     @staticmethod
-    def _describe_pre_process_results(cls:type[API.Strang_i], text:str) -> list[str]:
+    def _describe_pre_process_results(cls:type[API.Strang_p], text:str) -> list[str]:
         preproc  = cls._processor.pre_process(cls, text)
         result   = [
             "---- Pre-Process:",
@@ -111,9 +112,9 @@ class StrangDebug:
         return result
 
     @staticmethod
-    def _describe_process_results(cls:type[API.Strang_i], actual:API.Strang_i) -> list[str]:
-        section_slices  = list((x.start, x.stop) for x in actual.data.sections)
-        word_slices     =  list((x.start, x.stop) for x in actual.data.words)
+    def _describe_process_results(cls:type[API.Strang_p], actual:API.Strang_p) -> list[str]:
+        section_slices  = [(x.start, x.stop) for x in actual.data.sections]
+        word_slices     = [(x.start, x.stop) for x in actual.data.words]
         result          = [
             "---- Process: ",
             f"Sections:   {section_slices}",
@@ -125,7 +126,7 @@ class StrangDebug:
         return result
 
     @staticmethod
-    def _describe_post_process_results(cls:type[API.Strang_i], actual:API.Strang_i) -> list[str]:
+    def _describe_post_process_results(cls:type[API.Strang_p], actual:API.Strang_p) -> list[str]:
         result = [
             "---- Post-Process:",
 
@@ -143,7 +144,7 @@ class StrangDebug:
         return result
 
     @staticmethod
-    def _describe_text(cls:type[API.Strang_i], actual:API.Strang_i) -> list[str]:
+    def _describe_text(cls:type[API.Strang_p], actual:API.Strang_p) -> list[str]:
         result = [
             "---- Section Text:",
             "Format: ..-(index[sec], index[word]) : FlatIndex : word : (meta, type[meta])",
@@ -162,10 +163,11 @@ class StrangDebug:
 
                 result.append(f"..- ({i},{j}) : {idx} : {word} : {meta}")
         else:
-            args_text = actual[actual.data.args_start:]
+            args_text       = actual[actual.data.args_start:]
+            arg_len  : int  = len(actual.data.args) if actual.data.args else 0
             result += [
                 "",
-                f"- args ({len(actual.data.args)}). Position: {actual.data.args_start}:",
+                f"- args ({arg_len}). Position: {actual.data.args_start}:",
                 f"..- {args_text}",
                 "",
             ]
@@ -173,7 +175,7 @@ class StrangDebug:
 
 
     @staticmethod
-    def _describe_raw_data(cls:type[API.Strang_i], actual:API.Strang_i) -> list[str]:
+    def _describe_raw_data(cls:type[API.Strang_p], actual:API.Strang_p) -> list[str]:
         result = [
             "---- Raw Data:",
             f"Meta:    {actual.data.meta}",
@@ -183,14 +185,8 @@ class StrangDebug:
         return result
 
     @staticmethod
-    def diff_uuids(self, other:UUID) -> list[str]:
-        this_ing : str
-        that_ing : str
-        match [x for x in self.meta if isinstance(x, UUID)]:
-            case []:
-                raise ValueError(errors.NoUUIDToDiff)
-            case [*xs]:
-                pass
-
-        # result = [y if x==y else "_" for x,y in zip(this_ing, that_ing, strict=True)]
-        return []
+    def diff_uuids(this:UUID, that:UUID) -> str:
+        this_ing : str = str(this)
+        that_ing : str = str(that)
+        result = [y if x==y else "_" for x,y in zip(this_ing, that_ing, strict=True)]
+        return "".join(result)
