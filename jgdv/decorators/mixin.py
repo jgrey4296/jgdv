@@ -82,7 +82,8 @@ class Mixin(MonotonicDec):
     ('None' is used to separate pre and post mixins)
 """
 
-    needs_args = True
+    __builder  : ClassVar[Subclasser]  = Subclasser()
+    needs_args                         = True
 
     def __init__(self, *mixins:Maybe[type], allow_inheritance:bool=False, silent:bool=False) -> None:
         super().__init__()
@@ -134,10 +135,11 @@ class Mixin(MonotonicDec):
                 pass
         match self._silent:
             case False:
-                new_name  = Subclasser.decorate_name(cls, self._name_mod)
+                new_name  = self.__builder.decorate_name(cls, self._name_mod)
             case True:
                 new_name = cls.__name__
-        mixed     = Subclasser.make_subclass(new_name, cls, mro=new_mro)
+
+        mixed     = self.__builder.make_subclass(new_name, cls, mro=new_mro)
         self.annotate_decorable(mixed)
         return mixed
 

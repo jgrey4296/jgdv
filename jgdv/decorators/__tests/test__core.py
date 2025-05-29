@@ -2,6 +2,7 @@
 """
 
 """
+# ruff: noqa: ANN202, ANN001, B011, ANN204, ANN002, ANN003
 # Imports:
 from __future__ import annotations
 
@@ -23,7 +24,7 @@ import pytest
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
-from .. import _interface as API
+from .. import _interface as API  # noqa: N812
 from .._core import (
     Decorator,
     MonotonicDec,
@@ -85,7 +86,7 @@ class _Utils:
 class TestDFormDiscrimination(_Utils):
 
     def test_sanity(self):
-        assert(True is not False)
+        assert(True is not False) # noqa: PLR0133
 
     def test_is_fn(self, dec, a_fn):
         match dec._discrim_form(a_fn):
@@ -128,26 +129,26 @@ class TestDecorator(_Utils):
     def test_basic_init(self, dec):
         mark = f"{API.ANNOTATIONS_PREFIX}:{dec.__class__.__name__}"
         data = f"{API.ANNOTATIONS_PREFIX}:{API.DATA_SUFFIX}"
-        assert(dec._mark_key == mark)
-        assert(dec._data_key == data)
+        assert(dec.mark_key() == mark)
+        assert(dec.data_key() == data)
 
     @pytest.mark.parametrize("name", ["blah", "bloo", "blee"])
     def test_custom_prefix(self, name):
         dec = Decorator(prefix=name)
-        assert(dec._mark_key == f"{name}:{dec.__class__.__name__}")
-        assert(dec._data_key == f"{name}:{API.DATA_SUFFIX}")
+        assert(dec.mark_key() == f"{name}:{dec.__class__.__name__}")
+        assert(dec.data_key() == f"{name}:{API.DATA_SUFFIX}")
 
     @pytest.mark.parametrize("name", ["blah", "bloo", "blee"])
     def test_custom_mark(self, name):
         dec = Decorator(mark=name)
-        assert(dec._mark_key == f"{API.ANNOTATIONS_PREFIX}:{name}")
-        assert(dec._data_key == f"{API.ANNOTATIONS_PREFIX}:{API.DATA_SUFFIX}")
+        assert(dec.mark_key() == f"{API.ANNOTATIONS_PREFIX}:{name}")
+        assert(dec.data_key() == f"{API.ANNOTATIONS_PREFIX}:{API.DATA_SUFFIX}")
 
     @pytest.mark.parametrize("name", ["blah", "bloo", "blee"])
     def test_custom_data(self, name):
         dec = Decorator(data=name)
-        assert(dec._mark_key == f"{API.ANNOTATIONS_PREFIX}:{dec.__class__.__name__}")
-        assert(dec._data_key == f"{API.ANNOTATIONS_PREFIX}:{name}")
+        assert(dec.mark_key() == f"{API.ANNOTATIONS_PREFIX}:{dec.__class__.__name__}")
+        assert(dec.data_key() == f"{API.ANNOTATIONS_PREFIX}:{name}")
 
 
     def test_decorating_without_instantiation(self):
@@ -164,7 +165,7 @@ class TestDecorator(_Utils):
 
                 return simple_wrapped
 
-        @SimpleDec
+        @SimpleDec()
         def test_fn():
             return [1]
 
@@ -201,8 +202,8 @@ class TestMarking(_Utils):
         assert(not dec.is_marked(a_fn))
         dec.apply_mark(a_fn)
         assert(dec.is_marked(a_fn))
-        assert(dec._mark_key in a_fn.__dict__)
-        assert(dec._data_key not in a_fn.__dict__)
+        assert(dec._mark_key in a_fn.__annotations__)
+        assert(dec._data_key not in a_fn.__annotations__)
 
     def test_mark_method(self, a_class, dec):
         assert(not dec.is_marked(a_class))
@@ -346,7 +347,6 @@ class TestIdempotent(_Utils):
         assert(True is not False) # noqa: PLR0133
 
     def test_mark_of_class_persists_to_instances(self, idec):
-
         class Basic:
 
             @idec
@@ -390,7 +390,7 @@ class TestMonotonic(_Utils):
         instance = Basic()
         assert(mdec.is_marked(Basic.simple))
         assert(mdec.is_marked(instance.simple))
-        assert(mdec._mark_key in Basic.simple.__dict__)
+        assert(mdec._mark_key in Basic.simple.__annotations__)
 
     def test_fn_retains_correct_type(self):
 
@@ -473,16 +473,15 @@ class TestClassDecoration(_Utils):
 
     def test_add_new_method(self):
         """ Modify the decorated class"""
-
         class ExDecorator(IdempotentDec):
 
             def bmethod(self, val):
                 return val + self._val
 
-            def _wrap_class_h(self, target:cls):
+            def _wrap_class_h(self, target:type):
                 # Gets the unbound method and binds it to the target
                 setattr(target, "bmethod", self.__class__.bmethod) # noqa: B010
-                return None
+
 
         @ExDecorator()
         class Basic:

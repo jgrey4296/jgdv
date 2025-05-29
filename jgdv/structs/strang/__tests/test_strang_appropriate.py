@@ -16,7 +16,6 @@ from jgdv.structs.strang import Strang, CodeReference
 
 logging = logmod.root
 
-@pytest.mark.xfail
 class TestBuildAppropriate:
 
     def test_sanity(self):
@@ -28,13 +27,11 @@ class TestBuildAppropriate:
         assert(not isinstance(obj, CodeReference))
 
 
+    @pytest.mark.xfail
     def test_simple_coderef(self):
         obj = Strang("fn::tail.a.b.c:build_fn")
         assert(isinstance(obj, Strang))
         assert(isinstance(obj, CodeReference))
-
-
-
 
     @pytest.mark.skip
     def test_todo(self):

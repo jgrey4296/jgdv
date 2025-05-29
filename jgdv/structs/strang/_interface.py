@@ -1,9 +1,16 @@
 #!/usr/bin/env python3
 """
+The Interface for Strang.
+
+Strang Enums:
+- StrangMarkAbstract_e
+
+Describes the internal data structs:
+- Sec_d : A Single section spec
+- Sections_d : Collects the sec_d's. ClassVar
+- Strang_d : Instance data of a strang beyond the normal str's
 
 """
-# ruff: noqa:
-
 # Imports:
 from __future__ import annotations
 
@@ -16,15 +23,12 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
 import collections
 import contextlib
 import hashlib
 from copy import deepcopy
 from uuid import UUID, uuid1
 from weakref import ref
-import atexit # for @atexit.register
-import faulthandler
 # ##-- end stdlib imports
 
 from jgdv._abstract.str_proto import String_p
@@ -41,17 +45,19 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 from collections.abc import Sized
 from collections import UserString
+from types import UnionType
 
 if TYPE_CHECKING:
+    from jgdv._abstract.pre_processable import PreProcessor_p
     from jgdv import Maybe, Rx
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
-    from typing import TypeGuard
+    from typing import TypeGuard, SupportsIndex
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
-
-    from types import UnionType
+    import string
+    from enum import Enum
 
 ##--|
 
@@ -62,18 +68,74 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+##--| Vars
+FMT_PATTERN   : Final[Rx]                    = re.compile("^(h?)(t?)(p?)")
+TYPE_RE       : Final[Rx]                    = re.compile(r"<(.+?)(?::(.+?))?>") # TODO name the groups
+TYPE_ITER_RE  : Final[Rx]                    = re.compile(r"(<)(.+?)(?::(.+?))?(>)")
+MARK_RE       : Final[Rx]                    = re.compile(r"(\$.+?\$)")
+MARK_ITER_RE  : Final[Rx]                    = re.compile(r"(\$)(.+?)(\$)")
+ARGS_RE       : Final[Rx]                    = re.compile(r"\[(.+?)\]$")
+ARGS_CHARS    : Final[tuple[str, str, str]]  = "[", ",", "]"
+CASE_DEFAULT  : Final[str]                   = "."
+END_DEFAULT   : Final[str]                   = "::"
+INST_K        : Final[str]                   = "instanced"
+GEN_K         : Final[str]                   = "gen_uuid"
+STRGET        : Final[Callable]              = str.__getitem__
+STRCON        : Final[Callable]              = str.__contains__
+UUID_WORD     : Final[str]                   = "<uuid>"
+
+SEC_END_MSG   : Final[str]                   = "Only the last section has no end marker"
+
 ##--| Enums
 
-class StrangMarker_e(enum.StrEnum):
-    """ Markers Used in a base Strang """
+class StrangMarkAbstract_e(enum.StrEnum):
 
-    head     = "$head$"
-    gen      = "$gen$"
-    mark     = ""
-    hide     = "_"
-    extend   = "+"
+    @classmethod
+    def default(cls) -> Maybe:
+        return None
 
-class CodeRefMeta_e(enum.StrEnum):
+    @classmethod
+    def implicit(cls) -> set:
+        return set()
+
+    @classmethod
+    def skip(cls) -> Maybe:
+        return None
+
+    @classmethod
+    def idempotent(cls) -> set[str]:
+        return set()
+
+class DefaultHeadMarks_e(StrangMarkAbstract_e):
+    """ Markers used in a Strang's head """
+    basic = "$basic$"
+
+class DefaultBodyMarks_e(StrangMarkAbstract_e):
+    """ Markers Used in a base Strang's body """
+
+    head    = "$head$"
+    gen     = "$gen$"
+    empty   = ""
+    hide    = "_"
+    extend  = "+"
+
+    @classmethod
+    def default(cls) -> str:
+        return cls.head
+
+    @classmethod
+    def implicit(cls) -> set[str]:
+        return {cls.hide, cls.empty}
+
+    @classmethod
+    def skip(cls) -> Maybe[str]:
+        return cls.empty
+
+    @classmethod
+    def idempotent(cls) -> set[str]:
+        return {cls.head, cls.gen}
+
+class CodeRefHeadMarks_e(StrangMarkAbstract_e):
     """ Available Group values of CodeRef strang's """
     module  = "module"
     cls     = "cls"
@@ -81,114 +143,224 @@ class CodeRefMeta_e(enum.StrEnum):
     fn      = "fn"
 
     val     = "value"
-    default = fn
 
-##--| Vars
-FMT_PATTERN    : Final[Rx]                 = re.compile("^(h?)(t?)(p?)")
-UUID_RE        : Final[Rx]                 = re.compile(r"<uuid(?::(.+?))?>")
-MARK_RE        : Final[Rx]                 = re.compile(r"\$(.+?)\$")
-SEP_DEFAULT    : Final[str]                = "::"
-SUBSEP_DEFAULT : Final[str]                = "."
-INST_K         : Final[str]                = "instanced"
-GEN_K          : Final[str]                = "gen_uuid"
-STRGET         : Final[Callable]           = str.__getitem__
+    @classmethod
+    def default(cls) -> str:
+        return cls.fn
 
 ##--|
-type BODY_TYPES  = str|UUID|StrangMarker_e
-type GROUP_TYPES = str
-type BodyMark    = type[enum.StrEnum]
-type GroupMark   = type[enum.StrEnum] | type[int]
-# Body:
+type FullSlice     = slice[None, None, None]
+type MSlice        = slice[Maybe[int], Maybe[int], Maybe[int]]
+type SectionIndex  = str|int
+type WordIndex     = tuple[SectionIndex, int]
+type MarkIndex     = tuple[SectionIndex, StrangMarkAbstract_e]
+type FindSlice     = str|StrangMarkAbstract_e|WordIndex|MarkIndex
+type ItemIndex     = SectionIndex | FullSlice | MSlice | tuple[ItemIndex, ...]
+type PushVal       = Maybe[str | StrangMarkAbstract_e | UUID]
 
-##--|
+HEAD_TYPES    = str|UUID|DefaultBodyMarks_e
+BODY_TYPES    = str|UUID|DefaultBodyMarks_e
+##--| Data
+
+class Sec_d:
+    """ Data of a named Strang section
+
+    for an example section 'a.2.c.+::d'
+    - case      : the word boundary.                              = '.'
+    - end       : the rhs end str.                                = '::'
+    - types     : allowed types.                                  = str|int
+    - marks     : StrangMarkAbstract_e of words with a meta meaning.  = '+'
+    - required  : a strang errors if a required section isnt found
+
+    - idx       : the index of the section
+
+    TODO Maybe 'type_re' and 'mark_re'
+
+    """
+    __slots__ = ("case", "end", "idx", "marks", "name", "required", "types")
+    idx       : int
+    name      : Final[str]
+    case      : Final[Maybe[str]]
+    end       : Final[Maybe[str]]
+    types     : Final[type|UnionType]
+    marks     : Final[Maybe[type[StrangMarkAbstract_e]]]
+    required  : Final[bool]
+
+    def __init__(self, name:str, case:Maybe[str], end:Maybe[str], types:type|UnionType, marks:Maybe[type[StrangMarkAbstract_e]], required:bool=True, *, idx:int=-1) -> None:  # noqa: FBT001, FBT002, PLR0913
+        assert(case is None or bool(case))
+        assert(end is None or bool(end))
+        self.idx       = idx
+        self.name      = name.lower()
+        self.case      = case
+        self.end       = end
+        self.types     = types
+        self.marks     = marks
+        self.required  = required
+
+    def __contains__(self, other:type|StrangMarkAbstract_e) -> bool:
+        match other:
+            case type() as x:
+                return issubclass(x, self.types)
+            case UnionType() as xs:
+                # Check its contained using its removal of duplicates
+                return (xs | self.types) == self.types
+            case StrangMarkAbstract_e() as x if self.marks:
+                return x in self.marks
+            case _:
+                return False
+
+class Sections_d:
+    """
+    An object to hold information about word separation and sections,
+    a strang type is structured into these
+
+    Each Section is a Sec_d
+    TODO add format conversion specs
+    """
+    __slots__ = ("named", "order", "types")
+    named  : Final[dict[str, int]]
+    order  : Final[tuple[Sec_d, ...]]
+    types  : type|UnionType
+
+    def __init__(self, *sections:tuple|Sec_d) -> None:
+        order : list[Sec_d] = []
+        for i, sec in enumerate(sections):
+            match sec:
+                case Sec_d() as obj:
+                    obj.idx = i
+                    order.append(obj)
+                case xs:
+                    obj = Sec_d(*xs, idx=i)
+                    order.append(obj)
+        else:
+            assert(all(x.end is not None for x in order[:-1])), SEC_END_MSG
+            self.order = tuple(order)
+            self.named = {x.name:i for i,x in  enumerate(self.order)}
+
+    def __contains__(self, val:str) -> bool:
+        return val in self.named
+
+    def __getitem__(self, val:int|str) -> Sec_d:
+        match val:
+            case int() as i:
+                return self.order[i]
+            case str() as k if k in self.named:
+                return self.order[self.named[k]]
+            case x:
+                raise KeyError(x)
+
+    def __iter__(self) -> Iterator[Sec_d]:
+        return iter(self.order)
+
+    def __len__(self) -> int:
+        return len(self.order)
+
+class Strang_d:
+    """ Extra Data of a Strang.
+    Sections are accessed by their index, so use cls._sections.named[name] to get the index
+
+    - sections  : tuple[slice, ...]      - Section boundaries
+    - sec_words : tuple[tuple[int, ...]] - lookup of (sec, word) -> WordIndex
+    - words     : tuple[slice, ...]      - Word Slices
+    - meta      : tuple[Maybe, ...]      - Flat word level meta data
+
+    """
+    __slots__ = ("args", "args_start", "flat_idx", "meta", "sec_words", "sections", "uuid", "words")
+    args_start  : Maybe[int]
+    args        : Maybe[tuple]
+    sections    : tuple[slice, ...]
+    sec_words   : tuple[tuple[int, ...], ...]
+    flat_idx    : tuple[tuple[int, int], ...]
+    words       : tuple[slice, ...]
+    meta        : tuple[Maybe, ...]
+    uuid        : Maybe[UUID]
+
+    def __init__(self, uuid:Maybe[UUID]=None) -> None:
+        self.args_start  = None
+        self.args        = None
+        self.sections    = ()
+        self.sec_words   = ()
+        self.words       = ()
+        self.meta        = ()
+        self.uuid        = uuid
+
+
+##--| Default Section Specs
+HEAD_SEC             : Final[Sec_d]       = Sec_d("head", CASE_DEFAULT, END_DEFAULT, BODY_TYPES, DefaultHeadMarks_e, True)  # noqa: FBT003
+BODY_SEC             : Final[Sec_d]       = Sec_d("body", CASE_DEFAULT, None, HEAD_TYPES, DefaultBodyMarks_e, True)  # noqa: FBT003
+
+CODEREF_HEAD_SEC     : Final[Sec_d]       = Sec_d("head",   CASE_DEFAULT, END_DEFAULT, HEAD_TYPES, CodeRefHeadMarks_e, False)  # noqa: FBT003
+CODEREF_MODULE_SEC   : Final[Sec_d]       = Sec_d("module", CASE_DEFAULT, ":", HEAD_TYPES, DefaultBodyMarks_e, True)  # noqa: FBT003
+CODEREF_VAL_SEC      : Final[Sec_d]       = Sec_d("value",  CASE_DEFAULT, None, HEAD_TYPES, CodeRefHeadMarks_e, True)  # noqa: FBT003
+
+STRANG_DEFAULT_SECS  : Final[Sections_d]  = Sections_d(HEAD_SEC, BODY_SEC)
+STRANG_ALT_SECS      : Final[Sections_d]  = Sections_d(
+    Sec_d("head", CASE_DEFAULT, END_DEFAULT, HEAD_TYPES, DefaultHeadMarks_e, True),  # noqa: FBT003
+    Sec_d("body", CASE_DEFAULT, None, BODY_TYPES, DefaultBodyMarks_e, True),  # noqa: FBT003
+)
+CODEREF_DEFAULT_SECS : Final[Sections_d] = Sections_d(CODEREF_HEAD_SEC, CODEREF_MODULE_SEC, CODEREF_VAL_SEC)
+##--| Protocols
 
 @runtime_checkable
 class Importable_p(Protocol):
     """  """
     pass
 
-class PreInitProcessed_p(Protocol):
-    """ Protocol for things like Strang,
-    whose metaclass preprocess the initialisation data before even __new__ is called.
+class StrangUUIDs_p(Protocol):
 
-    Is used in a metatype.__call__ as::
-
-        cls._pre_process(...)
-        obj = cls.__new__(...)
-        obj.__init__(...)
-        obj._process()
-        obj._post_process()
-        return obj
-
-    """
-
-    @classmethod
-    def pre_process(cls, data:str, *, strict:bool=False) -> str: ...
-
-    def _process(self) -> None: ...
-
-    def _post_process(self) -> None: ...
-
-class StrangInternal_p(Protocol):
-
-    def _get_slices(self, start:int=0, max:Maybe[int]=None, *, add_offset:bool=False) -> list[slice]: ... # noqa: A002
-
-class StrangTesting_p(Protocol):
-
-    def is_uniq(self) -> bool: ...
-
-    def is_head(self) -> bool: ...
-
-class StrangMod_p(Protocol):
-
-    def with_head(self) -> Self: ...
-
-    def pop(self, *, top:bool=False) -> Self: ...
-
-    def push(self, *vals:str) -> Self: ...
-
-    def to_uniq(self, *, suffix:Maybe[str]=None) -> Self: ...
+    def to_uniq(self, *args:str) -> Self: ...
 
     def de_uniq(self) -> Self: ...
 
-    def root(self) -> Self: ...
+class StrangMod_p(Protocol):
+
+    def pop(self, *, top:bool=False) -> Strang_p: ...
+
+    def push(self, *vals:PushVal) -> Strang_p: ...
+
+class StrangFormatter_p(Protocol):
+    """ A string.Formatter with some Strang-specific methods """
+
+    def format(self, format_string:str, /, *args:Any, **kwargs:Any) -> str: ... # noqa: ANN401
+
+    def get_value(self, key:str, args:Any, kwargs:Any) -> str:  ...  # noqa: ANN401
+
+    def convert_field(self, value:Any, conversion:Any) -> str: ...  # noqa: ANN401
+
+    def expanded_str(self, data:Strang_p, *, stop:Maybe[int]=None) -> str: ...
 
 @runtime_checkable
-class Strang_p(StrangTesting_p, StrangMod_p, StrangInternal_p, PreInitProcessed_p, String_p, Protocol):
+class Strang_p(StrangUUIDs_p, StrangMod_p, String_p, Protocol):
     """  """
+    _processor  : ClassVar[PreProcessor_p]
+    _formatter  : ClassVar[string.Formatter]
+    _sections   : ClassVar[Sections_d]
+    _typevar    : ClassVar[Maybe[type]]
+    data        : Strang_d
 
     @classmethod
-    def _subjoin(cls, lst:list) -> str: ...
+    def sections(cls) -> Sections_d: ...
+
+    @classmethod
+    def section(cls, arg:int|str) -> Sec_d: ...
 
     @override
-    def __getitem__(self, i:int|slice) -> BODY_TYPES: ... # type: ignore[override]
+    def __getitem__(self, i:ItemIndex) -> str: ... # type: ignore[override]
 
     @property
     def base(self) -> Self: ...
 
     @property
-    def group(self) -> list[str]: ...
+    def shape(self) -> tuple[int, ...]: ...
 
-    @property
-    def shape(self) -> tuple[int, int]: ...
+    @override
+    def index(self, *sub:FindSlice, start:Maybe[int]=None, end:Maybe[int]=None) -> int: ... # type: ignore[override]
 
-    def body(self, *, reject:Maybe[Callable]=None, no_expansion:bool=False) -> list[str]: ...
+    @override
+    def rindex(self, *sub:FindSlice, start:Maybe[int]=None, end:Maybe[int]=None) -> int: ... # type: ignore[override]
+
+    def words(self, idx:SectionIndex, *, case:bool=False) -> list: ...
+
+    def get(self, *args:SectionIndex|WordIndex) -> Any: ...  # noqa: ANN401
 
     def uuid(self) -> Maybe[UUID]: ...
-
-class Strang_i(Strang_p, Protocol):
-    _separator        : ClassVar[str]
-    _subseparator     : ClassVar[str]
-    _body_types       : ClassVar[type|UnionType]
-    _group_types      : ClassVar[type|UnionType]
-    _typevar          : ClassVar[Maybe[type]]
-    bmark_e           : ClassVar[type[enum.StrEnum]]
-    gmark_e           : ClassVar[type[enum.Enum]|type[enum.StrEnum]|int]
-
-    metadata          : dict
-    _base_slices      : tuple[Maybe[slice], Maybe[slice]]
-    _mark_idx         : tuple[Maybe[int], Maybe[int]]
-    _group            : list[slice]
-    _body             : list[slice]
-    _body_meta        : list[Maybe[BODY_TYPES]]
-    _group_meta       : set[GROUP_TYPES]

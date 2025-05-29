@@ -40,4 +40,4 @@ class DecoratorAccessor_m:
     def get_keys(cls, target:Decorated) -> list[Ident]:
         """ Retrieve key annotations from a Decorated"""
         dec = cls._build_decorator([])
-        return dec.get_annotations(target)
+        return dec.cls_annotations(target)

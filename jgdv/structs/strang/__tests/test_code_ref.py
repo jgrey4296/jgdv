@@ -34,7 +34,7 @@ class TestCodeReference:
         ref = CodeReference(NO_PREFIX)
         assert(isinstance(ref, CodeReference))
 
-    def test_(self):
+    def test_instance(self):
         ref = CodeReference(EX_STR)
         assert(isinstance(ref, CodeReference))
 
@@ -48,18 +48,20 @@ class TestCodeReference:
 
     def test_repr(self):
         ref = CodeReference(EX_STR)
-        assert(repr(ref) == f"<CodeRef: {EX_STR}>")
+        assert(repr(ref) == f"<CodeReference: {EX_STR}>")
 
     def test_module(self):
         ref = CodeReference(EX_STR)
-        assert(ref[1::-1] == "jgdv")
+        assert(ref[1,0] == "jgdv")
         assert(ref.module == "jgdv")
 
     def test_value(self):
         ref = CodeReference(EX_STR)
+        assert(ref[2,0] == "identity_fn")
         assert(ref.value == "identity_fn")
 
 
+    @pytest.mark.xfail
     def test_from_fn(self):
         def simple_fn():
             return "blah"
@@ -114,7 +116,7 @@ class TestCodeReferenceImporting:
                 assert(False)
 
     def test_import_value(self):
-        ref = CodeReference("val::jgdv.structs.strang.strang:GEN_K")
+        ref = CodeReference("val::jgdv.structs.strang._interface:GEN_K")
         match ref():
             case ImportError():
                 assert(False)

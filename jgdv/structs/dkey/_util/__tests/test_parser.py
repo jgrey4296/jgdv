@@ -17,7 +17,8 @@ import warnings
 import pytest
 # ##-- end 3rd party imports
 
-from ..parser import RawKey, DKeyParser
+from ..._interface import RawKey_d
+from ..parser import DKeyParser
 
 # ##-- types
 # isort: off
@@ -46,7 +47,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-RAWKEY_ARGS : Final[str] = ["pre", "key", "format", "conv", "out"]
+RAWKEY_ARGS : Final[str] = ["pre", "key", "format", "convert", "out"]
 # Body:
 
 class TestRawKey:
@@ -55,11 +56,21 @@ class TestRawKey:
         assert(True is not False) # noqa: PLR0133
 
     def test_basic(self):
-        match RawKey(prefix="", key="blah"):
-            case RawKey():
+        match RawKey_d(prefix=""):
+            case RawKey_d():
                 assert(True)
             case x:
                 assert(False), x
+
+
+    def test_error_on_extra(self):
+        with pytest.raises(AssertionError):
+            RawKey_d(prefix="", non_val="blah")
+
+
+    def test_error_on_no_prefix(self):
+        with pytest.raises(KeyError):
+            RawKey_d(key="blah")
 
     @pytest.mark.parametrize(RAWKEY_ARGS, [
         ("", "blah", "", "", "blah"),
@@ -67,10 +78,9 @@ class TestRawKey:
         ("-- ", "awegah", "<50", "p", "awegah:<50!p"),
         ("-- ", "awegah_", "<50", "p", "awegah_:<50!p"),
     ])
-
-    def test_joined(self, pre, key, format, conv, out):
-        match RawKey(prefix=pre, format=format, key=key, conv=conv):
-            case RawKey() as x if x.joined() == out:
+    def test_joined(self, pre, key, format, convert, out):
+        match RawKey_d(prefix=pre, format=format, key=key, convert=convert):
+            case RawKey_d() as x if x.joined() == out:
                 assert(True)
             case x:
                 assert(False), (x, x.joined(), out)
@@ -81,10 +91,9 @@ class TestRawKey:
         ("-- ", "awegah", "<50", "p", "-- {}"),
         ("-- ", "awegah_", "", "p", "-- {}"),
     ])
-
-    def test_anon(self, pre, key, format, conv, out):
-        match RawKey(prefix=pre, key=key, format=format, conv=conv):
-            case RawKey() as x if x.anon() == out:
+    def test_anon(self, pre, key, format, convert, out):
+        match RawKey_d(prefix=pre, key=key, format=format, convert=convert):
+            case RawKey_d() as x if x.anon() == out:
                 assert(True)
             case x:
                 assert(False), (x, x.anon(), out)
@@ -95,13 +104,13 @@ class TestRawKey:
         ("-- ", "awegah", "<50", "p", "{awegah}"),
         ("-- ", "awegah_", "<50", "p", "{awegah_}"),
     ])
-
-    def test_wrapped(self, pre, key, format, conv, out):
-        match RawKey(prefix=pre, key=key, format=format, conv=conv):
-            case RawKey() as x if x.wrapped() == out:
+    def test_wrapped(self, pre, key, format, convert, out):
+        match RawKey_d(prefix=pre, key=key, format=format, convert=convert):
+            case RawKey_d() as x if x.wrapped() == out:
                 assert(True)
             case x:
                 assert(False), (x, x.wrapped(), out)
+
 
     @pytest.mark.parametrize(RAWKEY_ARGS, [
         ("", "blah", "", "", "blah_"),
@@ -109,13 +118,13 @@ class TestRawKey:
         ("-- ", "awegah", "", "p", "awegah_"),
         ("", "aweg_", "", "", "aweg_"),
     ])
-
-    def test_indirect(self, pre, key, format, conv, out):
-        match RawKey(prefix=pre, key=key, format=format, conv=conv):
-            case RawKey() as x if x.indirect() == out:
+    def test_indirect(self, pre, key, format, convert, out):
+        match RawKey_d(prefix=pre, key=key, format=format, convert=convert):
+            case RawKey_d() as x if x.indirect() == out:
                 assert(True)
             case x:
                 assert(False), (x, x.indirect(), out)
+
 
     @pytest.mark.parametrize(RAWKEY_ARGS, [
         ("", "blah", "", "", "blah"),
@@ -123,10 +132,9 @@ class TestRawKey:
         ("-- ", "awegah", "", "p", "awegah"),
         ("", "aweg_", "", "", "aweg"),
     ])
-
-    def test_direct(self, pre, key, format, conv, out):
-        match RawKey(prefix=pre, key=key, format=format, conv=conv):
-            case RawKey() as x if x.direct() == out:
+    def test_direct(self, pre, key, format, convert, out):
+        match RawKey_d(prefix=pre, key=key, format=format, convert=convert):
+            case RawKey_d() as x if x.direct() == out:
                 assert(True)
             case x:
                 assert(False), (x, x.direct(), out)
@@ -138,7 +146,7 @@ class TestParser:
 
     def test_empty(self):
         match next(DKeyParser().parse("blah")):
-            case RawKey() as x:
+            case RawKey_d() as x:
                 assert(x.prefix == "blah")
                 assert(True)
             case x:
@@ -146,7 +154,7 @@ class TestParser:
 
     def test_key(self):
         match next(DKeyParser().parse("{blah}")):
-            case RawKey() as x:
+            case RawKey_d() as x:
                 assert(x.prefix == "")
                 assert(x.key == "blah")
                 assert(True)
@@ -155,7 +163,7 @@ class TestParser:
 
     def test_impicit(self):
         match next(DKeyParser().parse("blah", implicit=True)):
-            case RawKey() as x:
+            case RawKey_d() as x:
                 assert(x.prefix == "")
                 assert(x.key == "blah")
                 assert(True)
@@ -164,9 +172,19 @@ class TestParser:
 
     def test_open_brace(self):
         match next(DKeyParser().parse("{blah")):
-            case RawKey() as x:
-                assert(x.key == "")
+            case RawKey_d() as x:
+                assert(x.key == None)
                 assert(x.prefix == "{blah")
+                assert(True)
+            case x:
+                 assert(False), x
+
+
+    def test_close_brace(self):
+        match next(DKeyParser().parse("blah}")):
+            case RawKey_d() as x:
+                assert(x.key == None)
+                assert(x.prefix == "blah}")
                 assert(True)
             case x:
                  assert(False), x

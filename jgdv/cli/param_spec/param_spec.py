@@ -37,6 +37,7 @@ from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
 
+from jgdv.mixins.annotate import Subclasser
 from jgdv.cli.errors import ArgParseError
 from ._mixins import _DefaultsBuilder_m, _ParamNameParser_m
 from ._base import ParamSpecBase
@@ -51,6 +52,7 @@ import abc
 import collections.abc
 from typing import TYPE_CHECKING, cast, assert_type, assert_never
 from typing import Generic, NewType, Any
+from types import GenericAlias
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
@@ -78,7 +80,8 @@ logging = logmod.getLogger(__name__)
 @Mixin(None, SubAnnotate_m, _DefaultsBuilder_m, _ParamNameParser_m)
 class ParamSpec:
     """ A Top Level Access point for building param specs """
-    _override_type : ClassVar[type|str] = None
+    _override_type  : ClassVar[type|str]    = None
+    __builder       : ClassVar[Subclasser]  = Subclasser()
 
     def __subclasscheck__(self, subclass):
         return issubclass(subclass, ParamSpecBase)
@@ -145,11 +148,11 @@ class ParamSpec:
             case [x, *_]:
                 subtype = ParamSpec._discrim_to_type(x)
                 p_sub = subtype[x]
-                new_name = Subclasser.decorate_name(cls, f"{p_sub.__name__}")
+                new_name = cls.__builder.decorate_name(cls, f"{p_sub.__name__}")
                 subdata = {"_override_type": p_sub,
                            "__module__" : cls.__module__,
                            }
-                new_ps = Subclasser.make_subclass(new_name, cls, namespace=subdata)
+                new_ps  = cls.__builder.make_subclass(new_name, cls, namespace=subdata)
                 assert(new_ps._override_type is p_sub)
                 return new_ps
 

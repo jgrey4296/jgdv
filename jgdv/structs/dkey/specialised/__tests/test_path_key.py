@@ -33,10 +33,10 @@ VALID_MULTI_KEYS                                     = PATH_KEYS + MUTI_KEYS
 class TestPathKey:
 
     def test_mark(self):
-        assert(DKey.MarkOf(PathDKey) is DKey.Mark.PATH)
+        assert(PathDKey.MarkOf() is DKey.Marks.PATH)
 
     def test_expansion(self):
-        key = DKey("test", mark=DKey.Mark.PATH, implicit=True)
+        key = DKey("test", mark=DKey.Marks.PATH, implicit=True)
         match key.expand({"test":"blah"}):
             case pl.Path() as x:
                 assert(x == pl.Path.cwd() / "blah")
@@ -46,7 +46,7 @@ class TestPathKey:
 
 
     def test_expansion_fail(self):
-        key = DKey("test", mark=DKey.Mark.PATH, implicit=True)
+        key = DKey("test", mark=DKey.Marks.PATH, implicit=True)
         match key.expand():
             case None:
                 assert(True)
@@ -57,7 +57,7 @@ class TestPathKey:
     def test_loc_expansion(self):
         locs = JGDVLocator(root=pl.Path.cwd())
         locs.update({"test":"blah"})
-        key = DKey("test", mark=DKey.Mark.PATH, implicit=True)
+        key = DKey("test", mark=DKey.Marks.PATH, implicit=True)
         match key.expand(locs):
             case pl.Path() as x:
                 assert(x == pl.Path.cwd() / "blah")

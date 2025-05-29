@@ -175,7 +175,7 @@ class ParamSpecBase(*PSpecMixins, BaseModel, arbitrary_types_allowed=True, extra
             case str() if bool(self.prefix) and self.name.startswith(self.prefix):
                 raise TypeError("Prefix was found in the base name", self, self.prefix)
 
-        match self._get_annotation():
+        match self.cls_annotation():
             case None:
                 pass
             case x:

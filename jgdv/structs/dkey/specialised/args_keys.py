@@ -2,7 +2,7 @@
 """
 
 """
-
+# ruff: noqa: ANN002, ANN003, ARG002
 # Imports:
 from __future__ import annotations
 
@@ -29,8 +29,7 @@ from jgdv.structs.strang import CodeReference
 # ##-- end 1st party imports
 
 from .._interface import DKeyMark_e
-from .._base import DKeyBase
-from .._meta import DKey
+from .. import DKey
 from ..keys import MultiDKey, NonDKey, SingleDKey
 
 # ##-- types
@@ -42,12 +41,13 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
+from typing import Literal
 
 if TYPE_CHECKING:
     from jgdv import Maybe, Ident, RxStr, Rx
     from typing import Final
     from typing import ClassVar, Any, LiteralString
-    from typing import Never, Self, Literal
+    from typing import Never, Self
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
@@ -86,7 +86,7 @@ class KwargsDKey(SingleDKey, mark=DKeyMark_e.KWARGS):
         self._expansion_type  = dict
         self._typecheck = dict
 
-    def expand(self, *sources, fallback=None, **kwargs) -> dict:
+    def expand(self, *sources, fallback:Maybe=None, **kwargs) -> dict:
         """ kwargs are easy, just get the first specstruct's kwargs value """
         for source in sources:
             if not isinstance(source, SpecStruct_p):

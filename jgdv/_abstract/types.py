@@ -42,11 +42,12 @@ from packaging.version import Version
 # ##-- Generated Exports
 __all__ = ( # noqa: RUF022
 # -- Types
-"AbsPath", "CHECKTYPE", "Char", "Ctor", "DateTime", "Decorator", "Depth", "DictItems",
-"DictKeys", "DictVals", "E_", "Either", "Fifo", "FmtKey", "FmtSpec", "FmtStr", "Frame",
-"Func", "Ident", "Lambda", "Lifo", "M_", "Maybe", "Method", "Module", "Mut", "NoMut", "Queue",
-"R_", "RelPath", "Result", "Rx", "RxMatch", "RxStr", "Seconds", "Stack", "SubOf", "TimeDelta",
-"Traceback", "Url", "VList", "Vector", "VerSpecStr", "VerStr", "Weak",
+"AbsPath", "Builder", "CHECKTYPE", "Char", "Ctor", "DateTime", "Decorator", "Depth",
+"DictItems", "DictKeys", "DictVals", "E_", "Either", "Fifo", "FmtKey", "FmtSpec", "FmtStr",
+"Frame", "Func", "Ident", "Lambda", "Lifo", "M_", "Maybe", "Method", "Module", "Mut", "NoMut",
+"Queue", "R_", "RelPath", "Result", "Rx", "RxMatch", "RxStr", "Seconds", "Stack", "SubOf",
+"TimeDelta", "Traceback", "Url", "VList", "Vector", "VerSpecStr", "VerStr", "Weak",
+
 
 )
 # ##-- end Generated Exports
@@ -71,61 +72,62 @@ type AbsPath = Annotated[pl.Path, lambda x: x.is_absolute()]
 ##-- end paths
 
 ##-- regex
-type Rx                       = Pattern
-type RxMatch                  = Match
+type Rx       = Pattern
+type RxMatch  = Match
 
 ##-- end regex
 
 ##-- callables
-type Ctor[T]                   = type[T] | Callable[[*Any], T]
-type Func[**I, O]              = Callable[I, O]
-type Method[**I, O]            = types.MethodType[I, O]
-type Decorator[F:Func]         = Callable[[F], F]
-type Lambda[**I, O]            = types.LambdaType[I, O]
+type Ctor[T]            = type[T]
+type Builder[T]         = Callable[[*Any], T]
+type Func[**I, O]       = Callable[I, O]
+type Method[**I, O]     = types.MethodType[I, O]
+type Decorator[F:Func]  = Callable[[F], F]
+type Lambda[**I, O]     = types.LambdaType[I, O]
 
 ##-- end callables
 
 ##-- containers
-type Weak[T]                  = ref[T]
-type Stack[T]                 = list[T]
-type Fifo[T]                  = list[T]
-type Queue[T]                 = deque[T]
-type Lifo[T]                  = list[T]
-type Vector[T]                = list[T]
+type Weak[T]    = ref[T]
+type Stack[T]   = list[T]
+type Fifo[T]    = list[T]
+type Queue[T]   = deque[T]
+type Lifo[T]    = list[T]
+type Vector[T]  = list[T]
 
 ##-- end containers
 
 ##-- utils
-type VList[T]                 = T | list[T]
-type Mut[T]                   = Annotated[T, "Mutable"]
-type NoMut[T]                 = Annotated[T, "Immutable"]
+type VList[T]                = T | list[T]
+type Mut[T]                  = Annotated[T, "Mutable"]
+type NoMut[T]                = Annotated[T, "Immutable"]
 
-type Maybe[T]                 = T | None
-type Result[T, E:Exception]   = T | E
-type Either[L, R]             = L | R
-type SubOf[T]                 = TypeGuard[T]
+type Maybe[T]                = T | None
+type Result[T, E:Exception]  = T | E
+type Either[L, R]            = L | R
+type SubOf[T]                = TypeGuard[T]
 
 ##-- end utils
 
 ##-- shorthands
-type M_[T]                    = Maybe[T]
-type R_[T, E:Exception]       = Result[T,E]
-type E_[L, R]                 = Either[L,R]
+type M_[T]               = Maybe[T]
+type R_[T, E:Exception]  = Result[T,E]
+type E_[L, R]            = Either[L,R]
 
 ##-- end shorthands
 
 ##-- numbers
-type Depth              = Annotated[int, lambda x: 0 <= x]
-type Seconds            = Annotated[int, lambda x: 0 <= x]
-type DateTime           = datetime.datetime
-type TimeDelta          = datetime.timedelta
+type Depth      = Annotated[int, lambda x: 0 <= x]
+type Seconds    = Annotated[int, lambda x: 0 <= x]
+type DateTime   = datetime.datetime
+type TimeDelta  = datetime.timedelta
 
 ##-- end numbers
 
 ##-- dicts
-type DictKeys           = KeysView
-type DictItems          = ItemsView
-type DictVals           = ValuesView
+type DictKeys   = KeysView
+type DictItems  = ItemsView
+type DictVals   = ValuesView
 
 ##-- end dicts
 
@@ -140,3 +142,8 @@ type Module    = types.ModuleType
 type CHECKTYPE = Maybe[type|types.GenericAlias|types.UnionType]
 
 ##-- end misc
+
+##--| TypeGuards and TypeIs
+
+def is_none(val:Maybe) -> TypeGuard[None]:
+    return val is None

@@ -24,8 +24,7 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from jgdv._abstract.protocols import SpecStruct_p
-from .._interface import ExpInst_d
-from .._meta import DKey
+from .._interface import ExpInst_d, Key_p
 # ##-- end 1st party imports
 
 # ##-- types
@@ -96,7 +95,7 @@ class ChainGetter:
 
 
     @staticmethod
-    def lookup(target:list[ExpInst_d], sources:list)-> Maybe[ExpInst_d]:
+    def lookup(target:list[ExpInst_d], sources:list, *, ctor:type[Key_p])-> Maybe[ExpInst_d]:  # noqa: PLR0911, PLR0912
         """ Handle lookup instructions
 
         | pass through DKeys and (DKey, ..)
@@ -106,11 +105,11 @@ class ChainGetter:
         """
         for spec in target:
             match spec:
-                case ExpInst_d(val=DKey()):
+                case ExpInst_d(value=Key_p()):
                     return spec
                 case ExpInst_d(literal=True):
                     return spec
-                case ExpInst_d(val=str() as key, lift=lift, fallback=fallback):
+                case ExpInst_d(value=str() as key, lift=lift, fallback=fallback):
                     pass
                 case x:
                     msg = "Unrecognized lookup spec"
@@ -121,19 +120,22 @@ class ChainGetter:
                     pass
                 case str() as x if lift:
                     logging.debug("Lifting Result to Key: %r", x)
-                    lifted = DKey(x, implicit=True, fallback=fallback)
-                    return ExpInst_d(val=lifted, fallback=lifted, lift=False)
+                    lifted = ctor(x, implicit=True, fallback=fallback)
+                    return ExpInst_d(value=lifted, fallback=lifted, lift=False)
                 case pl.Path() as x:
-                    match DKey(str(x)):
-                        case DKey(nonkey=True) as y:
-                            return ExpInst_d(val=y, rec=0)
+                    match ctor(str(x)):
+                        case Key_p(nonkey=True) as y:
+                            return ExpInst_d(value=y, rec=0)
                         case y:
-                            return ExpInst_d(val=y, fallback=fallback)
+                            return ExpInst_d(value=y, fallback=fallback)
                 case str() as x:
-                    match DKey(x):
-                        case DKey(nonkey=True) as y:
-                            return ExpInst_d(val=y, rec=0)
+                    match ctor(x):
+                        case Key_p(nonkey=True) as y:
+                            return ExpInst_d(value=y, rec=0)
                         case y:
-                            return ExpInst_d(val=y, fallback=fallback)
+                            return ExpInst_d(value=y, fallback=fallback)
                 case x:
-                    return ExpInst_d(val=x, fallback=fallback)
+                    return ExpInst_d(value=x, fallback=fallback)
+
+        else:
+            return None

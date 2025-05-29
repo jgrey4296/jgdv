@@ -33,7 +33,7 @@ VALID_MULTI_KEYS                                     = PATH_KEYS + MUTI_KEYS
 class TestStrKey:
 
     def test_mark(self):
-        assert(DKey.MarkOf(StrDKey) is DKey.Mark.STR)
+        assert(StrDKey.MarkOf() is DKey.Marks.STR)
 
     @pytest.mark.skip
     def test_todo(self):

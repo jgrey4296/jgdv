@@ -29,18 +29,20 @@ from ._core import IdempotentDec, MetaDec, MonotonicDec
 import abc
 import collections.abc
 from typing import TYPE_CHECKING, cast, assert_type, assert_never
-from typing import Generic, NewType
+from typing import Generic, NewType, Concatenate
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    from . import _interface as API # noqa: N812
+
     from jgdv import Maybe, Either, Method, Func
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
-    from typing import TypeGuard
+    from typing import TypeGuard, ParamSpec
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
     type Logger = logmod.Logger
@@ -73,7 +75,7 @@ class Breakpoint(IdempotentDec):
       Decorator to attach a breakpoint to a function, without pausing execution
     """
 
-    def __call__(self, target:Callable) -> Any:  # noqa: ANN401
+    def __call__[**I, O](self, target:Callable[I,O]) -> Callable[I,O]:
         msg = "needs RunningDebugger"
         raise NotImplementedError(msg)
     # # TODO handle repeats
@@ -96,21 +98,37 @@ class Breakpoint(IdempotentDec):
 
 class DoMaybe(MonotonicDec):
     """ Make a fn or method propagate None's """
+    type MethMb[Obj,X,**I,O]  = Callable[Concatenate[Obj, X, I],O]
+    type FuncMb[X,**I,O]      = Callable[Concatenate[X, I],O]
+                                                                                                                     # def __call__[**I, X,Obj, O](self, target:MethMb[Obj,X,I,O]|FuncMb[X,I,O], *args:Any, **kwargs:Any) -> MethMb[Obj,Maybe[X],I,O]|FuncMb[Maybe[X],I,O]: # type: ignore[override]
 
-    def _wrap_method_h[**I, O](self, meth:Method[I, O]) -> Method[I, Maybe[O]]:
+    @overload # type: ignore[override]
+    def __call__[Obj,**I,X,O](self, target:MethMb[Obj,X,I,O], *args:Any, **kwargs:Any) -> MethMb[Obj,Maybe[X],I,Maybe[O]]:  # noqa: ANN401
+        pass
 
-        def _prop_maybe(_self, fst, *args:Any, **kwargs:Any) -> Maybe[O]:  # noqa: ANN001, ANN401
+    @overload
+    def __call__[**I,X,O](self, target:FuncMb[X,I,O], *args:Any, **kwargs:Any) -> FuncMb[Maybe[X],I,Maybe[O]]: # noqa: ANN401
+        pass
+
+    def __call__(self, target, *args, **kwargs):
+        return MonotonicDec.__call__(self, target, *args, **kwargs)
+
+    @override
+    def _wrap_method_h[Obj, X, **I, O](self, meth:MethMb[Obj,X,I,O]) -> MethMb[Obj,Maybe[X],I,Maybe[O]]: # type: ignore[override]
+
+        def _prop_maybe(_self:Obj, fst:Maybe[X], *args:I.args, **kwargs:I.kwargs) -> Maybe[O]:
             match fst:
                 case None:
                     return None
                 case x:
                     return meth(_self, x, *args, **kwargs)
 
-        return cast("Method[I, Maybe[O]]", _prop_maybe)
+        return _prop_maybe
 
-    def _wrap_fn_h[**I, O](self, fn:Func[I, O]) -> Func[I, Maybe[O]]: # type: ignore[override]
+    @override
+    def _wrap_fn_h[X, **I, O](self, fn:FuncMb[X, I, O]) -> FuncMb[Maybe[X], I, Maybe[O]]: # type: ignore[override]
 
-        def _prop_maybe(fst:Any, *args:Any, **kwargs:Any) -> Maybe[O]:  # noqa: ANN401
+        def _prop_maybe(fst:Maybe[X], *args:I.args, **kwargs:I.kwargs) -> Maybe[O]:
             match fst:
                 case None:
                     return None
@@ -121,14 +139,14 @@ class DoMaybe(MonotonicDec):
                         err.with_traceback(TraceBuilder[2:]) # type: ignore[misc]
                         raise
 
-        return cast("Func[I, Maybe[O]]", _prop_maybe)
+        return _prop_maybe
 
 class DoEither(MonotonicDec):
     """ Either do the fn/method, or propagate the error """
 
-    def _wrap_method_h[**I, O, E:Exception](self, meth:Method[I, O]) -> Method[I, Either[O, E]]:
+    def _wrap_method_h[X,Y, **I, O, E:Exception](self, meth:Method[Concatenate[X, Y, I], O]) -> API.Decorated[Concatenate[X, Y|E, I], Either[O, E]]: # type: ignore[override]
 
-        def _prop_either(_self:Any, fst:Any, *args:Any, **kwargs:Any) -> Either[O, E]:  # noqa: ANN401
+        def _prop_either(_self:X, fst:Y|E, *args:I.args, **kwargs:I.kwargs) -> Either[O, E]:
             match fst:
                 case Exception() as err:
                     return cast("E", err)
@@ -139,11 +157,11 @@ class DoEither(MonotonicDec):
                         err.with_traceback(TraceBuilder[2:]) # type: ignore[misc]
                         return cast("E", err)
 
-        return cast("Method[I, Either[O, E]]", _prop_either)
+        return _prop_either
 
-    def _wrap_fn_h[**I, O, E:Exception](self, fn:Func[I, O]) -> Func[I, Either[O, E]]: # type: ignore[override]
+    def _wrap_fn_h[X, **I, O, E:Exception](self, fn:Func[Concatenate[X, I], O]) -> Func[Concatenate[X|E, I], Either[O, E]]: # type: ignore[override]
 
-        def _prop_either(fst:Any, *args:Any, **kwargs:Any) -> Either[O, E]:  # noqa: ANN401
+        def _prop_either(fst:X|E, *args:I.args, **kwargs:I.kwargs) -> Either[O, E]:
             match fst:
                 case Exception() as err:
                     return cast("E", err)
@@ -154,4 +172,4 @@ class DoEither(MonotonicDec):
                         err.with_traceback(TraceBuilder[2:]) # type: ignore[misc]
                         return cast("E", err)
 
-        return cast("Func[I, Either[O, E]]", _prop_either)
+        return _prop_either
