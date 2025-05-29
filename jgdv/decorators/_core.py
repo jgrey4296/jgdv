@@ -38,7 +38,7 @@ from typing import no_type_check, final, override, overload
 # Protocols and Interfaces:
 from typing import Protocol, runtime_checkable
 from . import _interface as API  # noqa: N812
-from ._interface import Signature, Decorable, Decorated, DForm_e, Decorator_i
+from ._interface import Signature, Decorable, Decorated, DForm_e, Decorator_p
 
 if typing.TYPE_CHECKING:
     import types
@@ -67,10 +67,10 @@ ProtoMeta : Final[type] = type(Protocol)
 class DecoratorMeta(ProtoMeta):
 
     @overload
-    def __call__[T](cls:type[API.Decorator_i], target:type[T], *args:Any, **kwargs:Any) -> type[T]: ...  # noqa: ANN401, N805
+    def __call__[T](cls:type[API.Decorator_p], target:type[T], *args:Any, **kwargs:Any) -> type[T]: ...  # noqa: ANN401, N805
 
     @overload
-    def __call__(cls:type[API.Decorator_i], *args:Any, **kwargs:Any) -> type[API.Decorator_i]: ...  # noqa: ANN401, N805
+    def __call__(cls:type[API.Decorator_p], *args:Any, **kwargs:Any) -> type[API.Decorator_p]: ...  # noqa: ANN401, N805
 
     def __call__(cls, *args:Any, **kwargs:Any):  # noqa: N805
         """ When called with a class as the first arg, builds and calls the decorator on it """
@@ -94,14 +94,14 @@ class _DecAnnotate_m:
     of the form: '{annotation_prefix}:{data_suffix}'
     """
 
-    def data_key(self:Decorator_i) -> str:
+    def data_key(self:Decorator_p) -> str:
         if not self._data_key:
             self._data_key = f"{self._annotation_prefix}:{self._data_suffix}"
 
         assert(self._data_key is not None)
         return self._data_key
 
-    def annotate_decorable(self:Decorator_i, target:Decorable) -> list:
+    def annotate_decorable(self:Decorator_p, target:Decorable) -> list:
         """
         Essentially: target[data_key] += self.{data_key}[:]
         """
@@ -118,7 +118,7 @@ class _DecAnnotate_m:
                 msg = "Bad annotation type"
                 raise TypeError(msg, x)
 
-    def get_annotations(self:Decorator_i, target:Decorable) -> list[str]:
+    def get_annotations(self:Decorator_p, target:Decorable) -> list[str]:
         """ Get the annotations of the target """
         if not hasattr(target, API.ATTR_TARGET):
             return []
@@ -126,7 +126,7 @@ class _DecAnnotate_m:
         data    = bottom.__annotations__.get(self.data_key(), [])
         return data[:]
 
-    def is_annotated(self:Decorator_i, target:Decorable) -> bool:
+    def is_annotated(self:Decorator_p, target:Decorable) -> bool:
         logging.info("Testing for annotation data: %s : %s", self.data_key(), target)
         match target:
             case x if not hasattr(x, API.ATTR_TARGET):
@@ -142,20 +142,20 @@ class _DecMark_m:
 
     """
 
-    def mark_key(self:Decorator_i) -> str:
+    def mark_key(self:Decorator_p) -> str:
         if not self._mark_key:
             self._mark_key = f"{self._annotation_prefix}:{self._mark_suffix}"
 
         assert(self._mark_key is not None)
         return self._mark_key
 
-    def apply_mark(self:Decorator_i, *args:Decorable) -> None:
+    def apply_mark(self:Decorator_p, *args:Decorable) -> None:
         """ Mark the UNWRAPPED, original target as already decorated """
         logging.info("Applying Mark %s to : %s", self._mark_key, args)
         for x in args:
             x.__annotations__[self.mark_key()] = True
 
-    def is_marked(self:Decorator_i, target:Decorable) -> bool:
+    def is_marked(self:Decorator_p, target:Decorable) -> bool:
         logging.info("Testing for mark: %s : %s", self._mark_key, target)
         match target:
             case x if not hasattr(x, API.ATTR_TARGET):
@@ -169,7 +169,7 @@ class _DecMark_m:
 class _DecWrap_m:
     """ Utils for unwrapping and wrapping a  """
 
-    def _unwrap(self:Decorator_i, target:Decorated) -> Decorable:
+    def _unwrap(self:Decorator_p, target:Decorated) -> Decorable:
         """ Get the un-decorated function if there is one """
         match target:
             case type():
@@ -177,7 +177,7 @@ class _DecWrap_m:
             case x:
                 return inspect.unwrap(x)
 
-    def _unwrapped_depth(self:Decorator_i, target:Decorated) -> int:
+    def _unwrapped_depth(self:Decorator_p, target:Decorated) -> int:
         """ the code of inspect.unwrap, but used for counting the unwrap depth """
         logging.info("Counting Wrap Depth of: %s", target)
         f               = target
@@ -195,7 +195,7 @@ class _DecWrap_m:
         else:
             return depth
 
-    def _build_wrapper[**I,O](self:Decorator_i, form:DForm_e, target:Decorable[I,O]) -> Maybe[Decorated[I,O]]:
+    def _build_wrapper[**I,O](self:Decorator_p, form:DForm_e, target:Decorable[I,O]) -> Maybe[Decorated[I,O]]:
         """ Create a new decoration using the appropriate hook """
         match form:
             case self.Form.CLASS:
@@ -214,7 +214,7 @@ class _DecWrap_m:
                 msg = "Unexpected Decorable type"
                 raise ValueError(msg, x)
 
-    def _apply_onto(self:Decorator_i, wrapper:Decorated, target:Decorable) -> Decorated:
+    def _apply_onto(self:Decorator_p, wrapper:Decorated, target:Decorable) -> Decorated:
         """ Uses functools.update_wrapper,
         Modify cls._wrapper_assignments and cls._wrapper_updates as necessary
         """
@@ -230,10 +230,10 @@ class _DecWrap_m:
 
 class _DecInspect_m:
 
-    def _signature(self:Decorator_i, target:Decorable) -> Signature:
+    def _signature(self:Decorator_p, target:Decorable) -> Signature:
         return inspect.signature(target, follow_wrapped=False)
 
-    def _discrim_form(self:Decorator_i, target:Decorable) -> DForm_e:
+    def _discrim_form(self:Decorator_p, target:Decorable) -> DForm_e:
         """ Determine the type of the thing being decorated"""
         try:
             target = self._unwrap(target)
@@ -260,7 +260,7 @@ class _DecoratorHooks_m:
     """ The main hooks used to actually specify the decoration """
     _builder : ClassVar[Subclasser] = Subclasser()
 
-    def _wrap_method_h[**In, Out](self:Decorator_i, meth:Method[In,Out]) -> Decorated[In, Out]:
+    def _wrap_method_h[**In, Out](self:Decorator_p, meth:Method[In,Out]) -> Decorated[In, Out]:
         """ Override this to add a decoration function to method """
         dec_name = self.dec_name()
 
@@ -270,7 +270,7 @@ class _DecoratorHooks_m:
 
         return cast("Method", _default_method_wrapper)
 
-    def _wrap_fn_h[**In, Out](self:Decorator_i, fn:Func[In, Out]) -> Decorated[In, Out]:
+    def _wrap_fn_h[**In, Out](self:Decorator_p, fn:Func[In, Out]) -> Decorated[In, Out]:
         """ override this to add a decorator to a function """
         dec_name = self.dec_name()
 
@@ -284,13 +284,13 @@ class _DecoratorHooks_m:
         """ Override this to decorate a class """
         return self._builder.make_subclass("DefaultWrappedClass", cls)
 
-    def _validate_target_h(self:Decorator_i, target:Decorable, form:DForm_e, args:Maybe[list]=None) -> None:
+    def _validate_target_h(self:Decorator_p, target:Decorable, form:DForm_e, args:Maybe[list]=None) -> None:
         """ Abstract class for specialization.
         Given the original target, throw an error here if it isn't 'correct' in some way
         """
         pass
 
-    def _validate_sig_h(self:Decorator_i, sig:Signature, form:DForm_e, args:Maybe[list]=None) -> None:
+    def _validate_sig_h(self:Decorator_p, sig:Signature, form:DForm_e, args:Maybe[list]=None) -> None:
         pass
 
     def _build_annotations_h(self, target:Decorable, current:list) -> list:  # noqa: ARG002
@@ -313,7 +313,7 @@ class _DecIdempotentLogic_m:
 
 ##--|
 
-class Decorator(_DecoratorCombined_m, Decorator_i, metaclass=DecoratorMeta): # type: ignore[misc]
+class Decorator(_DecoratorCombined_m, Decorator_p, metaclass=DecoratorMeta): # type: ignore[misc]
     """
     The abstract Superclass of Decorators
     A subclass implements '_decoration_logic'

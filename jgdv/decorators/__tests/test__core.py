@@ -165,7 +165,7 @@ class TestDecorator(_Utils):
 
                 return simple_wrapped
 
-        @SimpleDec
+        @SimpleDec()
         def test_fn():
             return [1]
 
@@ -483,7 +483,7 @@ class TestClassDecoration(_Utils):
                 setattr(target, "bmethod", self.__class__.bmethod) # noqa: B010
 
 
-        @ExDecorator
+        @ExDecorator()
         class Basic:
 
             def __init__(self, val=None):
