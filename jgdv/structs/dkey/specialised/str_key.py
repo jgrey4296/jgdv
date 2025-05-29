@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 """
 
 """
@@ -65,8 +65,9 @@ class StrDKey(SingleDKey, mark=DKeyMark_e.STR, conv="s"):
     """
     A Simple key that always expands to a string
     """
+    __slots__ = ()
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._expansion_type  = str
-        self._typecheck       = str
+        self.data.expansion_type  = str
+        self.data.typecheck       = str

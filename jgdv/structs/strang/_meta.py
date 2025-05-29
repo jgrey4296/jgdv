@@ -104,5 +104,5 @@ class StrangMeta(StrMeta):
         else:
             assert(isinstance(obj, str))
             if hasattr(obj, "__dict__"):
-                raise ValueError(HasDictFail)
+                raise ValueError(HasDictFail, type(obj))
             return obj

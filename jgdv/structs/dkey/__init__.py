@@ -10,7 +10,7 @@ from ._util.decorator import DKeyed, DKeyExpansionDecorator
 
 from .keys import SingleDKey, MultiDKey, NonDKey, IndirectDKey
 
-# from .specialised.import_key     import ImportDKey
-# from .specialised.args_keys      import ArgsDKey, KwargsDKey
-# from .specialised.str_key        import StrDKey
-# from .specialised.path_key       import PathDKey
+from .specialised.import_key     import ImportDKey
+from .specialised.args_keys      import ArgsDKey, KwargsDKey
+from .specialised.str_key        import StrDKey
+from .specialised.path_key       import PathDKey

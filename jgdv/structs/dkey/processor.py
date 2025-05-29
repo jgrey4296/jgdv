@@ -335,8 +335,6 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
                     data['mark'] = DKeyMark_e.INDIRECT
                 conv_mark = self.registry.convert.get(x.convert, None) # type: ignore[arg-type]
                 if mark is not DKeyMark_e.default() and conv_mark and (mark != conv_mark):
-                    breakpoint()
-                    pass
                     raise ValueError(API.MarkConversionConflict, mark, conv_mark)
                 elif conv_mark:
                     data['mark'] = conv_mark

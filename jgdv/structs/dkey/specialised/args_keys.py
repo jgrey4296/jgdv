@@ -62,11 +62,12 @@ logging = logmod.getLogger(__name__)
 
 class ArgsDKey(SingleDKey, mark=DKeyMark_e.ARGS):
     """ A Key representing the action spec's args """
+    __slots__ = ()
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._expansion_type  = list
-        self._typecheck = list
+        self.data.expansion_type  = list
+        self.data.typecheck = list
 
     def expand(self, *sources, **kwargs) -> list:
         """ args are simple, just get the first specstruct's args value """
@@ -80,11 +81,12 @@ class ArgsDKey(SingleDKey, mark=DKeyMark_e.ARGS):
 
 class KwargsDKey(SingleDKey, mark=DKeyMark_e.KWARGS):
     """ A Key representing all of an action spec's kwargs """
+    __slots__ = ()
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._expansion_type  = dict
-        self._typecheck = dict
+        self.data.expansion_type  = dict
+        self.data.typecheck = dict
 
     def expand(self, *sources, fallback:Maybe=None, **kwargs) -> dict:
         """ kwargs are easy, just get the first specstruct's kwargs value """
