@@ -127,6 +127,7 @@ class DKey(Strang):
         """ Registered the subclass as a DKey and sets the Mark enum this class associates with """
         assert(isinstance(cls._processor, DKeyProcessor))
         logging.debug("Registering DKey Subclass: %s : %s", cls, mark)
+        super().__init_subclass__()
         cls._mark = mark or cls._mark
         cls._expander.set_ctor(DKey)
         match cls._mark:

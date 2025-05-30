@@ -249,15 +249,14 @@ class SubAnnotate_m:
     __builder     : ClassVar[Subclasser]  = Subclasser()
     _annotate_to  : ClassVar[str]         = AnnotationTarget
 
-    def __init_subclass__(cls, **kwargs:Any) -> None:  # noqa: ANN401
+    def __init_subclass__(cls, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
         """ On init of a subclass, ensure it's annotation target is set
 
-        TODO does this need to call super?
         """
-        match kwargs.get(AnnotateKWD, None):
+        super().__init_subclass__(*args)
+        match kwargs.pop(AnnotateKWD, None):
             case str() as target:
                 logging.debug("Annotate Subclassing: %s : %s", cls, kwargs)
-                del kwargs[AnnotateKWD]
                 cls._annotate_to = target
                 setattr(cls, cls._annotate_to, None)
             case None if not hasattr(cls, cls._annotate_to):

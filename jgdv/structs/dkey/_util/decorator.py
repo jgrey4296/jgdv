@@ -190,6 +190,7 @@ class DKeyed:
         """
         Subclasses of DKeyed are stored, and used to extend DKeyed
         """
+        super().__init_subclass__()
         if cls in DKeyed._extensions:
             return
         DKeyed._extensions.add(cls)

@@ -45,7 +45,7 @@ from jgdv._abstract.pre_processable import PostInstanceData
 
 if TYPE_CHECKING:
     import enum
-    from jgdv import Maybe
+    from jgdv import Maybe, MaybeT
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Self, Literal
@@ -80,8 +80,28 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
     If the strang type implements _{call}_h,
     the processor uses that for a stage instead
     """
+    def use_hook(self, cls:type[T]|T, stage:str, *args:Any, **kwargs:Any) -> MaybeT[bool, tuple]:  # noqa: ANN401
+        match cls, getattr(cls, name_to_hook(stage), None):
+            case _, None:
+                return None
+            case _, x if not callable(x):
+                return None
+            case type(), x:
+                assert(callable(x))
+                result = x(*args, **kwargs)
+            case _, x:
+                assert(callable(x))
+                result = x(*args, **kwargs)
 
-    def pre_process(self, cls:type[T], data:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult[T]:  # noqa: ANN401
+        match result:
+            case None:
+                return None
+            case bool() as prefer, *rest:
+                return (prefer, *rest)
+            case x:
+                        raise TypeError(type(x))
+
+    def pre_process(self, cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult[T]:  # noqa: A002, ANN401
         """ run before str.__new__ is called,
         to do early modification of the string
         Filters out extraneous duplicated separators
@@ -89,14 +109,17 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
         text       : str
         inst_data  : InstanceData      = InstanceData({})
         post_data  : PostInstanceData  = PostInstanceData({})
-        match getattr(cls, name_to_hook("pre_process"), None):
-            case x if callable(x):
-                return x(cls, data, *args, strict=strict, **kwargs)
+        ctor       : Maybe[type[T]]    = None
+        match self.use_hook(cls, "pre_process", cls, input, *args, strict=strict, **kwargs):
             case None:
-                pass
+                case = cls.section(-1).case or ""
+                text = case.join(str(x) for x in [input, *args])
+            case False, *rest:
+                text , inst_data, post_data, ctor = rest  # type: ignore[assignment]
+                return text, inst_data, post_data, ctor
+            case True, *rest:
+                input, inst_data, post_data, ctor = rest  # type: ignore[assignment]  # noqa: A001
 
-        case = cls.section(-1).case or ""
-        text = case.join(str(x) for x in [data, *args])
 
         if not self._verify_structure(cls, text):
             raise ValueError(errors.MalformedData, text)
@@ -191,12 +214,19 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
         word_indices  : list[tuple[int, ...]]
         sec_slices    : list[slice]
         flat_slices   : list[slice]
-        match getattr(obj, name_to_hook("process"), None):
-            case x if callable(x): # call the hook method
-                return x(data=data)
+        match self.use_hook(obj, "process", data=data):
             case None:
-                logging.debug("Processing Strang: %s", str.__str__(obj))
+                pass
+            case True, x:
+                assert(isinstance(x, type(obj)|None))
+                return x
+            case False, None:
+                pass
+            case False, x:
+                assert(isinstance(x, type(obj)|None))
+                obj = x
 
+        logging.debug("Processing Strang: %s", str.__str__(obj))
         match data:
             case {"args_start": int() as arg_s}:
                 obj.data.args_start = arg_s
@@ -296,18 +326,26 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
         if 'types' in data:
             data['types'].reverse()
 
-        match getattr(obj, name_to_hook("process"), None):
-            case x if callable(x):
-                return x(data)
-            case _:
-                logging.debug("Post-processing Strang: %s", str.__str__(obj))
-                for i in range(len(obj.sections())):
-                    metas += self._post_process_section(obj, i, data)
-                else:
-                    obj.data.meta = tuple(metas)  # type: ignore[assignment]
-                    self._validate_marks(obj)
-                    self._calc_obj_meta(obj)
-                    return None
+        match self.use_hook(obj, "process", data=data):
+            case None:
+                pass
+            case True, x:
+                assert(isinstance(x, type(obj)|None))
+                return x
+            case False, None:
+                pass
+            case False, x:
+                assert(isinstance(x, type(obj)|None))
+                obj = x
+
+        logging.debug("Post-processing Strang: %s", str.__str__(obj))
+        for i in range(len(obj.sections())):
+            metas += self._post_process_section(obj, i, data)
+        else:
+            obj.data.meta = tuple(metas)  # type: ignore[assignment]
+            self._validate_marks(obj)
+            self._calc_obj_meta(obj)
+            return None
 
     def _post_process_section(self, obj:T, idx:int, data:dict) -> list:
         type MetaTypes              = Maybe[UUID|API.StrangMarkAbstract_e|int]
@@ -320,12 +358,12 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
             assert(isinstance(elem, str))
             # Discriminate the str
             match elem:
+                case x if (mark_elem:=self._implicit_mark(x, sec=section, data=data, index=i, maxcount=count)) is not None:
+                    logging.debug("(%s) Found Named Marker: %s", i, mark_elem)
+                    meta[i] = mark_elem
                 case x if (type_mark:=self._make_type(x, sec=section, data=data, obj=obj)) is not None:
                     meta[i] = type_mark
                 case x if (mark_elem:=self._build_mark(x, sec=section, data=data)) is not None:
-                    logging.debug("(%s) Found Named Marker: %s", i, mark_elem)
-                    meta[i] = mark_elem
-                case x if (mark_elem:=self._implicit_mark(x, sec=section, data=data, first_or_last=(i in {0,count-1}))) is not None:
                     logging.debug("(%s) Found Named Marker: %s", i, mark_elem)
                     meta[i] = mark_elem
                 case _: # nothing special
@@ -396,13 +434,14 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
             case _:
                 return None
 
-    def _implicit_mark(self, val:str, *, sec:API.Sec_d, data:dict, first_or_last:bool) -> Maybe[API.StrangMarkAbstract_e]:  # noqa: ARG002
+    def _implicit_mark(self, val:str, *, sec:API.Sec_d, data:dict, index:int, maxcount:int) -> Maybe[API.StrangMarkAbstract_e]:  # noqa: ARG002
         """ Builds certain implicit marks,
         but only for the first and last words of a section
 
         # TODO handle combined marks like val::+_.blah
 
         """
+        first_or_last = index in {0, maxcount-1}
         match sec.marks:
             case None:
                 return None

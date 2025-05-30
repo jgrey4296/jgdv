@@ -110,6 +110,7 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
 
     @classmethod
     def __init_subclass__[T:API.Strang_p](cls:type[T], *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
+        super().__init_subclass__()
         StrangMeta.register(cls)
 
     ##--|
@@ -480,7 +481,7 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
         else:
             return self.__class__(*words)
 
-    def pop(self, *, top:bool=True)-> API.Strang_p:
+    def pop(self, *, top:bool=True)-> Self:
         """
         Strip off one marker's worth of the name, or to the top marker.
         eg:
@@ -496,9 +497,9 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
                 case False:
                     next_mark = self.rindex(mark)
         except ValueError:
-            return cast("API.Strang_p", self)
+            return self
         else:
-            return cast("API.Strang_p", Strang(self[:next_mark]))
+            return type(self)(self[:next_mark])
 
     def mark(self, mark:str|API.StrangMarkAbstract_e) -> Self:
         """ Add a given mark if it is last section appropriate  """

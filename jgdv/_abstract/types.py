@@ -44,11 +44,13 @@ __all__ = ( # noqa: RUF022
 # -- Types
 "AbsPath", "Builder", "CHECKTYPE", "Char", "Ctor", "DateTime", "Decorator", "Depth",
 "DictItems", "DictKeys", "DictVals", "E_", "Either", "Fifo", "FmtKey", "FmtSpec", "FmtStr",
-"Frame", "Func", "Ident", "Lambda", "Lifo", "M_", "Maybe", "Method", "Module", "Mut", "NoMut",
-"Queue", "R_", "RelPath", "Result", "Rx", "RxMatch", "RxStr", "Seconds", "Stack", "SubOf",
-"TimeDelta", "Traceback", "Url", "VList", "Vector", "VerSpecStr", "VerStr", "Weak",
+"Frame", "Func", "Ident", "Lambda", "Lifo", "M_", "Maybe", "MaybeT", "Method", "Module", "Mut",
+"NoMut", "Queue", "R_", "RelPath", "Result", "Rx", "RxMatch", "RxStr", "Seconds", "Stack",
+"SubOf", "TimeDelta", "Traceback", "Url", "VList", "Vector", "VerSpecStr", "VerStr",
+"Weak",
 
-
+# -- Functions
+"is_none",
 )
 # ##-- end Generated Exports
 
@@ -103,6 +105,7 @@ type Mut[T]                  = Annotated[T, "Mutable"]
 type NoMut[T]                = Annotated[T, "Immutable"]
 
 type Maybe[T]                = T | None
+type MaybeT[*I]              = tuple[*I] | None
 type Result[T, E:Exception]  = T | E
 type Either[L, R]            = L | R
 type SubOf[T]                = TypeGuard[T]
@@ -110,8 +113,8 @@ type SubOf[T]                = TypeGuard[T]
 ##-- end utils
 
 ##-- shorthands
-type M_[T]               = Maybe[T]
-type R_[T, E:Exception]  = Result[T,E]
+type M_[T]                   = Maybe[T]
+type R_[T, E:Exception]      = Result[T,E]
 type E_[L, R]            = Either[L,R]
 
 ##-- end shorthands

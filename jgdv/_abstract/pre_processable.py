@@ -45,7 +45,7 @@ if typing.TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from jgdv import Maybe
+    from jgdv import Maybe, MaybeT
 
 # isort: on
 # ##-- end types
@@ -55,9 +55,10 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-InstanceData           = NewType("InstanceData", dict)
-PostInstanceData       = NewType("PostInstanceData", dict)
+InstanceData              = NewType("InstanceData", dict)
+PostInstanceData          = NewType("PostInstanceData", dict)
 
+type HookOverride         = bool
 type PreProcessResult[T]  = tuple[str, InstanceData, PostInstanceData, Maybe[type[T]]]
 # Body:
 
@@ -76,17 +77,22 @@ class PreProcessor_p[T](Protocol):
 
     """
 
-    def pre_process(self, cls:type[T], data:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult[T]: ...  # noqa: ANN401
+    def pre_process(self, cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult[T]: ...  # noqa: A002, ANN401
 
     def process(self, obj:T, *, data:PostInstanceData) -> Maybe[T]: ...
 
     def post_process(self, obj:T, *, data:PostInstanceData) -> Maybe[T]: ...
 
 class ProcessorHooks[T](Protocol):
+    """ Hooks a PreProcessor_p recognizes.
+
+    returning True as the first result value means the processor's logic is *not* to be used.
+    otherwise it *is* used, with the results from the hook
+    """
 
     @classmethod
-    def _pre_process_h(cls:type[T], data:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult[T]: ...  # noqa: ANN401
+    def _pre_process_h(cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> MaybeT[bool, PreProcessResult[T]]: ...  # noqa: A002, ANN401
 
-    def _process_h(self, *, data:PostInstanceData) -> Maybe[T]: ...
+    def _process_h(self, *, data:PostInstanceData) -> Maybe[tuple[HookOverride, Maybe[T]]]: ...
 
-    def _post_process_h(self, *, data:PostInstanceData) -> Maybe[T]: ...
+    def _post_process_h(self, *, data:PostInstanceData) -> Maybe[tuple[HookOverride, Maybe[T]]]: ...
