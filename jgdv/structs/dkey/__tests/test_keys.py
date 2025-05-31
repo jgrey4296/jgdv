@@ -238,6 +238,13 @@ class TestNonDKey:
         obj2 = "blah"
         assert(hash(obj1) == hash(obj2))
 
+
+    def test_format(self):
+        obj1 = DKey("blah", implicit=False, force=NonDKey)
+        assert(str(obj1) == f"{obj1:w}")
+        assert(str(obj1) == f"{obj1:i}")
+        assert(str(obj1) == f"{obj1:wi}")
+
 class TestIndirectDKey:
 
     def test_sanity(self):

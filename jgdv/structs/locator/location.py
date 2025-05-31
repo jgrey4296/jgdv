@@ -204,7 +204,7 @@ class Location(Strang):
         match elem.rfind(".") if last else elem.find("."):
             case -1:
                 return None
-            case x:
+            case int() as x:
                 pass
 
         match elem[x:]:

@@ -124,9 +124,9 @@ class _DecAnnotate_m:
             case x if not hasattr(x, API.ATTR_TARGET):
                 return False
             case type():
-                return self._data_key in target.__annotations__
+                return self.data_key() in target.__annotations__
             case _:
-                return self._data_key in target.__annotations__
+                return self.data_key() in target.__annotations__
 
 class _DecMark_m:
     """ For Marking and checking Decorables.
@@ -143,19 +143,19 @@ class _DecMark_m:
 
     def apply_mark(self:Decorator_p, *args:Decorable) -> None:
         """ Mark the UNWRAPPED, original target as already decorated """
-        logging.info("Applying Mark %s to : %s", self._mark_key, args)
+        logging.info("Applying Mark %s to : %s", self.mark_key(), args)
         for x in args:
             x.__annotations__[self.mark_key()] = True
 
     def is_marked(self:Decorator_p, target:Decorable) -> bool:
-        logging.info("Testing for mark: %s : %s", self._mark_key, target)
+        logging.info("Testing for mark: %s : %s", self.mark_key(), target)
         match target:
             case x if not hasattr(x, API.ATTR_TARGET):
                 return False
             case type() as x:
-                return self._mark_key in x.__annotations__
+                return self.mark_key() in x.__annotations__
             case x:
-                local_key = self._mark_key in x.__annotations__
+                local_key = self.mark_key() in x.__annotations__
                 return local_key or self.is_marked(type(target))
 
 class _DecWrap_m:

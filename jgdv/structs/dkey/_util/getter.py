@@ -85,7 +85,7 @@ class ChainGetter:
                     replacement = params.get(key, fallback)
                 case _:
                     msg = "Unknown Type in get"
-                    raise TypeError(msg, source)
+                    raise TypeError(msg, key, source)
 
             if replacement is not fallback:
                 return replacement

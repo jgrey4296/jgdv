@@ -134,6 +134,11 @@ class MultiDKey(DKey, mark=DKeyMark_e.MULTI, multi=True, core=True):
     def __contains__(self, other:object) -> bool:
          return other in self.keys()
 
+    def __format__(self, spec, **kwargs) -> str:  # noqa: ANN002, ANN003
+        """ Just does normal str formatting """
+        rem, _, _= self._processor.consume_format_params(spec) # type: ignore
+        return super().__format__(rem, **kwargs)
+
     def _multi(self) -> Literal[True]:
         return True
 
@@ -181,9 +186,10 @@ class NonDKey(DKey, mark=DKeyMark_e.NULL, core=True):
             msg = "NonKeys can't have a fallback, did you mean to use an explicit key?"
             raise ValueError(msg, self)
 
-    def format(self, *args, **kwargs) -> str:  # noqa: ANN002, ANN003
+    def __format__(self, spec, **kwargs) -> str:  # noqa: ANN002, ANN003
         """ Just does normal str formatting """
-        return format(self, *args, **kwargs)
+        rem, _, _= self._processor.consume_format_params(spec) # type: ignore
+        return super().__format__(rem, **kwargs)
 
     def expand(self, *args, **kwargs) -> Maybe:  # noqa: ANN002, ANN003, ARG002
         """ A Non-key just needs to be coerced into the correct str format """
