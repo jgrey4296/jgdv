@@ -56,8 +56,9 @@ MODULE_NAME              : Final[str]  = "__module__"
 SLOTS_NAME               : Final[str]  = "__slots__"
 ANNOTS_NAME              : Final[str]  = "__annotations__"
 
+FreshKWD                 : Final[str]  = "fresh_registry"
 AnnotateKWD              : Final[str]  = "_annotate_to"
-AnnotationTarget         : Final[str]  = "_typevar"
+AnnotationTarget         : Final[str]  = "__jgdv_typevar__"
 AnnotateRx               : Final[Rx]   = re.compile(r"(?P<name>\w+)(?:<(?P<extras>.*?)>)?(?:\[(?P<params>.*?)\])?")
 
 MultiParamFail           : Final[str]  = "Multi Param Annotation not supported yet"
@@ -69,6 +70,8 @@ NoNameMatch              : Final[str]  = "Couldn't even match the cls name"
 NoSubName                : Final[str]  = "No decorated name available"
 UnexpectedMRO            : Final[str]  = "Unexpected mro type"
 UnexpectedNameSpace      : Final[str]  = "Unexpected namespace type"
+
+ORIG_BASES_K             : Final[str]  = "__orig_bases__"
 ##--| Body
 
 class Subclasser:
@@ -230,6 +233,71 @@ class Subclasser:
         for x,y in (namespace or {}).items():
             setattr(sub, x, y)
         return sub
+
+class SubAlias_m:
+    """ Create and register alias of types.
+
+    cls[val] -> GenericAlias(cls, val)
+
+    then:
+
+    class RealSub(cls[val]) ...
+    so:
+    cls[val] is RealSub
+
+    the annotation is added into cls.__annotations__,
+    under the cls._annotate_to key name.
+
+    """
+    __slots__                       = ()
+    _annotate_to  : ClassVar[str]   = AnnotationTarget
+    # TODO make this a weakdict?
+    _registry     : ClassVar[dict]  = {}
+
+    def __init_subclass__(cls:type[Self], *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
+        cls.__annotations__ = cls.__annotations__.copy()
+
+        if kwargs.pop(FreshKWD, False):
+            cls._registry = {}
+
+        match kwargs.pop(AnnotateKWD, None):
+            case str() as target:
+                logging.debug("Annotate Subclassing: %s : %s", cls, kwargs)
+                cls._annotate_to = target
+                setattr(cls, cls._annotate_to, None)
+            case None if not hasattr(cls, cls._annotate_to):
+                setattr(cls, cls._annotate_to, None)
+            case _:
+                pass
+
+        # If the subclass is based on a GenericAlias, copy the annotation
+        match cls.__dict__.get(ORIG_BASES_K, []):
+            case [GenericAlias() as x]:
+                # ensure a new annotations dict
+                cls.__annotations__[cls._annotate_to]  = x.__args__
+                cls._registry[x.__args__]              = cls
+            case _:
+                already_registered : tuple = tuple(x.__qualname__ for x in cls.mro() if x in cls._registry.values())
+                if bool(already_registered):
+                    raise ValueError("A class in this mro is already registered", cls.__qualname__, already_registered)
+
+                cls.__annotations__[cls._annotate_to]  = ()
+
+    def __class_getitem__(cls:type[Self], *args:Any, **kwargs:Any) -> type|GenericAlias:  # noqa: ANN401
+        existing_args = cls.cls_annotation() or ()
+        match cls._registry.get(args, None):
+            case type() as x:
+                return x
+            case _:
+                return GenericAlias(cls, (*existing_args, *args))
+
+    @classmethod
+    def _clear_registry(cls) -> None:
+        cls._registry.clear()
+
+    @classmethod
+    def cls_annotation(cls) -> tuple:
+        return cls.__annotations__.get(cls._annotate_to, ())
 
 class SubAnnotate_m:
     """
