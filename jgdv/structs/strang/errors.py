@@ -24,6 +24,7 @@ CodeRefImportNotCallable        : Final[str]  = "Imported 'Function' was not a c
 CodeRefImportNotClass           : Final[str]  = "Imported 'Class' was not a type"
 CodeRefImportCheckFail          : Final[str]  = "Imported Value does not match required type"
 CodeRefImportUnknownFail        : Final[str]  = "Imported Code Reference is not of correct type"
+CodeRefImportNotValue           : Final[str]  = "Imported Code Reference is not a value"
 CodeRefUUIDFail                 : Final[str]  = "Code References shouldn't need UUIDs"
 
 FormatterExpansionTypeFail      : Final[str]  = "Unrecognized expansion type"

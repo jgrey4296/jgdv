@@ -31,7 +31,7 @@ from .formatter import StrangFormatter
 from . import errors
 from . import _interface as API # noqa: N812
 from ._meta import StrangMeta
-from jgdv.mixins.annotate import SubAnnotate_m
+from jgdv.mixins.annotate import SubAnnotate_m, SubAlias_m
 
 # ##-- types
 # isort: off
@@ -68,7 +68,7 @@ logging.disabled = False
 ##--|
 
 @Proto(API.Strang_p, mod_mro=False)
-class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
+class Strang[K](SubAlias_m, str, metaclass=StrangMeta):
     """ A Structured String Baseclass.
 
     A Normal str, but is parsed on construction to extract and validate
@@ -95,7 +95,6 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
     _processor  : ClassVar  = StrangBasicProcessor()
     _formatter  : ClassVar  = StrangFormatter()
     _sections   : ClassVar  = API.STRANG_ALT_SECS
-    _typevar    : ClassVar  = None
 
     data        : API.Strang_d
     meta        : dict
@@ -107,11 +106,6 @@ class Strang(SubAnnotate_m, str, metaclass=StrangMeta):
     @classmethod
     def section(cls, arg:int|str) -> API.Sec_d:
         return cls._sections[arg]
-
-    @classmethod
-    def __init_subclass__[T:API.Strang_p](cls:type[T], *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
-        super().__init_subclass__()
-        StrangMeta.register(cls)
 
     ##--|
 

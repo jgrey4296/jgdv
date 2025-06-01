@@ -31,7 +31,7 @@ from pydantic import field_validator, model_validator
 from .strang import Strang
 from . import _interface as API # noqa: N812
 from . import errors
-from .processor import CodeRefProcessor
+from .processor import StrangBasicProcessor
 from .formatter import StrangFormatter
 # ##-- end 1st party imports
 
@@ -46,19 +46,22 @@ from typing import Generic, NewType, Any, Never
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
+from collections.abc import Callable
 
 if TYPE_CHECKING:
     from jgdv.structs.chainguard import ChainGuard
     import enum
-    from jgdv import Maybe, Result
+    from jgdv import Maybe, Result, MaybeT
     from typing import Final
     from typing import ClassVar, LiteralString
     from typing import Self, Literal
     from typing import TypeGuard
-    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Iterable, Iterator, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    type SpecialType = typing._SpecialForm
+    from jgdv._abstract.pre_processable import PreProcessResult
+    type SpecialType  = typing._SpecialForm
+    type CheckType    = type | types.UnionType
 ##--|
 
 # isort: on
@@ -87,25 +90,54 @@ class CodeReference(Strang):
 
     __call__ imports the reference
     """
-    __slots__ = ("_value",)
+    __slots__                                 = ("_value",)
 
-    _processor    : ClassVar          = CodeRefProcessor()
-    _formatter    : ClassVar          = StrangFormatter()
-    _sections     : ClassVar          = API.Sections_d(*API.CODEREF_DEFAULT_SECS)
-    _typevar      : ClassVar          = None
+    _processor  : ClassVar                    = StrangBasicProcessor()
+    _formatter  : ClassVar                    = StrangFormatter()
+    _sections   : ClassVar                    = API.Sections_d(*API.CODEREF_DEFAULT_SECS)
+    _check      : ClassVar[Maybe[CheckType]]  = None
 
     @classmethod
-    def from_value(cls:type[CodeReference], value:Any) -> CodeReference:  # noqa: ANN401
-        split_qual = value.__qualname__.split(".")
-        val_iden = ":".join([".".join(split_qual[:-1]), split_qual[-1]])
-        return cls(f"{value.__module__}:{val_iden}", value=value)
+    def _pre_process_h[T:CodeReference](cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> MaybeT[bool, *PreProcessResult[T]]:  # noqa: A002, ANN401, ARG003
+        inst_data : dict = {}
+        post_data : dict = {}
+        match input:
+            case str():
+                full_str = input
+            case Callable():
+                split_qual = input.__qualname__.split(".")
+                val_iden = ":".join([".".join(split_qual[:-1]), split_qual[-1]])
+                full_str = f"{input.__module__}:{val_iden}"
+                inst_data['value'] = input
+        ##--|
+        return False, full_str, inst_data, post_data, None
+
+    def __class_getitem__(cls, *args:Any, **kwargs:Any) -> type:  # noqa: ANN401
+        match super().__class_getitem__(*args, **kwargs):
+            case type() as x:
+                return x
+            case types.GenericAlias() as alias:
+                pass
+
+        match alias.__args__[0]:
+            case types.UnionType() as x:
+                annotation = str(x)
+            case type() as x:
+                annotation = x.__name__
+            case x:
+                raise TypeError(type(x))
+        ##--|
+        def force_slots(ns:dict) -> None:
+            ns['__slots__'] = ()
+        newtype = types.new_class(f"{cls.__name__}[{annotation}]", (alias,), exec_body=force_slots)
+        return newtype
 
 
     def __init__(self, *args:Any, value:Maybe[type]=None, check:Maybe[type]=None, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
         super().__init__(**kwargs)
         self._value = value
 
-    def __call__(self, *, check:SpecialType|type=Any, raise_error:bool=False) -> Result[type, ImportError]:
+    def __call__(self, *, check:Maybe[CheckType]=None, raise_error:bool=False) -> Result[type, ImportError]:
         """ Tries to import and retrieve the reference,
         and casts errors to ImportErrors
         """
@@ -118,7 +150,7 @@ class CodeReference(Strang):
                 raise
             return err
 
-    def _do_import(self, *, check:Maybe[SpecialType|type]) -> Any:  # noqa: ANN401
+    def _do_import(self, *, check:Maybe[CheckType]=None) -> Any:  # noqa: ANN401
         match self._value:
             case None:
                 try:
@@ -133,48 +165,52 @@ class CodeReference(Strang):
                     self._value = curr
             case _:
                 curr = self._value
-
+        ##--|
         self._check_imported_type(check)
         return self._value
 
-    def _check_imported_type(self, check:Maybe[SpecialType|type]) -> None:  # noqa: PLR0912
-        assert(self._value is not None)
+    def _check_imported_type(self, check:Maybe[CheckType]=None) -> None:
+        if self._value is None:
+            return
+        marks        : Maybe[type[API.StrangMarkAbstract_e]]
+        has_mark     : bool
+        is_callable  : bool
+        is_type      : bool
+
         marks        = self.section(0).marks
         assert(marks is not None)
         has_mark     = any(x in self for x in [marks.fn, marks.cls])  # type: ignore[attr-defined]
         is_callable  = callable(self._value)
         is_type      = isinstance(self._value, type)
-        if not has_mark:
-              pass
-        elif marks.fn in self and not is_callable:  # type: ignore[attr-defined]
+
+        match self.cls_annotation():
+            case [types.UnionType()|type() as check_type] if check: # Merge types to check
+                check |= check_type
+            case [types.UnionType()|type() as check_type]: # Use annotation
+                check = check_type
+            case [x, *xs]: # Too many
+                raise ImportError("too many types to check", x, xs)
+            case _: # Nothing
+                return
+
+        if marks.fn in self and not is_callable:  # type: ignore[attr-defined]
             raise ImportError(errors.CodeRefImportNotCallable, self._value, self)
-        elif marks.cls in self and not is_type: # type: ignore[attr-defined]
+
+        if marks.cls in self and not is_type: # type: ignore[attr-defined]
             raise ImportError(errors.CodeRefImportNotClass, self._value, self)
 
-        match self._typevar:
-            case None:
-                pass
-            case type() as the_type if not issubclass(self._value, the_type):
-                raise ImportError(errors.CodeRefImportCheckFail, the_type, self._value)
-        match check:
-            case None:
-                return
-            case types.UnionType() if isinstance(self._value, check): # type: ignore[arg-type]
-                return
-            case typing._SpecialForm():
-                raise NotImplementedError(SpecialTypeCheckFail, check, self._value)
-            case x if x is Any:
-                return
-            case x if issubclass(x, Protocol): # type: ignore[arg-type]
-                if isinstance(self._value, x):
-                    return
-            case type() as x:
-                val_match = isinstance(self._value, x)
-                val_match |= issubclass(self._value, x)
-                if not val_match:
-                    raise TypeError(self._value, x)
+        if marks.value in self and (is_type or is_callable):
+            raise ImportError(errors.CodeRefImportNotValue, self._value, self)
 
-        raise ImportError(errors.CodeRefImportUnknownFail, self, check)
+        match check, self._value:
+            case None, _:
+                return
+            case type() | types.UnionType(), type() if issubclass(self._value, check):
+                return
+            case type() | types.UnionType(), _ if isinstance(self._value, check):
+                return
+            case _:
+                raise ImportError(errors.CodeRefImportUnknownFail, self, check)
 
     def to_alias(self, group:str, plugins:dict|ChainGuard) -> str:
         """ TODO Given a nested dict-like, see if this reference can be reduced to an alias """
@@ -184,7 +220,6 @@ class CodeReference(Strang):
                 base_alias = x.name
 
         return base_alias
-
 
     def to_uniq(self, *args:str) -> Never:
         raise NotImplementedError(errors.CodeRefUUIDFail)

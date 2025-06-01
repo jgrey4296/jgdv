@@ -22,7 +22,7 @@ from .. import _interface as API # noqa: N812
 from .._interface import Key_p, DKeyMark_e
 from ..processor import DKeyProcessor, DKeyRegistry
 from ..dkey import DKey
-from ..keys import SingleDKey
+from .. import keys
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -85,7 +85,7 @@ class TestDKeyProcessor:
                 assert(API.RAWKEY_ID in inst_data)
                 assert(len(inst_data[API.RAWKEY_ID]) == 2)
                 assert(isinstance(ctor, API.Key_p))
-                assert(ctor.MarkOf() is API.DKeyMark_e.MULTI)
+                assert(DKey.MarkOf(ctor) == API.DKeyMark_e.MULTI)
             case x:
                 assert(False), x
 
@@ -109,146 +109,7 @@ class TestDKeyProcessor:
                 assert(API.RAWKEY_ID in inst_data)
                 assert(len(inst_data[API.RAWKEY_ID]) == 1)
                 assert(isinstance(ctor, API.Key_p))
-                assert(ctor.MarkOf() is API.DKeyMark_e.NULL)
+                assert(DKey.MarkOf(ctor) == API.DKeyMark_e.NULL)
             case x:
                 assert(False), x
 
-class TestDKeyRegistry:
-
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
-
-    def test_basic(self):
-        match DKeyRegistry():
-            case DKeyRegistry():
-                assert(True)
-            case x:
-                assert(False), x
-
-    def test_basic_register(self):
-        obj = DKeyRegistry()
-        assert(not bool(obj.single))
-        obj.register_key_type(SingleDKey, SingleDKey.MarkOf())
-        assert(bool(obj.single))
-
-    def test_get_subtype(self):
-        obj = DKeyRegistry()
-        obj.register_key_type(SingleDKey, SingleDKey.MarkOf())
-        assert(bool(obj.single))
-        match obj.get_subtype(SingleDKey.MarkOf()):
-            case type() as x if x is SingleDKey:
-                assert(True)
-            case x:
-                assert(False), x
-
-class TestDKeySubclassing:
-
-    def test_subclass_registration_conflict(self, save_registry):
-        """ check you can't accidentally override an existing dkey mark type """
-        assert(dkey.DKey._processor.get_subtype(dkey.DKeyMark_e.FREE) == dkey.SingleDKey)
-
-        with pytest.raises(ValueError):
-
-            class PretendDKey(dkey.DKey, mark=dkey.DKeyMark_e.FREE):
-                pass
-
-        assert(dkey.DKey._processor.get_subtype(dkey.DKeyMark_e.FREE) == dkey.SingleDKey)
-
-    def test_subclass_override(self, save_registry):
-        """ check creating a new dkey type is registered """
-        assert(dkey.DKey._processor.get_subtype(dkey.DKeyMark_e.FREE) == dkey.SingleDKey)
-
-        class PretendDKey(dkey.SingleDKey, mark=dkey.DKeyMark_e.FREE):
-            pass
-
-        assert(dkey.DKey._processor.get_subtype(dkey.DKeyMark_e.FREE) == PretendDKey)
-
-    def test_single_subclass_check(self, save_registry):
-        """ Check all registered dkeys are subclasses"""
-        assert(dkey.DKey._processor.get_subtype(dkey.DKeyMark_e.FREE) == dkey.SingleDKey)
-        for x in dkey.DKey._processor.registry.single.values():
-            assert(issubclass(x, dkey.DKey))
-            assert(issubclass(x, dkey.DKey))
-            assert(not issubclass(x, dkey.MultiDKey))
-
-    def test_multi_subclass_check(self, save_registry):
-        """ All multi keys must be instances of MultiKey_p """
-        for m, x in dkey.DKey._processor.registry.multi.items():
-            if m is dkey.DKey.Marks.NULL:
-                continue
-            assert(issubclass(x, dkey.DKey))
-            assert(issubclass(x, dkey.DKey))
-            assert(issubclass(x, dkey.MultiDKey))
-            assert(isinstance(x, API.MultiKey_p))
-
-    def test_subclass_creation_force(self, save_registry):
-        """ Check you can force creation of a dkey subtype """
-        key = dkey.DKey("test", implicit=True, force=dkey.SingleDKey)
-        assert(key is not None)
-        assert(isinstance(key, dkey.DKey))
-        assert(isinstance(key, dkey.SingleDKey))
-
-    def test_subclass_by_class_item(self, save_registry):
-        """ check you can create new key subtypes """
-        SimpleDKey = dkey.SingleDKey['simple']  # noqa: N806
-        assert(issubclass(SimpleDKey, dkey.DKey))
-        assert(issubclass(SimpleDKey, dkey.DKey))
-        match dkey.DKey("blah", force=SimpleDKey):
-            case SimpleDKey() as x:
-                assert(x.MarkOf() == "simple")
-                assert(x.MarkOf() == SimpleDKey.MarkOf())
-                assert(x.MarkOf() != dkey.SingleDKey.MarkOf())
-            case x:
-                 assert(False), x
-
-    def test_subclass_real_by_class_item(self, save_registry):
-        """ check you can create new key subtypes """
-
-        class AnotherSimpleDKey(dkey.SingleDKey['another']):
-            __slots__ = ()
-            pass
-
-        assert(issubclass(AnotherSimpleDKey, dkey.DKey))
-        assert(issubclass(AnotherSimpleDKey, dkey.DKey))
-        match dkey.DKey("blah", force=AnotherSimpleDKey):
-            case AnotherSimpleDKey() as x:
-                assert(x.MarkOf() == "another")
-            case x:
-                 assert(False), x
-
-    def test_subclass_non_base_by_class_item(self, save_registry):
-        """ check you can create new key subtypes """
-
-        class AnotherSimpleDKey(dkey.SingleDKey['another2']):
-            __slots__ = ()
-            pass
-
-        assert(issubclass(AnotherSimpleDKey, dkey.DKey))
-        assert(issubclass(AnotherSimpleDKey, dkey.DKey))
-        assert(issubclass(AnotherSimpleDKey, dkey.SingleDKey))
-        assert(dkey.DKey['another2'] is AnotherSimpleDKey)
-        match dkey.DKey("blah", force=AnotherSimpleDKey):
-            case AnotherSimpleDKey() as x:
-                assert(x.MarkOf() == "another2")
-                assert(True)
-            case x:
-                 assert(False), x
-
-
-    def test_subclass_multi_key(self, save_registry):
-        """ check you can create new key subtypes """
-        class AnotherSimpleDKey(dkey.MultiDKey['another2']):
-            __slots__ = ()
-            pass
-
-        assert(issubclass(AnotherSimpleDKey, dkey.DKey))
-        assert(issubclass(AnotherSimpleDKey, dkey.DKey))
-        assert(issubclass(AnotherSimpleDKey, dkey.MultiDKey))
-        assert(dkey.MultiDKey['another2'] is AnotherSimpleDKey)
-        assert(AnotherSimpleDKey not in dkey.DKey._processor.registry.single.values())
-        match dkey.DKey("{blah}", mark='another2'):
-            case AnotherSimpleDKey() as x:
-                assert(x.MarkOf() == "another2")
-                assert(True)
-            case x:
-                 assert(False), x

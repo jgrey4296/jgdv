@@ -18,8 +18,8 @@ from jgdv import identity_fn
 from jgdv.structs.strang import Strang
 from jgdv.structs.strang.code_ref import CodeReference
 
-EX_STR    : Final[str] = "fn::jgdv:identity_fn"
-NO_PREFIX : Final[str] = "jgdv:identity_fn"
+EX_STR     : Final[str]  = "fn::jgdv:identity_fn"
+NO_PREFIX  : Final[str]  = "jgdv:identity_fn"
 
 class TestCodeReference:
 
@@ -29,6 +29,13 @@ class TestCodeReference:
     def test_basic(self):
         ref = CodeReference(EX_STR)
         assert(isinstance(ref, CodeReference))
+        assert(ref == EX_STR)
+
+    def test_annotated(self):
+        ref = CodeReference[bool]
+        assert(issubclass(ref, CodeReference))
+        assert(ref.cls_annotation() == (bool,))
+        inst = ref(EX_STR)
 
     def test_with_no_prefix(self):
         ref = CodeReference(NO_PREFIX)
@@ -60,16 +67,16 @@ class TestCodeReference:
         assert(ref[2,0] == "identity_fn")
         assert(ref.value == "identity_fn")
 
-
     @pytest.mark.xfail
     def test_from_fn(self):
+
         def simple_fn():
             return "blah"
 
-        ref = CodeReference.from_value(simple_fn)
+        ref = CodeReference(simple_fn)
         assert(ref() is simple_fn)
 
-class TestCodeReferenceImporting:
+class TestCodeReference_Importing:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -123,18 +130,59 @@ class TestCodeReferenceImporting:
             case _:
                 assert(True)
 
-    def test_import_typecheck(self):
+class TestCodeReference_TypeCheck:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_basic_typecheck(self):
         ref = CodeReference[Strang]("cls::jgdv.structs.strang:Strang")
         match ref():
-            case ImportError():
-                assert(False)
-            case _:
+            case type() as x if x == Strang:
                 assert(True)
+            case x:
+                assert(False), x
 
-    def test_import_typecheck_fail(self):
+
+    def test_union_typecheck(self):
+        ref = CodeReference[int|Strang]("cls::jgdv.structs.strang:Strang")
+        match ref():
+            case type() as x if x == Strang:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_typecheck_fail(self):
         ref = CodeReference[bool]("cls::jgdv.structs.strang:Strang")
         match ref():
             case ImportError():
                 assert(True)
-            case val:
-                assert(False)
+            case x:
+                assert(False), x
+
+
+    def test_union_typecheck_fail(self):
+        ref = CodeReference[bool|int]("cls::jgdv.structs.strang:Strang")
+        match ref():
+            case ImportError():
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_explicit_typecheck(self):
+        ref = CodeReference("cls::jgdv.structs.strang:Strang")
+        match ref(check=Strang):
+            case type():
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_explicit_union_typecheck(self):
+        ref = CodeReference("cls::jgdv.structs.strang:Strang")
+        match ref(check=int|Strang):
+            case type():
+                assert(True)
+            case x:
+                assert(False), x

@@ -26,7 +26,7 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
-from jgdv._abstract.pre_processable import PreProcessor_p, InstanceData, PostInstanceData
+from jgdv._abstract.pre_processable import PreProcessor_p
 from jgdv.structs.strang import _interface as StrangAPI  # noqa: N812
 from jgdv.structs.strang.processor import StrangBasicProcessor
 from . import _interface as API # noqa: N812
@@ -44,6 +44,7 @@ from typing import no_type_check, final, override, overload
 # Protocols and Interfaces:
 from typing import Protocol, runtime_checkable
 if typing.TYPE_CHECKING:
+    from jgdv._abstract.pre_processable import InstanceData, PostInstanceData
     from typing import Final, ClassVar, Any, Self
     from typing import Literal, LiteralString
     from typing import TypeGuard
@@ -77,8 +78,8 @@ class LocationProcessor[T:API.Location_p](StrangBasicProcessor):
         body_case     : str                                   = cls.section(1).case
         head_text     : set[str]                              = set()
         body_text     : list[str]                             = []
-        inst_data     : InstanceData                          = InstanceData({})
-        post_data     : PostInstanceData                      = PostInstanceData({})
+        inst_data     : InstanceData                          = {}
+        post_data     : PostInstanceData                      = {}
         marks         : type[StrangAPI.StrangMarkAbstract_e]  = cls.Marks  # type: ignore[attr-defined]
         ctor          : Ctor[T]                               = cls
         match cls.section(0).end:

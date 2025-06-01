@@ -19,7 +19,7 @@ import warnings
 ##-- end stdlib imports
 
 import pytest
-from ..annotate import SubAnnotate_m, SubRegistry_m, Subclasser, AnnotationTarget
+from ..annotate import SubAnnotate_m, SubRegistry_m, Subclasser, AnnotationTarget, SubAlias_m
 
 # Logging:
 logging = logmod.root
@@ -56,7 +56,6 @@ class TestSubClasser_Decoration:
                 assert(True)
             case x:
                  assert(False), x
-
 
     def test_decorate_name_idempotent(self):
         target = f"{BasicEx.__name__}<+test>"
@@ -219,7 +218,6 @@ class TestSubclasser_Making:
             case x:
                 assert(False), x
 
-
     def test_classvars_and_slots_and_annotations(self) -> None:
         """ Check a built subclass can have:
 
@@ -242,6 +240,7 @@ class TestSubclasser_Making:
 
         assert(Basic.val == 5)
         assert(not hasattr(Basic(), "__dict__"))
+
         class ExSub(Basic):
             """ A Typically created subclass """
             __slots__ = ()
@@ -278,6 +277,7 @@ class TestSubclasser_Making:
         """ Check a subclass matches the example in pep0560
         """
         builder = Subclasser()
+
         class Basic:
             pass
 
@@ -290,8 +290,6 @@ class TestSubclasser_Making:
                 assert(val.__args__ == (int,))
             case x:
                 assert(False), x
-
-
 
 class TestSubclasser_Annotation:
 
@@ -315,8 +313,6 @@ class TestSubclasser_Annotation:
                 assert(not hasattr(inst, "__dict__"))
             case x:
                 assert(False), x
-
-
 
 class TestAnnotateMixin:
 
@@ -359,3 +355,185 @@ class TestAnnotateRegistry:
         assert(BasicReg[float] is not BasicReg[int])
         assert(int in BasicReg._registry)
         assert(BasicReg._registry is BasicSubReg._registry)
+
+class TestSubAlias:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_simple(self):
+
+        class Basic(SubAlias_m):
+            pass
+
+        assert(hasattr(Basic, "_registry"))
+        assert(hasattr(Basic, "_clear_registry"))
+
+
+    def test_fresh_registry(self):
+
+        class Basic(SubAlias_m):
+            pass
+
+        class Other(SubAlias_m, fresh_registry=True):
+            pass
+
+        assert(Basic._registry is not Other._registry)
+
+    def test_class_getitem(self):
+
+        class Basic(SubAlias_m, fresh_registry=True):
+            pass
+
+        assert(isinstance(Basic[int], GenericAlias))
+        assert(isinstance(Basic[float], GenericAlias))
+        assert(isinstance(Basic["test"], GenericAlias))
+
+    def test_subclass_unannotated(self):
+        class Basic(SubAlias_m, fresh_registry=True):
+            pass
+
+        class SimpleBasic(Basic):
+            pass
+
+        assert(issubclass(SimpleBasic, Basic))
+        assert(SimpleBasic.cls_annotation() is Basic.cls_annotation())
+        assert(SimpleBasic.cls_annotation() == ())
+
+
+    def test_subclass_unannotated_repeat(self):
+        class Basic(SubAlias_m, fresh_registry=True):
+            pass
+
+        class SimpleBasic(Basic):
+            pass
+
+        class SubSimple(SimpleBasic):
+            pass
+
+        assert(issubclass(SimpleBasic, Basic))
+        assert(SimpleBasic.cls_annotation() is Basic.cls_annotation())
+        assert(SimpleBasic.cls_annotation() == ())
+
+
+    def test_subclass_unannotated_multi(self):
+        class Basic(SubAlias_m, fresh_registry=True):
+            pass
+
+        class SimpleBasic(Basic):
+            pass
+
+        class OtherBasic(Basic):
+            pass
+
+        assert(issubclass(SimpleBasic, Basic))
+        assert(SimpleBasic.cls_annotation() is Basic.cls_annotation())
+        assert(SimpleBasic.cls_annotation() == ())
+
+    def test_subclass_annotated(self):
+
+        class Basic(SubAlias_m, fresh_registry=True):
+            pass
+
+        class IntBasic(Basic[int]):
+            pass
+
+        assert(IntBasic is Basic[int])
+        assert(issubclass(IntBasic, Basic))
+        assert(IntBasic.cls_annotation() is Basic[int].cls_annotation())
+        assert(IntBasic.cls_annotation() == (int,))
+
+    def test_retrieved_subclass_conflict_error(self):
+        class Basic(SubAlias_m, fresh_registry=True):
+            pass
+
+        class IntBasic(Basic[int]):
+            pass
+
+        with pytest.raises(ValueError):
+
+            class RetrievedIntBasic(Basic[int]):
+                pass
+
+    def test_explicit_subclass_conflict_error(self):
+
+        class Basic(SubAlias_m, fresh_registry=True):
+            pass
+
+        class IntBasic(Basic[int]):
+            pass
+
+        with pytest.raises(ValueError):
+            class ExplicitIntBasic(IntBasic):
+                pass
+
+    def test_subclass_by_root_access(self):
+
+        class Basic(SubAlias_m, fresh_registry=True):
+            pass
+
+        class IntBasic(Basic[int]):
+            pass
+
+        class AnotherIntBasic(Basic[int]['another']):
+            pass
+
+        assert(issubclass(IntBasic, Basic))
+        assert(issubclass(AnotherIntBasic, Basic))
+        assert(issubclass(AnotherIntBasic, IntBasic))
+        assert(AnotherIntBasic.cls_annotation() == (int, "another",))
+
+    def test_subclass_by_subclass_access(self):
+
+        class Basic(SubAlias_m, fresh_registry=True):
+            pass
+
+        class IntBasic(Basic[int]):
+            pass
+
+        class AnotherIntBasic(IntBasic['blah']):
+            pass
+
+        assert(issubclass(IntBasic, Basic))
+        assert(issubclass(AnotherIntBasic, Basic))
+        assert(issubclass(AnotherIntBasic, IntBasic))
+        assert(AnotherIntBasic.cls_annotation() == (int, "blah",))
+
+    def test_repeated_access(self):
+        class Basic(SubAlias_m, fresh_registry=True):
+            pass
+
+        gen1 = Basic[int]
+        gen2 = Basic[int]
+        assert(gen1 is not gen2)
+        assert(gen1 == gen2)
+
+
+    def test_matching_direct(self):
+        class Basic(SubAlias_m, fresh_registry=True):
+            pass
+
+        class IntBasic(Basic[int]):
+            pass
+
+        inst = IntBasic()
+        match inst:
+            case IntBasic():
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_matching_superclass(self):
+        class Basic(SubAlias_m, fresh_registry=True):
+            pass
+
+        class IntBasic(Basic[int]):
+            pass
+
+        inst = IntBasic()
+        match inst:
+            case Basic():
+                assert(True)
+            case x:
+                assert(False), x

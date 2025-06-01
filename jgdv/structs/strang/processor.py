@@ -40,8 +40,6 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 from collections.abc import Callable
-from jgdv._abstract.pre_processable import InstanceData
-from jgdv._abstract.pre_processable import PostInstanceData
 
 if TYPE_CHECKING:
     import enum
@@ -54,7 +52,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
     from ._interface import Strang_p
-    from jgdv._abstract.pre_processable import PreProcessResult
+    from jgdv._abstract.pre_processable import PreProcessResult, InstanceData, PostInstanceData
 ##--|
 
 # isort: on
@@ -107,10 +105,10 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
         Filters out extraneous duplicated separators
         """
         text       : str
-        inst_data  : InstanceData      = InstanceData({})
-        post_data  : PostInstanceData  = PostInstanceData({})
+        inst_data  : InstanceData      = {}
+        post_data  : PostInstanceData  = {}
         ctor       : Maybe[type[T]]    = None
-        match self.use_hook(cls, "pre_process", cls, input, *args, strict=strict, **kwargs):
+        match self.use_hook(cls, "pre_process", input, *args, strict=strict, **kwargs):
             case None:
                 case = cls.section(-1).case or ""
                 text = case.join(str(x) for x in [input, *args])
@@ -457,5 +455,3 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
             return None
         return marks(val)
 
-class CodeRefProcessor(StrangBasicProcessor):
-    pass

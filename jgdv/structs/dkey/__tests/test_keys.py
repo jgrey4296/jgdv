@@ -101,31 +101,31 @@ class TestSingleDKey:
         assert(obj1 == obj2)
 
     def test_format_wrapped(self):
-        obj1 = DKey("blah", implicit=True)
+        obj1 = DKey("blah", implicit=True, force=SingleDKey)
         obj2 = "{blah}"
         assert(f"{obj1:w}" == obj2)
 
     def test_format_indirect(self):
-        obj1 = DKey("blah", implicit=True)
+        obj1 = DKey("blah", implicit=True, force=SingleDKey)
         obj2 = "blah_"
         assert(f"{obj1:i}" == obj2)
 
     def test_format_indirect_wrapped(self):
-        obj1 = DKey("blah", implicit=True)
+        obj1 = DKey("blah", implicit=True, force=SingleDKey)
         obj2 = "{blah_}"
         assert(f"{obj1:wi}" == obj2)
 
     def test_getitem_key_fails(self):
-        obj1 = DKey("blah", implicit=True)
+        obj1 = DKey("blah", implicit=True, force=SingleDKey)
         with pytest.raises(IndexError):
             obj1[0,0]
 
     def test_get_key_basic(self):
-        obj1 = DKey("blah", implicit=True)
+        obj1 = DKey("blah", implicit=True, force=SingleDKey)
         with pytest.raises(IndexError):
             obj1.get(0,0)
 
-    def test_get_key_from_wrapped(self):
+    def test_get_key_from_wrapped(self, force=SingleDKey):
         obj1 = DKey("{blah}")
         with pytest.raises(IndexError):
             obj1.get(0,0)

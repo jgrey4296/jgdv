@@ -370,14 +370,13 @@ class Expandable_p(Protocol):
 @runtime_checkable
 class Key_p(ExpansionHooks_p, StrangAPI.Strang_p, Protocol):
     """ The protocol for a Key, something that used in a template system"""
-    _mark          : ClassVar[KeyMark]
     _extra_kwargs  : ClassVar[set[str]]
     _processor     : ClassVar
     _expander      : ClassVar[Expander_p]
-    data           : DKey_d
+    # data           : DKey_d
 
-    @classmethod
-    def MarkOf[T:Key_p](cls:type[T]) -> KeyMark: ...  # noqa: N802
+    @staticmethod
+    def MarkOf[T:Key_p](cls:type[T]|T) -> KeyMark|tuple[KeyMark, ...]: ...  # noqa: N802
 
     def keys(self) -> list[Key_p]: ...
 

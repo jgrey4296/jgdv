@@ -99,7 +99,7 @@ logging = logmod.getLogger(__name__)
 
 ##--| Body
 
-class SoftFailMultiDKey(MultiDKey, mark="soft.fail", multi=True):
+class SoftFailMultiDKey(MultiDKey["soft.fail"], multi=True):
 
     __slots__ = ()
 
@@ -340,9 +340,9 @@ class _LocatorAccess_m:
 
         match strict:
             case False:
-                return DKey(current, ctor=pl.Path, mark="soft.fail")
+                return DKey["soft.fail"](current, ctor=pl.Path)
             case True:
-                return DKey(current, ctor=pl.Path, mark=DKey.Marks.MULTI) # type: ignore
+                return DKey[DKey.Marks.MULTI](current, ctor=pl.Path) # type: ignore
 
 ##--|
 

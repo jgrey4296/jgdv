@@ -79,6 +79,7 @@ class StrangDebug:
             "",
             f"** Strang Debug of: {text} **",
             f"Type: {cls.__module__} : {cls.__qualname__}",
+            f"Annotation: {cls.cls_annotation()}",
             f"Hooks: {hooks}",
             *abs_sections,
             *StrangDebug._describe_pre_process_results(cls, text),

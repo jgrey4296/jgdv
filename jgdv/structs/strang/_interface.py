@@ -148,6 +148,11 @@ class CodeRefHeadMarks_e(StrangMarkAbstract_e):
     def default(cls) -> str:
         return cls.fn
 
+    @classmethod
+    def idempotent(cls) -> set[str]:
+        return {cls.module, cls.cls, cls.value, cls.fn}
+
+
 ##--|
 type FullSlice     = slice[None, None, None]
 type MSlice        = slice[Maybe[int], Maybe[int], Maybe[int]]
@@ -335,7 +340,6 @@ class Strang_p(StrangUUIDs_p, StrangMod_p, String_p, Protocol):
     _processor  : ClassVar[PreProcessor_p]
     _formatter  : ClassVar[string.Formatter]
     _sections   : ClassVar[Sections_d]
-    _typevar    : ClassVar[Maybe[type]]
     data        : Strang_d
 
     @classmethod

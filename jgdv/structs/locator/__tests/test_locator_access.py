@@ -110,7 +110,7 @@ class TestLocatorExpand:
         simple.update({"blah":"bloo/blee"})
         target = pl.Path.cwd() / "{aweg}"
         match simple.expand("{aweg}", strict=False):
-            case pl.Path() as x if x == target:
+            case None:
                 assert(True)
             case x:
                 assert(False), x

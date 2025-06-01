@@ -8,6 +8,7 @@ from __future__ import annotations
 import uuid
 import logging as logmod
 import pathlib as pl
+from types import GenericAlias
 from typing import (Any, Annotated, ClassVar, Generic, TypeAlias,
                     TypeVar, cast)
 from re import Match
@@ -426,7 +427,7 @@ class TestStrang_EQ:
                 assert(obj.__eq__(other) is (obj == other))
                 assert(obj != other)
             case x:
-                assert(result)
+                assert(False), x
 
     def test_not_eq_to_str(self):
         obj    = Strang("head::tail.a.b.c")
@@ -864,8 +865,7 @@ class TestStrang_UUIDs:
         assert(ang1[0,-1] == ang2[0, -1])
 
     def test_error_on_multiple_head_uuids(self):
-        uuid_obj  = uuid.uuid1()
-        ing       = f"group::a.b.c[<uuid>,<uuid>]"
+        ing       = "group::a.b.c[<uuid>,<uuid>]"
         with pytest.raises(StrangError):
             Strang(ing)
 
@@ -1038,7 +1038,7 @@ class TestStrang_Formatting:
     def test_format_no_args_a_plus(self):
         raw                 =  "head::tail.a.b.c"
         obj                 = Strang(raw)
-        assert(f"{obj:a+}"  == f"head::tail.a.b.c")
+        assert(f"{obj:a+}"  == "head::tail.a.b.c")
 
     ##--| 'a' spec
     def test_format_args_a_simple(self):
@@ -1103,61 +1103,49 @@ class TestStrang_Annotation:
         assert(True is not False) # noqa: PLR0133
 
     def test_unannotated(self):
+        assert(Strang.cls_annotation() == ())
         obj = Strang("group::body")
-        assert(Strang._typevar is None)
-        assert(obj._typevar is None)
+        assert(obj.cls_annotation() == ())
+
+    def test_simple_annotation(self):
+        Strang._clear_registry()
+        obj = Strang[int]
+        assert(obj is not None)
+        assert(obj.__origin__ is Strang)
+        assert(obj.__args__ == (int,))
+
+
+    def test_subclass_annotation(self):
+        Strang._clear_registry()
+        assert(not bool(Strang._registry))
+        assert(isinstance(Strang[int], GenericAlias))
+        class IntStrang(Strang[int]):
+            __slots__ = ()
+            pass
+
+        assert(bool(Strang._registry))
+        assert(id(Strang.__annotations__) != id(IntStrang.__annotations__))
+        assert(IntStrang.cls_annotation()   == (int,))
+        assert(issubclass(IntStrang, Strang))
+        assert(issubclass(IntStrang, Strang[int])) # type: ignore[misc]
+        assert(IntStrang is Strang[int])
 
     def test_type_annotated(self):
 
+        Strang._clear_registry()
         class IntStrang(Strang[int]):
             __slots__ = ()
             pass
 
         assert(issubclass(IntStrang, Strang))
-        assert(IntStrang._typevar is int)
+        assert(IntStrang.cls_annotation() == (int,))
         inst = IntStrang("blah::a.b.c")
-        assert(inst._typevar is int)
+        assert(inst.cls_annotation() == (int,))
         assert(not hasattr(inst, "__dict__"))
-
-    def test_type_reannotate(self):
-        cls   = Strang[int]
-        cls2  = Strang[int]
-        assert(cls is cls2)
-
-    def test_str_annotation(self):
-
-        class BlahStrang(Strang['blah']):
-            __slots__ = ()
-            pass
-
-        assert(issubclass(BlahStrang, Strang))
-        assert(BlahStrang._typevar == "blah")
-
-    def test_annotated_instance(self):
-
-        class IntStrang(Strang[int]):
-            __slots__ = ()
-            pass
-
-        ref = IntStrang("group.a.b::body.c.d")
-        assert(isinstance(ref, Strang))
-        assert(issubclass(IntStrang, Strang))
-        assert(ref._typevar is int)
-
-    def test_match_type(self):
-
-        class IntStrang(Strang[int]):
-            __slots__ = ()
-            pass
-
-        match IntStrang("group.a.b::body.c.d"):
-            case IntStrang():
-                assert(True)
-            case _:
-                assert(False)
 
     def test_match_on_strang(self):
 
+        Strang._clear_registry()
         class IntStrang(Strang[int]):
             __slots__ = ()
             pass
@@ -1170,6 +1158,7 @@ class TestStrang_Annotation:
 
     def test_match_on_literal(self):
 
+        Strang._clear_registry()
         class IntStrang(Strang[int]):
             __slots__ = ()
             pass
@@ -1182,6 +1171,7 @@ class TestStrang_Annotation:
 
     def test_match_on_str(self):
 
+        Strang._clear_registry()
         class IntStrang(Strang[int]):
             __slots__ = ()
             pass
@@ -1193,12 +1183,13 @@ class TestStrang_Annotation:
                 assert(False)
 
     def test_match_on_subtype(self):
-        subtype = Strang[int]
+        Strang._clear_registry()
 
         class IntStrang(Strang[int]):
             __slots__ =()
             pass
 
+        subtype = Strang[int]
         match IntStrang("group.a.b::body.c.d"):
             case x if isinstance(x, subtype):
                 assert(True)
@@ -1206,7 +1197,7 @@ class TestStrang_Annotation:
                 assert(False)
 
     def test_match_on_subtype_fail(self):
-
+        Strang._clear_registry()
         class IntStrang(Strang[int]):
             __slots__ =()
             pass
@@ -1218,15 +1209,17 @@ class TestStrang_Annotation:
                 assert(True)
 
     def test_match_on_subtype_fail_b(self):
+        Strang._clear_registry()
         cls     = Strang[int]
         notcls  = Strang[float]
-        match Strang[int]("group.a.b::body.c.d"):
-            case notcls(): # type: ignore[misc]
-                assert(False)
-            case cls(): # type: ignore[misc]
-                assert(True)
-            case _:
-                assert(False)
+        with pytest.raises(TypeError):
+            match Strang[int]("group.a.b::body.c.d"):
+                case notcls(): # type: ignore[misc]
+                    assert(False)
+                case cls(): # type: ignore[misc]
+                    assert(True)
+                case _:
+                    assert(False)
 
 class TestStrang_Subclassing:
     """ Check some basic variations of Strang Subclasses,
@@ -1349,7 +1342,7 @@ class TestStrang_Subclassing:
             )
 
         ref = StrangSub[int]("group.a.b:|:body.c.d")
-        assert(ref._typevar is int)
+        assert(ref.cls_annotation() == ())
         assert(isinstance(ref, Strang))
         assert(isinstance(ref, StrangSub))
 
@@ -1364,11 +1357,11 @@ class TestStrang_Subclassing:
             )
 
         ref = StrangSub[int]("group.a.b:|:body.c.d")
-        assert(ref._typevar is int)
+        assert(ref.cls_annotation() == ())
         assert(isinstance(ref, Strang))
         assert(isinstance(ref, StrangSub))
 
-        obj = Strang("group::tail.a.b.c")
+        obj : Strang = Strang("group::tail.a.b.c")
         assert(isinstance(obj, Strang))
         assert(not isinstance(obj, StrangSub))
 

@@ -128,7 +128,7 @@ class DKeyExpander:
 
     def expand(self, source:API.Key_p, *sources:dict, **kwargs:Any) -> Maybe[API.ExpInst_d]:  # noqa: ANN401, PLR0912
         logging.info("- Locally Expanding: %s : %s : multi=%s", repr(source), kwargs, source.data.multi)
-        if source._mark is API.DKeyMark_e.NULL:
+        if source.MarkOf(source) is API.DKeyMark_e.NULL:
             return API.ExpInst_d(value=source, literal=True)
 
         match kwargs.get("fallback", source.data.fallback):

@@ -25,6 +25,7 @@ from ..keys import SingleDKey
 # isort: off
 import abc
 import collections.abc
+import types
 from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
 # Protocols:
 from typing import Protocol, runtime_checkable
@@ -68,7 +69,6 @@ class TestBaseDKey:
             case x:
                 assert(False), x
 
-
     def test_hashable(self):
         obj = DKey("blah")
         assert(hash(obj))
@@ -88,4 +88,7 @@ class TestBaseDKey:
         obj2 = 21
         assert(not (obj1 == obj2))
 
-
+    def test_class_getitem(self):
+        val = DKey['blah']
+        assert(val is not None)
+        assert(isinstance(val, types.GenericAlias))

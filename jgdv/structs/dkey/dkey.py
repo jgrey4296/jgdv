@@ -62,11 +62,11 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-
+CLASS_GETITEM_K : Final[str] = "__class_getitem__"
 # Body:
 
 @Proto(API.Key_p, check=False, mod_mro=False)
-class DKey(Strang):
+class DKey(Strang, fresh_registry=True):
     """ A facade for DKeys and variants.
       Implements __new__ to create the correct key type, from a string, dynamically.
 
@@ -88,25 +88,19 @@ class DKey(Strang):
       to allow control over __init__.
 
       Base class for implementing actual DKeys.
-      adds:
-      `_mark`
 
-      plus some util methods
+      init takes kwargs:
+      fmt, mark, check, ctor, help, fallback, max_exp
 
-    init takes kwargs:
-    fmt, mark, check, ctor, help, fallback, max_exp
-
-    on class definition, can register a 'mark', 'multi', and a conversion parameter str
+      on class definition, can register a 'mark', 'multi', and a conversion parameter str
     """
     __slots__                                           = ("data",)
     __match_args                                        = ()
-    _annotate_to    : ClassVar[str]                     = "_mark"
+    _annotate_to    : ClassVar[str]                     = "dkey_mark"
     _processor      : ClassVar                          = DKeyProcessor()
     _sections       : ClassVar                          = API.DKEY_SECTIONS
     _expander       : ClassVar[DKeyExpander]            = DKeyExpander()
     _typevar        : ClassVar                          = None
-    _mark           : ClassVar                          = "dkey"
-
     _extra_kwargs   : ClassVar[set[str]]                = set()
     _extra_sources  : ClassVar[list[dict]]              = []
     Marks           : ClassVar[API.DKeyMarkAbstract_e]  = API.DKeyMark_e # type: ignore[assignment]
@@ -114,39 +108,24 @@ class DKey(Strang):
 
     ##--| Class Utils
 
-    @override
-    def __class_getitem__(cls:type[API.Key_p], *params:Any) -> type[API.Key_p]: # type: ignore[override]
-        assert(isinstance(cls._processor, DKeyProcessor))
-        try:
-            return cls._processor.get_subtype(*params)
-        except ValueError:
-            assert(hasattr(Strang, "__class_getitem__"))
-            return super(Strang, cls).__class_getitem__(*params) # type: ignore[misc]
-
-    def __init_subclass__(cls:type[API.Key_p], *, mark:M_[API.KeyMark]=None, conv:M_[str]=None, multi:bool=False, core:bool=False) -> None:
-        """ Registered the subclass as a DKey and sets the Mark enum this class associates with """
-        assert(isinstance(cls._processor, DKeyProcessor))
-        logging.debug("Registering DKey Subclass: %s : %s", cls, mark)
-        super().__init_subclass__()
-        cls._mark = mark or cls._mark
-        cls._expander.set_ctor(DKey)
-        match cls._mark:
-            case str() | type() | API.DKeyMarkAbstract_e() as x:
-                cls._processor.register_key_type(cls, x, convert=conv, multi=multi, core=core)
-            case _:
-                logging.info("No Mark to Register Key Subtype: %s", cls)
-
-
-    @classmethod
-    def MarkOf[T:API.Key_p](cls) -> API.KeyMark: # noqa: N802
+    @staticmethod
+    def MarkOf[T:API.Key_p](cls:T|type[T]) -> API.KeyMark|tuple[API.KeyMark, ...]: # noqa: N802
         """ Get the mark of the key type or instance """
-        return cls._mark
+        match cls.cls_annotation():
+            case [x]:
+                return x
+            case xs:
+                return xs
 
     @classmethod
     def add_sources(cls, *sources:dict) -> None:
         """ register additional sources that are always included """
         cls._extra_sources += sources
 
+
+    def __init_subclass__(cls, *args, **kwargs):
+        super().__init_subclass__(*args, **kwargs)
+        cls._expander.set_ctor(DKey)
     ##--| Class Main
 
     def __init__(self, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
@@ -170,6 +149,37 @@ class DKey(Strang):
 
     def __hash__(self) -> int:
         return hash(self[:])
+
+    def __format__(self, spec:str) -> str:
+        """
+          Extends standard string format spec language:
+            [[fill]align][sign][z][#][0][width][grouping_option][. precision][type]
+            (https://docs.python.org/3/library/string.html#format-specification-mini-language)
+
+          Using the # alt form to declare keys are wrapped.
+          eg: for key = DKey('test'), ikey = DKey('test_')
+          f'{key}'   -> 'test'
+          f'{key:w}' -> '{test}'
+          f'{key:i}  ->  'test_'
+          f'{key:wi} -> '{test_}'
+
+          f'{ikey:d} -> 'test'
+
+        """
+        result = self[:]
+        if not bool(spec):
+            return result
+
+        rem, wrap, direct = self._processor.consume_format_params(spec) # type: ignore
+
+        # format
+        if not direct:
+            result = f"{result}{API.INDIRECT_SUFFIX}"
+
+        if wrap:
+            result = "".join(["{", result, "}"])  # noqa: FLY002
+
+        return result
     ##--| Utils
 
     def var_name(self) -> str:

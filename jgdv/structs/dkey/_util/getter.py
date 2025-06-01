@@ -103,6 +103,7 @@ class ChainGetter:
         | don't lift (str(), False, fallback)
 
         """
+        assert(ctor is not None)
         for spec in target:
             match spec:
                 case ExpInst_d(value=Key_p()):

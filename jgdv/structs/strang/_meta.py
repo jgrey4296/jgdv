@@ -71,36 +71,32 @@ class StrangMeta(StrMeta):
     to turn it into a strang
     """
 
-    _forms : ClassVar[list[type[Strang_p]]] = []
-
-    @staticmethod
-    def register(new_cls:type[Strang_p]) -> None:
-        StrangMeta._forms.append(new_cls)
-
     def __call__[T:Strang_p](cls:type[T], text:str|pl.Path, *args:Any, **kwargs:Any) -> Strang_p:  # noqa: ANN401, N805
         """ Overrides normal str creation to allow passing args to init """
-        processor  : PreProcessor_p  = cls._processor
-        stage      : str             = "Pre-Process"
+        ctor       : type[T]
+        obj        : T
+        processor  : PreProcessor_p[T]  = cls._processor
+        stage      : str                = "Pre-Process"
 
         try:
-            text, inst_data, post_data, ctor = processor.pre_process(cls,
-                                                                     text,
-                                                                     *args,
-                                                                     strict=kwargs.pop("strict", False),
-                                                                     **kwargs,
-                                                                     )
-            ctor = ctor or cls
+            text, inst_data, post_data, new_ctor = processor.pre_process(cls,
+                                                                         text,
+                                                                         *args,
+                                                                         strict=kwargs.pop("strict", False),
+                                                                         **kwargs,
+                                                                         )
+            ctor   = new_ctor or cls
             stage  = "__new__"
-            obj : Strang_p = ctor.__new__(ctor, text)
+            obj    = ctor.__new__(ctor, text)
             stage  = "__init__"
-            obj.__init__(*args, **kwargs, **inst_data)
+            obj.__init__(*args, **collections.ChainMap(inst_data, kwargs)) # type: ignore[misc]
             stage  = "Process"
             obj    = processor.process(obj, data=post_data) or obj
             stage  = "Post-Process"
             obj    = processor.post_process(obj, data=post_data) or obj
         except ValueError as err:
             raise errors.StrangError(errors.StrangCtorFailure.format(cls=cls.__name__, stage=stage),
-                                     err, text, cls, processor)
+                                     err, text, cls, processor) from None
         else:
             assert(isinstance(obj, str))
             if hasattr(obj, "__dict__"):

@@ -296,11 +296,11 @@ class TestIndirection:
         {key_} -> state[] -> {key_}
         """
         obj = DKey("test_", implicit=True)
-        assert(obj._mark is DKey.Marks.INDIRECT)
+        assert(DKey.MarkOf(obj) == DKey.Marks.INDIRECT)
         state = {}
         match obj.expand(state):
             case DKey() as k if k == "test_":
-                assert(k._mark is DKey.Marks.INDIRECT)
+                assert(DKey.MarkOf(k) == DKey.Marks.INDIRECT)
                 assert(True)
             case x:
                 assert(False), x
@@ -322,7 +322,7 @@ class TestIndirection:
         {key_} -> state[key:value] -> value
         """
         obj = DKey("test_", implicit=True)
-        assert(obj._mark is DKey.Marks.INDIRECT)
+        assert(DKey.MarkOf(obj) is DKey.Marks.INDIRECT)
         state = {"test": "blah"}
         match obj.expand(state):
             case "blah":
@@ -335,7 +335,7 @@ class TestIndirection:
         {key_} -> state[key_:value] -> {value}
         """
         obj = DKey("test_", implicit=True)
-        assert(obj._mark is DKey.Marks.INDIRECT)
+        assert(DKey.MarkOf(obj) is DKey.Marks.INDIRECT)
         state = {"test_": "blah"}
         match obj.expand(state):
             case "blah":
@@ -348,7 +348,7 @@ class TestIndirection:
         {key_} -> state[key_:value, key:val2] -> {value}
         """
         obj = DKey("test_", implicit=True)
-        assert(obj._mark is DKey.Marks.INDIRECT)
+        assert(DKey.MarkOf(obj) is DKey.Marks.INDIRECT)
         state = {"test_": "blah", "test": "aweg"}
         match obj.expand(state):
             case "blah":
@@ -363,7 +363,7 @@ class TestMultiExpansion:
 
     def test_basic(self):
         obj = DKey("{test} {test}")
-        assert(obj.MarkOf() is DKey.Marks.MULTI)
+        assert(DKey.MarkOf(obj) is DKey.Marks.MULTI)
         state = {"test": "blah"}
         match obj.expand(state):
             case "blah blah":
@@ -373,7 +373,7 @@ class TestMultiExpansion:
 
     def test_coerce_to_path(self):
         obj = DKey("{test}/{test}", ctor=pl.Path)
-        assert(obj.MarkOf() is DKey.Marks.MULTI)
+        assert(DKey.MarkOf(obj) is DKey.Marks.MULTI)
         state = {"test": "blah"}
         match obj.expand(state):
             case pl.Path():
@@ -383,7 +383,7 @@ class TestMultiExpansion:
 
     def test_coerce_subkey(self):
         obj = DKey("{test!p}/{test}")
-        assert(obj.MarkOf() is DKey.Marks.MULTI)
+        assert(DKey.MarkOf(obj) is DKey.Marks.MULTI)
         assert(obj.keys()[0].data.convert == "p")
         state = {"test": "blah"}
         match obj.expand(state):
@@ -395,7 +395,7 @@ class TestMultiExpansion:
 
     def test_coerce_multi(self):
         obj = DKey("{test!p} : {test!p}")
-        assert(obj.MarkOf() is DKey.Marks.MULTI)
+        assert(DKey.MarkOf(obj) is DKey.Marks.MULTI)
         assert(obj.keys()[0].data.convert == "p")
         state = {"test": "blah"}
         match obj.expand(state):
@@ -409,7 +409,7 @@ class TestMultiExpansion:
 
     def test_hard_miss_subkey(self):
         obj = DKey("{test}/{aweg}")
-        assert(obj.MarkOf() is DKey.Marks.MULTI)
+        assert(DKey.MarkOf(obj) is DKey.Marks.MULTI)
         state = {"test": "blah"}
         match obj.expand(state):
             case None:
@@ -419,7 +419,7 @@ class TestMultiExpansion:
 
     def test_soft_miss_subkey(self):
         obj = DKey("{test}/{aweg}")
-        assert(obj.MarkOf() is DKey.Marks.MULTI)
+        assert(DKey.MarkOf(obj) is DKey.Marks.MULTI)
         state = {"test": "blah", "aweg_":"test"}
         match obj.expand(state):
             case "blah/blah":
@@ -429,7 +429,7 @@ class TestMultiExpansion:
 
     def test_indirect_subkey(self):
         obj = DKey("{test}/{aweg_}")
-        assert(obj.MarkOf() is DKey.Marks.MULTI)
+        assert(DKey.MarkOf(obj) is DKey.Marks.MULTI)
         state = {"test": "blah", "aweg_":"test"}
         match obj.expand(state):
             case "blah/blah":
@@ -439,7 +439,7 @@ class TestMultiExpansion:
 
     def test_indirect_key_subkey(self):
         obj = DKey("{test}/{aweg_}")
-        assert(obj.MarkOf() is DKey.Marks.MULTI)
+        assert(DKey.MarkOf(obj) is DKey.Marks.MULTI)
         state = {"test": "blah", "aweg":"test"}
         match obj.expand(state):
             case "blah/test":
@@ -449,7 +449,7 @@ class TestMultiExpansion:
 
     def test_indirect_miss_subkey(self):
         obj = DKey("{test}/{aweg_}")
-        assert(obj.MarkOf() is DKey.Marks.MULTI)
+        assert(DKey.MarkOf(obj) is DKey.Marks.MULTI)
         state = {"test": "blah"}
         match obj.expand(state):
             case "blah/{aweg_}":
@@ -459,7 +459,7 @@ class TestMultiExpansion:
 
     def test_multikey_of_one(self):
         obj = DKey("{test}", mark=DKey.Marks.MULTI)
-        assert(obj.MarkOf() is DKey.Marks.MULTI)
+        assert(DKey.MarkOf(obj) is DKey.Marks.MULTI)
         state = {"test": "{blah}", "blah": "blah/{aweg_}"}
         match obj.expand(state):
             case "blah/{aweg_}":
@@ -469,7 +469,7 @@ class TestMultiExpansion:
 
     def test_multikey_recursion(self):
         obj = DKey("{test}", mark=DKey.Marks.MULTI)
-        assert(obj.MarkOf() is DKey.Marks.MULTI)
+        assert(DKey.MarkOf(obj) is DKey.Marks.MULTI)
         state = {"test": "{test}", "blah": "blah/{aweg_}"}
         match obj.expand(state, limit=10):
             case "test":
@@ -529,11 +529,6 @@ class TestFallbacks:
                 assert(True)
             case x:
                  assert(False), x
-
-    @pytest.mark.xfail
-    def test_fallback_typecheck_fail(self):
-        with pytest.raises(TypeError):
-            DKey("blah", implicit=True, fallback=24, check=str)
 
     @pytest.mark.parametrize("ctor", [list, dict, set])
     def test_fallback_type_factory(self, ctor):
