@@ -46,6 +46,8 @@ if typing.TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
     from jgdv import Maybe, MaybeT
+    type InstanceData      = dict
+    type PostInstanceData  = dict
 
 # isort: on
 # ##-- end types
@@ -55,8 +57,6 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-InstanceData              = NewType("InstanceData", dict)
-PostInstanceData          = NewType("PostInstanceData", dict)
 
 type HookOverride         = bool
 type PreProcessResult[T]  = tuple[str, InstanceData, PostInstanceData, Maybe[type[T]]]
@@ -91,7 +91,7 @@ class ProcessorHooks[T](Protocol):
     """
 
     @classmethod
-    def _pre_process_h(cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> MaybeT[bool, PreProcessResult[T]]: ...  # noqa: A002, ANN401
+    def _pre_process_h(cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> Maybe[tuple[bool, *PreProcessResult[T]]]: ...  # noqa: A002, ANN401
 
     def _process_h(self, *, data:PostInstanceData) -> Maybe[tuple[HookOverride, Maybe[T]]]: ...
 
