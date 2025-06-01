@@ -16,7 +16,8 @@ import pytest
 logging = logmod.root
 
 from ... import DKey, Key_p
-from ..args_keys import ArgsDKey, KwargsDKey
+from ..str_key import StrDKey
+
 
 IMP_KEY_BASES               : Final[list[str]]           = ["bob", "bill", "blah", "other", "23boo", "aweg2531", "awe_weg", "aweg-weji-joi"]
 EXP_KEY_BASES               : Final[list[str]]           = [f"{{{x}}}" for x in IMP_KEY_BASES]
@@ -29,19 +30,10 @@ EXP_IND_KEYS                : Final[list[str]]           = [f"{{{x}}}" for x in 
 VALID_KEYS                                           = IMP_KEY_BASES + EXP_KEY_BASES + EXP_P_KEY_BASES + IMP_IND_KEYS + EXP_IND_KEYS
 VALID_MULTI_KEYS                                     = PATH_KEYS + MUTI_KEYS
 
-class TestArgsDKey:
+class TestStrKey:
 
     def test_mark(self):
-        assert(ArgsDKey.MarkOf() is DKey.Marks.ARGS)
-
-    @pytest.mark.skip
-    def test_todo(self):
-        pass
-
-class TestKwargsDKey:
-
-    def test_mark(self):
-        assert(KwargsDKey.MarkOf() is DKey.Marks.KWARGS)
+        assert(DKey.MarkOf(StrDKey) is DKey.Marks.STR)
 
     @pytest.mark.skip
     def test_todo(self):

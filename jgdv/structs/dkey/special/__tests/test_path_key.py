@@ -33,7 +33,7 @@ VALID_MULTI_KEYS                                     = PATH_KEYS + MUTI_KEYS
 class TestPathKey:
 
     def test_mark(self):
-        assert(PathDKey.MarkOf() is DKey.Marks.PATH)
+        assert(DKey.MarkOf(PathDKey) is DKey.Marks.PATH)
 
     def test_expansion(self):
         key = DKey("test", mark=DKey.Marks.PATH, implicit=True)
@@ -76,6 +76,5 @@ class TestPathKey:
                  assert(False), x
 
 
-    @pytest.mark.skip
     def test_todo(self):
         pass

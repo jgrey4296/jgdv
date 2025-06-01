@@ -2,7 +2,7 @@
 """
 
 """
-
+# ruff: noqa: ANN002, ANN003, ARG002
 # Imports:
 from __future__ import annotations
 
@@ -41,12 +41,13 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
+from typing import Literal
 
 if TYPE_CHECKING:
     from jgdv import Maybe, Ident, RxStr, Rx
     from typing import Final
     from typing import ClassVar, Any, LiteralString
-    from typing import Never, Self, Literal
+    from typing import Never, Self
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
@@ -58,13 +59,40 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class ImportDKey(SingleDKey[DKeyMark_e.CODE], conv="c"):
-    """
-      Subclass for dkey's which expand to CodeReferences
-    """
+class ArgsDKey(DKey[DKey.Marks.ARGS]):
+    """ A Key representing the action spec's args """
     __slots__ = ()
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self.data.expansion_type = CodeReference
-        self.data.typecheck = CodeReference
+        self.data.expansion_type  = list
+        self.data.typecheck = list
+
+    def expand(self, *sources, **kwargs) -> list:
+        """ args are simple, just get the first specstruct's args value """
+        for source in sources:
+            if not isinstance(source, SpecStruct_p):
+                continue
+
+            return source.args
+        else:
+            return []
+
+class KwargsDKey(DKey[DKey.Marks.KWARGS]):
+    """ A Key representing all of an action spec's kwargs """
+    __slots__ = ()
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.data.expansion_type  = dict
+        self.data.typecheck = dict
+
+    def expand(self, *sources, fallback:Maybe=None, **kwargs) -> dict:
+        """ kwargs are easy, just get the first specstruct's kwargs value """
+        for source in sources:
+            if not isinstance(source, SpecStruct_p):
+                continue
+
+            return source.kwargs
+        else:
+            return fallback or {}

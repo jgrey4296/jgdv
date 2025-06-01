@@ -58,7 +58,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class PathDKey(SingleDKey[DKeyMark_e.PATH], conv="p"):
+class PathDKey(DKey[DKeyMark_e.PATH], conv="p"):
     """
     A Simple key that always expands to a path, and is then normalised
     """

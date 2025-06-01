@@ -37,7 +37,7 @@ class TestImportKey:
         assert(True is not False) # noqa: PLR0133
 
     def test_str_mark(self):
-        assert(ImportDKey.MarkOf() is DKey.Marks.CODE)
+        assert(DKey.MarkOf(ImportDKey) is DKey.Marks.CODE)
 
     def test_basic(self):
         match DKey("fn", mark=DKey.Marks.CODE, implicit=True):
@@ -67,7 +67,6 @@ class TestImportKey:
                 assert(True)
             case x:
                  assert(False), x
-
 
     def test_expand_redirect(self):
         key = DKey("fn", mark=DKey.Marks.CODE, implicit=True)
