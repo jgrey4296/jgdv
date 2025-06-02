@@ -55,7 +55,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class SingleDKey(DKey[DKeyMark_e.FREE], core=True):
+class SingleDKey(DKey[DKeyMark_e.FREE], core=True): # type: ignore[valid-type]
     """
       A Single key with no extras.
       ie: {x}. not {x}{y}, or {x}.blah.
@@ -77,7 +77,7 @@ class SingleDKey(DKey[DKeyMark_e.FREE], core=True):
                 msg = "A Single Key got multiple raw key data"
                 raise ValueError(msg, xs)
 
-class MultiDKey(DKey[DKeyMark_e.MULTI], core=True):
+class MultiDKey(DKey[DKeyMark_e.MULTI], core=True): # type: ignore[valid-type]
     """ Multi keys allow 1+ explicit subkeys.
 
     They have additional fields:
@@ -103,7 +103,7 @@ class MultiDKey(DKey[DKeyMark_e.MULTI], core=True):
     def __contains__(self, other:object) -> bool:
          return other in self.keys()
 
-    def __format__(self, spec, **kwargs) -> str:  # noqa: ANN002, ANN003
+    def __format__(self, spec:str, **kwargs:Any) -> str:  # noqa: ANN401
         """ Just does normal str formatting """
         rem, _, _= self._processor.consume_format_params(spec) # type: ignore
         return super().__format__(rem, **kwargs)
@@ -111,7 +111,6 @@ class MultiDKey(DKey[DKeyMark_e.MULTI], core=True):
     def _multi(self) -> Literal[True]:
         return True
 
-    @override
     def keys(self) -> list[DKey]: # type: ignore[override]
         return [DKey(x, implicit=True) for x in self.data.meta if bool(x)]
 
@@ -139,7 +138,7 @@ class MultiDKey(DKey[DKeyMark_e.MULTI], core=True):
         else:
             return ExpInst_d(value=self.anon.format(*flat), literal=True)
 
-class NonDKey(DKey[DKeyMark_e.NULL], core=True):
+class NonDKey(DKey[DKeyMark_e.NULL], core=True): # type: ignore[valid-type]
     """ Just a string, not a key.
 
     ::
@@ -155,7 +154,7 @@ class NonDKey(DKey[DKeyMark_e.NULL], core=True):
             msg = "NonKeys can't have a fallback, did you mean to use an explicit key?"
             raise ValueError(msg, self)
 
-    def __format__(self, spec, **kwargs) -> str:  # noqa: ANN002, ANN003
+    def __format__(self, spec:str, **kwargs:Any) -> str:  # noqa: ANN401
         """ Just does normal str formatting """
         rem, _, _= self._processor.consume_format_params(spec) # type: ignore
         return super().__format__(rem, **kwargs)
@@ -174,7 +173,7 @@ class NonDKey(DKey[DKeyMark_e.NULL], core=True):
                 msg = "Nonkey coercion didn't return an ExpInst_d"
                 raise TypeError(msg, x)
 
-class IndirectDKey(DKey[DKeyMark_e.INDIRECT], conv="I", core=True):
+class IndirectDKey(DKey[DKeyMark_e.INDIRECT], conv="I", core=True): # type: ignore[valid-type]
     """
       A Key for getting a redirected key.
       eg: RedirectionDKey(key) -> SingleDKey(value)

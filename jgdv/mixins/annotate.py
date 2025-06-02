@@ -283,13 +283,19 @@ class SubAlias_m:
 
                 cls.__annotations__[cls._annotate_to]  = ()
 
-    def __class_getitem__(cls:type[Self], *args:Any, **kwargs:Any) -> type|GenericAlias:  # noqa: ANN401
-        existing_args = cls.cls_annotation() or ()
-        match cls._registry.get(args, None):
+    def __class_getitem__(cls:type[Self], key:Any) -> type|GenericAlias:  # noqa: ANN401
+        cls_key = cls.cls_annotation()
+        match key:
+            case [*xs]:
+                use_key = (*cls_key, *xs)
+            case x:
+                use_key = (*cls_key, x)
+
+        match cls._registry.get(use_key, None):
             case type() as x:
                 return x
             case _:
-                return GenericAlias(cls, (*existing_args, *args))
+                return GenericAlias(cls, use_key)
 
     @classmethod
     def _clear_registry(cls) -> None:

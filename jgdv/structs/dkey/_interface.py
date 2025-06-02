@@ -348,7 +348,7 @@ class ExpansionHooks_p(Protocol):
 
     def exp_extra_sources_h(self) -> Maybe[list]: ...
 
-    def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> Maybe[LookupList]: ...
+    def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> LookupList: ...
 
     def exp_pre_recurse_h(self, insts:list[ExpInst_d], sources:list[dict], opts:dict) -> Maybe[list[ExpInst_d]]: ...
 
@@ -373,12 +373,10 @@ class Key_p(ExpansionHooks_p, StrangAPI.Strang_p, Protocol):
     _extra_kwargs  : ClassVar[set[str]]
     _processor     : ClassVar
     _expander      : ClassVar[Expander_p]
-    # data           : DKey_d
+    data           : DKey_d
 
     @staticmethod
     def MarkOf[T:Key_p](cls:type[T]|T) -> KeyMark|tuple[KeyMark, ...]: ...  # noqa: N802
-
-    def keys(self) -> list[Key_p]: ...
 
     def redirect(self, spec=None) -> Key_p: ...
 
@@ -389,8 +387,9 @@ class Key_p(ExpansionHooks_p, StrangAPI.Strang_p, Protocol):
 @runtime_checkable
 class MultiKey_p(Protocol):
 
-    def _multi(self) -> Literal[True]: ...
+    def keys(self) -> list[Key_p]: ...
 
+    def _multi(self) -> Literal[True]: ...
 
 @runtime_checkable
 class IndirectKey_p(Protocol):

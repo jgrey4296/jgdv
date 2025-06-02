@@ -174,10 +174,10 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
             case type(), _:
                 mark = force.MarkOf(force)
                 is_multi = isinstance(force, API.MultiKey_p)
-            case None, None:
-                mark = API.DKeyMark_e.default()
             case None, x:
                 mark = x
+            case _:
+                mark = API.DKeyMark_e.default()
 
         # TODO use class hook if it exists
 
@@ -326,13 +326,13 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         """
         # Choose the sub-ctor
         if force is not None:
-            assert(isinstance(force, type))
+            assert(isinstance(force, type)), force
             return force
 
         try:
             match cls[mark]:
                 case types.GenericAlias():
-                    raise TypeError()
+                    return cls
                 case type() as ctor if insist and ctor.MarkOf(ctor) is DKeyMark_e.NULL:
                     raise TypeError(API.InsistentKeyFailure)
                 case type() as x:

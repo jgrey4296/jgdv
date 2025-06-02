@@ -66,7 +66,7 @@ CLASS_GETITEM_K : Final[str] = "__class_getitem__"
 # Body:
 
 @Proto(API.Key_p, check=False, mod_mro=False)
-class DKey(Strang, fresh_registry=True):
+class DKey[**K](Strang, fresh_registry=True):
     """ A facade for DKeys and variants.
       Implements __new__ to create the correct key type, from a string, dynamically.
 
@@ -109,9 +109,11 @@ class DKey(Strang, fresh_registry=True):
     ##--| Class Utils
 
     @staticmethod
-    def MarkOf[T:API.Key_p](cls:T|type[T]) -> API.KeyMark|tuple[API.KeyMark, ...]: # noqa: N802
+    def MarkOf[T:SubAnnotate_m](target:T|type[T]) -> API.KeyMark|tuple[API.KeyMark, ...]: # noqa: N802
         """ Get the mark of the key type or instance """
-        match cls.cls_annotation():
+        match target.cls_annotation():
+            case None:
+                return ()
             case [x]:
                 return x
             case xs:
@@ -123,9 +125,9 @@ class DKey(Strang, fresh_registry=True):
         cls._extra_sources += sources
 
 
-    def __init_subclass__(cls, *args, **kwargs):
+    def __init_subclass__(cls, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         super().__init_subclass__(*args, **kwargs)
-        cls._expander.set_ctor(DKey)
+        cls._expander.set_ctor(DKey) # type: ignore[arg-type]
     ##--| Class Main
 
     def __init__(self, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
@@ -188,12 +190,6 @@ class DKey(Strang, fresh_registry=True):
         """
         return self.data.name or str(self)
 
-    def keys(self) -> list[API.Key_p]:
-        """ Get subkeys of this key. by default, an empty list.
-        (named 'keys' to be in keeping with dict)
-        """
-        return []
-
     def expand(self, *args:Any, **kwargs:Any) -> Maybe:  # noqa: ANN401
         kwargs.setdefault("limit", self.data.max_expansions)
         assert(isinstance(self, API.Key_p))
@@ -209,11 +205,12 @@ class DKey(Strang, fresh_registry=True):
         return result
 
 
+    ##--| expansion hooks
     def exp_extra_sources_h(self) -> list:
         return DKey._extra_sources
 
-    def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> Maybe[API.LookupList]:
-        return None
+    def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> API.LookupList:
+        return []
 
     def exp_pre_recurse_h(self, vals:list[API.ExpInst_d], sources:list[dict], opts:dict) -> Maybe[list[API.ExpInst_d]]:
         return None
