@@ -71,6 +71,7 @@ class SubAlias_m:
     - strict:bool                                 : error if a subclass tries to overwrite a registration
     - default:bool                                : set this subclass as the default if no marks are specified when creating an instance
     - annotation:Maybe[str|type|enum|tuple[...]]  : the key to use for this subclass
+    - no_register:bool                            : create the class, but don't register it
 
     cls[val] -> GenericAlias(cls, val)
 
@@ -122,6 +123,9 @@ class SubAlias_m:
 
         annotation                             = cls._build_annotation(annotation)
         cls.__annotations__[cls._annotate_to]  = annotation
+        if kwargs.pop("no_regsiter", False):
+            return
+
         match annotation, cls._registry.get(annotation, None):
             case (), _:
                 pass

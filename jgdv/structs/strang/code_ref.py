@@ -41,13 +41,14 @@ import abc
 import collections.abc
 import typing
 from typing import TYPE_CHECKING, cast, assert_type, assert_never
-from typing import Generic, NewType, Any, Never
+from typing import Generic, NewType, Any, Never, Union
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 from collections.abc import Callable
 
+UnionTypes = types.UnionType | type(Union[int,None])  # noqa: UP007
 if TYPE_CHECKING:
     from jgdv.structs.chainguard import ChainGuard
     import enum
@@ -60,8 +61,9 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
     from jgdv._abstract.pre_processable import PreProcessResult
-    type SpecialType  = typing._SpecialForm
+
     type CheckType    = type | types.UnionType
+    type CheckCancel  = Literal[False]
 ##--|
 
 # isort: on
@@ -73,10 +75,11 @@ logging = logmod.getLogger(__name__)
 
 ProtoMeta             : Final[type] = type(Protocol)
 
+TooManyTypesToCheck   : Final[str] = "Too many types to check"
 SpecialTypeCheckFail  : Final[str] = "Checking Special Types like generics is not supported yet"
 ##--|
 
-class CodeReference(Strang):
+class CodeReference(Strang, no_register=True):
     """ A reference to a class or function.
 
     can be created from a string (so can be used from toml),
@@ -90,12 +93,12 @@ class CodeReference(Strang):
 
     __call__ imports the reference
     """
-    __slots__                                 = ("_value",)
+    __slots__                                 = ("_check", "_value")
 
     _processor  : ClassVar                    = StrangBasicProcessor()
     _formatter  : ClassVar                    = StrangFormatter()
     _sections   : ClassVar                    = API.Sections_d(*API.CODEREF_DEFAULT_SECS)
-    _check      : ClassVar[Maybe[CheckType]]  = None
+    _check      : Maybe[CheckType]
 
     @classmethod
     def _pre_process_h[T:CodeReference](cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> MaybeT[bool, *PreProcessResult[T]]:  # noqa: A002, ANN401, ARG003
@@ -133,11 +136,20 @@ class CodeReference(Strang):
         return newtype
 
 
-    def __init__(self, *args:Any, value:Maybe[type]=None, check:Maybe[type]=None, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
+    def __init__(self, *args:Any, value:Maybe=None, check:Maybe[CheckType|CheckCancel]=None, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
         super().__init__(**kwargs)
         self._value = value
+        match check:
+            case False:
+                self._check = None
+            case None:
+                self._check = self.expects_type()
+            case type() | types.UnionType():
+                self._check = check
+            case x:
+                raise TypeError(type(x))
 
-    def __call__(self, *, check:Maybe[CheckType]=None, raise_error:bool=False) -> Result[type, ImportError]:
+    def __call__(self, *, check:Maybe[CheckType|CheckCancel]=None, raise_error:bool=False) -> Result[type, ImportError]:
         """ Tries to import and retrieve the reference,
         and casts errors to ImportErrors
         """
@@ -150,7 +162,7 @@ class CodeReference(Strang):
                 raise
             return err
 
-    def _do_import(self, *, check:Maybe[CheckType]=None) -> Any:  # noqa: ANN401
+    def _do_import(self, *, check:Maybe[CheckType|CheckCancel]=None) -> Any:  # noqa: ANN401
         match self._value:
             case None:
                 try:
@@ -169,29 +181,20 @@ class CodeReference(Strang):
         self._check_imported_type(check)
         return self._value
 
-    def _check_imported_type(self, check:Maybe[CheckType]=None) -> None:
-        if self._value is None:
-            return
+    def _check_imported_type(self, check:Maybe[CheckType|CheckCancel]=None) -> None:
         marks        : Maybe[type[API.StrangMarkAbstract_e]]
-        has_mark     : bool
+        check_target : Maybe[CheckType]
         is_callable  : bool
         is_type      : bool
 
+        if self._value is None:
+            return
+
         marks        = self.section(0).marks
         assert(marks is not None)
-        has_mark     = any(x in self for x in [marks.fn, marks.cls])  # type: ignore[attr-defined]
         is_callable  = callable(self._value)
         is_type      = isinstance(self._value, type)
-
-        match self.cls_annotation():
-            case [types.UnionType()|type() as check_type] if check: # Merge types to check
-                check |= check_type
-            case [types.UnionType()|type() as check_type]: # Use annotation
-                check = check_type
-            case [x, *xs]: # Too many
-                raise ImportError("too many types to check", x, xs)
-            case _: # Nothing
-                return
+        check_target = self.expects_type(check)
 
         if marks.fn in self and not is_callable:  # type: ignore[attr-defined]
             raise ImportError(errors.CodeRefImportNotCallable, self._value, self)
@@ -202,15 +205,15 @@ class CodeReference(Strang):
         if marks.value in self and (is_type or is_callable):
             raise ImportError(errors.CodeRefImportNotValue, self._value, self)
 
-        match check, self._value:
+        match check_target, self._value:
             case None, _:
                 return
-            case type() | types.UnionType(), type() if issubclass(self._value, check):
+            case x, type() as val if isinstance(x, type|UnionTypes) and x is not None and issubclass(val, x):
                 return
-            case type() | types.UnionType(), _ if isinstance(self._value, check):
+            case type() | types.UnionType(), val if isinstance(val, check_target):
                 return
             case _:
-                raise ImportError(errors.CodeRefImportUnknownFail, self, check)
+                raise ImportError(errors.CodeRefImportUnknownFail, self, check_target)
 
     def to_alias(self, group:str, plugins:dict|ChainGuard) -> str:
         """ TODO Given a nested dict-like, see if this reference can be reduced to an alias """
@@ -223,3 +226,16 @@ class CodeReference(Strang):
 
     def to_uniq(self, *args:str) -> Never:
         raise NotImplementedError(errors.CodeRefUUIDFail)
+
+    def expects_type(self, *args:Maybe[CheckType|CheckCancel]) -> Maybe[CheckType]:
+        match self.cls_annotation(), args:
+            case _, [False] | False:
+                return None
+            case [types.UnionType()|type() as check_type], [*xs]: # Merge types to check
+                return cast("types.UnionType", Union[check_type, *[x for x in xs if x]])
+            case [types.UnionType()|type() as check_type]: # Use annotation
+                return check_type
+            case [x, *xs], _: # Too many
+                raise ImportError(TooManyTypesToCheck, x, xs)
+            case _: # Nothing
+                return None

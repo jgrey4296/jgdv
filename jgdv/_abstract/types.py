@@ -27,7 +27,7 @@ from collections.abc import (
     ValuesView,
 )
 from re import Match, Pattern
-from typing import Annotated, Any, Never, Self, TypeGuard, final
+from typing import Annotated, Any, Never, Self, TypeGuard, final, Union, Final
 from uuid import UUID, uuid1
 from weakref import ref
 
@@ -141,8 +141,10 @@ type Frame     = types.FrameType
 ##-- end tracebacks and frames
 
 ##-- misc
-type Module    = types.ModuleType
-type CHECKTYPE = Maybe[type|types.GenericAlias|types.UnionType]
+# the stdlib types.UnionType (int | float) is not typing.Union[int, float]
+UnionTypes  : Final[types.UnionType]  = types.UnionType | type(Union[int,None])  # noqa: UP007
+type Module                           = types.ModuleType
+type CHECKTYPE                        = Maybe[type|types.GenericAlias|types.UnionType]
 
 ##-- end misc
 
