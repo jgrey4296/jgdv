@@ -309,10 +309,11 @@ class TestIndirection:
         """
         {key} -> state[key_:blah] -> {blah}
         """
-        obj = DKey("test", implicit=True)
-        state = {"test_": "blah"}
+        target  = DKey("blah", implicit=True)
+        obj     = DKey("test", implicit=True)
+        state   = {"test_": "blah"}
         match obj.expand(state):
-            case DKey() as k if k == "blah":
+            case None:
                 assert(True)
             case x:
                 assert(False), x
@@ -332,13 +333,13 @@ class TestIndirection:
 
     def test_soft_hit_indirect(self):
         """
-        {key_} -> state[key_:value] -> {value}
+        {key_} -> state[key_:key2, key2:value] -> {value}
         """
         obj = DKey("test_", implicit=True)
         assert(DKey.MarkOf(obj) is DKey.Marks.INDIRECT)
-        state = {"test_": "blah"}
+        state = {"test_": "blah", "blah":"bloo"}
         match obj.expand(state):
-            case "blah":
+            case "bloo":
                 assert(True)
             case x:
                 assert(False), x
@@ -349,9 +350,9 @@ class TestIndirection:
         """
         obj = DKey("test_", implicit=True)
         assert(DKey.MarkOf(obj) is DKey.Marks.INDIRECT)
-        state = {"test_": "blah", "test": "aweg"}
+        state = {"test_": "blah", "test": "aweg", "blah":"bloo"}
         match obj.expand(state):
-            case "blah":
+            case "bloo":
                 assert(True)
             case x:
                 assert(False), x
@@ -408,6 +409,7 @@ class TestMultiExpansion:
                 assert(False), x
 
     def test_hard_miss_subkey(self):
+        """ {key}/{key2} -> state[key:value} -> None """
         obj = DKey("{test}/{aweg}")
         assert(DKey.MarkOf(obj) is DKey.Marks.MULTI)
         state = {"test": "blah"}

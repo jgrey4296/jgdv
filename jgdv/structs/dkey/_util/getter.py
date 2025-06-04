@@ -24,7 +24,7 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from jgdv._abstract.protocols import SpecStruct_p
-from .._interface import ExpInst_d, Key_p
+from .._interface import ExpInst_d, Key_p, NonKey_p
 # ##-- end 1st party imports
 
 # ##-- types
@@ -95,7 +95,7 @@ class ChainGetter:
 
 
     @staticmethod
-    def lookup(target:list[ExpInst_d], sources:list, *, ctor:type[Key_p])-> Maybe[ExpInst_d]:  # noqa: PLR0911, PLR0912
+    def lookup(target:list[ExpInst_d], sources:list, *, lifter:type[Key_p])-> Maybe[ExpInst_d]:  # noqa: PLR0911, PLR0912
         """ Handle lookup instructions
 
         | pass through DKeys and (DKey, ..)
@@ -103,7 +103,7 @@ class ChainGetter:
         | don't lift (str(), False, fallback)
 
         """
-        assert(ctor is not None)
+        assert(lifter is not None)
         for spec in target:
             match spec:
                 case ExpInst_d(value=Key_p()):
@@ -119,24 +119,16 @@ class ChainGetter:
             match ChainGetter.get(key, *sources):
                 case None:
                     pass
-                case str() as x if lift:
+                case x if lift:
                     logging.debug("Lifting Result to Key: %r", x)
-                    lifted = ctor(x, implicit=True, fallback=fallback)
-                    return ExpInst_d(value=lifted, fallback=lifted, lift=False)
-                case pl.Path() as x:
-                    match ctor(str(x)):
-                        case Key_p(nonkey=True) as y:
-                            return ExpInst_d(value=y, rec=0)
-                        case y:
-                            return ExpInst_d(value=y, fallback=fallback)
-                case str() as x:
-                    match ctor(x):
-                        case Key_p(nonkey=True) as y:
-                            return ExpInst_d(value=y, rec=0)
-                        case y:
-                            return ExpInst_d(value=y, fallback=fallback)
+                    match lifter(x, implicit=True, fallback=fallback):
+                        case NonKey_p() as y:
+                            return ExpInst_d(value=y, rec=0, litreal=True)
+                        case Key_p() as y:
+                            return ExpInst_d(value=y, fallback=fallback, lift=False)
+                        case x:
+                            raise TypeError(type(x))
                 case x:
                     return ExpInst_d(value=x, fallback=fallback)
-
         else:
             return None

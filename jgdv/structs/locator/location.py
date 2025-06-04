@@ -30,7 +30,6 @@ from pydantic import BaseModel, field_validator, model_validator
 from jgdv import Proto
 from jgdv.structs.dkey import DKey
 from jgdv.mixins.path_manip import PathManip_m
-from jgdv.mixins.enum_builders import FlagsBuilder_m
 from jgdv.structs.strang import Strang
 
 from jgdv.structs.strang import _interface as StrangAPI # noqa: N812

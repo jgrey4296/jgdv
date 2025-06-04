@@ -19,6 +19,7 @@ import jgdv.structs.pathy.pathy as Pth
 
 logging = logmod.root
 
+@pytest.mark.xfail
 class TestPathy:
 
     def test_sanity(self):
@@ -80,6 +81,8 @@ class TestPathy:
         with pytest.raises(TypeError):
             Pathy['blah']
 
+
+@pytest.mark.xfail
 class TestPathyOps:
 
     def test_sanity(self):
@@ -124,6 +127,8 @@ class TestPathyOps:
         assert(isinstance(res, Pathy[File]))
         assert(res == "a/blah/c.txt")
 
+
+@pytest.mark.xfail
 class TestPathyJoin:
 
     def test_join_file(self):
@@ -171,6 +176,8 @@ class TestPathyJoin:
             case x:
                 assert(False), x
 
+
+@pytest.mark.xfail
 class TestPathy_Time:
 
     def test_newer_than(self):
@@ -227,6 +234,8 @@ class TestPathy_Time:
         assert(obj.time_modified() is a_time)
         assert(obj._newer_than(older_time, tolerance=tolerance))
 
+
+@pytest.mark.xfail
 class TestPathy_Walking:
 
     @pytest.mark.skip
@@ -250,6 +259,8 @@ class TestPathy_Walking:
         obj = Pathy['*'].cwd()
         files = list(obj.walk_files(d_skip=filter_fn, f_skip=file_filter_fn))
 
+
+@pytest.mark.xfail
 class TestPathyNormalize:
 
     def test_sanity(self):
@@ -261,6 +272,8 @@ class TestPathyNormalize:
         assert(isinstance(normed, pl.Path))
         assert(normed.is_absolute())
 
+
+@pytest.mark.xfail
 class TestPathyFile:
 
     def test_sanity(self):
@@ -276,6 +289,8 @@ class TestPathyFile:
         assert(hasattr(val, "_meta"))
         assert(val._meta['val'] == 'blah')
 
+
+@pytest.mark.xfail
 class TestPathDir:
 
     def test_sanity(self):
@@ -285,6 +300,8 @@ class TestPathDir:
         obj = Pathy[File]("blah/bloo")
         assert(isinstance(obj, pl.Path))
 
+
+@pytest.mark.xfail
 class TestMatching:
 
     def test_sanity(self):

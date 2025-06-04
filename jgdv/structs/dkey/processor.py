@@ -83,27 +83,31 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
    ##--|
 
     @override
-    def pre_process(self, cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult[T]: # type: ignore[override]
+    def pre_process(self, cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult[T]: # type: ignore[override]  # noqa: PLR0912, PLR0915
         """ Pre-process the Key text,
 
         Extracts subkeys, and refines the type of key to build
         """
-        text       : str
-        ctor       : Ctor[T]
-        mark       : API.KeyMark
-        inst_data  : dict = {}
-        post_data  : dict = {}
-        force      : Maybe[Ctor[T]]    = kwargs.pop('force', None)
-        implicit   : bool              = kwargs.pop("implicit", False)  # is key wrapped? ie: {key}
-        insist     : bool              = kwargs.pop("insist", False)    # must produce key, not nullkey
+        text         : str
+        ctor         : Ctor[T]
+        mark         : API.KeyMark
+        spec_mark    : API.KeyMark
+        format_mark  : Maybe[API.KeyMark]
+        inst_data    : dict            = {}
+        post_data    : dict            = {}
+        force        : Maybe[Ctor[T]]  = kwargs.pop('force', None)
+        implicit     : bool            = kwargs.pop("implicit", False)  # is key wrapped? ie: {key}
+        insist       : bool            = kwargs.pop("insist", False)    # must produce key, not nullkey
 
         match force, kwargs.pop('mark', None):
             case type(), _:
-                mark = force.MarkOf(force)
+                spec_mark = cls.MarkOf(force)
+            case None, None:
+                spec_mark = cls.MarkOf(cls) or API.DKeyMark_e.default()
             case None, x:
-                mark = x
+                spec_mark = x
             case _:
-                mark = API.DKeyMark_e.default()
+                spec_mark = cls.MarkOf(cls) or API.DKeyMark_e.default()
 
         # TODO use class hook if it exists
 
@@ -128,19 +132,41 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
                 raise TypeError(type(x))
 
         ##--| discriminate on raw keys
-        match self.discriminate_raw(inst_data[API.RAWKEY_ID], kwargs, mark=mark):
+        match self.inspect_raw(inst_data[API.RAWKEY_ID], kwargs):
             case x, y:
                 text = x or text
-                mark = y
+                format_mark = y
             case _:
                 raise ValueError()
         ##--|
+        match spec_mark, format_mark:
+            case type() as x, _:
+                mark = x
+            case x, None:
+                mark = x
+            case x, y if x == y:
+                mark = x
+            case x, y if y == DKeyMark_e.null() and x != DKeyMark_e.multi():
+                mark = y
+            case x, y if x is DKeyMark_e.default():
+                assert(y is not None)
+                mark = y
+            case str() as x, _ if x not in DKeyMark_e:
+                mark = x
+            case _, y:
+                assert(y is not None)
+                mark = y
+
+
         assert(bool(text))
         assert(bool(inst_data))
         ctor = self.select_ctor(cls, insist=insist, mark=mark, force=force)
         self.validate_init_kwargs(ctor, kwargs)
         assert(issubclass(ctor, SubAlias_m))
         inst_data['mark'] = ctor.cls_annotation()
+        if DKeyMark_e.multi() in [format_mark, spec_mark] and not issubclass(ctor, API.MultiKey_p):
+            msg = "a multi key was specified by a mark, but the ctor isnt a multi key"
+            raise ValueError(msg, spec_mark, format_mark)
         ##--| return
         return text, inst_data, post_data, ctor
 
@@ -205,19 +231,19 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
 
     ##--| Utils
 
-    def discriminate_raw(self, raw_keys:Iterable[API.RawKey_d], kdata:dict, *, mark:Maybe[API.KeyMark]=None) -> tuple[Maybe[str], API.KeyMark]:  # noqa: ARG002
+    def inspect_raw(self, raw_keys:Iterable[API.RawKey_d], kdata:dict) -> tuple[Maybe[str], Maybe[API.KeyMark]]:  # noqa: ARG002
         """ Take extracted keys of the text,
-        and determine features of them, returning a dict,
+        and determine features of them.
+        can return modified text, and a mark
 
         """
         assert(all(isinstance(x, API.RawKey_d) for x in raw_keys))
-        spec_mark                          = mark or DKeyMark_e.default()
         format_mark  : Maybe[API.KeyMark]  = None
         text         : Maybe[str]          = None
         match raw_keys:
             case [x] if not bool(x.key) and bool(x.prefix): # No keys found, use NullDKey
-                format_mark = DKeyMark_e.NULL
-            case [x] if not bool(x.prefix): # One key, no non-key text. not multi. trim it.
+                format_mark  = DKeyMark_e.NULL
+            case [x] if not bool(x.prefix):  # One key, no non-key text. trim it.
                 text = x.direct()
                 if x.is_indirect():
                     format_mark = DKeyMark_e.INDIRECT
@@ -228,10 +254,7 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
             case x:
                 raise TypeError(type(x))
         ##--|
-        if spec_mark is not DKeyMark_e.default() and format_mark and (spec_mark != format_mark):
-            raise ValueError(API.MarkConversionConflict, spec_mark, format_mark)
-
-        return text, format_mark or spec_mark
+        return text, format_mark
 
     def select_ctor(self, cls:Ctor[T], *, mark:KeyMark, force:Maybe[Ctor[T]], insist:bool) -> Ctor[T]:
         """ Select the appropriate key ctor,

@@ -99,7 +99,7 @@ logging = logmod.getLogger(__name__)
 
 ##--| Body
 
-class SoftFailMultiDKey(MultiDKey["soft.fail"], multi=True):
+class SoftFailMultiDKey(MultiDKey, mark="soft.fail"):
 
     __slots__ = ()
 
@@ -107,12 +107,17 @@ class SoftFailMultiDKey(MultiDKey["soft.fail"], multi=True):
         """ Expands subkeys, to be merged into the main key"""
         targets = []
         for key in self.keys():
-            targets.append([ExpInst_d(value=key, fallback=f"{key:w}")] )
+            # targets.append([ExpInst_d(value=key, fallback=f"{key:w}")] )
+            # targets.append([ExpInst_d(value=key, lift=True)] )
+            targets.append([ExpInst_d(value=key, fallback=None)] )
         else:
             if not bool(targets):
-                targets.append([ExpInst_d(value=f"{self}"),
-                                ExpInst_d(value=f"{self}", literal=True)])
+                targets.append([
+                    ExpInst_d(value=f"{self}", literal=True),
+                    # ExpInst_d(value=None, fallback=None, literal=True),
+                ])
             return targets
+
 
 class _LocatorGlobal:
     """ A program global stack of locations.
@@ -327,7 +332,7 @@ class _LocatorAccess_m:
         """
         match key:
             case Location():
-                current = key[1:]
+                current = key[1,:]
             case DKey():
                 current = f"{key:w}"
             case str():
@@ -340,9 +345,9 @@ class _LocatorAccess_m:
 
         match strict:
             case False:
-                return DKey["soft.fail"](current, ctor=pl.Path)
+                return DKey['soft.fail'](current, ctor=pl.Path)
             case True:
-                return DKey[DKey.Marks.MULTI](current, ctor=pl.Path) # type: ignore
+                return DKey(current, ctor=pl.Path) # type: ignore
 
 ##--|
 

@@ -111,6 +111,8 @@ class DKey[**K](Strang, fresh_registry=True):
     @staticmethod
     def MarkOf[T:SubAlias_m](target:T|type[T]) -> API.KeyMark|tuple[API.KeyMark, ...]: # noqa: N802
         """ Get the mark of the key type or instance """
+        if not hasattr(target, "cls_annotation"):
+            return ()
         match target.cls_annotation():
             case None:
                 return ()
@@ -121,7 +123,7 @@ class DKey[**K](Strang, fresh_registry=True):
 
     @classmethod
     def add_sources(cls, *sources:dict) -> None:
-        """ register additional sources that are always included """
+        """ register additional sources that are always included in expansion """
         cls._extra_sources += sources
 
 
@@ -210,20 +212,3 @@ class DKey[**K](Strang, fresh_registry=True):
     def exp_extra_sources_h(self) -> list:
         return DKey._extra_sources
 
-    def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> API.LookupList:
-        return []
-
-    def exp_pre_recurse_h(self, vals:list[API.ExpInst_d], sources:list[dict], opts:dict) -> Maybe[list[API.ExpInst_d]]:
-        return None
-
-    def exp_flatten_h(self, vals:list[API.ExpInst_d], opts:dict) -> Maybe[API.LitFalse|API.ExpInst_d]:
-        return None
-
-    def exp_coerce_h(self, val:API.ExpInst_d, opts:dict) -> Maybe[API.ExpInst_d]:
-        return None
-
-    def exp_final_h(self, val:API.ExpInst_d, opts:dict) -> Maybe[API.LitFalse|API.ExpInst_d]:
-        return None
-
-    def exp_check_result_h(self, val:API.ExpInst_d, opts:dict) -> None:
-        return None

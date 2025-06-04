@@ -54,7 +54,7 @@ if TYPE_CHECKING:
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-class SingleDKey(DKey, mark=DKeyMark_e.FREE, core=True):
+class SingleDKey(DKey, mark=DKeyMark_e.FREE, default=True):
     """
       A Single key with no extras.
       ie: {x}. not {x}{y}, or {x}.blah.
@@ -76,7 +76,7 @@ class SingleDKey(DKey, mark=DKeyMark_e.FREE, core=True):
                 msg = "A Single Key got multiple raw key data"
                 raise ValueError(msg, xs)
 
-class MultiDKey(DKey, mark=DKeyMark_e.MULTI, core=True):
+class MultiDKey(DKey, mark=DKeyMark_e.MULTI):
     """ Multi keys allow 1+ explicit subkeys.
 
     They have additional fields:
@@ -125,7 +125,13 @@ class MultiDKey(DKey, mark=DKeyMark_e.MULTI, core=True):
         """ Flatten the multi-key expansion into a single string,
         by using the anon-format str
         """
-        flat : list[str] = []
+        flat : list[str]  = []
+        key_meta          = [x for x in self.data.meta if bool(x)]
+        if not bool(key_meta):
+            return vals[0]
+        if len(vals) != len([x for x in self.data.meta if bool(x)]):
+            return None
+
         for x in vals:
             match x:
                 case ExpInst_d(value=IndirectDKey() as k):
@@ -137,7 +143,7 @@ class MultiDKey(DKey, mark=DKeyMark_e.MULTI, core=True):
         else:
             return ExpInst_d(value=self.anon.format(*flat), literal=True)
 
-class NonDKey(DKey, mark=DKeyMark_e.NULL, core=True):
+class NonDKey(DKey, mark=DKeyMark_e.NULL):
     """ Just a string, not a key.
 
     ::
@@ -158,6 +164,9 @@ class NonDKey(DKey, mark=DKeyMark_e.NULL, core=True):
         rem, _, _= self._processor.consume_format_params(spec) # type: ignore
         return super().__format__(rem, **kwargs)
 
+    def _nonkey(self) -> Literal[True]:
+        return True
+
     def expand(self, *args, **kwargs) -> Maybe:  # noqa: ANN002, ANN003, ARG002
         """ A Non-key just needs to be coerced into the correct str format """
         val = ExpInst_d(value=self[:])
@@ -172,7 +181,7 @@ class NonDKey(DKey, mark=DKeyMark_e.NULL, core=True):
                 msg = "Nonkey coercion didn't return an ExpInst_d"
                 raise TypeError(msg, x)
 
-class IndirectDKey(DKey, mark=DKeyMark_e.INDIRECT, conv="I", core=True):
+class IndirectDKey(DKey, mark=DKeyMark_e.INDIRECT, conv="I"):
     """
       A Key for getting a redirected key.
       eg: RedirectionDKey(key) -> SingleDKey(value)

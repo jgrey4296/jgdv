@@ -31,7 +31,7 @@ match JGDVLocator.Current:
 def simple() -> JGDVLocator:
     return JGDVLocator(pl.Path.cwd())
 
-class TestLocatorGet:
+class TestLocator_Get:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -57,7 +57,7 @@ class TestLocatorGet:
             case x:
                 assert(False), x
 
-class TestLocatorAccess:
+class TestLocator_Access:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -78,7 +78,7 @@ class TestLocatorAccess:
             case x:
                 assert(False), x
 
-class TestLocatorExpand:
+class TestLocator_Expand:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -172,13 +172,13 @@ class TestLocatorExpand:
     def test_double_recursion(self, simple):
         simple.update({"blah":"{bloo}/blee", "bloo":"aweg"})
         target = pl.Path.cwd() / "aweg/blee"
-        match simple.expand("{blah}"):
+        match simple.expand("{blah}", strict=False):
             case pl.Path() as x if x == target:
                 assert(True)
             case x:
                 assert(False), x
 
-class TestLocatorMainAccess:
+class TestLocator_MainAccess:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -219,10 +219,20 @@ class TestLocatorMainAccess:
         assert(simple['{bloo}'] == target)
 
     def test_item_dir_file_join(self, simple):
-        """Locator[{blah}/{bloo}'] -> {cwd}/ex/dir/a/b/c.txt"""
-        pass
+        """ Locator[a/b/c] -> {cwd}/a/b/c """
+        target = pl.Path.cwd() / "a/b/c"
+        simple.update({"bloo": "dir::>a/b/c"})
+        assert("bloo" in simple)
+        assert(simple['{bloo}'] == target)
 
-class TestLocationExpansionConflict:
+    def test_item_nonkey(self, simple):
+        """ Locator[bloo/blah] -> {cwd}/bloo/blah """
+        target = pl.Path.cwd() / "bloo/blah"
+        simple.update({"bloo": "dir::>a/b/c"})
+        assert("bloo" in simple)
+        assert(simple['bloo/blah'] == target)
+
+class TestLocation_ExpansionConflict:
 
     @pytest.mark.xfail
     def test_item_file_join_fail(self, simple):

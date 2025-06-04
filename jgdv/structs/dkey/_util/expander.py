@@ -169,18 +169,21 @@ class DKeyExpander:
         self.check_result(source, final_val, kwargs)
         match final_val:
             case None:
-                logging.debug("Expansion Failed, using fallback")
+                logging.debug("Expansion Failed on %s, using fallback %s", source, fallback)
                 return fallback
             case API.ExpInst_d(literal=False) as x:
                 msg = "Expansion didn't result in a literal"
                 raise ValueError(msg, x, source)
             case API.ExpInst_d() as x:
-                logging.info("- %s -> %s", source, final_val)
+                logging.info("|-| %s -> %s", source, final_val)
                 return x
             case x:
                 raise TypeError(type(x))
 
     def extra_sources(self, source:API.Key_p) -> list[Any]:
+        if not hasattr(source, "exp_extra_sources_h"):
+            return []
+
         match source.exp_extra_sources_h():
             case None:
                 return []
@@ -195,6 +198,12 @@ class DKeyExpander:
         When looked up, For each L2, the first T that returns a value is added
         to the final result
         """
+        if not hasattr(source, "exp_pre_lookup_h"):
+            return [[
+                API.ExpInst_d(value=f"{source:d}"),
+                API.ExpInst_d(value=f"{source:i}",  lift=True),
+            ]]
+
         match source.exp_pre_lookup_h(sources, opts):
             case [] | None:
                 return [[
@@ -212,9 +221,11 @@ class DKeyExpander:
             Target is a list (L1) of lists (L2) of target tuples (T).
             For each L2, the first T that returns a value is added to the final result
             """
+        target : list[API.ExpInst_d]
         result = []
+        logging.debug("Looking Up: %s", targets)
         for target in targets:
-            match CG.lookup(target, sources, ctor=self._ctor):
+            match CG.lookup(target, sources, lifter=self._ctor):
                 case None:
                     logging.debug("Lookup Failed for: %s", target)
                     return []
@@ -232,6 +243,9 @@ class DKeyExpander:
     @DoMaybe()
     def pre_recurse(self, insts:list[API.ExpInst_d], sources:list[dict], opts:dict, *, source:API.Key_p) -> Maybe[list[API.ExpInst_d]]:
         """ Produces a list[Key|Val|(Key, rec:int)]"""
+        if not hasattr(source, "exp_pre_recurse_h"):
+            return insts
+
         match source.exp_pre_recurse_h(insts, sources, opts):
             case None:
                 return insts
@@ -241,13 +255,15 @@ class DKeyExpander:
                 raise TypeError(type(x))
 
     @DoMaybe()
-    def do_recursion(self, insts:list[API.ExpInst_d], sources:list[dict], opts:dict, max_rec:int=API.RECURSION_GUARD, *, source:API.Key_p) -> Maybe[list[API.ExpInst_d]]:  # noqa: PLR0912
+    def do_recursion(self, insts:list[API.ExpInst_d], sources:list[dict], opts:dict, max_rec:int=API.RECURSION_GUARD, *, source:API.Key_p) -> Maybe[list[API.ExpInst_d]]:  # noqa: PLR0911, PLR0912, PLR0915
         """
         For values that can expand futher, try to expand them
 
         """
         result = []
-        logging.debug("Recursing: %r", source)
+        if not bool(insts):
+            return result
+        logging.debug("Recursing: %r: %s", source, insts)
         for x in insts:
             match x:
                 case API.ExpInst_d(literal=True) | API.ExpInst_d(rec=0) as res:
@@ -258,9 +274,9 @@ class DKeyExpander:
                 case API.ExpInst_d(value=API.Key_p() as key, rec=-1, fallback=fallback, lift=lift):
                     match self.expand(key, *sources, limit=max_rec, fallback=fallback):
                         case None if lift:
-                            return [API.ExpInst_d(value=as_key, literal=True)]
+                            result.append(API.ExpInst_d(value=key, literal=True))
                         case None:
-                            return []
+                            pass
                         case API.ExpInst_d() as exp if lift:
                             exp.convert = False
                             result.append(exp)
@@ -270,9 +286,9 @@ class DKeyExpander:
                     as_key = self._ctor(key)
                     match self.expand(as_key, *sources, limit=max_rec, fallback=fallback):
                         case None if lift:
-                            return [API.ExpInst_d(value=as_key, literal=True)]
+                            result.append(API.ExpInst_d(value=as_key, literal=True))
                         case None:
-                            return []
+                            pass
                         case API.ExpInst_d() as exp if lift:
                             exp.convert = False
                             result.append(exp)
@@ -283,21 +299,21 @@ class DKeyExpander:
                     new_limit = min(max_rec, rec)
                     match self.expand(key, *sources, limit=new_limit, fallback=fallback):
                         case None if lift:
-                            return [API.ExpInst_d(value=key, literal=True)]
+                            result.append(API.ExpInst_d(value=key, literal=True))
                         case None:
-                            return []
+                            pass
                         case API.ExpInst_d() as exp:
                             result.append(exp)
                         case other:
                             raise TypeError(type(other))
-                case API.ExpInst_d(value=str() as key, rec=rec, fallback=fallback, lift=lift):
+                case API.ExpInst_d(value=key, rec=rec, fallback=fallback, lift=lift):
                     new_limit = min(max_rec, rec)
                     as_key = self._ctor(key)
                     match self.expand(as_key, *sources, limit=new_limit, fallback=fallback):
                         case None if lift:
-                            return [API.ExpInst_d(value=as_key, literal=True)]
+                            result.append(API.ExpInst_d(value=as_key, literal=True))
                         case None:
-                            return []
+                            pass
                         case API.ExpInst_d() as exp:
                             result.append(exp)
                         case other:
@@ -316,11 +332,13 @@ class DKeyExpander:
         match insts:
             case []:
                 return None
+            case [x, *xs] if not hasattr(source ,"exp_flatten_h"):
+                return x
+            case _ if not hasattr(source ,"exp_flatten_h"):
+                return None
 
         match source.exp_flatten_h(insts, opts):
             case None:
-                return insts[0]
-            case False:
                 return None
             case API.ExpInst_d() as x:
                 return x
@@ -332,14 +350,18 @@ class DKeyExpander:
         """
         Coerce the expanded value accoring to source's expansion type ctor
         """
-        logging.debug("%r Type Coercion: %r : %s", source, inst, source.data.convert)
-        result : Maybe[API.ExpInst_d] = None
-        match source.exp_coerce_h(inst, opts):
-            case API.ExpInst_d() as x:
-                return x
-            case None:
-                pass
 
+        result : Maybe[API.ExpInst_d] = None
+
+        if hasattr(source, "exp_coerce_h"):
+            match source.exp_coerce_h(inst, opts):
+                case API.ExpInst_d() as x:
+                    return x
+                case None:
+                    pass
+
+        ##--|
+        logging.debug("Type Coercion: (%r) %r : %s", source, inst, source.data.convert)
         match inst:
             case API.ExpInst_d(convert=False):
                 # Conversion is off
@@ -399,11 +421,12 @@ class DKeyExpander:
 
     @DoMaybe()
     def finalise(self, inst:API.ExpInst_d, opts:dict, *, source:API.Key_p) -> Maybe[API.ExpInst_d]:
+        if not hasattr(source, "exp_final_h"):
+            inst.literal = True
+            return inst
+
         match source.exp_final_h(inst, opts):
             case None:
-                inst.literal = True
-                return inst
-            case False:
                 return None
             case API.ExpInst_d() as x:
                 return x
@@ -415,6 +438,9 @@ class DKeyExpander:
         """ check the type of the expansion is correct,
         throw a type error otherwise
         """
+        if not hasattr(source, "exp_check_result_h"):
+            return
+
         source.exp_check_result_h(inst, opts)
 
 ##--|

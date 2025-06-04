@@ -2,7 +2,7 @@
 """
 
 """
-# ruff: noqa: ANN201, ARG001, ANN001, ARG002, ANN202
+# ruff: noqa: ANN201, ARG001, ANN001, ARG002, ANN202, B011
 
 # Imports
 from __future__ import annotations
@@ -31,8 +31,6 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
    from jgdv import Maybe
@@ -59,8 +57,23 @@ class TestSingleDKey:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
+    def test_ctor(self):
+        assert(DKey.MarkOf(SingleDKey) == DKey.Marks.FREE)
+
     def test_basic(self):
         match DKey("blah", implicit=True, force=SingleDKey):
+            case SingleDKey() as x:
+                assert(not hasattr(x, "__dict__"))
+                assert(isinstance(x, SingleDKey))
+                assert(isinstance(x, DKey))
+                assert(isinstance(x, Strang))
+                assert(isinstance(x, str))
+            case x:
+                assert(False), x
+
+
+    def test_basic_by_class_accesss(self):
+        match DKey[DKey.Marks.FREE]("blah", implicit=True):
             case SingleDKey() as x:
                 assert(not hasattr(x, "__dict__"))
                 assert(isinstance(x, SingleDKey))
@@ -146,6 +159,30 @@ class TestMultiDKey:
             case x:
                 assert(False), x
 
+
+    def test_basic_by_class_access(self):
+        match DKey[DKey.Marks.MULTI]("{blah} {bloo}"):
+            case MultiDKey() as x:
+                assert(not hasattr(x, "__dict__"))
+                assert(isinstance(x, MultiDKey))
+                assert(isinstance(x, DKey))
+                assert(isinstance(x, Strang))
+                assert(isinstance(x, str))
+            case x:
+                assert(False), x
+
+
+    def test_basic_unannotated(self):
+        match DKey("{blah} {bloo}"):
+            case MultiDKey() as x:
+                assert(not hasattr(x, "__dict__"))
+                assert(isinstance(x, MultiDKey))
+                assert(isinstance(x, DKey))
+                assert(isinstance(x, Strang))
+                assert(isinstance(x, str))
+            case x:
+                assert(False), x
+
     def test_eq(self):
         obj1 = DKey("{blah} {bloo}", force=MultiDKey)
         obj2 = DKey("{blah} {bloo}", force=MultiDKey)
@@ -220,6 +257,30 @@ class TestNonDKey:
             case x:
                 assert(False), x
 
+
+    def test_basic_by_class_access(self):
+        match DKey[DKey.Marks.NULL]("blah"):
+            case NonDKey() as x:
+                assert(not hasattr(x, "__dict__"))
+                assert(isinstance(x, NonDKey))
+                assert(isinstance(x, DKey))
+                assert(isinstance(x, Strang))
+                assert(isinstance(x, str))
+            case x:
+                assert(False), x
+
+
+    def test_basic_unannotated(self):
+        match DKey("blah"):
+            case NonDKey() as x:
+                assert(not hasattr(x, "__dict__"))
+                assert(isinstance(x, NonDKey))
+                assert(isinstance(x, DKey))
+                assert(isinstance(x, Strang))
+                assert(isinstance(x, str))
+            case x:
+                assert(False), x
+
     def test_eq(self):
         obj1 = DKey("blah", force=NonDKey)
         obj2 = DKey("blah", force=NonDKey)
@@ -263,6 +324,13 @@ class TestIndirectDKey:
                 assert(isinstance(x, str))
             case x:
                 assert(False), x
+
+    def test_basic_by_class_access(self):
+        match DKey[DKey.Marks.INDIRECT]("{blah}"):
+            case IndirectDKey():
+                assert(True)
+            case x:
+                assert(False), type(x)
 
     @pytest.mark.parametrize("name", ["blah", "blah_"])
     def test_eq(self, name):

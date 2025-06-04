@@ -267,6 +267,13 @@ class ExpInst_d:
     expander mixin.
     Uses slots to make it as lightweight as possible
 
+    - fallback : the value to use if expansion fails
+    - convert  : controls type coercion of expansion result
+    - lift     : says to lift expanded values into keys themselves
+    - literal  : signals the value needs no more expansion
+    - rec      : the remaining recursive expansions available. -1 is unrestrained.
+
+
     """
     __slots__ = ("convert", "fallback", "lift", "literal", "rec", "total_recs", "value")
     value       : Any
@@ -300,10 +307,9 @@ class ExpInst_d:
 
 class DKey_d(StrangAPI.Strang_d):
     """ Data of a DKey """
-    __slots__ = ("convert", "expansion_type", "fallback", "format", "help", "mark", "max_expansions", "multi", "name", "raw", "typecheck")
+    __slots__ = ("convert", "expansion_type", "fallback", "format", "help", "max_expansions", "multi", "name", "raw", "typecheck")
     name            : Maybe[str]
     raw             : tuple[RawKey_d, ...]
-    mark            : KeyMark
     expansion_type  : Ctor
     typecheck       : CHECKTYPE
     fallback        : Maybe[Any]
@@ -317,7 +323,6 @@ class DKey_d(StrangAPI.Strang_d):
         super().__init__()
         self.name            = kwargs.pop("name", None)
         self.raw             = tuple(kwargs.pop(RAWKEY_ID, ()))
-        self.mark            = kwargs.pop("mark", DKeyMark_e.default())
         self.expansion_type  = kwargs.pop("ctor", identity_fn)
         self.typecheck       = kwargs.pop("check", Any)
         self.fallback        = kwargs.pop("fallback", None)
@@ -351,7 +356,7 @@ class ExpansionHooks_p(Protocol):
 
     def exp_pre_recurse_h(self, insts:list[ExpInst_d], sources:list[dict], opts:dict) -> Maybe[list[ExpInst_d]]: ...
 
-    def exp_flatten_h(self, insts:list[ExpInst_d], opts:dict) -> Maybe[LitFalse|ExpInst_d]: ...
+    def exp_flatten_h(self, insts:list[ExpInst_d], opts:dict) -> Maybe[ExpInst_d]: ...
 
     def exp_coerce_h(self, inst:ExpInst_d, opts:dict) -> Maybe[ExpInst_d]: ...
 
@@ -367,7 +372,7 @@ class Expandable_p(Protocol):
     def expand(self, *sources, **kwargs) -> Maybe: ...
 
 @runtime_checkable
-class Key_p(ExpansionHooks_p, StrangAPI.Strang_p, Protocol):
+class Key_p(StrangAPI.Strang_p, Protocol):
     """ The protocol for a Key, something that used in a template system"""
     _extra_kwargs  : ClassVar[set[str]]
     _processor     : ClassVar
@@ -395,3 +400,8 @@ class IndirectKey_p(Protocol):
 
     def _indirect(self) -> Literal[True]: ...
 ##--| Combined Interfaces
+
+@runtime_checkable
+class NonKey_p(Protocol):
+
+    def _nonkey(self) -> Literal[True]: ...
