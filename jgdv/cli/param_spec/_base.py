@@ -32,7 +32,7 @@ from pydantic import BaseModel, Field, InstanceOf, field_validator, model_valida
 # ##-- 1st party imports
 from jgdv import Proto
 from jgdv._abstract.pydantic_proto import ProtocolModelMeta
-from jgdv.mixins.annotate import SubAnnotate_m
+from jgdv.mixins.annotate.annotate import SubAnnotate_m
 from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports

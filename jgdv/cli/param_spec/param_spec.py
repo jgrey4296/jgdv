@@ -32,7 +32,8 @@ from pydantic import BaseModel
 # ##-- 1st party imports
 from jgdv import Maybe, Proto, Mixin
 from jgdv._abstract.protocols import Buildable_p
-from jgdv.mixins.annotate import SubAnnotate_m, Subclasser
+from jgdv.mixins.annotate import Subclasser
+from jgdv.mixins.annotate.annotate import SubAnnotate_m
 from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports

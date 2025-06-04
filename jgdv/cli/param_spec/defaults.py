@@ -25,7 +25,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv.mixins.annotate import SubAnnotate_m
+from jgdv.mixins.annotate.annotate import SubAnnotate_m
 from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
