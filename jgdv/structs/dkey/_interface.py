@@ -27,7 +27,6 @@ import faulthandler
 # ##-- end stdlib imports
 
 from jgdv import identity_fn
-from jgdv.mixins.enum_builders import EnumBuilder_m
 from jgdv.structs.strang import _interface as StrangAPI # noqa: N812
 
 # ##-- types
@@ -51,7 +50,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
     from ._facade import DKey
 
-    type KeyMark     = DKeyMarkAbstract_e|str|type
+    type KeyMark     = DKeyMarkAbstract_e|str|type|tuple[KeyMark, ...]
     type LookupList  = list[list[ExpInst_d]]
     type LitFalse    = Literal[False]
 ##--|
@@ -116,7 +115,7 @@ class DKeyMarkAbstract_e(StrangAPI.StrangMarkAbstract_e):
     @classmethod
     def multi(cls) -> Maybe: ...
 
-class DKeyMark_e(EnumBuilder_m, DKeyMarkAbstract_e):
+class DKeyMark_e(DKeyMarkAbstract_e):
     """
       Enums for how to use/build a dkey
 
@@ -376,7 +375,7 @@ class Key_p(ExpansionHooks_p, StrangAPI.Strang_p, Protocol):
     data           : DKey_d
 
     @staticmethod
-    def MarkOf[T:Key_p](cls:type[T]|T) -> KeyMark|tuple[KeyMark, ...]: ...  # noqa: N802
+    def MarkOf[T:Key_p](cls:type[T]|T) -> KeyMark: ...  # noqa: N802, PLW0211
 
     def redirect(self, spec=None) -> Key_p: ...
 

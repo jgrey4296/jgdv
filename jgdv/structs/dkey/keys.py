@@ -54,8 +54,7 @@ if TYPE_CHECKING:
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-
-class SingleDKey(DKey[DKeyMark_e.FREE], core=True): # type: ignore[valid-type]
+class SingleDKey(DKey, mark=DKeyMark_e.FREE, core=True):
     """
       A Single key with no extras.
       ie: {x}. not {x}{y}, or {x}.blah.
@@ -77,7 +76,7 @@ class SingleDKey(DKey[DKeyMark_e.FREE], core=True): # type: ignore[valid-type]
                 msg = "A Single Key got multiple raw key data"
                 raise ValueError(msg, xs)
 
-class MultiDKey(DKey[DKeyMark_e.MULTI], core=True): # type: ignore[valid-type]
+class MultiDKey(DKey, mark=DKeyMark_e.MULTI, core=True):
     """ Multi keys allow 1+ explicit subkeys.
 
     They have additional fields:
@@ -112,7 +111,7 @@ class MultiDKey(DKey[DKeyMark_e.MULTI], core=True): # type: ignore[valid-type]
         return True
 
     def keys(self) -> list[DKey]: # type: ignore[override]
-        return [DKey(x, implicit=True) for x in self.data.meta if bool(x)]
+        return [DKey(x, mark=DKey.Marks.FREE, implicit=True) for x in self.data.meta if bool(x)]
 
     def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
         """ Lift subkeys to expansion instructions """
@@ -138,7 +137,7 @@ class MultiDKey(DKey[DKeyMark_e.MULTI], core=True): # type: ignore[valid-type]
         else:
             return ExpInst_d(value=self.anon.format(*flat), literal=True)
 
-class NonDKey(DKey[DKeyMark_e.NULL], core=True): # type: ignore[valid-type]
+class NonDKey(DKey, mark=DKeyMark_e.NULL, core=True):
     """ Just a string, not a key.
 
     ::
@@ -173,7 +172,7 @@ class NonDKey(DKey[DKeyMark_e.NULL], core=True): # type: ignore[valid-type]
                 msg = "Nonkey coercion didn't return an ExpInst_d"
                 raise TypeError(msg, x)
 
-class IndirectDKey(DKey[DKeyMark_e.INDIRECT], conv="I", core=True): # type: ignore[valid-type]
+class IndirectDKey(DKey, mark=DKeyMark_e.INDIRECT, conv="I", core=True):
     """
       A Key for getting a redirected key.
       eg: RedirectionDKey(key) -> SingleDKey(value)

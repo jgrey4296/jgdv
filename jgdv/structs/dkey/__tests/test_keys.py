@@ -163,8 +163,9 @@ class TestMultiDKey:
 
     def test_subkeys(self):
         obj = DKey("{first} {second} {third}", force=MultiDKey)
+        assert(isinstance(obj, MultiDKey))
         for sub in obj.keys():
-            assert(isinstance(sub, SingleDKey))
+            assert(isinstance(sub, SingleDKey)), type(sub)
 
     def test_anon(self):
         obj = DKey("{first} {second} {third}", force=MultiDKey)
@@ -172,13 +173,14 @@ class TestMultiDKey:
         assert(obj.anon == "{} {} {}")
 
     def test_anon_2(self):
-        obj = DKey("{b}", mark=DKey.Marks.MULTI, multi=True)
+        obj = DKey("{b}", mark=DKey.Marks.MULTI)
         assert(isinstance(obj, MultiDKey))
         assert(obj.anon == "{}")
 
     def test_hash(self):
         obj1 = DKey("{blah}", force=MultiDKey)
-        obj2 = "{blah}"
+        assert(isinstance(obj1, MultiDKey))
+        obj2 = "blah"
         assert(hash(obj1) == hash(obj2))
 
     def test_multikey_hash(self):
@@ -187,18 +189,18 @@ class TestMultiDKey:
         assert(hash(obj1) == hash(obj2))
 
     def test_str(self):
-        obj1 = DKey("{blah} {bloo}", mark=DKey.Marks.MULTI, multi=True)
+        obj1 = DKey("{blah} {bloo}", mark=DKey.Marks.MULTI)
         obj2 = "{blah} {bloo}"
         assert(obj1[:] == obj2)
         assert(str(obj1) == obj2)
 
     def test_getitem_succeeds(self):
-        obj1 = DKey("{blah} {bloo}", mark=DKey.Marks.MULTI, multi=True)
+        obj1 = DKey("{blah} {bloo}", mark=DKey.Marks.MULTI)
         assert(obj1[0,0] == "{blah}")
         assert(obj1[0,1] == "{bloo}")
 
     def test_get_succeeds(self):
-        obj1 = DKey("{blah} {bloo}", mark=DKey.Marks.MULTI, multi=True)
+        obj1 = DKey("{blah} {bloo}", mark=DKey.Marks.MULTI)
         assert(obj1.get(0,0) == "blah")
         assert(obj1.get(0,1) == "bloo")
 
@@ -281,12 +283,12 @@ class TestIndirectDKey:
         assert(obj1 == obj2)
 
     def test_eq_indirect(self):
-        obj1 = DKey("blah", force=IndirectDKey)
+        obj1 = DKey("blah", force=IndirectDKey, implicit=True)
         obj2 = "blah_"
         assert(obj1 == obj2)
 
     def test_eq_not_implemented(self):
-        obj1 = DKey("blah", force=IndirectDKey)
+        obj1 = DKey("blah", force=IndirectDKey, implicit=True)
         obj2 = 21
         assert(isinstance(obj1, IndirectDKey))
         assert(not (obj1 == obj2))

@@ -31,7 +31,7 @@ from .formatter import StrangFormatter
 from . import errors
 from . import _interface as API # noqa: N812
 from ._meta import StrangMeta
-from jgdv.mixins.annotate import SubAnnotate_m, SubAlias_m
+from jgdv.mixins.annotate import SubAlias_m
 
 # ##-- types
 # isort: off
@@ -68,7 +68,7 @@ logging.disabled = False
 ##--|
 
 @Proto(API.Strang_p, mod_mro=False)
-class Strang[K](SubAlias_m, str, metaclass=StrangMeta):
+class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
     """ A Structured String Baseclass.
 
     A Normal str, but is parsed on construction to extract and validate
@@ -548,3 +548,4 @@ class Strang[K](SubAlias_m, str, metaclass=StrangMeta):
         using the cls._formatter
         """
         return self._formatter.format(self, *args, **kwargs)
+

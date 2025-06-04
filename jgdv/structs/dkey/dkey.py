@@ -25,7 +25,7 @@ from weakref import ref
 # ##-- end stdlib imports
 
 from jgdv import Proto, Mixin
-from jgdv.mixins.annotate import SubAnnotate_m
+from jgdv.mixins.annotate import SubAlias_m
 from jgdv.structs.strang import Strang
 from ._util.expander import DKeyExpander
 from .processor import DKeyProcessor
@@ -109,7 +109,7 @@ class DKey[**K](Strang, fresh_registry=True):
     ##--| Class Utils
 
     @staticmethod
-    def MarkOf[T:SubAnnotate_m](target:T|type[T]) -> API.KeyMark|tuple[API.KeyMark, ...]: # noqa: N802
+    def MarkOf[T:SubAlias_m](target:T|type[T]) -> API.KeyMark|tuple[API.KeyMark, ...]: # noqa: N802
         """ Get the mark of the key type or instance """
         match target.cls_annotation():
             case None:
@@ -126,8 +126,9 @@ class DKey[**K](Strang, fresh_registry=True):
 
 
     def __init_subclass__(cls, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
-        super().__init_subclass__(*args, **kwargs)
+        super().__init_subclass__(*args, annotation=kwargs.pop("mark", None), **kwargs)
         cls._expander.set_ctor(DKey) # type: ignore[arg-type]
+
     ##--| Class Main
 
     def __init__(self, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401

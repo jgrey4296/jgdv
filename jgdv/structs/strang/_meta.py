@@ -102,3 +102,4 @@ class StrangMeta(StrMeta):
             if hasattr(obj, "__dict__"):
                 raise ValueError(HasDictFail, type(obj))
             return obj
+

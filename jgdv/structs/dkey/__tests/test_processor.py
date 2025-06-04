@@ -20,20 +20,12 @@ from jgdv.structs.strang import CodeReference
 from jgdv.structs import dkey
 from .. import _interface as API # noqa: N812
 from .._interface import Key_p, DKeyMark_e
-from ..processor import DKeyProcessor, DKeyRegistry
+from ..processor import DKeyProcessor
 from ..dkey import DKey
 from .. import keys
 
 if TYPE_CHECKING:
     from collections.abc import Generator
-
-@pytest.fixture(scope="function")
-def save_registry(mocker) -> Generator:  # noqa: ARG001
-    single_reg = DKey._processor.registry.single.copy()
-    multi_reg  = DKey._processor.registry.multi.copy()
-    yield
-    DKey._processor.registry.single  = single_reg
-    DKey._processor.registry.multi   = multi_reg
 
 class TestDKeyMark:
 
@@ -65,6 +57,7 @@ class TestDKeyProcessor:
                 assert(API.RAWKEY_ID in inst_data)
                 assert(len(inst_data[API.RAWKEY_ID]) == 1)
                 assert(isinstance(ctor, API.Key_p))
+                assert(ctor.MarkOf(ctor) == "free"), ctor
             case x:
                 assert(False), x
 
@@ -85,7 +78,7 @@ class TestDKeyProcessor:
                 assert(API.RAWKEY_ID in inst_data)
                 assert(len(inst_data[API.RAWKEY_ID]) == 2)
                 assert(isinstance(ctor, API.Key_p))
-                assert(DKey.MarkOf(ctor) == API.DKeyMark_e.MULTI)
+                assert(DKey.MarkOf(ctor) == API.DKeyMark_e.MULTI), ctor
             case x:
                 assert(False), x
 

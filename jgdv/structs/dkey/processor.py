@@ -23,12 +23,11 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from . import _interface as API  # noqa: N812
-from jgdv.mixins.enum_builders import EnumBuilder_m
-from jgdv.mixins.annotate import SubAnnotate_m, Subclasser
 from ._util.parser import DKeyParser
 from ._interface import DKeyMark_e, ExpInst_d, Key_p
 # ##-- end 1st party imports
 
+from jgdv.mixins.annotate import SubAlias_m
 from jgdv._abstract.pre_processable import PreProcessor_p
 from jgdv.structs.strang import _interface as StrangAPI  # noqa: N812
 from jgdv.structs.strang.processor import StrangBasicProcessor
@@ -68,75 +67,6 @@ logging = logmod.getLogger(__name__)
 
 ##--| Body:
 
-class DKeyRegistry:
-    """ Register {mark} -> DKeyType """
-    type KeyCtor = type[API.Key_p]
-    type KeyDict = dict[KeyMark, KeyCtor]
-    ##--|
-    single           : KeyDict
-    multi            : KeyDict
-    core             : set[KeyCtor]
-    convert          : dict[str, KeyMark]
-
-    def __init__(self) -> None:
-        self.single   = {}
-        self.multi    = {}
-        self.convert  = {}
-        self.core     = set()
-
-    def get_subtype(self, mark:KeyMark) -> KeyCtor:
-        """
-        Get the Ctor for a given mark from those registered.
-        """
-        match mark:
-            case None:
-                raise ValueError(API.NoMark)
-            case str()|API.DKeyMarkAbstract_e()|type() as x if x in self.multi:
-                return self.multi[x]
-            case str()|API.DKeyMarkAbstract_e()|type() as x:
-                return self.single[x]
-            case _:
-                raise KeyError(API.MarkLacksACtor, mark)
-
-    def register_key_type(self, ctor:KeyCtor, mark:KeyMark, *, convert:Maybe[str]=None, core:bool=False) -> None:
-        """ Register a DKeyBase implementation to a mark
-
-        Can be a single key, or a multi key,
-        and can map a conversion char to the mark
-
-        eg: "p" -> DKeyMark_e.Path -> Path[Single/Multi]Key
-        """
-        if not mark:
-            raise ValueError(API.RegistryLacksMark, ctor)
-
-        logging.debug("Registering DKey: %s : %s", ctor, mark)
-        try:
-            curr = self.get_subtype(mark)
-        except KeyError:
-            pass
-        else:
-            raise ValueError(API.RegistryConflict, curr, ctor, mark)
-
-        if core:
-            self.core.add(ctor)
-
-        match ctor:
-            case API.MultiKey_p():
-                self.multi[mark] = ctor
-            case _:
-                self.single[mark] = ctor
-
-        match convert:
-            case None:
-                pass
-            case str() as x if len(x) > 1:
-                raise ValueError(API.ConvParamTooLong, x)
-            case str() as x if self.convert.get(x, mark) != mark :
-                raise ValueError(API.ConvParamConflict, x, self.convert[x])
-            case str() as x:
-                self.convert[x] = mark
-
-
 class DKeyProcessor[T:API.Key_p](PreProcessor_p):
     """
       The Metaclass for keys, which ensures that subclasses of DKeyBase
@@ -146,12 +76,10 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
     """
 
     parser               : ClassVar[DKeyParser]    = DKeyParser()
-    registry             : ClassVar[DKeyRegistry]  = DKeyRegistry()
-    # Use the default str hash method
-
     _expected_init_keys  : ClassVar[list[str]]     = API.DEFAULT_DKEY_KWARGS[:]
 
     expected_kwargs      : Final[list[str]]        = API.DEFAULT_DKEY_KWARGS
+    convert              : dict[str, KeyMark]
    ##--|
 
     @override
@@ -165,7 +93,6 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         mark       : API.KeyMark
         inst_data  : dict = {}
         post_data  : dict = {}
-        is_multi   : bool              = kwargs.pop("multi", False)
         force      : Maybe[Ctor[T]]    = kwargs.pop('force', None)
         implicit   : bool              = kwargs.pop("implicit", False)  # is key wrapped? ie: {key}
         insist     : bool              = kwargs.pop("insist", False)    # must produce key, not nullkey
@@ -173,7 +100,6 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         match force, kwargs.pop('mark', None):
             case type(), _:
                 mark = force.MarkOf(force)
-                is_multi = isinstance(force, API.MultiKey_p)
             case None, x:
                 mark = x
             case _:
@@ -202,13 +128,10 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
                 raise TypeError(type(x))
 
         ##--| discriminate on raw keys
-        match self.discriminate_raw(inst_data[API.RAWKEY_ID], kwargs, mark=mark, is_multi=is_multi):
-            case dict() as extra:
-                # use overrides
-                is_multi  = extra.pop("multi", is_multi)
-                mark      = extra.pop("mark",  mark)
-                text      = extra.pop('text', text)
-                inst_data.update(extra)
+        match self.discriminate_raw(inst_data[API.RAWKEY_ID], kwargs, mark=mark):
+            case x, y:
+                text = x or text
+                mark = y
             case _:
                 raise ValueError()
         ##--|
@@ -216,6 +139,8 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         assert(bool(inst_data))
         ctor = self.select_ctor(cls, insist=insist, mark=mark, force=force)
         self.validate_init_kwargs(ctor, kwargs)
+        assert(issubclass(ctor, SubAlias_m))
+        inst_data['mark'] = ctor.cls_annotation()
         ##--| return
         return text, inst_data, post_data, ctor
 
@@ -280,43 +205,33 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
 
     ##--| Utils
 
-    def discriminate_raw(self, raw_keys:Iterable[API.RawKey_d], kdata:dict, *, mark:Maybe[API.KeyMark]=None, is_multi:bool=False) -> dict:  # noqa: ARG002
+    def discriminate_raw(self, raw_keys:Iterable[API.RawKey_d], kdata:dict, *, mark:Maybe[API.KeyMark]=None) -> tuple[Maybe[str], API.KeyMark]:  # noqa: ARG002
         """ Take extracted keys of the text,
         and determine features of them, returning a dict,
 
         """
         assert(all(isinstance(x, API.RawKey_d) for x in raw_keys))
-        multi_compatible  : bool  = True
-        data                = {
-            'mark'         : mark or DKeyMark_e.default(),
-            'multi'        : is_multi,
-            API.RAWKEY_ID  : raw_keys,
-        }
+        spec_mark                          = mark or DKeyMark_e.default()
+        format_mark  : Maybe[API.KeyMark]  = None
+        text         : Maybe[str]          = None
         match raw_keys:
-            case [x] if not bool(x) and bool(x.prefix) and not is_multi: # No keys found, use NullDKey
-                data['mark'] = DKeyMark_e.NULL
-            case [x] if is_multi and not multi_compatible: # One key, declared as a multi key, coerce to multi
-                data['mark'] = DKeyMark_e.MULTI
-            case [x] if is_multi: # One Key, able to be multi
-                pass
+            case [x] if not bool(x.key) and bool(x.prefix): # No keys found, use NullDKey
+                format_mark = DKeyMark_e.NULL
             case [x] if not bool(x.prefix): # One key, no non-key text. not multi. trim it.
-                data['text'] = x.direct()
+                text = x.direct()
                 if x.is_indirect():
-                    data['mark'] = DKeyMark_e.INDIRECT
-                conv_mark = self.registry.convert.get(x.convert, None) # type: ignore[arg-type]
-                if mark is not DKeyMark_e.default() and conv_mark and (mark != conv_mark):
-                    raise ValueError(API.MarkConversionConflict, mark, conv_mark)
-                elif conv_mark:
-                    data['mark'] = conv_mark
-            case [_, *_] if is_multi and multi_compatible: # Keys, multi compatible
-                pass
+                    format_mark = DKeyMark_e.INDIRECT
+                if x.convert:
+                    format_mark = None
             case [_, *_]: # Multiple keys found, coerce to multi
-                data['mark']   = DKeyMark_e.MULTI
-                data['multi']  = True
+                format_mark = DKeyMark_e.MULTI
             case x:
                 raise TypeError(type(x))
         ##--|
-        return data
+        if spec_mark is not DKeyMark_e.default() and format_mark and (spec_mark != format_mark):
+            raise ValueError(API.MarkConversionConflict, spec_mark, format_mark)
+
+        return text, format_mark or spec_mark
 
     def select_ctor(self, cls:Ctor[T], *, mark:KeyMark, force:Maybe[Ctor[T]], insist:bool) -> Ctor[T]:
         """ Select the appropriate key ctor,
@@ -325,14 +240,15 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
 
         """
         # Choose the sub-ctor
+        assert(issubclass(cls, SubAlias_m))
         if force is not None:
             assert(isinstance(force, type)), force
             return force
 
         try:
-            match cls[mark]:
-                case types.GenericAlias():
-                    return cls
+            match cls._retrieve_subtype(mark):
+                case types.GenericAlias() as x:
+                    return x
                 case type() as ctor if insist and ctor.MarkOf(ctor) is DKeyMark_e.NULL:
                     raise TypeError(API.InsistentKeyFailure)
                 case type() as x:
@@ -367,7 +283,6 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
             case _:
                 return None
 
-
     def consume_format_params(self, spec:str) -> tuple[str, bool, bool]:
         """
           return (remaining, wrap, direct)
@@ -378,7 +293,6 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         remaining = API.FMT_PATTERN.sub("", spec)
         assert(not (direct and indirect))
         return remaining, wrap, (direct or (not indirect))
-
 
     def validate_init_kwargs(self, ctor:type[Key_p], kwargs:dict) -> None:
         """ returns any keys not expected by a dkey or dkey subclass """

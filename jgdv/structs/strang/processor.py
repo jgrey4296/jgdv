@@ -25,7 +25,6 @@ from weakref import ref
 from collections import defaultdict
 from jgdv import Proto, Mixin
 from jgdv._abstract.pre_processable import PreProcessor_p
-from jgdv.mixins.annotate import SubAnnotate_m
 from . import errors
 from . import _interface as API  # noqa: N812
 
