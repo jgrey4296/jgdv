@@ -65,6 +65,7 @@ SLOTS_NAME               : Final[str]  = "__slots__"
 ANNOTS_NAME              : Final[str]  = "__annotations__"
 
 FreshKWD                 : Final[str]  = "fresh_registry"
+Default_K                : Final[str]  = "__default__"
 AnnotateKWD              : Final[str]  = "_annotate_to"
 AnnotationTarget         : Final[str]  = "__jgdv_typevar__"
 AnnotateRx               : Final[Rx]   = re.compile(r"(?P<name>\w+)(?:<(?P<extras>.*?)>)?(?:\[(?P<params>.*?)\])?")

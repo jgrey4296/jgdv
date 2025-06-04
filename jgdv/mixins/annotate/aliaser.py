@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 # ruff: noqa:
 
@@ -59,93 +58,85 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
+type AliasAnnotation = type|str|enum.Enum|tuple[AliasAnnotation, ...]
 
 # Body:
 
 class SubAlias_m:
-    """ Create and register alias of types.
+    """ A Mixin to manage generics that resolve to specific registered subclasses.
+
+    On class declaration, recognizes kwargs:
+    - fresh_registry:bool                         : use a separate registry for this class and subclasses
+    - accumulate:bool                             : annotations accumulate from their parent class
+    - strict:bool                                 : error if a subclass tries to overwrite a registration
+    - default:bool                                : set this subclass as the default if no marks are specified when creating an instance
+    - annotation:Maybe[str|type|enum|tuple[...]]  : the key to use for this subclass
 
     cls[val] -> GenericAlias(cls, val)
 
     then:
 
     class RealSub(cls[val]) ...
-    so:
+    after which:
     cls[val] is RealSub
 
-    the annotation is added into cls.__annotations__,
+
+    Annotation Keys are stored in cls.__annotation__,
     under the cls._annotate_to key name.
 
     """
-    __slots__                                    = ()
-    _annotate_to  : ClassVar[str]                = API.AnnotationTarget
+    __slots__                                              = ()
+    _annotate_to  : ClassVar[str]                          = API.AnnotationTarget
     # TODO make this a weakdict?
-    _registry     : ClassVar[dict[tuple, type]]  = {}
+    _registry     : ClassVar[dict[AliasAnnotation, type]]  = {}
+    _strict       : ClassVar[bool]                         = False
+    _accumulator  : ClassVar[bool]                         = False
 
-    def __init_subclass__(cls:type[Self], *args:Any, annotation:Maybe=None, **kwargs:Any) -> None:  # noqa: ANN401, PLR0912
-        x : Any
+    def __init_subclass__(cls:type[Self], *args:Any, annotation:Maybe[AliasAnnotation]=None, fresh_registry:bool=False, **kwargs:Any) -> None:  # noqa: ANN401
+        x  : Any
         # ensure a new annotations dict
-        cls.__annotations__ = cls.__annotations__.copy()
+        # (if a subclass doesn't add *new* annotations, the super's is used. so if we modify it here,
+        # the subclass is effected)
+        cls.__annotations__  = cls.__annotations__.copy()
+        if (strict:=kwargs.pop("strict", None)):
+            cls._strict = strict or cls._strict
+        if (accumulate:=kwargs.pop("accumulate", None)):
+            cls._accumulator = accumulate or cls._accumulator
 
-        full_annotation : list = []
+        if fresh_registry:
+            cls._registry    = {}
 
-        if kwargs.pop(API.FreshKWD, False):
-            cls._registry = {}
+        if kwargs.pop("default", None) is True:
+            cls._registry[API.Default_K] = cls
 
         # set the annotation target
         match kwargs.pop(API.AnnotateKWD, None):
             case str() as target:
                 logging.debug("Annotate Subclassing: %s : %s", cls, kwargs)
-                cls._annotate_to = target
+                cls._annotate_to               = target
                 setattr(cls, cls._annotate_to, None)
             case None if not hasattr(cls, cls._annotate_to):
                 setattr(cls, cls._annotate_to, None)
             case _:
                 pass
 
-        # If the subclass is based on a GenericAlias, copy the annotation
-        match cls.__dict__.get(API.ORIG_BASES_K, []):
-            case [GenericAlias() as x]:
-                full_annotation += x.__args__
-            case _:
-                y : type[SubAlias_m]
-                _, y, *_ = cls.mro()
-                if y is not cls and hasattr(y, "cls_annotation"):
-                    full_annotation += y.cls_annotation()
-
-        match annotation:
-            case None:
-                pass
-            case [*xs]:
-                full_annotation += xs
-            case x:
-                full_annotation.append(x)
-
-        ##--| Register
-        cls.__annotations__[cls._annotate_to] = tuple(full_annotation)
-        mark = cls.cls_annotation()
-        match mark, cls._registry.get(mark, None):
+        annotation                             = cls._build_annotation(annotation)
+        cls.__annotations__[cls._annotate_to]  = annotation
+        match annotation, cls._registry.get(annotation, None):
             case (), _:
                 pass
             case _, None:
-                cls._registry[mark] = cls
-            case _, x:
+                cls._registry[annotation] = cls
+            case _, x if cls._strict:
                 msg = "already has a registration"
-                raise TypeError(msg, x, cls, mark, args, kwargs)
+                raise TypeError(msg, x, cls, annotation, args, kwargs)
 
-    def __class_getitem__[K:type|LiteralString](cls:type[Self], *key:K) -> type|GenericAlias:
+    def __class_getitem__[K:AliasAnnotation](cls:type[Self], *key:K) -> type|GenericAlias:
         return cls._retrieve_subtype(*key)
 
     @classmethod
-    def _retrieve_subtype[K:type|LiteralString](cls:type[Self], *key:K) -> type|GenericAlias:
-        use_key : tuple
-        cls_key : tuple = cls.cls_annotation()
-        match key:
-            case [*xs]:
-                use_key = (*cls_key, *xs)
-            case x:
-                use_key = (*cls_key, x)
-
+    def _retrieve_subtype[K:AliasAnnotation](cls:type[Self], key:K) -> type|GenericAlias:
+        use_key : AliasAnnotation = cls._build_annotation(key)
         match cls._registry.get(use_key, None):
             case type() as result:
                 return result
@@ -159,3 +150,53 @@ class SubAlias_m:
     @classmethod
     def cls_annotation(cls) -> tuple:
         return cls.__annotations__.get(cls._annotate_to, ())
+
+    @classmethod
+    def _build_annotation(cls, annotate:Maybe[AliasAnnotation]) -> AliasAnnotation:  # noqa: PLR0912
+        """ single point of truth for determining annotations from a cls and provided annotation """
+        x : Any
+        result : list[AliasAnnotation] = []
+        assert(hasattr(cls, "cls_annotation"))
+
+        match cls.cls_annotation():
+            case []:
+                pass
+            case tuple() as x:
+                result += x
+
+        match cls.__dict__.get(API.ORIG_BASES_K, []):
+            case _ if bool(result):
+                pass
+            case [GenericAlias() as x]:
+                result += x.__args__
+            case _ if (annotated:=[x for x in cls.mro() if x is not cls and hasattr(x, "cls_annotation")]):
+                result += annotated[0].cls_annotation()
+            case _:
+                pass
+
+        match annotate:
+            case None:
+                pass
+            case [[*xs]] if cls._accumulator:
+                result += xs
+            case tuple() as x if cls._accumulator:
+                result += x
+            case x if cls._accumulator:
+                result.append(x)
+            case [[*xs]]:
+                result = [*xs]
+            case [*xs]:
+                result = [*xs]
+            case x:
+                result = [x]
+
+        ##--|
+        match result:
+            case []:
+                return ()
+            case [x]:
+                return tuple([x])
+            case [*xs]:
+                return tuple(xs)
+            case _:
+                return ()
