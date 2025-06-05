@@ -61,7 +61,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 
-class StrDKey(DKey[DKey.Marks.STR], conv="s"):
+class StrDKey(DKey, mark=DKey.Marks.STR, convert="s"):
     """
     A Simple key that always expands to a string
     """

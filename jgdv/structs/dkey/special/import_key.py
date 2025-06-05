@@ -58,7 +58,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class ImportDKey(DKey[DKeyMark_e.CODE], conv="c"):
+class ImportDKey(DKey, mark=DKeyMark_e.CODE, convert="c"):
     """
       Subclass for dkey's which expand to CodeReferences
     """

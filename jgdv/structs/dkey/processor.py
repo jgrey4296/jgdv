@@ -79,8 +79,11 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
     _expected_init_keys  : ClassVar[list[str]]     = API.DEFAULT_DKEY_KWARGS[:]
 
     expected_kwargs      : Final[list[str]]        = API.DEFAULT_DKEY_KWARGS
-    convert              : dict[str, KeyMark]
-   ##--|
+    convert_mapping      : dict[str, KeyMark]
+    ##--|
+
+    def __init__(self) -> None:
+        self.convert_mapping = {}
 
     @override
     def pre_process(self, cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult[T]: # type: ignore[override]  # noqa: PLR0912, PLR0915
@@ -241,6 +244,9 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         format_mark  : Maybe[API.KeyMark]  = None
         text         : Maybe[str]          = None
         match raw_keys:
+            case [x] if not bool(x.prefix) and  x.convert and x.convert in self.convert_mapping:
+                format_mark = self.convert_mapping[x.convert]
+                text = x.key
             case [x] if not bool(x.key) and bool(x.prefix): # No keys found, use NullDKey
                 format_mark  = DKeyMark_e.NULL
             case [x] if not bool(x.prefix):  # One key, no non-key text. trim it.
@@ -323,3 +329,14 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         result = set(kwargs.keys() - self.expected_kwargs - ctor._extra_kwargs)
         if bool(result):
             raise ValueError(API.UnexpectedKwargs, result)
+
+
+    def register_convert_param(self, cls:type[API.Key_p], convert:Maybe[str]) -> None:
+        match convert:
+            case str() as x if x in self.convert_mapping:
+                msg = "Convert Mapping Already Registered"
+                raise KeyError(msg, x, self.convert_mapping[x])
+            case str() as x:
+                self.convert_mapping[x] = cls.MarkOf(cls) # type: ignore[arg-type]
+            case _:
+                pass

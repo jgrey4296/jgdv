@@ -111,7 +111,7 @@ class MultiDKey(DKey, mark=DKeyMark_e.MULTI):
         return True
 
     def keys(self) -> list[DKey]: # type: ignore[override]
-        return [DKey(x, mark=DKey.Marks.FREE, implicit=True) for x in self.data.meta if bool(x)]
+        return [DKey(x, force=DKey[DKey.Marks.FREE], implicit=True) for x in self.data.meta if bool(x)]
 
     def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
         """ Lift subkeys to expansion instructions """
@@ -181,7 +181,7 @@ class NonDKey(DKey, mark=DKeyMark_e.NULL):
                 msg = "Nonkey coercion didn't return an ExpInst_d"
                 raise TypeError(msg, x)
 
-class IndirectDKey(DKey, mark=DKeyMark_e.INDIRECT, conv="I"):
+class IndirectDKey(DKey, mark=DKeyMark_e.INDIRECT, convert="I"):
     """
       A Key for getting a redirected key.
       eg: RedirectionDKey(key) -> SingleDKey(value)

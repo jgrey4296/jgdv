@@ -28,6 +28,7 @@ import faulthandler
 
 from jgdv import identity_fn
 from jgdv.structs.strang import _interface as StrangAPI # noqa: N812
+from ._util._interface import ExpInst_d
 
 # ##-- types
 # isort: off
@@ -41,17 +42,17 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
-    from jgdv import Maybe, Rx, Ident, RxStr, Ctor, CHECKTYPE, FmtStr
     from typing import Final
     from typing import ClassVar, LiteralString
     from typing import Never, Self, Literal
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
-    from ._facade import DKey
+
+    from jgdv import Maybe, Rx, Ident, RxStr, Ctor, CHECKTYPE, FmtStr
+    from ._util._interface import Expander_p
 
     type KeyMark     = DKeyMarkAbstract_e|str|type|tuple[KeyMark, ...]
-    type LookupList  = list[list[ExpInst_d]]
     type LitFalse    = Literal[False]
 ##--|
 
@@ -71,7 +72,7 @@ OBRACE               : Final[str]              = "{"
 MAX_DEPTH            : Final[int]              = 10
 MAX_KEY_EXPANSIONS   : Final[int]              = 200
 PAUSE_COUNT          : Final[int]              = 0
-RECURSION_GUARD      : Final[int]              = 5
+RECURSION_GUARD      : Final[int]              = 10
 PARAM_IGNORES        : Final[tuple[str, str]]  = ("_", "_ex")
 
 RAWKEY_ID            : Final[str]              = "_rawkeys"
@@ -87,9 +88,6 @@ DEFAULT_DKEY_KWARGS  : Final[list[str]]        = [
     ]
 
 ##--| Error Messages
-NestedFailure           : Final[str]  = "Nested ExpInst_d"
-NoValueFailure          : Final[str]  = "ExpInst_d's must have a val"
-UnexpectedData          : Final[str]  = "Unexpected kwargs given to ExpInst_d"
 UnknownDKeyCtorType     : Final[str]  = "Unknown type passed to construct dkey"
 InsistentKeyFailure     : Final[str]  = "An insistent key was not built"
 KeyBuildFailure         : Final[str]  = "No key was built"
@@ -262,49 +260,6 @@ class RawKey_d:
             case _:
                 return False
 
-class ExpInst_d:
-    """ The lightweight holder of expansion instructions, passed through the
-    expander mixin.
-    Uses slots to make it as lightweight as possible
-
-    - fallback : the value to use if expansion fails
-    - convert  : controls type coercion of expansion result
-    - lift     : says to lift expanded values into keys themselves
-    - literal  : signals the value needs no more expansion
-    - rec      : the remaining recursive expansions available. -1 is unrestrained.
-
-
-    """
-    __slots__ = ("convert", "fallback", "lift", "literal", "rec", "total_recs", "value")
-    value       : Any
-    convert     : Maybe[str|bool]
-    fallback    : Maybe[str]
-    lift        : bool
-    literal     : bool
-    rec         : int
-    total_recs  : int
-
-    def __init__(self, **kwargs) -> None:
-        self.value       = kwargs.pop("value")
-        self.convert     = kwargs.pop("convert", None)
-        self.fallback    = kwargs.pop("fallback", None)
-        self.lift        = kwargs.pop("lift", False)
-        self.literal     = kwargs.pop("literal", False)
-        self.rec         = kwargs.pop("rec", -1)
-        self.total_recs  = kwargs.pop("total_recs", 1)
-
-        match self.value:
-            case ExpInst_d() as val:
-                raise TypeError(NestedFailure, val)
-            case None:
-                 raise ValueError(NoValueFailure)
-        if bool(kwargs):
-            raise ValueError(UnexpectedData, kwargs)
-
-    def __repr__(self) -> str:
-        lit  = "(Lit)" if self.literal else ""
-        return f"<ExpInst_d:{lit} {self.value!r} / {self.fallback!r} (R:{self.rec},L:{self.lift},C:{self.convert})>"
-
 class DKey_d(StrangAPI.Strang_d):
     """ Data of a DKey """
     __slots__ = ("convert", "expansion_type", "fallback", "format", "help", "max_expansions", "multi", "name", "raw", "typecheck")
@@ -337,39 +292,6 @@ DKEY_SECTIONS : Final[StrangAPI.Sections_d] = StrangAPI.Sections_d(
     StrangAPI.Sec_d("body", None, None, str, None, True),  # noqa: FBT003
 )
 ##--| Protocols
-
-class Expander_p(Protocol):
-
-    def set_ctor(self, ctor:Ctor[Key_p]) -> None: ...
-
-    def redirect(self, source:Key_p, *sources:dict, **kwargs:Any) -> list[Maybe[ExpInst_d]]:  ...  # noqa: ANN401
-
-    def expand(self, source:Key_p, *sources:dict, **kwargs:Any) -> Maybe[ExpInst_d]:  ...  # noqa: ANN401
-
-    def extra_sources(self, source:Key_p) -> list[Any]: ...
-
-class ExpansionHooks_p(Protocol):
-
-    def exp_extra_sources_h(self) -> Maybe[list]: ...
-
-    def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> LookupList: ...
-
-    def exp_pre_recurse_h(self, insts:list[ExpInst_d], sources:list[dict], opts:dict) -> Maybe[list[ExpInst_d]]: ...
-
-    def exp_flatten_h(self, insts:list[ExpInst_d], opts:dict) -> Maybe[ExpInst_d]: ...
-
-    def exp_coerce_h(self, inst:ExpInst_d, opts:dict) -> Maybe[ExpInst_d]: ...
-
-    def exp_final_h(self, inst:ExpInst_d, opts:dict) -> Maybe[LitFalse|ExpInst_d]: ...
-
-    def exp_check_result_h(self, inst:ExpInst_d, opts:dict) -> None: ...
-
-class Expandable_p(Protocol):
-    """ An expandable, like a DKey,
-    uses these hooks to customise the expansion
-    """
-
-    def expand(self, *sources, **kwargs) -> Maybe: ...
 
 @runtime_checkable
 class Key_p(StrangAPI.Strang_p, Protocol):

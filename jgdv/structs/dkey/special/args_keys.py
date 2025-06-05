@@ -59,7 +59,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class ArgsDKey(DKey[DKey.Marks.ARGS]):
+class ArgsDKey(DKey, mark=DKey.Marks.ARGS):
     """ A Key representing the action spec's args """
     __slots__ = ()
 
@@ -78,7 +78,7 @@ class ArgsDKey(DKey[DKey.Marks.ARGS]):
         else:
             return []
 
-class KwargsDKey(DKey[DKey.Marks.KWARGS]):
+class KwargsDKey(DKey, mark=DKey.Marks.KWARGS):
     """ A Key representing all of an action spec's kwargs """
     __slots__ = ()
 

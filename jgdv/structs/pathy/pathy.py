@@ -27,7 +27,7 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from jgdv import DateTime, TimeDelta, Proto, Mixin
-from jgdv.mixins.annotate import SubRegistry_m
+from jgdv.mixins.annotate import SubAlias_m
 from ._interface import Pure, Real, File, Dir, Wild
 
 # ##-- end 1st party imports
@@ -115,7 +115,7 @@ class _PathyTime_m:
                 return False
 
 ##--|
-class Pathy(SubRegistry_m, _annotate_to="pathy_type"):
+class Pathy(SubAlias_m, _annotate_to="pathy_type"):
     """
     The Main Accessor to Pathy.
     You don't build Pathy's directly eg: Pathy("a/loc/test.txt"),
@@ -242,13 +242,13 @@ class PathyPure(Pathy[Pure], pl.PurePath):
         return Pathy[File](super().with_suffix(suffix))
 
 @Mixin(_PathyTime_m)
-class PathyReal(Pathy[Real], PathyPure, pl.Path):
+class PathyReal(PathyPure[Real], pl.Path):
     """
     The Pathy equivalent of pathlib.Path
     """
     pass
 
-class PathyFile(Pathy[File], PathyReal):
+class PathyFile(PathyReal[File]):
     """ A Pathy for an existing File
 
     TODO disable:
@@ -265,7 +265,7 @@ class PathyFile(Pathy[File], PathyReal):
     def mkdir(self, *args):
         return self.parent.mkdir(*args)
 
-class PathyDir(Pathy[Dir], PathyReal):
+class PathyDir(PathyReal[Dir]):
     """ A Pathy for Directories, not files
 
     TODO disable:
@@ -273,7 +273,7 @@ class PathyDir(Pathy[Dir], PathyReal):
     """
     pass
 
-class WildPathy(Pathy[Wild], PathyPure):
+class WildPathy(PathyPure[Wild]):
     """ A Pure Pathy that represents a location with wildcards and keys in it.
 
     ::

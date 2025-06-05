@@ -41,6 +41,8 @@ from .getter import ChainGetter as CG  # noqa: N817
 from .. import _interface as API # noqa: N812
 # ##-- end 1st party imports
 
+from ._interface import Expander_p
+
 # ##-- types
 # isort: off
 import abc
@@ -52,15 +54,16 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, overload
 
 if TYPE_CHECKING:
-   from .._interface import Expandable_p, Key_p
-   from typing import Final
-   from typing import ClassVar, Any, LiteralString
-   from typing import Never, Self, Literal
-   from typing import TypeGuard
-   from collections.abc import Iterable, Iterator, Callable, Generator
-   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from typing import Final
+    from typing import ClassVar, Any, LiteralString
+    from typing import Never, Self, Literal
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-   from jgdv import Maybe, M_, Func, RxStr, Rx, Ident, FmtStr, Ctor
+    from jgdv import Maybe, M_, Func, RxStr, Rx, Ident, FmtStr, Ctor
+    from ._interface import Expandable_p
+    from .._interface import Key_p
 ##--|
 # isort: on
 # ##-- end types
@@ -73,7 +76,7 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-@Proto(API.Expander_p)
+@Proto(Expander_p)
 class DKeyExpander:
     """ A Static class to control expansion.
 
@@ -123,6 +126,8 @@ class DKeyExpander:
 
         self._ctor = ctor
 
+    ##--|
+
     def redirect(self, source:API.Key_p, *sources:dict, **kwargs:Any) -> list[Maybe[API.ExpInst_d]]:  # noqa: ANN401
             return [self.expand(source, *sources, limit=1, **kwargs)]
 
@@ -161,7 +166,7 @@ class DKeyExpander:
         targets       = self.pre_lookup(full_sources, kwargs, source=source)
         # These are Maybe monads:
         vals          = self.do_lookup(targets, full_sources, kwargs, source=source)
-        vals          = self.pre_recurse(vals, sources, kwargs, source=source)
+        vals          = self.pre_recurse(vals, full_sources, kwargs, source=source)
         vals          = self.do_recursion(vals, full_sources, kwargs, max_rec=limit, source=source)
         flattened     = self.flatten(vals, kwargs, source=source)
         coerced       = self.coerce_result(flattened, kwargs, source=source)
@@ -179,6 +184,8 @@ class DKeyExpander:
                 return x
             case x:
                 raise TypeError(type(x))
+
+    ##--| Expansion phases
 
     def extra_sources(self, source:API.Key_p) -> list[Any]:
         if not hasattr(source, "exp_extra_sources_h"):
@@ -255,74 +262,62 @@ class DKeyExpander:
                 raise TypeError(type(x))
 
     @DoMaybe()
-    def do_recursion(self, insts:list[API.ExpInst_d], sources:list[dict], opts:dict, max_rec:int=API.RECURSION_GUARD, *, source:API.Key_p) -> Maybe[list[API.ExpInst_d]]:  # noqa: PLR0911, PLR0912, PLR0915
+    def do_recursion(self, insts:list[API.ExpInst_d], sources:list[dict], opts:dict, max_rec:int=API.RECURSION_GUARD, *, source:API.Key_p) -> Maybe[list[API.ExpInst_d]]:  # noqa: PLR0912
         """
         For values that can expand futher, try to expand them
 
         """
-        result = []
+        recurse_on  : Maybe[API.Key_p]
+        result      : list[API.ExpInst_d]  = []
+
         if not bool(insts):
             return result
-        logging.debug("Recursing: %r: %s", source, insts)
-        for x in insts:
-            match x:
+        logging.debug("Recursing: %r : %s : %s", source, insts, max_rec)
+        for inst in insts:
+            recurse_on  = None
+            # Decide if there should be a recursion
+            match inst:
                 case API.ExpInst_d(literal=True) | API.ExpInst_d(rec=0) as res:
                     result.append(res)
                 case API.ExpInst_d(value=API.Key_p() as key, rec=-1) if key is source or key == source:
                     msg = "Unrestrained Recursive Expansion"
                     raise RecursionError(msg, source)
-                case API.ExpInst_d(value=API.Key_p() as key, rec=-1, fallback=fallback, lift=lift):
-                    match self.expand(key, *sources, limit=max_rec, fallback=fallback):
-                        case None if lift:
-                            result.append(API.ExpInst_d(value=key, literal=True))
-                        case None:
-                            pass
-                        case API.ExpInst_d() as exp if lift:
-                            exp.convert = False
-                            result.append(exp)
-                        case API.ExpInst_d() as exp:
-                            result.append(exp)
-                case API.ExpInst_d(value=str() as key, rec=-1, fallback=fallback, lift=lift):
-                    as_key = self._ctor(key)
-                    match self.expand(as_key, *sources, limit=max_rec, fallback=fallback):
-                        case None if lift:
-                            result.append(API.ExpInst_d(value=as_key, literal=True))
-                        case None:
-                            pass
-                        case API.ExpInst_d() as exp if lift:
-                            exp.convert = False
-                            result.append(exp)
-                        case API.ExpInst_d() as exp:
-                            result.append(exp)
-
-                case API.ExpInst_d(value=API.Key_p() as key, rec=rec, fallback=fallback, lift=lift):
-                    new_limit = min(max_rec, rec)
-                    match self.expand(key, *sources, limit=new_limit, fallback=fallback):
-                        case None if lift:
-                            result.append(API.ExpInst_d(value=key, literal=True))
-                        case None:
-                            pass
-                        case API.ExpInst_d() as exp:
-                            result.append(exp)
-                        case other:
-                            raise TypeError(type(other))
-                case API.ExpInst_d(value=key, rec=rec, fallback=fallback, lift=lift):
-                    new_limit = min(max_rec, rec)
-                    as_key = self._ctor(key)
-                    match self.expand(as_key, *sources, limit=new_limit, fallback=fallback):
-                        case None if lift:
-                            result.append(API.ExpInst_d(value=as_key, literal=True))
-                        case None:
-                            pass
-                        case API.ExpInst_d() as exp:
-                            result.append(exp)
-                        case other:
-                            raise TypeError(type(other))
-                case API.ExpInst_d() as x:
-                    result.append(x)
+                case API.ExpInst_d(value=API.Key_p() as key, rec=-1):
+                    recurse_on = key
+                case API.ExpInst_d(value=API.Key_p() as key):
+                    recurse_on  = key
+                case API.ExpInst_d(value=str() as key):
+                    recurse_on = self._ctor(key)
+                case API.ExpInst_d(value=key):
+                    recurse_on  = self._ctor(key)
                 case x:
                     msg = "Unexpected Recursion Value"
                     raise TypeError(msg, x)
+
+            # do the recursion
+            if recurse_on is None:
+                continue
+
+            match inst.rec, max_rec:
+                case -1, x:
+                    rec_limit = x
+                case x, -1:
+                    rec_limit = x
+                case int() as x, int() as y:
+                    rec_limit = min(x, y)
+            match self.expand(recurse_on, *sources, limit=rec_limit, fallback=inst.fallback, convert=inst.convert):
+                case None if inst.lift:
+                    result.append(API.ExpInst_d(value=recurse_on, literal=True))
+                case None:
+                    pass
+                case API.ExpInst_d() as exp if inst.lift:
+                    exp.convert = False
+                    result.append(exp)
+                case API.ExpInst_d() as exp:
+                    result.append(exp)
+                case other:
+                    raise TypeError(type(other))
+
         else:
             logging.debug("Finished Recursing: %r : %r", source, result)
             return result
@@ -332,7 +327,7 @@ class DKeyExpander:
         match insts:
             case []:
                 return None
-            case [x, *xs] if not hasattr(source ,"exp_flatten_h"):
+            case [x, *_] if not hasattr(source ,"exp_flatten_h"):
                 return x
             case _ if not hasattr(source ,"exp_flatten_h"):
                 return None
@@ -361,7 +356,6 @@ class DKeyExpander:
                     pass
 
         ##--|
-        logging.debug("Type Coercion: (%r) %r : %s", source, inst, source.data.convert)
         match inst:
             case API.ExpInst_d(convert=False):
                 # Conversion is off
@@ -393,6 +387,7 @@ class DKeyExpander:
                 raise TypeError(type(x))
 
         ##--|
+        logging.debug("Type Coerced: (%r) %r : %s -> %s", source, inst, source.data.convert, result)
         return result
 
     @DoMaybe()
@@ -442,5 +437,3 @@ class DKeyExpander:
             return
 
         source.exp_check_result_h(inst, opts)
-
-##--|

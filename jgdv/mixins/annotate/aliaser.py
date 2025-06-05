@@ -88,6 +88,7 @@ class SubAlias_m:
     """
     __slots__                                              = ()
     _annotate_to  : ClassVar[str]                          = API.AnnotationTarget
+    _default_k    : ClassVar[str]                          = API.Default_K
     # TODO make this a weakdict?
     _registry     : ClassVar[dict[AliasAnnotation, type]]  = {}
     _strict       : ClassVar[bool]                         = False
@@ -123,7 +124,7 @@ class SubAlias_m:
 
         annotation                             = cls._build_annotation(annotation)
         cls.__annotations__[cls._annotate_to]  = annotation
-        if kwargs.pop("no_regsiter", False):
+        if kwargs.pop("no_register", False):
             return
 
         match annotation, cls._registry.get(annotation, None):

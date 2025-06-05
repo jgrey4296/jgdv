@@ -204,6 +204,11 @@ class TestMultiDKey:
         for sub in obj.keys():
             assert(isinstance(sub, SingleDKey)), type(sub)
 
+    def test_subkeys_two(self):
+        obj = DKey("{test} then {blah}")
+        assert(isinstance(obj, MultiDKey))
+        assert(len(obj.keys()) == 2)
+
     def test_anon(self):
         obj = DKey("{first} {second} {third}", force=MultiDKey)
         assert(isinstance(obj, MultiDKey))

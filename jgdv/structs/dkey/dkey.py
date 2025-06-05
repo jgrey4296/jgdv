@@ -45,14 +45,15 @@ from typing import Protocol
 from . import _interface as API # noqa: N812
 
 if typing.TYPE_CHECKING:
-    from jgdv import M_
     from typing import Final, ClassVar, Any, Self
     from typing import Literal, LiteralString
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from jgdv import Maybe
+    from jgdv import Maybe, M_
+    from ._util._interface import Expander_p
+
 
 # isort: on
 # ##-- end types
@@ -94,26 +95,27 @@ class DKey[**K](Strang, fresh_registry=True):
 
       on class definition, can register a 'mark', 'multi', and a conversion parameter str
     """
-    __slots__                                           = ("data",)
-    __match_args                                        = ()
-    _annotate_to    : ClassVar[str]                     = "dkey_mark"
-    _processor      : ClassVar                          = DKeyProcessor()
-    _sections       : ClassVar                          = API.DKEY_SECTIONS
-    _expander       : ClassVar[DKeyExpander]            = DKeyExpander()
-    _typevar        : ClassVar                          = None
-    _extra_kwargs   : ClassVar[set[str]]                = set()
-    _extra_sources  : ClassVar[list[dict]]              = []
-    Marks           : ClassVar[API.DKeyMarkAbstract_e]  = API.DKeyMark_e # type: ignore[assignment]
-    data            : API.DKey_d
+    __slots__                                             = ("data",)
+    __match_args                                          = ()
+    _annotate_to      : ClassVar[str]                     = "dkey_mark"
+    _processor        : ClassVar                          = DKeyProcessor()
+    _sections         : ClassVar                          = API.DKEY_SECTIONS
+    _expander         : ClassVar[Expander_p]              = DKeyExpander()
+    _typevar          : ClassVar                          = None
+    _extra_kwargs     : ClassVar[set[str]]                = set()
+    _extra_sources    : ClassVar[list[dict]]              = []
+    Marks             : ClassVar[API.DKeyMarkAbstract_e]  = API.DKeyMark_e # type: ignore[assignment]
+    data              : API.DKey_d
 
     ##--| Class Utils
 
+    @final
     @staticmethod
-    def MarkOf[T:SubAlias_m](target:T|type[T]) -> API.KeyMark|tuple[API.KeyMark, ...]: # noqa: N802
+    def MarkOf[T](target:T|type[T]) -> API.KeyMark|tuple[API.KeyMark, ...]: # noqa: N802
         """ Get the mark of the key type or instance """
         if not hasattr(target, "cls_annotation"):
             return ()
-        match target.cls_annotation():
+        match target.cls_annotation(): # type: ignore[union-attr]
             case None:
                 return ()
             case [x]:
@@ -130,6 +132,8 @@ class DKey[**K](Strang, fresh_registry=True):
     def __init_subclass__(cls, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         super().__init_subclass__(*args, annotation=kwargs.pop("mark", None), **kwargs)
         cls._expander.set_ctor(DKey) # type: ignore[arg-type]
+        cls._processor.register_convert_param(cls, kwargs.pop("convert", None))
+
 
     ##--| Class Main
 

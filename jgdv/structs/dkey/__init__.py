@@ -2,7 +2,8 @@
 DKey, a str extension for doing things with str format expansion
 
 """
-from ._interface      import Key_p, DKeyMark_e, ExpInst_d
+from ._interface      import Key_p, DKeyMark_e
+from ._util._interface import ExpInst_d
 from .errors          import DKeyError
 from .dkey            import DKey
 # from ._util.formatter import DKeyFormatter

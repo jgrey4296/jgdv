@@ -64,7 +64,6 @@ from .errors import DirAbsent, LocationError, LocationExpansionError
 from ._interface import Location_p, Locator_p, LocationMeta_e
 # ##-- end 1st party imports
 
-
 # ##-- types
 # isort: off
 import abc
@@ -74,7 +73,6 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Any
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-
 
 if TYPE_CHECKING:
     import enum
@@ -107,17 +105,13 @@ class SoftFailMultiDKey(MultiDKey, mark="soft.fail"):
         """ Expands subkeys, to be merged into the main key"""
         targets = []
         for key in self.keys():
-            # targets.append([ExpInst_d(value=key, fallback=f"{key:w}")] )
-            # targets.append([ExpInst_d(value=key, lift=True)] )
             targets.append([ExpInst_d(value=key, fallback=None)] )
         else:
             if not bool(targets):
                 targets.append([
                     ExpInst_d(value=f"{self}", literal=True),
-                    # ExpInst_d(value=None, fallback=None, literal=True),
                 ])
             return targets
-
 
 class _LocatorGlobal:
     """ A program global stack of locations.
@@ -140,7 +134,6 @@ class _LocatorGlobal:
                 return x
             case _:
                 return None
-
 
     @staticmethod
     def push(locs:JGDVLocator) -> None:
@@ -395,13 +388,6 @@ class JGDVLocator:
             case JGDVLocator():
                 pass
 
-    @property
-    def root(self) -> pl.Path:
-        """
-          the registered root location
-        """
-        return self._root
-
     def __repr__(self) -> str:
         keys = ", ".join(iter(self))
         return f"<JGDVLocator ({_LocatorGlobal.stacklen()}) : {self.root!s} : ({keys})>"
@@ -475,3 +461,10 @@ class JGDVLocator:
 
     def clear(self) -> None:
         self._data.clear()
+
+    @property
+    def root(self) -> pl.Path:
+        """
+          the registered root location
+        """
+        return self._root

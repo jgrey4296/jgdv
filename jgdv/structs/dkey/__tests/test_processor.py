@@ -23,11 +23,13 @@ from .._interface import Key_p, DKeyMark_e
 from ..processor import DKeyProcessor
 from ..dkey import DKey
 from .. import keys
+from .. import special
+
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-class TestDKeyMark:
+class TestDKey_Mark:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -45,7 +47,7 @@ class TestDKeyMark:
         obj = DKeyProcessor()
         assert(obj.mark_alias(DKeyMark_e.FREE) is DKeyMark_e.FREE)
 
-class TestDKeyProcessor:
+class TestDKey_Processor:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -106,3 +108,57 @@ class TestDKeyProcessor:
             case x:
                 assert(False), x
 
+
+
+class TestDKey_FormatParam:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_select_no_conversion(self):
+        obj           = DKeyProcessor()
+        default_ctor  = DKey._registry[DKey._default_k]
+        match obj.pre_process(dkey.DKey, "test", implicit=True):
+            case "test", dict(), dict(), type() as ctor:
+                assert(ctor is default_ctor)
+            case x:
+                assert(False), x
+
+    def test_select_strdkey(self):
+        obj = DKeyProcessor()
+        obj.register_convert_param(special.StrDKey, "s")
+        match obj.pre_process(dkey.DKey, "test!s", implicit=True):
+            case "test", dict(), dict(), type() as ctor:
+                assert(ctor is special.StrDKey)
+            case x:
+                assert(False), x
+
+    def test_select_indirect(self):
+        obj = DKeyProcessor()
+        obj.register_convert_param(keys.IndirectDKey, "I")
+        match obj.pre_process(dkey.DKey, "test!I", implicit=True):
+            case "test", dict(), dict(), type() as ctor:
+                assert(ctor is keys.IndirectDKey)
+            case x:
+                assert(False), x
+
+
+    def test_multikey_preprocess(self):
+        obj = DKeyProcessor()
+        obj.register_convert_param(keys.IndirectDKey, "I")
+        obj.register_convert_param(special.StrDKey, "s")
+        match obj.pre_process(dkey.DKey, "{test!I}} then {blah!s}"):
+            case str(), dict(), dict(), type() as ctor:
+                assert(ctor is keys.MultiDKey)
+            case x:
+                assert(False), x
+
+
+    def test_multikey_build(self):
+        obj = dkey.DKey("{test!I} then {blah!s}")
+        assert(isinstance(obj, keys.MultiDKey))
+        match obj.keys():
+            case [keys.SingleDKey(), keys.SingleDKey()]:
+                assert(True)
+            case x:
+                assert(False), x
