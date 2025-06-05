@@ -244,17 +244,14 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         format_mark  : Maybe[API.KeyMark]  = None
         text         : Maybe[str]          = None
         match raw_keys:
-            case [x] if not bool(x.prefix) and  x.convert and x.convert in self.convert_mapping:
-                format_mark = self.convert_mapping[x.convert]
-                text = x.key
             case [x] if not bool(x.key) and bool(x.prefix): # No keys found, use NullDKey
                 format_mark  = DKeyMark_e.NULL
             case [x] if not bool(x.prefix):  # One key, no non-key text. trim it.
-                text = x.direct()
+                if x.convert and x.convert in self.convert_mapping:
+                    format_mark = self.convert_mapping[x.convert]
                 if x.is_indirect():
                     format_mark = DKeyMark_e.INDIRECT
-                if x.convert:
-                    format_mark = None
+                text = x.direct()
             case [_, *_]: # Multiple keys found, coerce to multi
                 format_mark = DKeyMark_e.MULTI
             case x:
