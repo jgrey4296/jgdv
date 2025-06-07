@@ -101,7 +101,7 @@ class SoftFailMultiDKey(MultiDKey, mark="soft.fail"):
 
     __slots__ = ()
 
-    def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> list:
+    def exp_generate_alternatives_h(self, sources:list[dict], opts:dict) -> list:
         """ Expands subkeys, to be merged into the main key"""
         targets = []
         for key in self.keys():
@@ -269,6 +269,7 @@ class _LocatorAccess_m:
 
         raises a KeyError when fallback is None
         """
+        logging.debug("Locator Get: %s", key)
         match fallback:
             case pl.Path() | None:
                 pass
@@ -293,6 +294,7 @@ class _LocatorAccess_m:
         """
           Access the registered Location associated with 'key'
         """
+        logging.debug("Locator Access: %s", key)
         match key:
             case str() if key in self: # type: ignore
                 return self._data[key]
@@ -304,6 +306,7 @@ class _LocatorAccess_m:
         Access the locations mentioned in 'key',
         join them together, and normalize it
         """
+        logging.debug("Locator Expand: %s", key)
         coerced : DKey = self._coerce_key(key, strict=strict)
         match coerced.expand(self): # type: ignore
             case None if strict:

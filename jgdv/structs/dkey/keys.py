@@ -20,11 +20,10 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-# ##-- 1st party imports
-from .dkey import DKey
-from ._interface import INDIRECT_SUFFIX, DKeyMark_e, RAWKEY_ID, ExpInst_d
 from . import _interface as API # noqa: N812
-# ##-- end 1st party imports
+from ._interface import INDIRECT_SUFFIX, RAWKEY_ID, DKeyMark_e
+from ._util._interface import ExpInst_d
+from .dkey import DKey
 
 # ##-- types
 # isort: off
@@ -113,7 +112,7 @@ class MultiDKey(DKey, mark=DKeyMark_e.MULTI):
     def keys(self) -> list[DKey]: # type: ignore[override]
         return [DKey(x, force=DKey[DKey.Marks.FREE], implicit=True) for x in self.data.meta if bool(x)]
 
-    def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
+    def exp_generate_alternatives_h(self, sources:list[dict], opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
         """ Lift subkeys to expansion instructions """
         targets = []
         for key in self.keys():
@@ -208,7 +207,7 @@ class IndirectDKey(DKey, mark=DKeyMark_e.INDIRECT, convert="I"):
     def _indirect(self) -> Literal[True]:
         return True
 
-    def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
+    def exp_generate_alternatives_h(self, sources:list[dict], opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
         """ Lookup the indirect version, the direct version, then use the fallback """
         match opts.get("fallback", self.data.fallback):
             case x if x is Self:

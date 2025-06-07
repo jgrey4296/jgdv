@@ -22,15 +22,17 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from . import _interface as API  # noqa: N812
-from ._util.parser import DKeyParser
-from ._interface import DKeyMark_e, ExpInst_d, Key_p
-# ##-- end 1st party imports
-
-from jgdv.mixins.annotate import SubAlias_m
 from jgdv._abstract.pre_processable import PreProcessor_p
+from jgdv.mixins.annotate import SubAlias_m
 from jgdv.structs.strang import _interface as StrangAPI  # noqa: N812
 from jgdv.structs.strang.processor import StrangBasicProcessor
+
+# ##-- end 1st party imports
+
+from . import _interface as API  # noqa: N812
+from ._interface import DKeyMark_e, Key_p
+from ._util._interface import ExpInst_d
+from ._util.parser import DKeyParser
 
 # ##-- types
 # isort: off

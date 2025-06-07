@@ -123,26 +123,23 @@ class TestLocatorExpansion:
             case x:
                  assert(False), x
 
-
     def test_expansion_item(self, wrap_locs):
         wrap_locs.update({"todo_bib": "file::>~/github/bibliography/in_progress/todo.bib"})
+        target = pl.Path("~/github/bibliography/in_progress/todo.bib").expanduser().resolve()
         match wrap_locs['{todo_bib}']:
             case pl.Path() as x:
-                assert(x == pl.Path("~/github/bibliography/in_progress/todo.bib").expanduser().resolve())
-                assert(True)
+                assert(x == target)
             case x:
                  assert(False), x
-
 
     def test_expansion_no_key(self, wrap_locs):
         wrap_locs.update({"todo_bib": "file::>~/github/bibliography/in_progress/todo.bib"})
+        target = pl.Path("todo_bib").resolve()
         match wrap_locs['todo_bib']:
             case pl.Path() as x:
-                assert(x == pl.Path("todo_bib").resolve())
-                assert(True)
+                assert(x == target)
             case x:
                  assert(False), x
-        
 
 class TestLocatorUtils:
 

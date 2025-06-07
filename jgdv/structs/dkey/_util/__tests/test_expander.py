@@ -11,7 +11,7 @@ from __future__ import annotations
 import logging as logmod
 import pathlib as pl
 import warnings
-
+from collections import ChainMap
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
@@ -21,11 +21,11 @@ import pytest
 
 # ##-- 1st party imports
 from jgdv import identity_fn
-
-from ... import DKey, IndirectDKey
-from ..._interface import ExpInst_d
-from ..expander import DKeyExpander
 # ##-- end 1st party imports
+
+from .._interface import ExpInst_d, SourceChain_d
+from ... import DKey, IndirectDKey, NonDKey
+from ..expander import DKeyExpander
 
 # ##-- types
 # isort: off
@@ -88,40 +88,138 @@ class TestExpInst_d:
             case _:
                 assert(True)
 
-@pytest.mark.xfail
 class TestExpander:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    def test_basic(self):
+    def test_ctor(self):
         match DKeyExpander():
             case DKeyExpander() as x:
                 assert(x._ctor is None)
             case x:
                 assert(False), x
 
-    def test_pre_lookup(self):
-        pass
+    def test_set_ctor(self):
+        obj = DKeyExpander()
+        assert(obj._ctor is None)
+        obj.set_ctor(DKey)
+        assert(obj._ctor is DKey)
+
+    def test_extra_sources(self):
+        obj = DKeyExpander()
+
+        class SimpleDKey(DKey):
+            __slots__ = ()
+
+            def exp_extra_sources_h(self, sources):
+                sources.extend([1,2,3,4])
+                return sources
+
+        key = DKey("blah", force=SimpleDKey)
+        assert(isinstance(key, SimpleDKey))
+        match obj.extra_sources([], source=key):
+            case SourceChain_d() as x:
+                assert(x.sources[0] == [1,2,3,4])
+            case x:
+                assert(False), x
+        match key.exp_extra_sources_h(SourceChain_d()):
+            case SourceChain_d() as x:
+                assert(x.sources[0] == [1,2,3,4])
+            case x:
+                assert(False), x
+
+    def test_generate_alternatives(self):
+        obj = DKeyExpander()
+        key = DKey("{simple}")
+        match obj.generate_alternatives([], {}, source=key):
+            case [[ExpInst_d(), ExpInst_d()]]:
+                assert(True)
+            case x:
+                assert(False), x
+
 
     def test_do_lookup(self):
-        pass
+        obj      = DKeyExpander()
+        obj.set_ctor(DKey)
+        key      = DKey("{simple}")
+        insts    = [[ExpInst_d(value="simple")]]
+        sources  = SourceChain_d({"simple":"blah"})
+        match obj.do_lookup(insts, sources, {}, source=key):
+            case [ExpInst_d(value="blah")]:
+                assert(True)
+            case x:
+                assert(False), x
 
-    def test_pre_recurse(self):
-        pass
+    def test_configure_recursion_default(self):
+        obj      = DKeyExpander()
+        key      = DKey("{simple}")
+        insts    = [ExpInst_d(value="simple")]
+        sources  = [{"simple":"blah"}]
+        match obj.configure_recursion(insts, sources, {}, source=key):
+            case list() as result:
+                assert(result is insts)
+            case x:
+                assert(False), x
+
 
     def test_do_recursion(self):
-        pass
+        obj      = DKeyExpander()
+        obj.set_ctor(DKey)
+        key      = DKey("{simple}")
+        insts    = [ExpInst_d(value=key, rec=1)]
+        sources  = ChainMap({"simple":"blah"})
+        match obj.do_recursion(insts, sources, {}, source=key):
+            case [ExpInst_d(value="blah")]:
+                assert(True)
+            case x:
+                assert(False), x
 
     def test_flatten(self):
-        pass
+        obj      = DKeyExpander()
+        obj.set_ctor(DKey)
+        key      = DKey("{simple}")
+        insts    = [ExpInst_d(value=key, rec=1)]
+        sources  = [{"simple":"blah"}]
+        match obj.flatten(insts, {}, source=key):
+            case ExpInst_d() as x if x is insts[0]:
+                assert(True)
+            case x:
+                assert(False), x
 
-    def test_coerce_result(self):
-        pass
 
+    def test_coerce_result_no_op(self):
+        obj      = DKeyExpander()
+        obj.set_ctor(DKey)
+        key      = DKey("{simple}")
+        inst     = ExpInst_d(value=key, rec=1)
+        sources  = [{"simple":"blah"}]
+        match obj.coerce_result(inst, {}, source=key):
+            case ExpInst_d(value=str(), literal=True) as x:
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_coerce_result_simple(self):
+        obj      = DKeyExpander()
+        obj.set_ctor(DKey)
+        key      = DKey("{simple}")
+        key.data.expansion_type = pl.Path
+        inst     = ExpInst_d(value=key, rec=1)
+        sources  = [{"simple":"blah"}]
+        match obj.coerce_result(inst, {}, source=key):
+            case ExpInst_d(value=pl.Path(), literal=True) as x:
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    @pytest.mark.skip
     def test_finalise(self):
         pass
 
+    @pytest.mark.skip
     def test_check_result(self):
         pass
 
@@ -131,6 +229,7 @@ class TestExpansion:
         assert(True is not False) # noqa: PLR0133
 
     def test_basic(self):
+        """ {test} -> blah """
         obj = DKey("test", implicit=True)
         state = {"test": "blah"}
         match obj.expand(state):
@@ -140,6 +239,7 @@ class TestExpansion:
                 assert(False), x
 
     def test_basic_fail(self):
+        """ {aweg} -> None """
         obj = DKey("aweg", implicit=True)
         state = {"test": "blah"}
         match obj.expand(state):
@@ -149,6 +249,7 @@ class TestExpansion:
                 assert(False), x
 
     def test_nonkey_expansion(self):
+        """ aweg -> aweg """
         obj = DKey("aweg")
         state = {"test": "blah"}
         match obj.expand(state):
@@ -171,7 +272,10 @@ class TestExpansion:
 
     def test_double_recursive(self):
         """
-        {test} -> {blah} -> {aweg}/{bloo} -> qqqq/{aweg} -> qqqq/qqqq
+        {test} -> {blah}
+        {blah} -> {aweg}/{bloo}
+        {aweg}/{bloo} -> qqqq/{aweg}
+        qqqq/{aweg} -> qqqq/qqqq
         """
         obj = DKey("test", implicit=True)
         state = {"test": "{blah}", "blah": "{aweg}/{bloo}", "aweg":"qqqq", "bloo":"{aweg}"}
@@ -182,6 +286,7 @@ class TestExpansion:
                 assert(False), x
 
     def test_coerce_type(self):
+        """ test -> str(blah) -> pl.Path(blah) """
         obj = DKey("test", implicit=True, ctor=pl.Path)
         state = {"test": "blah"}
         match obj.expand(state):
@@ -191,6 +296,7 @@ class TestExpansion:
                 assert(False), x
 
     def test_check_type(self):
+        """ {test} -> pl.Path(blah) """
         obj = DKey("test", implicit=True, ctor=pl.Path)
         state = {"test": pl.Path("blah")}
         match obj.expand(state):
@@ -200,14 +306,20 @@ class TestExpansion:
                 assert(False), x
 
     def test_expansion_cascade(self):
-        """ {test} -> {blah},
-        *not* qqqq
+        """
+        {test} -1-> {blah},
+        {test} -2-> {aweg}
+        {test} -3-> qqqq
         """
         obj = DKey("test", implicit=True)
         state = {"test": "{blah}", "blah": "{aweg}", "aweg": "qqqq"}
         assert(obj.expand(state, limit=1) == "blah")
         assert(obj.expand(state, limit=2) == "aweg")
-        assert(obj.expand(state, limit=3) == "qqqq")
+        match obj.expand(state, limit=3):
+            case NonDKey() as x:
+                assert(x == "qqqq")
+            case x:
+                assert(False), x
 
     @pytest.mark.skip("TODO")
     def test_additional_sources_recurse(self):

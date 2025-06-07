@@ -28,7 +28,6 @@ import faulthandler
 
 from jgdv import identity_fn
 from jgdv.structs.strang import _interface as StrangAPI # noqa: N812
-from ._util._interface import ExpInst_d
 
 # ##-- types
 # isort: off

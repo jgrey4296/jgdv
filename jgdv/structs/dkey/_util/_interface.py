@@ -25,6 +25,9 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
+from jgdv._abstract.protocols import SpecStruct_p
+from .._interface import Key_p, NonKey_p
+
 # ##-- types
 # isort: off
 # General
@@ -45,7 +48,6 @@ if typing.TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
     from jgdv import Maybe, Rx, Ident, RxStr, Ctor, CHECKTYPE, FmtStr
-    type LookupList  = list[list[ExpInst_d]]
     type LitFalse    = Literal[False]
 
 # isort: on
@@ -56,6 +58,10 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
+type InstructionList  = list[ExpInst_d]
+type InstructionAlts  = list[InstructionList]
+type SourceBases      = list|Mapping
+type ExpOpts          = dict
 
 ##--| Error Messages
 NestedFailure           : Final[str]  = "Nested ExpInst_d"
@@ -105,6 +111,91 @@ class ExpInst_d:
         lit  = "(Lit)" if self.literal else ""
         return f"<ExpInst_d:{lit} {self.value!r} / {self.fallback!r} (R:{self.rec},L:{self.lift},C:{self.convert})>"
 
+
+class SourceChain_d:
+    """ The core logic to lookup a key from a sequence of sources
+
+    | Doesn't perform repeated expansions.
+    | Tries sources in order.
+
+    TODO replace this with collections.ChainMap ?
+    """
+    __slots__ = ("lifter", "sources")
+
+    def __init__(self, *args:SourceBases, lifter=type[Key_p]) -> None:
+        self.sources  = list(args)
+        self.lifter   = lifter
+
+    def extend(self, *args:SourceBases) -> None:
+        self.sources += [x for x in args if x not in self.sources]
+
+    def get(self, key:str, fallback:Maybe=None) -> Maybe:
+        """ Get a key's value from an ordered sequence of potential sources.
+
+        | Try to get {key} then {key\\_} in order of sources passed in.
+        """
+        replacement  : Maybe  = fallback
+        for lookup in self.sources:
+            match lookup:
+                case None | []:
+                    continue
+                case list():
+                    replacement = lookup.pop()
+                case _ if hasattr(lookup, "get"):
+                    if key not in lookup:
+                        continue
+                    replacement = lookup.get(key, fallback)
+                case SpecStruct_p():
+                    params      = lookup.params
+                    replacement = params.get(key, fallback)
+                case _:
+                    msg = "Unknown Type in get"
+                    raise TypeError(msg, key, lookup)
+
+            if replacement is not fallback:
+                return replacement
+        else:
+            return fallback
+
+
+
+    def lookup(self, target:list[ExpInst_d]) -> Maybe[ExpInst_d]:
+        """ Look up alternatives
+
+        | pass through DKeys and (DKey, ..)
+        | lift (str(), True, fallback)
+        | don't lift (str(), False, fallback)
+
+        """
+        x : Any
+        for spec in target:
+            match spec:
+                case ExpInst_d(value=Key_p()):
+                    return spec
+                case ExpInst_d(literal=True):
+                    return spec
+                case ExpInst_d(value=str() as key, lift=lift, fallback=fallback):
+                    pass
+                case x:
+                    msg = "Unrecognized lookup spec"
+                    raise TypeError(msg, x)
+
+            match self.get(key):
+                case None:
+                    pass
+                case x if lift:
+                    logging.debug("Lifting Result to Key: %r", x)
+                    match self.lifter(x, implicit=True, fallback=fallback): # type: ignore[call-arg]
+                        case NonKey_p() as y:
+                            return ExpInst_d(value=y, rec=0, litreal=True)
+                        case Key_p() as y:
+                            return ExpInst_d(value=y, fallback=fallback, lift=False)
+                        case x:
+                            raise TypeError(type(x))
+                case x:
+                    return ExpInst_d(value=x, fallback=fallback)
+        else:
+            return None
 ##--| Protocols
 
 class Expander_p[T](Protocol):
@@ -115,17 +206,17 @@ class Expander_p[T](Protocol):
 
     def expand(self, source:T, *sources:dict, **kwargs:Any) -> Maybe[ExpInst_d]:  ...  # noqa: ANN401
 
-    def extra_sources(self, source:T) -> list[Any]: ...
+    def extra_sources(self, source:T) -> SourceChain_d: ...
 
 class ExpansionHooks_p(Protocol):
 
-    def exp_extra_sources_h(self) -> Maybe[list]: ...
+    def exp_extra_sources_h(self, current:SourceChain_d) -> SourceChain_d: ...
 
-    def exp_pre_lookup_h(self, sources:list[dict], opts:dict) -> LookupList: ...
+    def exp_generate_alternatives_h(self, sources:SourceChain_d, opts:ExpOpts) -> InstructionAlts: ...
 
-    def exp_pre_recurse_h(self, insts:list[ExpInst_d], sources:list[dict], opts:dict) -> Maybe[list[ExpInst_d]]: ...
+    def exp_configure_recursion_h(self, insts:InstructionAlts, sources:SourceChain_d, opts:ExpOpts) -> Maybe[InstructionList]: ...
 
-    def exp_flatten_h(self, insts:list[ExpInst_d], opts:dict) -> Maybe[ExpInst_d]: ...
+    def exp_flatten_h(self, insts:InstructionList, opts:dict) -> Maybe[ExpInst_d]: ...
 
     def exp_coerce_h(self, inst:ExpInst_d, opts:dict) -> Maybe[ExpInst_d]: ...
 

@@ -103,18 +103,18 @@ class DoMaybe(MonotonicDec):
                                                                                                                      # def __call__[**I, X,Obj, O](self, target:MethMb[Obj,X,I,O]|FuncMb[X,I,O], *args:Any, **kwargs:Any) -> MethMb[Obj,Maybe[X],I,O]|FuncMb[Maybe[X],I,O]: # type: ignore[override]
 
     @overload # type: ignore[override]
-    def __call__[Obj,**I,X,O](self, target:MethMb[Obj,X,I,O], *args:Any, **kwargs:Any) -> MethMb[Obj,Maybe[X],I,Maybe[O]]:  # noqa: ANN401
+    def __call__[Obj,**I,X,O](self, target:MethMb[Obj,X,I,O], *args:Any, **kwargs:Any) -> MethMb[Obj,Maybe[X],I,O]:  # noqa: ANN401
         pass
 
     @overload
-    def __call__[**I,X,O](self, target:FuncMb[X,I,O], *args:Any, **kwargs:Any) -> FuncMb[Maybe[X],I,Maybe[O]]: # noqa: ANN401
+    def __call__[**I,X,O](self, target:FuncMb[X,I,O], *args:Any, **kwargs:Any) -> FuncMb[Maybe[X],I,O]: # noqa: ANN401
         pass
 
     def __call__(self, target, *args, **kwargs):
         return MonotonicDec.__call__(self, target, *args, **kwargs)
 
     @override
-    def _wrap_method_h[Obj, X, **I, O](self, meth:MethMb[Obj,X,I,O]) -> MethMb[Obj,Maybe[X],I,Maybe[O]]: # type: ignore[override]
+    def _wrap_method_h[Obj, X, **I, O](self, meth:MethMb[Obj,X,I,Maybe[O]]) -> MethMb[Obj,Maybe[X],I,Maybe[O]]: # type: ignore[override]
 
         def _prop_maybe(_self:Obj, fst:Maybe[X], *args:I.args, **kwargs:I.kwargs) -> Maybe[O]:
             match fst:
@@ -126,7 +126,7 @@ class DoMaybe(MonotonicDec):
         return _prop_maybe
 
     @override
-    def _wrap_fn_h[X, **I, O](self, fn:FuncMb[X, I, O]) -> FuncMb[Maybe[X], I, Maybe[O]]: # type: ignore[override]
+    def _wrap_fn_h[X, **I, O](self, fn:FuncMb[X, I, Maybe[O]]) -> FuncMb[Maybe[X], I, Maybe[O]]: # type: ignore[override]
 
         def _prop_maybe(fst:Maybe[X], *args:I.args, **kwargs:I.kwargs) -> Maybe[O]:
             match fst:
@@ -144,7 +144,7 @@ class DoMaybe(MonotonicDec):
 class DoEither(MonotonicDec):
     """ Either do the fn/method, or propagate the error """
 
-    def _wrap_method_h[X,Y, **I, O, E:Exception](self, meth:Method[Concatenate[X, Y, I], O]) -> API.Decorated[Concatenate[X, Y|E, I], Either[O, E]]: # type: ignore[override]
+    def _wrap_method_h[X,Y, **I, O, E:Exception](self, meth:Method[Concatenate[X, Y, I], Either[O,E]]) -> API.Decorated[Concatenate[X, Y|E, I], Either[O, E]]: # type: ignore[override]
 
         def _prop_either(_self:X, fst:Y|E, *args:I.args, **kwargs:I.kwargs) -> Either[O, E]:
             match fst:
