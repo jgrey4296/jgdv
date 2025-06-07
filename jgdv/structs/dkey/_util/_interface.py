@@ -126,8 +126,9 @@ class SourceChain_d:
         self.sources  = list(args)
         self.lifter   = lifter
 
-    def extend(self, *args:SourceBases) -> None:
+    def extend(self, *args:SourceBases) -> Self:
         self.sources += [x for x in args if x not in self.sources]
+        return self
 
     def get(self, key:str, fallback:Maybe=None) -> Maybe:
         """ Get a key's value from an ordered sequence of potential sources.

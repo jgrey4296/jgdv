@@ -85,6 +85,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
     from . import _interface as API # noqa: N812
+    from jgdv.structs.dkey._util._interface import SourceChain_d
 
 # isort: on
 # ##-- end types
@@ -101,7 +102,7 @@ class SoftFailMultiDKey(MultiDKey, mark="soft.fail"):
 
     __slots__ = ()
 
-    def exp_generate_alternatives_h(self, sources:list[dict], opts:dict) -> list:
+    def exp_generate_alternatives_h(self, sources:SourceChain_d, opts:dict) -> list:
         """ Expands subkeys, to be merged into the main key"""
         targets = []
         for key in self.keys():

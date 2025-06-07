@@ -97,16 +97,16 @@ class DKey[**K](Strang, fresh_registry=True):
 
       on class definition, can register a 'mark', 'multi', and a conversion parameter str
     """
-    __slots__                                                     = ("data",)
-    __match_args                                                  = ()
-    _annotate_to    : ClassVar[str]                               = "dkey_mark"
-    _processor      : ClassVar                                    = DKeyProcessor()
-    _sections       : ClassVar                                    = API.DKEY_SECTIONS
-    _expander       : ClassVar[Expander_p]                        = DKeyExpander()
-    _typevar        : ClassVar                                    = None
-    _extra_kwargs   : ClassVar[set[str]]                          = set()
-    _extra_sources  : ClassVar[Maybe[list[ExpInst.SourceBases]]]  = None
-    Marks           : ClassVar[API.DKeyMarkAbstract_e]            = API.DKeyMark_e  # type: ignore[assignment]
+    __slots__                                              = ("data",)
+    __match_args                                           = ()
+    _annotate_to    : ClassVar[str]                        = "dkey_mark"
+    _processor      : ClassVar                             = DKeyProcessor()
+    _sections       : ClassVar                             = API.DKEY_SECTIONS
+    _expander       : ClassVar[Expander_p]                 = DKeyExpander()
+    _typevar        : ClassVar                             = None
+    _extra_kwargs   : ClassVar[set[str]]                   = set()
+    _extra_sources  : ClassVar[list[ExpInst.SourceBases]]  = []
+    Marks           : ClassVar[API.DKeyMarkAbstract_e]     = API.DKeyMark_e  # type: ignore[assignment]
     data            : API.DKey_d
 
     ##--| Class Utils
@@ -218,8 +218,6 @@ class DKey[**K](Strang, fresh_registry=True):
     def exp_extra_sources_h(self, current:ExpInst.SourceChain_d) -> ExpInst.SourceChain_d:
         new_sources : Any
         match self._extra_sources:
-            case None:
-                return current
             case [*xs]:
                 return current.extend(*xs)
             case x:
