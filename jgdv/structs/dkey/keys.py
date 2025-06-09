@@ -22,7 +22,7 @@ from uuid import UUID, uuid1
 
 from . import _interface as API # noqa: N812
 from ._interface import INDIRECT_SUFFIX, RAWKEY_ID, DKeyMark_e
-from ._util._interface import ExpInst_d
+from ._util._interface import ExpInst_d, SourceChain_d
 from .dkey import DKey
 
 # ##-- types
@@ -75,6 +75,19 @@ class SingleDKey(DKey, mark=DKeyMark_e.FREE, default=True):
                 msg = "A Single Key got multiple raw key data"
                 raise ValueError(msg, xs)
 
+    def _post_process_h(self, data:Maybe[dict]=None) -> None:
+        match self.data.raw[0].format:
+            case None:
+                return
+            case str() as format:
+                pass
+
+        match API.EXPANSION_LIMIT_PATTERN.search(format):
+            case re.Match() as m:
+                self.data.max_expansions = int(m[1])
+            case None:
+                pass
+
 class MultiDKey(DKey, mark=DKeyMark_e.MULTI):
     """ Multi keys allow 1+ explicit subkeys.
 
@@ -112,11 +125,15 @@ class MultiDKey(DKey, mark=DKeyMark_e.MULTI):
     def keys(self) -> list[DKey]: # type: ignore[override]
         return [DKey(x, force=DKey[DKey.Marks.FREE], implicit=True) for x in self.data.meta if bool(x)]
 
-    def exp_generate_alternatives_h(self, sources:list[dict], opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
+    def exp_generate_alternatives_h(self, sources:SourceChain_d, opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
         """ Lift subkeys to expansion instructions """
         targets = []
         for key in self.keys():
-            targets.append([ExpInst_d(value=key, fallback=None)])
+            targets.append([ExpInst_d(value=key,
+                                      convert=key.data.convert,
+                                      rec=key.data.max_expansions,
+                                      fallback=None)
+                            ])
         else:
             return targets
 
@@ -136,7 +153,7 @@ class MultiDKey(DKey, mark=DKeyMark_e.MULTI):
                 case ExpInst_d(value=IndirectDKey() as k):
                     flat.append(f"{k:wi}")
                 case ExpInst_d(value=API.Key_p() as k):
-                    flat.append(k[:])
+                    flat.append(f"{k:w}")
                 case ExpInst_d(value=x):
                     flat.append(str(x))
         else:

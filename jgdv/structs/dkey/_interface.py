@@ -49,7 +49,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
     from jgdv import Maybe, Rx, Ident, RxStr, Ctor, CHECKTYPE, FmtStr
-    from ._util._interface import Expander_p
+    from ._util._interface import Expander_p, ExpInst_d
 
     type KeyMark     = DKeyMarkAbstract_e|str|type|tuple[KeyMark, ...]
     type LitFalse    = Literal[False]
@@ -63,23 +63,24 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-DEFAULT_COUNT        : Final[int]              = 0
-FMT_PATTERN          : Final[Rx]               = re.compile("[wdi]+")
-INDIRECT_SUFFIX      : Final[Ident]            = "_"
-KEY_PATTERN          : Final[RxStr]            = "{(.+?)}"
-OBRACE               : Final[str]              = "{"
-MAX_DEPTH            : Final[int]              = 10
-MAX_KEY_EXPANSIONS   : Final[int]              = 200
-PAUSE_COUNT          : Final[int]              = 0
-RECURSION_GUARD      : Final[int]              = 10
-PARAM_IGNORES        : Final[tuple[str, str]]  = ("_", "_ex")
+DEFAULT_COUNT            : Final[int]              = 0
+FMT_PATTERN              : Final[Rx]               = re.compile(r"[wdi]+")
+EXPANSION_LIMIT_PATTERN  : Final[Rx]               = re.compile(r"e(\d+)")
+INDIRECT_SUFFIX          : Final[Ident]            = "_"
+KEY_PATTERN              : Final[RxStr]            = "{(.+?)}"
+OBRACE                   : Final[str]              = "{"
+MAX_DEPTH                : Final[int]              = 10
+MAX_KEY_EXPANSIONS       : Final[int]              = 200
+PAUSE_COUNT              : Final[int]              = 0
+RECURSION_GUARD          : Final[int]              = 10
+PARAM_IGNORES            : Final[tuple[str, str]]  = ("_", "_ex")
 
-RAWKEY_ID            : Final[str]              = "_rawkeys"
-FORCE_ID             : Final[str]              = "force"
-ARGS_K               : Final[Ident]            = "args"
-KWARGS_K             : Final[Ident]            = "kwargs"
+RAWKEY_ID                : Final[str]              = "_rawkeys"
+FORCE_ID                 : Final[str]              = "force"
+ARGS_K                   : Final[Ident]            = "args"
+KWARGS_K                 : Final[Ident]            = "kwargs"
 
-DEFAULT_DKEY_KWARGS  : Final[list[str]]        = [
+DEFAULT_DKEY_KWARGS      : Final[list[str]]        = [
     "ctor", "check", "mark", "fallback",
     "max_exp", "fmt", "help", "implicit", "conv",
     "named",
@@ -308,6 +309,8 @@ class Key_p(StrangAPI.Strang_p, Protocol):
     def expand(self, *sources, rec=False, insist=False, chain:Maybe[list[Key_p]]=None, on_fail=Any, locs:Maybe[Mapping]=None, **kwargs) -> str: ...
 
     def var_name(self) -> str: ...
+
+    def to_exp_inst(self, *, indirect:bool=False, **kwargs:Any) -> ExpInst_d: ...  # noqa: ANN401
 
 @runtime_checkable
 class MultiKey_p(Protocol):

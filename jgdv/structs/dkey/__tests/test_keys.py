@@ -183,6 +183,16 @@ class TestMultiDKey:
             case x:
                 assert(False), x
 
+
+    def test_subkey_expansion_control(self):
+        obj = DKey("{blah:e1} {bloo:e2}")
+        match obj.keys():
+            case [x, y]:
+                assert(x.data.max_expansions == 1)
+                assert(y.data.max_expansions == 2)
+            case x:
+                assert(False), x
+
     def test_eq(self):
         obj1 = DKey("{blah} {bloo}", force=MultiDKey)
         obj2 = DKey("{blah} {bloo}", force=MultiDKey)

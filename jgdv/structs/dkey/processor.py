@@ -220,8 +220,6 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         """ Build subkeys if necessary
 
         """
-        # TODO use class hook if it exists
-
         # for each subkey, build it...
         key_meta : list[Maybe[str|API.Key_p]] = []
         raw : list[API.RawKey_d] = []
@@ -232,8 +230,16 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
             key_meta.append(x.joined())
         else:
             obj.data.meta = tuple(key_meta)
-            return None
 
+        match getattr(obj, "_post_process_h", None):
+            case hook if  callable(hook):
+                hook(data)
+            case None:
+                pass
+            case x:
+                raise TypeError(type(x))
+
+        return None
     ##--| Utils
 
     def inspect_raw(self, raw_keys:Iterable[API.RawKey_d], kdata:dict) -> tuple[Maybe[str], Maybe[API.KeyMark]]:  # noqa: ARG002

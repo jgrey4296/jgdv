@@ -20,7 +20,7 @@ import pytest
 from jgdv.structs.strang import Strang
 from jgdv.mixins.annotate._interface import Default_K
 from ..dkey import DKey
-from ..keys import SingleDKey
+from ..keys import SingleDKey, NonDKey
 
 # ##-- types
 # isort: off
@@ -61,8 +61,15 @@ class TestBaseDKey:
     def test_registry_default(self):
         assert(DKey._registry[Default_K] is SingleDKey)
 
-    def test_basic(self):
-        match DKey("blah"):
+    def test_class_getitem(self):
+        val = DKey['blah']
+        assert(val is not None)
+        assert(isinstance(val, types.GenericAlias))
+
+    def test_basic_implicit(self):
+        match DKey("blah", implicit=True):
+            case NonDKey():
+                assert(False)
             case DKey() as obj:
                 assert(not hasattr(obj, "__dict__"))
                 assert(isinstance(obj, str))
@@ -71,26 +78,77 @@ class TestBaseDKey:
             case x:
                 assert(False), x
 
-    def test_hashable(self):
-        obj = DKey("blah")
+    def test_basic_explicit(self):
+        match DKey("{blah}"):
+            case NonDKey():
+                assert(False)
+            case DKey() as obj:
+                assert(not hasattr(obj, "__dict__"))
+                assert(isinstance(obj, str))
+                assert(isinstance(obj, Strang))
+                assert(hasattr(obj, "__hash__"))
+            case x:
+                assert(False), x
+
+    def test_expansion_limit_format_params(self):
+        match DKey("blah:e2", implicit=True):
+            case DKey() as obj:
+                assert(bool(obj.data.raw[0].format))
+                assert(obj.data.raw[0].format == "e2")
+                assert(obj.data.max_expansions == 2)
+            case x:
+                assert(False), x
+
+
+    def test_multikey_expansion_limit_format_params(self):
+        obj = DKey("{blah:e2} {bloo:e3}")
+        match obj.keys():
+            case [x,y]:
+                assert(x.data.max_expansions == 2)
+                assert(y.data.max_expansions == 3)
+            case x:
+                assert(False), x
+
+    def test_hashable_implicit(self):
+        obj = DKey("blah", implicit=True)
+        assert(hash(obj))
+
+    def test_hashable_explicit(self):
+        obj = DKey("{blah}")
         assert(hash(obj))
 
     def test_eq(self):
-        obj1 = DKey("blah")
-        obj2 = DKey("blah")
+        obj1 = DKey("blah", implicit=True)
+        obj2 = DKey("blah", implicit=True)
         assert(obj1 == obj2)
 
     def test_eq_str(self):
-        obj1 = DKey("blah")
+        obj1 = DKey("blah", implicit=True)
         obj2 = "blah"
         assert(obj1 == obj2)
 
     def test_eq_not_implemented(self):
-        obj1 = DKey("blah")
+        obj1 = DKey("blah", implicit=True)
         obj2 = 21
         assert(not (obj1 == obj2))
 
-    def test_class_getitem(self):
-        val = DKey['blah']
-        assert(val is not None)
-        assert(isinstance(val, types.GenericAlias))
+class TestDKey_Format:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_format_indirect(self):
+        obj = DKey("{blah}")
+        assert(f"{obj:i}" == "blah_")
+
+    def test_format_direct(self):
+        obj = DKey("{blah}")
+        assert(f"{obj:d}" == "blah")
+
+    def test_format_wrapped(self):
+        obj = DKey("{blah}")
+        assert(f"{obj:w}" == "{blah}")
+
+    def test_format_wrapped_indirect(self):
+        obj = DKey("{blah}")
+        assert(f"{obj:wi}" == "{blah_}")

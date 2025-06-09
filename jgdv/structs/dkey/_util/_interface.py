@@ -26,6 +26,7 @@ import faulthandler
 # ##-- end stdlib imports
 
 from jgdv._abstract.protocols import SpecStruct_p
+from jgdv.structs.strang import Strang, CodeReference
 from .._interface import Key_p, NonKey_p
 
 # ##-- types
@@ -40,15 +41,20 @@ from typing import Generic, NewType, Never
 from typing import no_type_check, final, override, overload
 # Protocols and Interfaces:
 from typing import Protocol, runtime_checkable
+from collections.abc import Mapping
 if typing.TYPE_CHECKING:
     from typing import Final, ClassVar, Any, Self
     from typing import Literal, LiteralString
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
-    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from collections.abc import Sequence, MutableMapping, Hashable
 
     from jgdv import Maybe, Rx, Ident, RxStr, Ctor, CHECKTYPE, FmtStr
     type LitFalse    = Literal[False]
+    type InstructionList  = list[ExpInst_d]
+    type InstructionAlts  = list[InstructionList]
+    type ExpOpts          = dict
+    type SourceBases      = list|Mapping
 
 # isort: on
 # ##-- end types
@@ -58,15 +64,24 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-type InstructionList  = list[ExpInst_d]
-type InstructionAlts  = list[InstructionList]
-type SourceBases      = list|Mapping
-type ExpOpts          = dict
 
 ##--| Error Messages
 NestedFailure           : Final[str]  = "Nested ExpInst_d"
 NoValueFailure          : Final[str]  = "ExpInst_d's must have a val"
 UnexpectedData          : Final[str]  = "Unexpected kwargs given to ExpInst_d"
+
+##--| Values
+UNRESTRICTED_EXPANSION     : Final[int]                 = -1
+NO_EXPANSIONS_PERMITTED    : Final[int]                 = 0
+
+EXPANSION_CONVERT_MAPPING  : Final[dict[str,Callable]]  = {
+    "p"                    : lambda x: pl.Path(x).expanduser().resolve(),
+    "s"                    : str,
+    "S"                    : Strang,
+    "c"                    : CodeReference,
+    "i"                    : int,
+    "f"                    : float,
+}
 ##--| Data
 
 class ExpInst_d:
@@ -79,6 +94,7 @@ class ExpInst_d:
     - lift     : says to lift expanded values into keys themselves
     - literal  : signals the value needs no more expansion
     - rec      : the remaining recursive expansions available. -1 is unrestrained.
+    - total_recs : tracks the number of expansions have occured
 
     """
     __slots__ = ("convert", "fallback", "lift", "literal", "rec", "total_recs", "value")
@@ -96,14 +112,10 @@ class ExpInst_d:
         self.fallback    = kwargs.pop("fallback", None)
         self.lift        = kwargs.pop("lift", False)
         self.literal     = kwargs.pop("literal", False)
-        self.rec         = kwargs.pop("rec", -1)
-        self.total_recs  = kwargs.pop("total_recs", 1)
+        self.rec         = kwargs.pop("rec", None) or UNRESTRICTED_EXPANSION
+        self.total_recs  = kwargs.pop("total_recs", 0)
 
-        match self.value:
-            case ExpInst_d() as val:
-                raise TypeError(NestedFailure, val)
-            case None:
-                 raise ValueError(NoValueFailure)
+        self.process_value()
         if bool(kwargs):
             raise ValueError(UnexpectedData, kwargs)
 
@@ -111,6 +123,14 @@ class ExpInst_d:
         lit  = "(Lit)" if self.literal else ""
         return f"<ExpInst_d:{lit} {self.value!r} / {self.fallback!r} (R:{self.rec},L:{self.lift},C:{self.convert})>"
 
+    def process_value(self) -> None:
+        match self.value:
+            case ExpInst_d() as val:
+                raise TypeError(NestedFailure, val)
+            case None:
+                 raise ValueError(NoValueFailure)
+            case Key_p():
+                pass
 
 class SourceChain_d:
     """ The core logic to lookup a key from a sequence of sources
@@ -121,12 +141,26 @@ class SourceChain_d:
     TODO replace this with collections.ChainMap ?
     """
     __slots__ = ("lifter", "sources")
+    sources  : list[Mapping]
+    lifter   : type[Key_p]
 
-    def __init__(self, *args:SourceBases, lifter=type[Key_p]) -> None:
-        self.sources  = list(args)
+    def __init__(self, *args:Maybe[SourceBases|SourceChain_d], lifter=type[Key_p]) -> None:
+        self.sources = []
+        for base in args:
+            match base:
+                case None:
+                    pass
+                case SourceChain_d():
+                    self.sources += base.sources
+                case dict() | collections.ChainMap():
+                    self.sources.append(base)
+                case Mapping():
+                    self.sources.append(base)
+                case x:
+                    raise TypeError(type(x))
         self.lifter   = lifter
 
-    def extend(self, *args:SourceBases) -> Self:
+    def extend(self, *args:Mapping) -> Self:
         self.sources += [x for x in args if x not in self.sources]
         return self
 
@@ -163,7 +197,7 @@ class SourceChain_d:
     def lookup(self, target:list[ExpInst_d]) -> Maybe[ExpInst_d]:
         """ Look up alternatives
 
-        | pass through DKeys and (DKey, ..)
+        | pass through DKeys and (DKey, ..) for recursion
         | lift (str(), True, fallback)
         | don't lift (str(), False, fallback)
 

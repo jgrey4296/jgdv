@@ -51,13 +51,14 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Self
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, overload
+from collections.abc import Callable
 
 if TYPE_CHECKING:
     from typing import Final
     from typing import ClassVar, Any, LiteralString
     from typing import Never, Self, Literal
     from typing import TypeGuard
-    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Iterable, Iterator, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
     from jgdv import Maybe, M_, Func, RxStr, Rx, Ident, FmtStr, Ctor
@@ -130,10 +131,10 @@ class DKeyExpander:
 
     ##--|
 
-    def redirect(self, source:API.Key_p, *sources:dict, **kwargs:Any) -> list[Maybe[ExpInst_d]]:  # noqa: ANN401
+    def redirect(self, source:API.Key_p, *sources:ExpAPI.SourceBases, **kwargs:Any) -> list[Maybe[ExpInst_d]]:  # noqa: ANN401
             return [self.expand(source, *sources, limit=1, **kwargs)]
 
-    def expand(self, key:API.Key_p, *sources:ExpAPI.SourceBases, **kwargs:Any) -> Maybe[ExpInst_d]:  # noqa: ANN401, PLR0912
+    def expand(self, key:API.Key_p, *sources:ExpAPI.SourceBases|SourceChain_d, **kwargs:Any) -> Maybe[ExpInst_d]:  # noqa: ANN401, PLR0912
         """ The entry point for expanding a key """
         full_sources  : SourceChain_d
         targets       : InstructionAlts
@@ -159,14 +160,15 @@ class DKeyExpander:
 
         # Limit defaults to -1 / until completion
         # but recursions can pass in limits
-        match kwargs.get("limit", None):
-            case 0:
+        match kwargs.get("limit", key.data.max_expansions):
+            case ExpAPI.NO_EXPANSIONS_PERMITTED:
                 return fallback or ExpInst_d(value=key, literal=True)
-            case None | -1:
-                limit = -1
-            case x if x < -1:
-                limit = -1
+            case None | ExpAPI.UNRESTRICTED_EXPANSION:
+                limit = ExpAPI.UNRESTRICTED_EXPANSION
+            case x if x < ExpAPI.UNRESTRICTED_EXPANSION:
+                limit = ExpAPI.UNRESTRICTED_EXPANSION
             case x:
+                # decrement the limit
                 limit  = x - 1
 
         full_sources   = self.extra_sources(sources, source=key)
@@ -195,7 +197,8 @@ class DKeyExpander:
 
     ##--| Expansion phases
 
-    def extra_sources(self, sources:Iterable[ExpAPI.SourceBases], *, source:API.Key_p) -> SourceChain_d:
+    def extra_sources(self, sources:Iterable[ExpAPI.SourceBases|SourceChain_d], *, source:API.Key_p) -> SourceChain_d:
+        x : Any
         mapping : SourceChain_d
         match sources:
             case [SourceChain_d() as x]:
@@ -220,15 +223,15 @@ class DKeyExpander:
         """
         if not hasattr(source, "exp_generate_alternatives_h"):
             return [[
-                ExpInst_d(value=f"{source:d}"),
-                ExpInst_d(value=f"{source:i}",  lift=True),
+                source.to_exp_inst(),
+                source.to_exp_inst(indirect=True, lift=True),
             ]]
 
         match source.exp_generate_alternatives_h(sources, opts):
             case [] | None:
                 return [[
-                    ExpInst_d(value=f"{source:d}"),
-                    ExpInst_d(value=f"{source:i}", lift=True),
+                    source.to_exp_inst(),
+                    source.to_exp_inst(indirect=True, lift=True),
                 ]]
             case list() as xs:
                 return xs
@@ -249,7 +252,8 @@ class DKeyExpander:
                 case None:
                     logging.debug("Lookup Failed for: %s", target)
                     return []
-                case ExpInst_d(value=API.Key_p() as key, rec=-1) as res if source == key:
+                case ExpInst_d(value=API.Key_p() as key, rec=ExpAPI.UNRESTRICTED_EXPANSION) as res if source == key:
+                    # guard against infinit recursion
                     res.rec = API.RECURSION_GUARD
                     result.append(res)
                 case ExpInst_d() as x:
@@ -291,12 +295,12 @@ class DKeyExpander:
             recurse_on  = None
             # Decide if there should be a recursion
             match inst:
-                case ExpInst_d(literal=True) | ExpInst_d(rec=0) as res:
+                case ExpInst_d(literal=True) | ExpInst_d(rec=ExpAPI.NO_EXPANSIONS_PERMITTED) as res:
                     result.append(res)
-                case ExpInst_d(value=API.Key_p() as key, rec=-1) if key is source or key == source:
+                case ExpInst_d(value=API.Key_p() as key, rec=ExpAPI.UNRESTRICTED_EXPANSION) if key is source or key == source:
                     msg = "Unrestrained Recursive Expansion"
                     raise RecursionError(msg, source)
-                case ExpInst_d(value=API.Key_p() as key, rec=-1):
+                case ExpInst_d(value=API.Key_p() as key, rec=ExpAPI.UNRESTRICTED_EXPANSION):
                     recurse_on = key
                 case ExpInst_d(value=API.Key_p() as key):
                     recurse_on  = key
@@ -313,9 +317,9 @@ class DKeyExpander:
                 continue
 
             match inst.rec, max_rec:
-                case -1, x:
+                case ExpAPI.UNRESTRICTED_EXPANSION, x:
                     rec_limit = x
-                case x, -1:
+                case x, ExpAPI.UNRESTRICTED_EXPANSION:
                     rec_limit = x
                 case int() as x, int() as y:
                     rec_limit = min(x, y)
@@ -379,21 +383,17 @@ class DKeyExpander:
         match inst:
             case ExpInst_d(convert=False):
                 # Conversion is off
-                inst.literal = True
                 result = inst
             case ExpInst_d(value=value, convert=None) if isinstance(source.data.expansion_type, type) and isinstance(value, source.data.expansion_type):
                 # Type is already correct
-                inst.literal = True
                 result = inst
             case ExpInst_d(value=value, convert=None) if source.data.expansion_type is not identity_fn:
                 # coerce a real ctor
                 if not isinstance(value, source.data.expansion_type):
                     inst.value = source.data.expansion_type(value)
-                inst.literal = True
                 result = inst
             case ExpInst_d(convert=None) if source.data.convert is None:
                 # No conv params
-                inst.literal = True
                 result = inst
             case ExpInst_d(convert=str() as conv):
                 # Conv params in expinst
@@ -410,6 +410,7 @@ class DKeyExpander:
 
         ##--|
         logging.debug("- Type Coerced: (%r) %s -> %s", source, source.data.convert, result)
+        result.literal = True
         return result
 
     @DoMaybe()
@@ -439,27 +440,17 @@ class DKeyExpander:
 
         source.exp_check_result_h(inst, opts)
 
-
     ##--| Utils
     def _coerce_result_by_conv_param(self, inst:ExpInst_d, conv:str, opts:ExpOpts, *, source:API.Key_p) -> Maybe[ExpInst_d]:
         """ really, keys with conv params should been built as a
         specialized registered type, to use an exp_final_hook
         """
-        match conv:
-            case "p":
-                inst.value = pl.Path(inst.value).expanduser().resolve()
-            case "s":
-                inst.value = str(inst.value)
-            case "S":
-                inst.value = Strang(inst.value)
-            case "c":
-                inst.value = CodeReference(inst.value)
-            case "i":
-                inst.value = int(inst.value)
-            case "f":
-                inst.value = float(inst.value)
+        match ExpAPI.EXPANSION_CONVERT_MAPPING.get(conv, None):
+            case fn if callable(fn):
+                val : Any = fn(inst.value)
+                return ExpInst_d(value=val)
+            case None:
+                return inst
             case x:
                 logging.warning("Unknown Conversion Parameter: %s", x)
                 return None
-
-        return inst

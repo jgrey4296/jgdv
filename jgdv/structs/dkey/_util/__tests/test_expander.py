@@ -2,7 +2,7 @@
 """
 
 """
-# ruff: noqa: ANN201, ARG001, ANN001, ARG002, ANN202, B011
+# ruff: noqa: ANN201, ARG001, ANN001, ARG002, ANN202, B011, ERA001, F841
 
 # Imports:
 from __future__ import annotations
@@ -138,7 +138,6 @@ class TestExpander:
             case x:
                 assert(False), x
 
-
     def test_do_lookup(self):
         obj      = DKeyExpander()
         obj.set_ctor(DKey)
@@ -161,7 +160,6 @@ class TestExpander:
                 assert(result is insts)
             case x:
                 assert(False), x
-
 
     def test_do_recursion(self):
         obj      = DKeyExpander()
@@ -187,7 +185,6 @@ class TestExpander:
             case x:
                 assert(False), x
 
-
     def test_coerce_result_no_op(self):
         obj      = DKeyExpander()
         obj.set_ctor(DKey)
@@ -199,7 +196,6 @@ class TestExpander:
                 assert(True)
             case x:
                 assert(False), x
-
 
     def test_coerce_result_simple(self):
         obj      = DKeyExpander()
@@ -213,7 +209,6 @@ class TestExpander:
                 assert(True)
             case x:
                 assert(False), x
-
 
     @pytest.mark.skip
     def test_finalise(self):
@@ -320,6 +315,23 @@ class TestExpansion:
                 assert(x == "qqqq")
             case x:
                 assert(False), x
+
+    def test_expansion_limit_format_param(self):
+        """
+        {test:e1} -> state[test:{blah}, blah:{aweg}, aweg:qqqq] -> {bloo}
+        """
+        obj = DKey("test:e1", implicit=True)
+        state = {"test": "{blah}", "blah": "{aweg}", "aweg": "qqqq"}
+        assert(obj.expand(state) == "blah")
+
+    def test_expansion_limit_format_param_two(self):
+        """
+        {test:e2} -> state[test:{blah}, blah:{aweg}, aweg:qqqq] -> {aweg}
+        """
+        obj = DKey("test:e2", implicit=True)
+        state = {"test": "{blah}", "blah": "{aweg}", "aweg": "qqqq"}
+        assert(obj.expand(state) == "aweg")
+        assert(isinstance(obj.expand(state), DKey))
 
     @pytest.mark.skip("TODO")
     def test_additional_sources_recurse(self):
@@ -587,10 +599,18 @@ class TestMultiExpansion:
         assert(DKey.MarkOf(obj) is DKey.Marks.MULTI)
         state = {"test": "{test}", "blah": "blah/{aweg_}"}
         match obj.expand(state, limit=10):
-            case "test":
+            case "{test}":
                 assert(True)
             case x:
                 assert(False), x
+
+    def test_multikey_recursion_limit(self):
+        """
+        {test:e2} -> state[test:{blah}, blah:{aweg}, aweg:qqqq] -> {aweg}
+        """
+        obj = DKey("{test:e1} : {test:e2}")
+        state = {"test": "{blah}", "blah": "{aweg}", "aweg": "qqqq"}
+        assert(obj.expand(state) == "{blah} : {aweg}")
 
 class TestCoercion:
 

@@ -215,6 +215,15 @@ class DKey[**K](Strang, fresh_registry=True):
 
 
     ##--| expansion hooks
+    def to_exp_inst(self, *, indirect:bool=False, **kwargs) -> ExpAPI.ExpInst_d:
+        """ create a basic expinst """
+        val = f"{self:i}" if indirect else f"{self:d}"
+        return ExpAPI.ExpInst_d(value=val,
+                                convert=self.data.convert,
+                                rec=self.data.max_expansions,
+                                **kwargs,
+                                )
+
     def exp_extra_sources_h(self, current:ExpInst.SourceChain_d) -> ExpInst.SourceChain_d:
         new_sources : Any
         match self._extra_sources:

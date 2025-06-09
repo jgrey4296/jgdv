@@ -86,6 +86,7 @@ class StrangMeta(StrMeta):
                                                                          **kwargs,
                                                                          )
             ctor   = new_ctor or cls
+            assert(isinstance(ctor, type))
             stage  = "__new__"
             obj    = ctor.__new__(ctor, text)
             stage  = "__init__"

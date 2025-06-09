@@ -73,6 +73,7 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never, Any
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
+from collections.abc import Mapping
 
 if TYPE_CHECKING:
     import enum
@@ -82,7 +83,7 @@ if TYPE_CHECKING:
     from typing import Never, Self, Literal
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
-    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from collections.abc import Sequence, MutableMapping, Hashable
 
     from . import _interface as API # noqa: N812
     from jgdv.structs.dkey._util._interface import SourceChain_d
@@ -350,7 +351,7 @@ class _LocatorAccess_m:
 
 @Proto(Locator_p)
 @Mixin(_LocatorAccess_m, _LocatorUtil_m, PathManip_m)
-class JGDVLocator:
+class JGDVLocator(Mapping):
     """
       A managing context for storing and converting Locations to Paths.
       key=value pairs in [[locations]] toml blocks are integrated into it.
