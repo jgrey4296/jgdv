@@ -88,6 +88,96 @@ class TestExpInst_d:
             case _:
                 assert(True)
 
+class TestSourceChain_d:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_basic(self):
+        match SourceChain_d():
+            case SourceChain_d():
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_with_base(self):
+        match SourceChain_d({"a":2, "b":3}):
+            case SourceChain_d():
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_with_specstruct_base(self):
+        class SimpleSpecStruct:
+
+            @property
+            def params(self) -> dict:
+                return {"blah":"aweg"}
+
+            @property
+            def args(self) -> list:
+                return []
+
+            @property
+            def kwargs(self) -> dict:
+                return {}
+
+        match SourceChain_d(SimpleSpecStruct()):
+            case SourceChain_d() as obj:
+                assert(obj.get("blah") == "aweg")
+            case x:
+                assert(False), x
+
+    def test_with_multi_base(self):
+        match SourceChain_d({"a":2, "b":3}, {"blah":"bloo"}):
+            case SourceChain_d():
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_extend(self):
+        obj = SourceChain_d({"a":2, "b":3}, {"blah":"bloo"})
+        match obj.extend({"blee":"aweg"}):
+            case SourceChain_d() as extended:
+                assert(obj is extended)
+                assert(obj.get("blee") == "aweg")
+            case x:
+                assert(False), x
+
+    def test_simple_get(self):
+        obj = SourceChain_d({"a":2, "b":3})
+        match obj.get("b"):
+            case 3:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_simple_get_with_fallback(self):
+        obj = SourceChain_d({"a":2, "b":3})
+        match obj.get("d", 10):
+            case 10:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_multi_base_get(self):
+        obj = SourceChain_d({"a":2, "b":3}, {"blah":"bloo"})
+        match obj.get("blah"):
+            case "bloo":
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_lookup(self):
+        obj   = SourceChain_d({"a":2, "b":3}, {"blah":"bloo"})
+        inst  = ExpInst_d(value="blah")
+        match obj.lookup([inst]):
+            case ExpInst_d(value="bloo"):
+                assert(True)
+            case x:
+                assert(False), x
+
 class TestExpander:
 
     def test_sanity(self):

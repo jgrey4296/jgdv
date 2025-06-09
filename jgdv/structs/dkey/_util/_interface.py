@@ -54,7 +54,7 @@ if typing.TYPE_CHECKING:
     type InstructionList  = list[ExpInst_d]
     type InstructionAlts  = list[InstructionList]
     type ExpOpts          = dict
-    type SourceBases      = list|Mapping
+    type SourceBases      = list|Mapping|SpecStruct_p
 
 # isort: on
 # ##-- end types
@@ -156,6 +156,8 @@ class SourceChain_d:
                     self.sources.append(base)
                 case Mapping():
                     self.sources.append(base)
+                case SpecStruct_p():
+                    self.sources.append(base.params)
                 case x:
                     raise TypeError(type(x))
         self.lifter   = lifter
