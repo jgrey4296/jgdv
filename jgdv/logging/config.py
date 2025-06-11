@@ -245,7 +245,7 @@ class JGDVLogConfig(metaclass=MLSingleton):
         if self.is_setup and not force:
             warnings.warn("Logging Is Already Set Up", stacklevel=2)
 
-        if config is None:
+        if config is None or not bool(config):
             msg = "Config data has not been configured"
             raise ValueError(msg)
 
