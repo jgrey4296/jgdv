@@ -69,11 +69,6 @@ MAX_FILES       : Final[int]       = 5
 TARGETS         : Final[list[str]] = [
     "file", "stdout", "stderr", "rotate", "pass",
 ]
-SUBPRINTERS     : Final[list[str]] = [
-    "fail", "header", "help",
-    "report", "sleep", "success",
-    "setup", "shutdown",
-    ]
 
 default_stdout  : Final[dict]      = {
     "name"           : logmod.root.name,
@@ -100,8 +95,8 @@ alt_log_colours : Final[dict[int, tuple[str, str]]] = {
     logmod.CRITICAL : ("fg", "red"),
 }
 
-
 # Body:
+
 class LogLevel_e(enum.IntEnum):
     """ My Preferred Loglevel names """
     error     = logmod.ERROR   # Total Failures
@@ -110,14 +105,18 @@ class LogLevel_e(enum.IntEnum):
     detail    = logmod.DEBUG   # Exact values
     bootstrap = logmod.NOTSET  # Startup before configuration
 ##--|
+
 class LogConfig_p(Protocol):
     """ TODO """
 
-    def setup(self, config:ChainGuard) -> None:
-        pass
+    def setup(self, config:ChainGuard) -> None: ...
 
-    def set_level(self, level:int|str) -> None:
-        pass
+    def set_level(self, level:int|str) -> None: ...
 
-    def subprinter(self, *names:str) -> Logger:
-        pass
+    def subprinter(self, *names:str) -> Logger: ...
+
+    def activate_spec(self, spec:LoggerSpec, *, override:bool=False) -> None: ...
+
+    def report(self) -> None: ...
+
+    def reset(self) -> None: ...

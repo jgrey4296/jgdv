@@ -29,8 +29,6 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
     from jgdv import Maybe
@@ -53,43 +51,63 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-
+LoggerClass : Final[type] = logmod.getLoggerClass()
 # Body:
 
-class JGDVLogger(logmod.getLoggerClass()):
+class JGDVLogger(LoggerClass):
     """ Basic extension of the logger class
 
     checks the classvar _levels (intEnum) for additional log levels
     which can be accessed as attributes and items.
     eg: logger.trace(...)
     and: logger['trace'](...)
+
+
+    A Logger can add prefixes to a logged messages.
+    eg:
+        logger.set_prefixes('[Test]')
+        logger.info('this is a test message')
+        # Result :  '[Test] this is a test message'
+
     """
+    _prefixes  : list[str|Callable]
+    _colour    : Maybe[str]
 
     @classmethod
-    def install(cls):
+    def install(cls) -> None:
         logmod.setLoggerClass(cls)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
         super().__init__(*args, **kwargs)
         self._prefixes = []
         self._colour   = None
 
-    def __getattr__(self, attr:str) -> callable:
+    def __getattr__(self, attr:str) -> Callable:
         try:
             return ftz.partial(self.log, LogLevel_e[attr])
         except KeyError:
-            raise AttributeError("Invalid Extension Log Level", attr) from None
+            msg = "Invalid Extension Log Level"
+            raise AttributeError(msg, attr) from None
 
-    def __getitem__(self, key:str) -> callable:
+    def __getitem__(self, key:str) -> Callable:
         return self.__getattr__(key)
 
-    def set_colour(self, colour:str):
+    ##--| public methods
+    def set_colour(self, colour:str) -> None:
         self._colour = self._colour or colour
 
-    def set_prefixes(self, *prefixes:Maybe[str|callable]):
-        self._prefixes =  list(prefixes)
+    def set_prefixes(self, *prefixes:str|Callable) -> None:
+        """
+        Set prefixes for the logger to add to logged messages
+        """
+        match prefixes:
+            case None | ():
+                pass
+            case [*xs]:
+                self._prefixes =  list(xs)
 
-    def prefix(self, prefix:str|callable) -> Logger:
+    def prefix(self, prefix:str|Callable) -> Self:
+        """ Create a new logger, with a prefix """
         match prefix:
             case str():
                 child = self.getChild(prefix)
@@ -101,19 +119,22 @@ class JGDVLogger(logmod.getLoggerClass()):
         child.set_prefixes(*self._prefixes, prefix)
         return child
 
-    def getChild(self, name):
+    def getChild(self, name:str) -> Self:  # noqa: N802
+        """
+        Create a child logger, copying the colour of this logger
+        """
         child = super().getChild(name)
         child.set_colour(self._colour)
         return child
 
-    def makeRecord(self, *args, **kwargs):
+    def makeRecord(self, *args:Any, **kwargs:Any) -> logmod.LogRecord:  # noqa: ANN401, N802
         """
         A factory method which can be overridden in subclasses to create
         specialized LogRecords.
         args: name, level, fn, lno, msg, args, exc_info,
         kwargs: func=None, extra=None, sinfo=None
         """
-        args = list(args)
+        modified : list = list(args)
         msg_total = []
         for pre in self._prefixes:
             match pre:
@@ -129,10 +150,10 @@ class JGDVLogger(logmod.getLoggerClass()):
                     msg_total.append(args[4])
                 case x:
                     msg_total.append("%s")
-                    args[5] = [args[4]] + list(args[5])
-            args[4] = "".join(msg_total)
+                    modified[5] = [args[4],  *args[5]]
+            modified[4] = "".join(msg_total)
 
-        rv = super().makeRecord(*args, **kwargs)
+        rv = super().makeRecord(*modified, **kwargs)
         if self._colour and "colour" not in rv.__dict__:
             rv.__dict__["colour"] = self._colour
         return rv

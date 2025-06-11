@@ -66,12 +66,13 @@ logging = logmod.getLogger(__name__)
 
 class MLSingleton(MetalordCore):
     """
-    TODO Metaclass for enforcing singletons
+    Metaclass for enforcing singletons
 
+    with force_new=True, dont reuse the singleton
     """
     def __call__(cls, *args:Any, **kwargs:Any):
-        match kwargs:
-            case {"force_new": True}:
+        match kwargs.pop("force_new", False):
+            case True:
                 obj = object.__new__(cls)
                 obj.__init__(*args, **kwargs)
                 return obj

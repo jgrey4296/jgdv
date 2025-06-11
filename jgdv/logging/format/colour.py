@@ -110,7 +110,7 @@ class ColourFormatter(logging.Formatter):
 
         return log_colour + super().format(record) + COLOUR_RESET
 
-    def apply_colour_mapping(self, mapping:dict[int|str,tuple[str, str]]) -> None:
+    def apply_colour_mapping(self, mapping:dict) -> None:
         """ applies a mapping of colours by treating each value as a pair of attrs of sty
 
         eg: {logging.DEBUG: ("fg", "blue"), logging.INFO: ("bg", "red")}

@@ -66,9 +66,12 @@ from jgdv import Maybe
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-env           : dict             = os.environ # type: ignore
-IS_PRE_COMMIT : Final[bool]      = "PRE_COMMIT" in env
-
+env                  : dict             = os.environ # type: ignore
+IS_PRE_COMMIT        : Final[bool]      = "PRE_COMMIT" in env
+DEFAULT_FORMAT       : Final[str] = "{levelname:<8} : {message}"
+DEFAULT_FILE_FORMAT  : Final[str] = "%Y-%m-%d::%H:%M.log"
+DEFAULT_STYLE : Final[str] = "{"
+##--|
 class HandlerBuilder_m:
     """
     Loggerspec Mixin for building handlers
@@ -102,7 +105,6 @@ class HandlerBuilder_m:
             case str() | True:
                 formatter = ColourFormatter(fmt=self.format, style=self.style)
                 formatter.apply_colour_mapping(API.alt_log_colours)
-
 
         return formatter
 
@@ -154,27 +156,29 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
       When 'apply' is called, it gets the logger,
       and sets any relevant settings on it.
     """
-
+    ##--| classvars
+    RootName                   : ClassVar[str]                   = "root"
+    levels                     : ClassVar[type[enum.IntEnum]]    = API.LogLevel_e
+    ##--| main
     name                       : str
     disabled                   : bool                            = False
     base                       : Maybe[str]                      = None
-    level                      : str|int                         = logmod._nameToLevel.get("WARNING", 0)
-    format                     : str                             = "{levelname:<8} : {message}"
+    level                      : str|int                         = logmod.WARNING
+    format                     : str                             = DEFAULT_FORMAT
     filter                     : list[str]                       = []
     allow                      : list[str]                       = []
     colour                     : bool|str                        = False
     verbosity                  : int                             = 0
     target                     : list[str|pl.Path]               = [] # stdout | stderr | file
-    filename_fmt               : str                             = "%Y-%m-%d::%H:%M.log"
+    filename_fmt               : str                             = DEFAULT_FILE_FORMAT
     propagate                  : bool                            = False
     clear_handlers             : bool                            = False
-    style                      : str                             = "{"
+    style                      : str                             = DEFAULT_STYLE
     nested                     : list[LoggerSpec]                = []
     prefix                     : Maybe[str]                      = None
+    ##--| internal
     _logger                    : Maybe[API.Logger]               = None
     _applied                   : bool                            = False
-    RootName                   : ClassVar[str]                   = "root"
-    levels                     : ClassVar[type[enum.IntEnum]]    = API.LogLevel_e
 
     @staticmethod
     def build(data:bool|list|dict, **kwargs:Any) -> LoggerSpec:  # noqa: ANN401
@@ -204,6 +208,8 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
             case _:
                 msg = "Unknown data for logger spec"
                 raise TypeError(msg, data)
+
+    ##--| Validators
 
     @field_validator("level")
     def _validate_level(cls, val:str|int) -> int:  # noqa: N805
@@ -245,6 +251,8 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
                 msg = "API.Logger Style Needs to be in [{,%,$]"
                 raise ValueError(msg, val)
 
+    ##--| methods
+
     @ftz.cached_property
     def fullname(self) -> str:
         if self.base is None:
@@ -253,13 +261,18 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
 
     def apply(self, *, onto:Maybe[API.Logger]=None) -> API.Logger:  # noqa: PLR0912, PLR0915
         """ Apply this spec (and nested specs) to the relevant logger """
+        logger : logmod.Logger
         match onto:
-            case None if self._logger is not None:
-                return self.get()
-            case None:
-                logger = self.get()
+            case logmod.Logger() if self._applied:
+                raise ValueError("Tried to apply logger when spec already has a logger", self.fullname)
             case logmod.Logger():
                 logger = onto
+            case None if self._applied:
+                # already set up, just return it
+                return self.get()
+            case None:
+                # not set up, get it and set it
+                logger = self.get()
 
         handler_pairs : list[tuple[Maybe[Handler], Maybe[Formatter]]] = []
         logger.propagate = self.propagate
@@ -269,10 +282,10 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
             return logger
 
         match self.prefix:
-            case None:
-                pass
             case str() if hasattr(logger, "set_prefixes"):
                 logger.set_prefixes(self.prefix)
+            case _:
+                pass
 
         match self.colour:
             case str():
@@ -303,13 +316,15 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
                     hand.setLevel(self.level)
                     for fltr in log_filters:
                         hand.addFilter(fltr)
-                    logger.addHandler(hand)
+                    else:
+                        logger.addHandler(hand)
                 case hand, fmt:
                     hand.setLevel(self.level)
                     hand.setFormatter(fmt)
                     for fltr in log_filters:
                         hand.addFilter(fltr)
-                    logger.addHandler(hand)
+                    else:
+                        logger.addHandler(hand)
                 case _:
                     pass
         else:
@@ -318,10 +333,15 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
                 logger.propagate = True
 
             self._applied = True
+            self._logger  = logger
             return logger
 
     def get(self) -> API.Logger:
-        return logmod.getLogger(self.fullname)
+        """ Get the logger  this spec controls """
+        if self._logger is None:
+            self._logger = logmod.getLogger(self.fullname)
+
+        return self._logger
 
     def clear(self) -> None:
         """ Clear the handlers for the logger referenced """
@@ -329,6 +349,8 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
         handlers = logger.handlers[:]
         for h in handlers:
             logger.removeHandler(h)
+
+        self._logger = None
 
     def logfile(self) -> pl.Path:
         log_dir  = pl.Path(".temp/logs")

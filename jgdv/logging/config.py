@@ -25,7 +25,6 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from jgdv import Mixin, Proto
-from jgdv.structs.chainguard import ChainGuard
 from jgdv.structs.metalord.singleton import MLSingleton
 
 # ##-- end 1st party imports
@@ -47,6 +46,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, overload
 
 if TYPE_CHECKING:
+    from jgdv.structs.chainguard import ChainGuard
     import pathlib as pl
     import enum
     from jgdv import Maybe
@@ -67,9 +67,9 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-env                  : dict              = os.environ # type: ignore
-printer_initial_spec : Final[LoggerSpec] = LoggerSpec.build(API.default_printer)
-initial_spec         : Final[LoggerSpec] = LoggerSpec.build(API.default_stdout)
+ENV                  : dict              = os.environ # type: ignore
+PRINTER_INITIAL_SPEC : Final[LoggerSpec] = LoggerSpec.build(API.default_printer)
+INITIAL_SPEC         : Final[LoggerSpec] = LoggerSpec.build(API.default_stdout)
 
 ##--|
 
@@ -104,8 +104,9 @@ class PrintCapture_m:
         print_logger.propagate = False
 
         @ftz.wraps(self.original_print)
-        def intercepted(*args, **kwargs) -> None:
+        def intercepted(*args:Any, **kwargs:Any) -> None:  # noqa: ANN401
             """ Wraps `print` to also log to a separate file """
+            assert(self.original_print is not None)
             self.original_print(*args, **kwargs)
             if bool(args):
                 print_logger.debug(args[0])
@@ -139,27 +140,25 @@ class JGDVLogConfig(metaclass=MLSingleton):
         report, skip, sleep, success, task, task_header, task_loop, task_state,
         track
 
-
     """
-
-    levels                : ClassVar[enum.IntEnum] = API.LogLevel_e
+    ##--| classvars
+    levels                : ClassVar[type[enum.IntEnum]] = API.LogLevel_e
     logger_cls            : ClassVar[type[Logger]] = JGDVLogger
-
+    ##--| core vars
     root                  : Logger
-    _printer_children     : list
+    is_setup              : bool
+    ##--| internal vars
     _initial_spec         : LoggerSpec
     _printer_initial_spec : LoggerSpec
-    _registry             : list[LoggerSpec]
-    is_setup              : bool
+    _registry             : dict[str, LoggerSpec]
 
-    def __init__(self, *, subprinters:Maybe[list[str]]=None, style:Maybe[str]=None) -> None:
+    def __init__(self) -> None:
         # Root Logger for everything
-        self.root                                  = logmod.root
-        self._printer_children                     = (subprinters or API.SUBPRINTERS)[:]
-        self._initial_spec                         = initial_spec
-        self._printer_initial_spec                 = printer_initial_spec
-        self._registry                             = []
-        self.is_setup                              = False
+        self.root                   = logmod.root
+        self.is_setup               = False
+        self._initial_spec          = INITIAL_SPEC
+        self._printer_initial_spec  = PRINTER_INITIAL_SPEC
+        self._registry              = {}
 
         self._install_logger_override()
         self._register_new_names()
@@ -169,62 +168,33 @@ class JGDVLogConfig(metaclass=MLSingleton):
 
         logging.log(self.levels.bootstrap, "Post Log Setup") # type: ignore
 
+    ##--| dunders
     def __repr__(self) -> str:
 
         return f"<{self.__class__.__name__}({len(self._registry)}) : >"
 
-    def _report(self) -> None:
-        printer = self.subprinter()
-        for x in self._registry:
-            printer.user("%s : %s", x.fullname, x.level)
-
-
+    ##--| internal
     def _install_logger_override(self) -> None:
-        if self.logger_cls is None:
-            return
-
-        self.logger_cls.install()
-        if not issubclass(logmod.getLoggerClass(), self.logger_cls):
-            msg = "Logger Class Installation Failed"
-            raise TypeError(msg, self.logger_cls)
+        match self.logger_cls:
+            case None:
+                return
+            case x if not hasattr(x, "install"):
+                return
+            case x:
+                x.install()
+                if not issubclass(logmod.getLoggerClass(), self.logger_cls):
+                    msg = "Logger Class Installation Failed"
+                    raise TypeError(msg, self.logger_cls)
 
     def _register_new_names(self) -> None:
         for name,lvl in self.levels.__members__.items(): # type: ignore
             logmod.addLevelName(lvl, name)
 
-    def _setup_print_children(self, config:ChainGuard) -> None:
-        logging.info("Setting up print children")
-        basename            = API.PRINTER_NAME
-        subprint_data       = config.on_fail({}).logging.subprinters()
-        acceptable_names    = self._printer_children
-        logging.info("Known Print Children: %s", acceptable_names)
-        for data in subprint_data.items():
-            match data :
-                case ("default", ChainGuard()|dict() as spec_data):
-                    for name in {x for x in acceptable_names if x not in subprint_data}:
-                        match LoggerSpec.build(spec_data, name=name, base=basename):
-                            case None:
-                                logging.warning(f"Could not build LoggerSpec for {name}")
-                            case LoggerSpec() as spec:
-                                self.activate_spec(spec)
-                case (str() as name, _) if name not in acceptable_names:
-                    logging.warning("Unknown Subprinter mentioned in config: %s", name)
-                    pass
-                case (str() as name, bool()|ChainGuard()|dict() as spec_data):
-                    match LoggerSpec.build(spec_data, name=name, base=basename):
-                        case None:
-                            logging.warning(f"Could not build LoggerSpec for {name}")
-                        case LoggerSpec() as spec:
-                            self.activate_spec(spec)
-                case _:
-                    msg = "Unknown Subprinter Data"
-                    raise TypeError(msg, data)
-
     def _setup_logging_extra(self, config:ChainGuard) -> None:
         """ read the doot config logging section
           setting up each entry other than stream, file, printer, and subprinters
         """
-        extras = config.on_fail({}).logging.extra()
+        extras = config.on_fail({}).logging.extra() # type: ignore[attr-defined]
         for key,data in extras.items():
             match LoggerSpec.build(data, name=key):
                 case None:
@@ -232,12 +202,19 @@ class JGDVLogConfig(metaclass=MLSingleton):
                 case LoggerSpec() as spec:
                     self.activate_spec(spec)
 
+    ##--| public
+    def report(self) -> None:
+        """ Utility method to inspect the state of logging. """
+        printer = self.subprinter()
+        for x in self._registry.values():
+            printer.log(logmod.WARN, "%s : %s", x.fullname, x.level)
+
     def activate_spec(self, spec:LoggerSpec, *, override:bool=False) -> None:
         """ Add a spec to the registry and activate it """
         target   = spec
         fullname = spec.fullname
         logging.info("Activating Logging Spec: %s", fullname)
-        self._registry.append(spec)
+        self._registry[fullname] = spec
         target.apply()
 
     def setup(self, config:ChainGuard, *, force:bool=False) -> None:
@@ -252,19 +229,25 @@ class JGDVLogConfig(metaclass=MLSingleton):
         self._initial_spec.clear()
         self._printer_initial_spec.clear()
 
-        root_spec = LoggerSpec.build([config.on_fail({}).logging.file(),
-                                      config.on_fail({}).logging.stream(),
+        root_spec = LoggerSpec.build([config.on_fail({}).logging.file(), # type: ignore[attr-defined]
+                                      config.on_fail({}).logging.stream(), # type: ignore[attr-defined]
                                       ],
                                      name=LoggerSpec.RootName)
-        print_spec        = LoggerSpec.build(config.on_fail({}).logging.printer(),
+        print_spec        = LoggerSpec.build(config.on_fail({}).logging.printer(), # type: ignore[attr-defined]
                                              name=API.PRINTER_NAME)
 
         self.activate_spec(root_spec, override=True)
         self.activate_spec(print_spec, override=True)
-        self._setup_print_children(config)
         self._setup_logging_extra(config)
 
         self.is_setup = True
+
+    def reset(self) -> None:
+        """
+        Reset the config to the initial specs
+        """
+        self.activate_spec(self._initial_spec)
+        self.activate_spec(self._printer_initial_spec)
 
     def set_level(self, level:int|str) -> None:
         """ Set the active logging level """
@@ -283,7 +266,7 @@ class JGDVLogConfig(metaclass=MLSingleton):
         self._initial_spec.set_level(lvl)
         self._printer_initial_spec.set_level(lvl)
 
-    def subprinter(self, *names, prefix:Maybe[str]=None) -> Logger:
+    def subprinter(self, *names:str, prefix:Maybe[str]=None) -> Logger:
         """ Get a subprinter of the printer logger.
           The First name needs to be a registered subprinter.
           Additional names are unconstrained
@@ -292,14 +275,10 @@ class JGDVLogConfig(metaclass=MLSingleton):
         if not bool(names) or names == (None,):
             return base
 
-        if names[0] not in self._printer_children:
-            msg = "Unknown Subprinter"
-            raise ValueError(msg, names[0], self._printer_children)
-
         current = base
         for name in names:
             current = current.getChild(name)
         else:
-            if prefix:
+            if prefix and hasattr(current, "set_prefixes"):
                 current.set_prefixes(prefix)
             return current
