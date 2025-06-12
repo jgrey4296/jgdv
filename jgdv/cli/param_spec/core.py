@@ -34,7 +34,7 @@ from jgdv.structs.chainguard import ChainGuard
 
 from jgdv import Proto
 from jgdv.cli.errors import ArgParseError
-from ._base import ParamSpecBase
+from .param_spec import ParamSpec
 
 # ##-- types
 # isort: off
@@ -67,8 +67,7 @@ from .._interface import ParamStruct_p
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
-class ToggleParam(ParamSpecBase): #[bool]):
+class ToggleParam(ParamSpec, annotation=bool, default=True):
     """ A bool of -param or -not-param """
 
     desc : str = "A Toggle"
@@ -82,45 +81,7 @@ class ToggleParam(ParamSpecBase): #[bool]):
 
         return self.name, [value], 1
 
-class RepeatToggleParam(ToggleParam):
-    """ TODO A repeatable toggle
-    eg: -verbose -verbose -verbose
-    """
-    desc : str = "A Repeat Toggle"
-    pass
-
-class LiteralParam(ToggleParam):
-    """
-    Match on a Literal Parameter.
-    For command/subcmd names etc
-    """
-    desc   : str = "A Literal"
-    prefix : str = ""
-
-    def matches_head(self, val) -> bool:
-        """ test to see if a cli argument matches this param
-
-        Will match anything if self.positional
-        Matchs {self.prefix}{self.name} if not an assignment
-        Matches {self.prefix}{self.name}{separator} if an assignment
-        """
-        match val:
-            case x if x == self.name:
-                return True
-            case _:
-                return False
-
-class ImplicitParam(ParamSpecBase):
-    """
-    A Parameter that is implicit, so doesn't give a help description unless
-    forced to
-    """
-    desc : str = "An Implicit Parameter"
-
-    def help_str(self):
-        return ""
-
-class KeyParam(ParamSpecBase):
+class KeyParam(ParamSpec):
     """ TODO a param that is specified by a prefix key
     eg: -key val
     """
@@ -137,68 +98,53 @@ class KeyParam(ParamSpecBase):
             case [x, y, *_] if self.matches_head(x):
                 return self.name, [y], 2
             case _:
-                raise ArgParseError("Failed to parse key")
+                msg = "Failed to parse key"
+                raise ArgParseError(msg)
 
-class RepeatableParam(KeyParam):
-    """ TODO a repeatable key param
-    -key val -key val2 -key val3
-    """
+class AssignParam(ParamSpec):
+    """ TODO a joined --key=val param """
 
-    type_ : InstanceOf[type] = Field(default=list, alias="type")
-    desc  : str = "A Repeatable Key"
+    desc : str = "An Assignment Param"
+
+    def __init__(self, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
+        kwargs.setdefault("prefix", "--")
+        kwargs.setdefault("separator", "=")
+        kwargs.setdefault("type", str)
+        super().__init__(*args, **kwargs)
 
     def next_value(self, args:list) -> tuple[str, list, int]:
-        """ Get as many values as match
-        eg: args[-test, 2, -test, 3, -test, 5, -nottest, 6]
-        ->  [2,3,5], [-nottest, 6]
-        """
-        logging.debug("Getting until no more matches: %s : %s", self.name, args)
-        assert(self.repeatable)
-        result, consumed, remaining  = [], 0, args[:]
-        while bool(remaining):
-            head, val, *rest = remaining
-            if not self.matches_head(head):
-                break
-            else:
-                result.append(val)
-                remaining = rest
-                consumed += 2
+        """ get the value for a --key=val """
+        logging.debug("Getting Key Assignment: %s : %s", self.name, args)
+        if self.separator not in args[0]:
+            msg = "Assignment param has no assignment"
+            raise ArgParseError(msg, self.separator, args[0])
+        key,val = self._split_assignment(args[0])
+        return self.name, [val], 1
 
-        return self.name, result, consumed
+class PositionalParam(ParamSpec):
+    """ A param that is specified by its position in the arg list
 
-class ChoiceParam(LiteralParam): # [str]):
-    """ TODO A param that must be from a choice of literals
-    eg: ChoiceParam([blah, bloo, blee]) : blah | bloo | blee
-
+    TODO enable it to consume multiples
     """
 
-    desc : str = "A Choice"
+    desc : str = "A Positional Param"
 
-    def __init__(self, name, choices:list[str], **kwargs):
-        super().__init__(name=name, **kwargs)
-        self._choices = choices
+    @ftz.cached_property
+    def key_str(self) -> str:
+        return self.name
 
-    def matches_head(self, val) -> bool:
-        """ test to see if a cli argument matches this param
+    def matches_head(self, val:str) -> bool:  # noqa: ARG002
+        return True
 
-        Will match anything if self.positional
-        Matchs {self.prefix}{self.name} if not an assignment
-        Matches {self.prefix}{self.name}{separator} if an assignment
-        """
-        return val in self._choices
-
-class EntryParam(LiteralParam):
-    """ TODO a parameter that if it matches,
-    returns list of more params to parse
-    """
-    desc : str = "An expandable Param"
-    pass
-
-class ConstrainedParam(ParamSpecBase):
-    """
-    TODO a type of parameter which is constrained in the values it can take, beyond just type.
-
-    eg: {name:amount, constraints={min=0, max=10}}
-    """
-    constraints : list[Any] = []
-    desc : str = "A Constrained Param"
+    def next_value(self, args:list) -> tuple[str, list, int]:
+        match self.count:
+            case 1:
+                return self.name, [args[0]], 1
+            case -1:
+                idx     = args.index(END_SEP)
+                claimed = args[max(idx, len(args))]
+                return self.name, claimed, len(claimed)
+            case int() as x if x < len(args):
+                return self.name, args[:x], x
+            case _:
+                raise ArgParseError()

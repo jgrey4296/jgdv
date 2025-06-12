@@ -31,7 +31,7 @@ from jgdv.structs.chainguard import ChainGuard
 # ##-- end 1st party imports
 
 from jgdv.cli.errors import ArgParseError
-from ._base import ParamSpecBase
+from .param_spec import ParamSpec
 from .._interface import END_SEP
 
 # ##-- types
@@ -65,30 +65,3 @@ from .._interface import ParamStruct_p
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class PositionalParam(ParamSpecBase):
-    """ A param that is specified by its position in the arg list
-
-    TODO enable it to consume multiples
-    """
-
-    desc : str = "A Positional Param"
-
-    @ftz.cached_property
-    def key_str(self) -> str:
-        return self.name
-
-    def matches_head(self, val:str) -> bool:  # noqa: ARG002
-        return True
-
-    def next_value(self, args:list) -> tuple[str, list, int]:
-        match self.count:
-            case 1:
-                return self.name, [args[0]], 1
-            case -1:
-                idx     = args.index(END_SEP)
-                claimed = args[max(idx, len(args))]
-                return self.name, claimed, len(claimed)
-            case int() as x if x < len(args):
-                return self.name, args[:x], x
-            case _:
-                raise ArgParseError()

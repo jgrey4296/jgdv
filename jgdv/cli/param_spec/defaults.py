@@ -31,8 +31,9 @@ from jgdv.structs.chainguard import ChainGuard
 # ##-- end 1st party imports
 
 from jgdv.cli.errors import ArgParseError
-from ._base import ParamSpecBase
-from .core import LiteralParam, ToggleParam, RepeatToggleParam
+from .param_spec import ParamSpec
+from .core import ToggleParam
+from .extra import RepeatToggleParam, RepeatToggleParam, LiteralParam
 
 # ##-- types
 # isort: off

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 """
 # ruff: noqa:
 
@@ -10,6 +9,7 @@ from __future__ import annotations
 
 # ##-- stdlib imports
 import datetime
+import builtins
 import enum
 import functools as ftz
 import itertools as itz
@@ -29,6 +29,9 @@ import faulthandler
 # ##-- end stdlib imports
 
 from .param_spec import ParamSpec
+from .param_spec.core import ToggleParam, LiteralParam, KeyParam, AssignParam
+from .param_spec.defaults import HelpParam, VerboseParam, SeparatorParam
+from .param_spec.positional import PositionalParam
 
 # ##-- types
 # isort: off
@@ -65,9 +68,44 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
+def _remap_type(data:dict) -> type:
+    """
+    Get a specific type of parameter, using provided dat
+
+    needs to handle:
+    - using separator to select between toggle, key, assign, and positional params
+    - using type to select toggle, literal
+    - using count to select repeatable
+    - using choice to select choice params
+    """
+
+    match data:
+        case {"separator": str() as x } if bool(x):
+            return AssignParam
+        case {"prefix" : int() }:
+            return PositionalParam
+        case {"type": x } if x is not bool:
+            return KeyParam
+        case _:
+            return ToggleParam
+
+##--|
+
 class ParamSpecMaker_m:
+    __slots__ = ()
 
     @staticmethod
     def build_param(**kwargs:Any) -> ParamSpec:
         """ Utility method for easily making paramspecs """
-        return ParamSpec.build(kwargs)
+        data = dict(kwargs)
+        # Parse the name
+        match ParamSpec._processor.parse_name(data['name']):
+            case None:
+                pass
+            case dict() as parsed:
+                data.update(parsed)
+
+        # remap to a specific paramspec type
+        refined = _remap_type(data)
+        # build it
+        return refined.build(kwargs)

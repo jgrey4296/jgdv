@@ -105,7 +105,10 @@ class ParseMachine(ParseMachineBase):
             msg = "Transition failure"
             raise errors.ParseError(msg, err) from err
         else:
-            return self.model.report()
+            result = self.model.report()
+            # Reset the state
+            self.current_state = self.Start
+            return result
 
 @Proto(ArgParser_p)
 class CLIParser:
@@ -248,6 +251,7 @@ class CLIParser:
         """ consume arguments for tasks """
         if not bool(self._subcmd_specs):
             return
+
         logging.debug("SubCmd Parsing: %s", self._remaining_args)
         assert(self.cmd_result is not None)
         active_cmd = self.cmd_result.name
@@ -262,6 +266,9 @@ class CLIParser:
                 self._remaining_args.pop(0)
 
             logging.debug("Sub Cmd: %s", sub_name)
+            if sub_name == "cli.args::top":
+                breakpoint()
+                pass
             last = sub_name
             match self._subcmd_specs.get(sub_name, None):
                 case cmd_constraint, params if active_cmd in [cmd_constraint, EMPTY_CMD]:
@@ -275,6 +282,8 @@ class CLIParser:
                 case _:
                     msg = "Unrecognised SubCmd"
                     raise errors.SubCmdParseError(msg, sub_name)
+        else:
+            logging.debug("SubCmds Parsed")
 
     @ParseMachineBase.Extra.enter
     def _parse_extra(self) -> None:

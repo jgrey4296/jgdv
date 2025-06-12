@@ -146,6 +146,7 @@ class TestParser(_utils):
         obj = CLIParser()
         obj._setup([], [Specs.LiteralParam(name="blah")], [a_source], [])
         obj._parse_head()
+        assert(True)
 
     def test_parse_head(self, a_source):
         obj = CLIParser()

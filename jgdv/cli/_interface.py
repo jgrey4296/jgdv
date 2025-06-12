@@ -16,7 +16,6 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
 import collections
 import contextlib
 import hashlib
@@ -39,11 +38,13 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 from dataclasses import dataclass, field, InitVar
+from typing import Any
 
 if TYPE_CHECKING:
+    import types
     from jgdv import Maybe, Rx
     from typing import Final
-    from typing import ClassVar, Any, LiteralString
+    from typing import ClassVar, LiteralString
     from typing import Never, Self, Literal
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
@@ -59,14 +60,24 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-DEFAULT_PREFIX    : Final[str]  = "-"
-END_SEP           : Final[str]  = "--"
-FULLNAME_RE       : Final[Rx]   = re.compile(r"(?:<(?P<pos>\d*)>|(?P<prefix>\W+))?(?P<name>.+?)(?P<assign>=)?$")
+DEFAULT_PREFIX  : Final[str]  = "-"
+END_SEP         : Final[str]  = "--"
+FULLNAME_RE     : Final[Rx]   = re.compile(r"(?:<(?P<pos>\d*)>|(?P<prefix>\W+))?(?P<name>.+?)(?P<assign>=)?$")
+DEFAULT_DOC     : Final[str]  = "A Base Parameter"
 """ The Regexp for parsing string descriptions of parameters """
 
 EMPTY_CMD         : Final[str]  = "_cmd_"
 EXTRA_KEY         : Final[str]  = "_extra_"
 NON_DEFAULT_KEY   : Final[str]  = "_non_default_"
+
+TYPE_CONV_MAPPING: Final[dict[str|type|types.GenericAlias, type|Callable]] = {
+    "int"               : int,
+    "float"             : float,
+    "bool"              : bool,
+    "str"               : str,
+    "list"              : list,
+}
+
 # Body:
 
 class ParseResult_d:
@@ -80,6 +91,9 @@ class ParseResult_d:
         self.args         = args or {}
         self.non_default  = non_default or set()
 
+    def __repr__(self) -> str:
+        return f"<ParseResult: {self.name}, args:{self.args}>"
+
     def to_dict(self) -> dict:
         return {"name":self.name, "args":self.args, NON_DEFAULT_KEY:self.non_default}
 ##--|
@@ -92,10 +106,54 @@ class ParamStruct_p(Protocol):
     and return an updated diction and a list of values it didn't consume
 
     """
-    key_func : Callable
+
+    @staticmethod
+    def key_func(x:ParamStruct_i) -> tuple: ...
 
     def consume(self, args:list[str], *, offset:int=0) -> Maybe[tuple[dict, int]]:
         pass
+
+    ##--| properties
+
+    @property
+    def short(self) -> str: ...
+
+    @property
+    def inverse(self) -> str: ...
+
+    @property
+    def repeatable(self) -> bool: ...
+
+    @property
+    def key_str(self) -> str: ...
+
+    @property
+    def short_key_str(self) -> Maybe[str]: ...
+
+    @property
+    def key_strs(self) -> list[str]: ...
+
+    @property
+    def positional(self) -> bool: ...
+
+    @property
+    def default_value(self) -> Any: ...  # noqa: ANN401
+
+    @property
+    def default_tuple(self) -> tuple[str, Any]: ...
+
+class ParamStruct_i(ParamStruct_p, Protocol):
+    _processor : ClassVar
+
+    name       : str
+    type_      : Maybe[type]
+    insist     : bool
+    default    : Any|Callable
+    desc       : str
+    count      : int
+    prefix     : int|str
+    separator  : str|Literal[False]
+    implicit   : bool
 
 @runtime_checkable
 class ArgParser_p(Protocol):
