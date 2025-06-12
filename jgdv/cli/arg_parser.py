@@ -124,7 +124,7 @@ class CLIParser:
     _remaining_args    : list[str]
     _head_specs        : list[ParamSpec]
     _cmd_specs         : dict[str, list[ParamStruct_i]]
-    _subcmd_specs      : dict[str, tuple[str, list[ParamStruct_i]]]
+    _subcmd_specs      : dict[str, tuple[str|tuple[str, ...], list[ParamStruct_i]]]
     head_result        : Maybe[ParseResult_d]
     cmd_result         : Maybe[ParseResult_d]
     subcmd_results     : list[ParseResult_d]
@@ -162,17 +162,25 @@ class CLIParser:
           Parses the list of arguments against available registered parameter head_specs, cmds, and tasks.
         """
         logging.debug("Setting up Parsing : %s", args)
-        head_specs                                  = head_specs or []
-        cmds                                        = cmds or []
-        subcmds                                     = subcmds or []
-        self._initial_args                          = args[:]
-        self._remaining_args                        = args[:]
-        self._head_specs : list[ParamSpec]          = head_specs
+        head_specs            = head_specs or []
+        cmds                  = cmds or []
+        subcmds               = subcmds or []
+        self._initial_args    = args[:]
+        self._remaining_args  = args[:]
+        self._head_specs      = head_specs
+
+        self.head_result       = None
+        self.cmd_result        = None
+        self.subcmd_results    = []
+        self.extra_results     = ParseResult_d(EXTRA_KEY)
+        self._force_help       = False
 
         if not isinstance(cmds, list):
             msg = "cmds needs to be a list"
             raise TypeError(msg, cmds)
 
+        ##--| Prep cmd lookup
+        ##
         for x in cmds:
             match x:
                 case (str() as alias, ParamSource_p() as source):
@@ -182,6 +190,8 @@ class CLIParser:
                 case x:
                     raise TypeError(x)
 
+        ##--| Prep subcmd lookup
+        ## maps {subtask} -> (cmds, params)
         match subcmds:
             case [*xs]:
                 self._subcmd_specs = {y.name:(x, y.param_specs()) for x,y in xs}
@@ -189,11 +199,6 @@ class CLIParser:
                 logging.info("No Subcmd Specs provided for parsing")
                 self._subcmd_specs = {}
 
-        self.head_result       = None
-        self.cmd_result        = None
-        self.subcmd_results    = []
-        self.extra_results     = ParseResult_d(EXTRA_KEY)
-        self._force_help       = False
 
     @ParseMachineBase.Cleanup.enter
     def _cleanup(self) -> None:
@@ -284,6 +289,13 @@ class CLIParser:
                     sub_result  = ParseResult_d(sub_name, defaults)
                     self._parse_params_unordered(sub_result, sub_specs) # type: ignore
                     self.subcmd_results.append(sub_result)
+                case [*constraints], list() as params if active_cmd in constraints or x == EMPTY_CMD:
+                    sub_specs   = sorted(params, key=ParamSpec.key_func)
+                    defaults    =  ParamSpec.build_defaults(sub_specs)
+                    sub_result  = ParseResult_d(sub_name, defaults)
+                    self._parse_params_unordered(sub_result, sub_specs) # type: ignore
+                    self.subcmd_results.append(sub_result)
+
                 case _, _:
                     pass
                 case _:
@@ -304,18 +316,19 @@ class CLIParser:
 
         Expects the params to be sorted already.
         """
+        x : Any
         logging.debug("Parsing Params Unordered: %s", params)
         processor       : ParamProcessor       = ParamSpec._processor
-        non_positional  : list[ParamStruct_p]  = []
-        positional      : list[ParamStruct_p]  = []
+        non_positional  : list[ParamStruct_i]  = []
+        positional      : list[ParamStruct_i]  = []
 
         for x in params:
             if isinstance(x, API.PositionalParam_p):
-                positional.append(x)
+                positional.append(cast("ParamStruct_i", x))
             else:
                 non_positional.append(x)
 
-        def consume_it(x:ParamSpec) -> None:
+        def consume_it(x:ParamStruct_i) -> None:
             """ Local function to parse and remove args from the remainder """
             # TODO refactor this as a partial
             match x.consume(self._remaining_args):
@@ -327,8 +340,8 @@ class CLIParser:
                     self._remaining_args = self._remaining_args[count:]
                     res.args.update(data)
                     res.non_default.add(x.name)
-                case x:
-                    raise TypeError(type(x))
+                case y:
+                    raise TypeError(type(y))
 
         # Parse non-positional params
         logging.debug("- Starting non-positional arg parsing: %s", len(non_positional))
