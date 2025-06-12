@@ -209,13 +209,13 @@ class DKeyedMeta(DKeyed):
     @classmethod
     def requires(cls, *args, **kwargs) -> DKeyMetaDecorator:
         """ mark an action as requiring certain keys to in the state, but aren't expanded """
-        keys = [DKey(x, implicit=True, mark=DKey.Marks.NULL, **kwargs) for x in args]
+        keys = [DKey[None](x, implicit=True, **kwargs) for x in args]
         return DKeyMetaDecorator(keys)
 
     @classmethod
     def returns(cls, *args, **kwargs) -> DKeyMetaDecorator:
         """ mark an action as needing to return certain keys """
-        keys = [DKey(x, implicit=True, mark=DKey.Marks.NULL, **kwargs) for x in args]
+        keys = [DKey[None](x, implicit=True, **kwargs) for x in args]
         return DKeyMetaDecorator(keys)
 
 class DKeyedRetrieval(DecoratorAccessor_m, DKeyed):
@@ -228,7 +228,7 @@ class DKeyedRetrieval(DecoratorAccessor_m, DKeyed):
 
     @classmethod
     def formats(cls, *args, **kwargs) -> Decorator:
-        keys     = [DKey(x, implicit=True, mark=DKey.Marks.STR, **kwargs) for x in args]
+        keys     = [DKey[str](x, implicit=True, **kwargs) for x in args]
         return cls._build_decorator(keys)
 
     @classmethod
@@ -240,24 +240,24 @@ class DKeyedRetrieval(DecoratorAccessor_m, DKeyed):
     def paths(cls, *args, **kwargs) -> Decorator:
         """ mark an action as using expanded path keys """
         kwargs.setdefault("implicit", True)
-        keys = [DKey(x, mark=DKey.Marks.PATH, **kwargs) for x in args]
+        keys = [DKey[pl.Path](x, **kwargs) for x in args]
         return cls._build_decorator(keys)
 
     @classmethod
     def types(cls, *args, **kwargs) -> Decorator:
         """ mark an action as using raw type keys """
-        keys = [DKey(x, implicit=True, mark=DKey.Marks.FREE, **kwargs) for x in args]
+        keys : list = [DKey(x, implicit=True, **kwargs) for x in args]
         return cls._build_decorator(keys)
 
     @classmethod
     def toggles(cls, *args, **kwargs) -> Decorator:
-        keys = [DKey(x, implicit=True, mark=DKey.Marks.FREE, ctor=bool, check=bool, **kwargs) for x in args]
+        keys : list = [DKey(x, implicit=True, ctor=bool, check=bool, **kwargs) for x in args]
         return cls._build_decorator(keys)
 
     @classmethod
     def args(cls, fn:Callable) -> Decorator:
         """ mark an action as using spec.args """
-        keys = [DKey(ARGS_K, implicit=True, mark=DKey.Marks.ARGS)]
+        keys = [DKey[DKey.Marks.ARGS](ARGS_K, implicit=True)] # type: ignore[name-defined]
         match cls._build_decorator(keys)(fn):
             case None:
                 raise dkey_errs.DecorationMismatch()
@@ -267,7 +267,7 @@ class DKeyedRetrieval(DecoratorAccessor_m, DKeyed):
     @classmethod
     def kwargs(cls, fn:Callable) -> Decorator:
         """ mark an action as using all kwargs"""
-        keys = [DKey(KWARGS_K, implicit=True, mark=DKey.Marks.KWARGS)]
+        keys = [DKey[DKey.Marks.KWARGS](KWARGS_K, implicit=True)] # type: ignore[name-defined]
         match cls._build_decorator(keys)(fn):
             case None:
                 raise dkey_errs.DecorationMismatch()
@@ -278,16 +278,16 @@ class DKeyedRetrieval(DecoratorAccessor_m, DKeyed):
     def redirects(cls, *args, **kwargs) -> Decorator:
         """ mark an action as using redirection keys """
         kwargs.setdefault("max_exp", 1)
-        keys = [DKey(x, implicit=True, mark=DKey.Marks.INDIRECT, ctor=DKey, **kwargs) for x in args]
+        keys = [DKey[DKey.Marks.INDIRECT](x, implicit=True, **kwargs) for x in args] # type: ignore[name-defined]
         return cls._build_decorator(keys)
 
     @classmethod
     def references(cls, *args, **kwargs) -> Decorator:
         """ mark keys to use as to_coderef imports """
-        keys = [DKey(x, implicit=True, mark=DKey.Marks.CODE, **kwargs) for x in args]
+        keys = [DKey[DKey.Marks.CODE](x, implicit=True, **kwargs) for x in args] # type: ignore[name-defined]
         return cls._build_decorator(keys)
 
     @classmethod
     def postbox(cls, *args, **kwargs) -> Decorator:
-        keys = [DKey(x, implicit=True, mark=DKey.Marks.POSTBOX, **kwargs) for x in args]
+        keys = [DKey[DKey.Marks.POSTBOX](x, implicit=True, **kwargs) for x in args] # type: ignore[name-defined]
         return cls._build_decorator(keys)
