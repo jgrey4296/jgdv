@@ -363,7 +363,8 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
             case typing.Any:
                 self.type_ = None
                 return
-            case types.GenericAlias():
+            case types.GenericAlias() as alias: # unwrap aliases
+                self.type_ = alias.__origin__
                 return
             case type() as x if isinstance(x, ParamStruct_p):
                 msg = "Can't use a paramstruct as the type of a paramstruct"
