@@ -31,8 +31,9 @@ from jgdv.structs.chainguard import ChainGuard
 # ##-- end 1st party imports
 
 from jgdv.cli.errors import ArgParseError
-from ._base import ParamSpecBase
-from .core import LiteralParam, ToggleParam, RepeatToggleParam
+from .param_spec import ParamSpec
+from .core import ToggleParam
+from .extra import RepeatToggleParam, RepeatToggleParam, LiteralParam
 
 # ##-- types
 # isort: off
@@ -69,7 +70,7 @@ class HelpParam(ToggleParam): #[bool]):
     desc : str = "The Default Help Param"
 
     def __init__(self, **kwargs):
-        kwargs.update({"name":"help", "default":False, "prefix":"--", "implicit":True})
+        kwargs.update({"name":"--help", "default":False, "implicit":True})
         super().__init__(**kwargs)
 
 class VerboseParam(RepeatToggleParam): #[int]):
@@ -78,7 +79,7 @@ class VerboseParam(RepeatToggleParam): #[int]):
     desc : str = "The Default Verbosity Param"
 
     def __init__(self, **kwargs):
-        kwargs.update({"name":"verbose", "default":0, "prefix":"-", "implicit":True})
+        kwargs.update({"name":"--verbose", "default":0, "implicit":True})
         super().__init__(**kwargs)
 
 class SeparatorParam(LiteralParam):
@@ -87,5 +88,5 @@ class SeparatorParam(LiteralParam):
     desc : str = "The Default Separator Param"
 
     def __init__(self, **kwargs):
-        kwargs.update({"name":"--", "prefix":"", "implicit":True})
+        kwargs.update({"name":"--", "implicit":True})
         super().__init__(**kwargs)

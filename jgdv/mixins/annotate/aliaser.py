@@ -70,7 +70,7 @@ class SubAlias_m:
     - accumulate:bool                             : annotations accumulate from their parent class
     - strict:bool                                 : error if a subclass tries to overwrite a registration
     - default:bool                                : set this subclass as the default if no marks are specified when creating an instance
-    - annotation:Maybe[str|type|enum|tuple[...]]  : the key to use for this subclass
+    - annotation:Maybe[str|type|enum|tuple[...]]  : the key to use for this subclass, if class_getitem hasn't been used
     - no_register:bool                            : create the class, but don't register it
 
     cls[val] -> GenericAlias(cls, val)

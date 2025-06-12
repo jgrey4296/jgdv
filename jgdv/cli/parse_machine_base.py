@@ -6,7 +6,7 @@ and the ParseMachineBase StateMachine.
 ParseMachineBase descibes the state progression to parse arguments,
 while jgdv.cli.arg_parser.CLIParser adds the specific logic to states and transitions
 """
-
+# ruff: noqa: F401
 # Imports:
 from __future__ import annotations
 
@@ -38,12 +38,7 @@ from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
 
-from .param_spec import (
-    HelpParam,
-    LiteralParam,
-    ParamSpec,
-    SeparatorParam,
-)
+from .param_spec import ParamSpec
 
 # ##-- types
 # isort: off
@@ -113,7 +108,7 @@ class ParseMachineBase(StateMachine):
                | Failed.to(Cleanup, after="finish")
                )
 
-    def __init__(self, *, parser:ArgParser_p=None):
+    def __init__(self, *, parser:Maybe[ArgParser_p]=None):
         assert(parser is not None)
         super().__init__(parser)
         self.count = 0

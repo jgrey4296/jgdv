@@ -2,82 +2,104 @@
 """
 
 """
-##-- imports
+# ruff: noqa: ANN202, B011
+# imports:
 from __future__ import annotations
 
 import itertools as itz
 import logging as logmod
 import warnings
 import pathlib as pl
-from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
-                    Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
-                    TypeVar, cast)
-##-- end imports
-logging = logmod.root
-
+import typing
+from typing import Any
 import pytest
 from jgdv.cli import ParseError
-from jgdv.cli.param_spec import ParamSpec
-from jgdv.cli.param_spec.core import ToggleParam, LiteralParam, ImplicitParam, KeyParam, RepeatableParam, ChoiceParam, EntryParam, ConstrainedParam
+from ..param_spec import ParamSpec
+from ... import _interface as API  # noqa: N812
+from .. import core
+##--| vars
+logging = logmod.root
 
 good_names = ("test", "blah", "bloo")
 bad_names  = ("-test", "blah=bloo")
+
+##--|
 
 class TestToggleParam:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
+    def test_fail_with_wrong_type(self):
+        data     = {"name" : "-test", "type":str}
+        with pytest.raises(TypeError):
+            core.ToggleParam(**data)
+
     def test_consume_toggle(self):
-        obj = ToggleParam.model_validate({"name" : "test"})
-        match obj.consume(["-test"]):
-            case {"test": True,}, 1:
+        data     = {"name" : "-test"}
+        in_data  = [ "-test" ]
+        obj      = core.ToggleParam(**data)
+        match obj.consume(in_data):
+            case {"test": True}, 1:
                 assert(True)
             case x:
                 assert(False), x
 
     def test_consume_inverse_toggle(self):
-        obj = ToggleParam.model_validate({"name" : "test"})
+        data     = {"name" : "-test"}
+        in_data  = ["-no-test"]
+        obj      = core.ToggleParam(**data)
         assert(obj.default_value is False)
-        match obj.consume(["-no-test"]):
-            case {"test": False,}, 1:
+        match obj.consume(in_data):
+            case {"test": False}, 1:
                 assert(True)
             case x:
                 assert(False), x
 
     def test_consume_short_toggle(self):
-        obj = ToggleParam.model_validate({"name" : "test"})
-        match obj.consume(["-t"]):
-            case {"test": True,}, 1:
+        data     = {"name" : "-test"}
+        in_data  = ["-t"]
+        obj      = core.ToggleParam(**data)
+        match obj.consume(in_data):
+            case {"test": True}, 1:
                 assert(True)
             case x:
                 assert(False), x
 
-class TestLiteralParam:
+class TestPositionalParam:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    def test_literal(self):
-        obj = LiteralParam(name="blah")
-        match obj.consume(["blah"]):
-            case {"blah":True}, 1:
+    def test_protocol(self):
+        assert(issubclass(core.PositionalParam, ParamSpec))
+        assert(isinstance(core.PositionalParam, API.ParamStruct_p))
+        assert(issubclass(core.PositionalParam, API.PositionalParam_p))
+
+    def test_consume_positional(self):
+        data     = {"name":"<1>test", "type":str}
+        in_data  = ["aweg", "blah"]
+        obj      = core.PositionalParam(**data)
+        match obj.consume(in_data):
+            case {"test": "aweg"}, 1:
                 assert(True)
-            case None:
-                assert(False)
+            case x:
+                assert(False), x
 
-    def test_literal_fail(self):
-        obj = LiteralParam(name="blah")
-        match obj.consume(["notblah"]):
-            case None:
+    def test_consume_positional_list(self):
+        data = {
+            "name"     : "test",
+            "type"     : list,
+            "default"  : [],
+            "count"    : 2,
+        }
+        in_data = ["bloo", "blah", "aweg"]
+        obj = core.PositionalParam(**data)
+        match obj.consume(in_data):
+            case {"test": ["bloo", "blah"]}, 2:
                 assert(True)
-            case _:
-                assert(False)
-
-class TestImplicitParam:
-
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
+            case x:
+                assert(False), x
 
 class TestKeyParam:
 
@@ -85,102 +107,88 @@ class TestKeyParam:
         assert(True is not False) # noqa: PLR0133
 
     def test_consume_key_value_str(self):
-        obj = KeyParam[str].model_validate({"name" : "test"})
+        data     = {"name" : "-test", "type":str}
+        in_data  = ["-test", "blah"]
+        obj      = core.KeyParam(**data)
         assert(obj.type_ is str)
-        match obj.consume(["-test", "blah"]):
+        match obj.consume(in_data):
             case {"test":"blah"}, 2:
                 assert(True)
             case x:
                 assert(False), x
 
     def test_consume_key_value_int(self):
-        obj = KeyParam[int].model_validate({"name" : "test"})
+        data     = {"name" : "-test", "type": int}
+        in_data  = ["-test", "20"]
+        obj      = core.KeyParam(**data)
         assert(obj.type_ is int)
-        match obj.consume(["-test", "20"]):
+        match obj.consume(in_data):
             case {"test":20}, 2:
                 assert(True)
             case x:
                 assert(False), x
 
     def test_consume_key_value_fail(self):
-        obj = KeyParam[str].model_validate({"name" : "test"})
-        match obj.consume(["-nottest", "blah"]):
+        data     = {"name" : "-test", "type":str}
+        in_data  = ["-nottest", "blah"]
+        obj      = core.KeyParam(**data)
+        match obj.consume(in_data):
             case None:
                 assert(True)
             case _:
                 assert(False)
 
-class TestRepeatableParam:
+class TestAssignParam:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    def test_consume_list_single_value(self):
-        obj = RepeatableParam.model_validate({"name" : "test", "type" : list})
-        match obj.consume(["-test", "bloo"]):
-            case {"test": ["bloo"]}, 2:
+    def test_fail_with_wrong_type(self):
+        data     = {"name" : "-test=", "type":bool}
+        with pytest.raises(TypeError):
+            core.AssignParam(**data)
+
+    def test_fail_with_no_prefix(self):
+        data     = {"name" : "test="}
+        with pytest.raises(ValueError):
+            core.AssignParam(**data)
+
+    def test_fail_with_no_separator(self):
+        data     = {"name" : "-test"}
+        with pytest.raises(ValueError):
+            core.AssignParam(**data)
+
+    def test_build_with_custom_prefix(self):
+        data     = {"name" : "+test="}
+        val = core.AssignParam(**data)
+        assert(val.prefix == "+")
+
+    def test_consume_assignment(self):
+        data     = {"name" : "--test="}
+        in_args  = ["--test=blah", "other"]
+        obj      = core.AssignParam(**data)
+        match obj.consume(in_args):
+            case {"test":"blah"}, 1:
                 assert(True)
             case x:
                 assert(False), x
 
-    def test_consume_list_multi_key_val(self):
-        obj     = RepeatableParam.model_validate({"name":"test"})
-        in_args = ["-test", "bloo", "-test", "blah", "-test", "bloo", "-not", "this"]
+    def test_consume_int(self):
+        data     = {"name" : "--test=", "type":int}
+        in_args  = ["--test=2", "other"]
+        obj      = core.AssignParam(**data)
         match obj.consume(in_args):
-            case {"test": ["bloo", "blah", "bloo"]}, 6:
+            case {"test": 2}, 1:
                 assert(True)
             case x:
                 assert(False), x
 
-    def test_consume_set_multi(self):
-        obj = RepeatableParam[set].model_validate({
-            "name"    : "test",
-            "type"    : set,
-            "default" : set,
-          })
-        in_args             = ["-test", "bloo", "-test", "blah", "-test", "bloo", "-not", "this"]
-        match obj.consume(in_args):
-            case {"test": set() as x}, 6:
-                assert(x == {"bloo", "blah"})
-            case x:
-                assert(False), x
-
-    def test_consume_str_multi_set_fail(self):
-        obj = RepeatableParam[set].model_validate({
-            "name" : "test",
-            "type" : str,
-            "default" : "",
-          })
-        in_args             = ["-nottest", "bloo", "-nottest", "blah", "-nottest", "bloo", "-not", "this"]
-        match obj.consume(in_args):
-            case None:
-                assert(True)
-            case x:
-                assert(False), x
-
-    def test_consume_multi_assignment_fail(self):
-        obj     = RepeatableParam.model_validate({"name":"test", "type":list, "default":list, "prefix":"--"})
-        in_args = ["--test=blah", "--test=bloo"]
+    def test_consume_assignment_wrong_prefix(self):
+        data     = {"name" : "--test="}
+        in_args  = ["-t=blah"]
+        obj      = core.AssignParam(**data)
         match obj.consume(in_args):
             case None:
                 assert(True)
-            case _:
+            case x:
                 assert(False), x
-
-@pytest.mark.skip
-class TestChoiceParam:
-
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
-
-@pytest.mark.skip
-class TestEntryParam:
-
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
-
-@pytest.mark.skip
-class TestConstrainedParam:
-
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
