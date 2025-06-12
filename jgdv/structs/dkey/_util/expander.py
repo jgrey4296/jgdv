@@ -297,8 +297,6 @@ class DKeyExpander:
             match inst:
                 case ExpInst_d(literal=True) | ExpInst_d(rec=ExpAPI.NO_EXPANSIONS_PERMITTED) as res:
                     result.append(res)
-                case ExpInst_d(value=list()|set()|dict()|tuple()) as res: # Protect against nonsensical coercions
-                    result.append(res)
                 case ExpInst_d(value=API.Key_p() as key, rec=ExpAPI.UNRESTRICTED_EXPANSION) if key is source or key == source:
                     msg = "Unrestrained Recursive Expansion"
                     raise RecursionError(msg, source)
@@ -308,8 +306,10 @@ class DKeyExpander:
                     recurse_on  = key
                 case ExpInst_d(value=pl.Path()|str() as key):
                     recurse_on = self._ctor(key)
-                case ExpInst_d(value=key):
-                    recurse_on  = self._ctor(key)
+                # case ExpInst_d(value=key):
+                #     recurse_on  = self._ctor(key)
+                case ExpInst_d() as res: # Protect against nonsensical coercions
+                    result.append(res)
                 case x:
                     msg = "Unexpected Recursion Value"
                     raise TypeError(msg, x)
