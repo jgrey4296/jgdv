@@ -103,17 +103,11 @@ class LiteralParam(ToggleParam):
     For command/subcmd names etc
     """
     desc   : str = "A Literal"
-    prefix : str = ""
 
     def matches_head(self, val) -> bool:
-        """ test to see if a cli argument matches this param
-
-        Will match anything if self.positional
-        Matchs {self.prefix}{self.name} if not an assignment
-        Matches {self.prefix}{self.name}{separator} if an assignment
-        """
+        """ test to see if a cli argument matches this param """
         match val:
-            case x if x == self.name:
+            case x if x == self.key_str:
                 return True
             case _:
                 return False
@@ -174,7 +168,6 @@ class ChoiceParam(LiteralParam):
     def matches_head(self, val) -> bool:
         """ test to see if a cli argument matches this param
 
-        Will match anything if self.positional
         Matchs {self.prefix}{self.name} if not an assignment
         Matches {self.prefix}{self.name}{separator} if an assignment
         """

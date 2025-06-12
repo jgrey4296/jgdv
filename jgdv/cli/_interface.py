@@ -96,7 +96,7 @@ class ParseResult_d:
 
     def to_dict(self) -> dict:
         return {"name":self.name, "args":self.args, NON_DEFAULT_KEY:self.non_default}
-##--|
+##--| Params
 
 @runtime_checkable
 class ParamStruct_p(Protocol):
@@ -107,8 +107,8 @@ class ParamStruct_p(Protocol):
 
     """
 
-    @staticmethod
-    def key_func(x:ParamStruct_i) -> tuple: ...
+    @classmethod
+    def key_func(cls, x:ParamStruct_i) -> tuple: ...
 
     def consume(self, args:list[str], *, offset:int=0) -> Maybe[tuple[dict, int]]:
         pass
@@ -134,9 +134,6 @@ class ParamStruct_p(Protocol):
     def key_strs(self) -> list[str]: ...
 
     @property
-    def positional(self) -> bool: ...
-
-    @property
     def default_value(self) -> Any: ...  # noqa: ANN401
 
     @property
@@ -155,6 +152,29 @@ class ParamStruct_i(ParamStruct_p, Protocol):
     separator  : str|Literal[False]
     implicit   : bool
 
+##--| Param Subtypes
+
+@runtime_checkable
+class PositionalParam_p(Protocol):
+
+    def _positional(self) -> Literal[True]: ...
+
+@runtime_checkable
+class AssignmentParam_p(Protocol):
+
+    def _assignment(self) -> Literal[True]: ...
+
+@runtime_checkable
+class KeyParam_p(Protocol):
+
+    def _keyval(self) -> Literal[True]: ...
+
+@runtime_checkable
+class ToggleParam_p(Protocol):
+
+    def _toggle(self) -> Literal[True]: ...
+##--| Parsing
+
 @runtime_checkable
 class ArgParser_p(Protocol):
     """
@@ -171,12 +191,13 @@ class ArgParser_p(Protocol):
 
 @runtime_checkable
 class ParamSource_p(Protocol):
+    """ Param Sources are anything that can provide a name and a set of parameters """
 
     @property
     def name(self) -> str:
         raise NotImplementedError()
 
-    def param_specs(self) -> list[ParamStruct_p]:
+    def param_specs(self) -> list[ParamStruct_i]:
         raise NotImplementedError()
 
 @runtime_checkable
@@ -186,6 +207,6 @@ class CLIParamProvider_p(Protocol):
     """
 
     @classmethod
-    def param_specs(cls) -> list[ParamStruct_p]:
+    def param_specs(cls) -> list[ParamStruct_i]:
         """  make class parameter specs  """
         pass

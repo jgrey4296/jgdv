@@ -19,12 +19,12 @@ from ..param_spec import ParamSpec, ParamProcessor
 from ... import _interface as API # noqa: N812
 
 ##--| vars
-logging = logmod.root
-good_names = ("test", "blah", "bloo")
-parse_test_vals = [("-test", "-", "test"),
-                   ("--blah", "--", "blah"),
-                   ("--bloo=", "--", "bloo"),
-                   ("+aweg", "+", "aweg"),
+logging          = logmod.root
+good_names       = ("test", "blah", "bloo")
+parse_test_vals  = [("-test", "-", "test"),
+                    ("--blah", "--", "blah"),
+                    ("--bloo=", "--", "bloo"),
+                    ("+aweg", "+", "aweg"),
                    ]
 
 sorting_names   = ["-next", "<>another", "--test", "<2>other", "<1>diff"]
@@ -35,36 +35,6 @@ class TestParamProcessor:
 
     def test_sanity(self):
         assert(True is not False)
-
-    ##--| match utils
-
-    @pytest.mark.parametrize("key", [*good_names])
-    def test_match_on_head(self, key):
-        """ Simple names match a set of standard variations """
-        obj    = ParamProcessor()
-        param  = ParamSpec(name=key)
-        assert(obj.matches_head(param, f"-{key}"))
-        assert(obj.matches_head(param, f"-{key[0]}"))
-        assert(obj.matches_head(param, f"-no-{key}"))
-
-    @pytest.mark.parametrize("key", [*good_names])
-    def test_match_on_head_assignments(self, key):
-        """ Assignments match on a reduced set of variations """
-        obj    = ParamProcessor()
-        param  = ParamSpec(name=key, prefix="--", separator="=")
-        assert(not param.positional)
-        assert(obj.matches_head(param, f"--{key}=val"))
-        assert(obj.matches_head(param, f"--{key[0]}=val"))
-
-    @pytest.mark.parametrize("key", [*good_names])
-    def test_match_on_head_fail(self, key):
-        """ some variations do not match """
-        obj    = ParamProcessor()
-        param  = ParamSpec(name=key, prefix="--")
-        assert(not obj.matches_head(param, key))
-        assert(not obj.matches_head(param, f"{key}=blah"))
-        assert(not obj.matches_head(param, f"-{key}=val"))
-        assert(not obj.matches_head(param, f"-{key[0]}=val"))
 
     ##--| name parsing
 
@@ -84,45 +54,36 @@ class TestParamProcessor:
         assert(res['name'] == "group-by")
         assert(res['prefix'] == "--")
 
+    ##--| match utils
+
+    @pytest.mark.parametrize("key", [*good_names])
+    def test_match_on_head(self, key):
+        """ Simple names match a set of standard variations """
+        obj    = ParamProcessor()
+        param  = ParamSpec(name=f"-{key}")
+        assert(obj.matches_head(param, f"-{key}"))
+        assert(obj.matches_head(param, f"-{key[0]}"))
+        assert(obj.matches_head(param, f"-no-{key}"))
+
+    @pytest.mark.parametrize("key", [*good_names])
+    def test_match_on_head_assignments(self, key):
+        """ Assignments match on a reduced set of variations """
+        obj    = ParamProcessor()
+        param  = ParamSpec(name=f"--{key}=")
+        assert(obj.matches_head(param, f"--{key}=val"))
+        assert(obj.matches_head(param, f"--{key[0]}=val"))
+
+    @pytest.mark.parametrize("key", [*good_names])
+    def test_match_on_head_fail(self, key):
+        """ some variations do not match """
+        obj    = ParamProcessor()
+        param  = ParamSpec(name=f"--{key}")
+        assert(not obj.matches_head(param, key))
+        assert(not obj.matches_head(param, f"{key}=blah"))
+        assert(not obj.matches_head(param, f"-{key}=val"))
+        assert(not obj.matches_head(param, f"-{key[0]}=val"))
+
 ##--|
-
-class TestParamSpec_Basic:
-
-    def test_sanity(self):
-        assert(True is not False)
-
-    def test_initial(self):
-        match ParamSpec(name="test"):
-            case ParamSpec() as obj:
-                assert(isinstance(obj, API.ParamStruct_p))
-            case x:
-                 assert(False), x
-
-    def test_key_strs_prop(self):
-        obj = ParamSpec(prefix="-", name="test")
-        assert(obj.key_str == "-test")
-        match obj.key_strs:
-            case list():
-                assert(True)
-            case x:
-                 assert(False), x
-
-    def test_positional(self):
-        obj = ParamSpec(name="test",
-                        type=list,
-                        default=[1,2,3],
-                        prefix="")
-        assert(obj.positional is True)
-
-    @pytest.mark.parametrize(["key", "prefix"], zip(good_names, itz.cycle(["-", "--"])))
-    def test_short_key(self, key, prefix):
-        obj = ParamSpec(name=key, prefix=prefix)
-        assert(obj.short == key[0])
-        match prefix:
-            case "--":
-                assert(obj.short_key_str == f"{prefix}{key[0]}")
-            case "-":
-                assert(obj.short_key_str == f"{prefix}{key[0]}")
 
 class TestParamSpec_classmethods:
 
@@ -136,7 +97,7 @@ class TestParamSpec_classmethods:
             {"name":"--other", "default":list},
             {"name":"+another", "default":lambda: [1,2,3,4]},
         ]
-        params = [y for x in param_dicts if (y:=ParamSpec.build(x))]
+        params = [y for x in param_dicts if (y:=ParamSpec(**x))]
         assert(len(params) == len(param_dicts))
         result = ParamSpec.build_defaults(params)
         assert(result['test'] == 'test')
@@ -151,7 +112,7 @@ class TestParamSpec_classmethods:
             {"name":"other", "default":list, "insist":True},
             {"name":"another", "default":lambda: [1,2,3,4], "insist":False},
         ]
-        params = [ParamSpec.build(x) for x in param_dicts]
+        params = [ParamSpec(**x) for x in param_dicts]
         ParamSpec.check_insists(params, {"next": 2, "other":[1,2,3]})
         assert(True)
 
@@ -162,81 +123,90 @@ class TestParamSpec_classmethods:
             {"name":"other", "default":list, "insist":True},
             {"name":"another", "default":lambda: [1,2,3,4], "insist":False},
         ]
-        params = [ParamSpec.build(x) for x in param_dicts]
+        params = [ParamSpec(**x) for x in param_dicts]
         with pytest.raises(ParseError) as ctx:
             ParamSpec.check_insists(params, {"other":[1,2,3]})
 
         assert(ctx.value.args[-1] == ["next"])
 
-
-class TestParamSpec_Consumption:
+class TestParamSpec_Sorting:
 
     def test_sanity(self):
         assert(True is not False)
 
-    def test_consume_nothing(self):
-        obj = ParamSpec.build({"name" : "test"})
-        match obj.consume([]):
-            case None:
-                assert(True)
-            case _:
-                assert(False)
+    def test_sorting(self):
+        target_sort  = correct_sorting
+        param_dicts  = [{"name":x} for x in sorting_names]
+        params       = [ParamSpec(**x) for x in param_dicts]
+        s_params     = sorted(params, key=ParamSpec.key_func)
+        for x,y in zip(s_params, target_sort, strict=True):
+            assert(x.key_str == y), s_params
+
+class TestParamSpec_Basic:
+
+    def test_sanity(self):
+        assert(True is not False)
+
+    def test_initial(self):
+        match ParamSpec(name="test"):
+            case ParamSpec() as obj:
+                assert(isinstance(obj, API.ParamStruct_p))
+            case x:
+                 assert(False), x
 
 
-    def test_consume_match(self):
-        obj = ParamSpec.build({"name" : "-test"})
-        assert(isinstance(obj, ParamSpec))
-        match obj.consume(["-test"]):
-            case {"test": True}, 1:
-                assert(True)
-            case _:
-                assert(False)
+    def test_equality(self):
+        obj1 = ParamSpec(name="test")
+        obj2 = ParamSpec(name="test")
+        assert(obj1 is not obj2)
+        assert(obj1 == obj2)
 
 
-    def test_consume_with_remaining(self):
-        obj = ParamSpec.build({"name" : "-test"})
-        assert(isinstance(obj, ParamSpec))
-        match obj.consume(["-test", "blah"]):
-            case {"test": True}, 1:
-                assert(True)
-            case _:
-                assert(False)
+    def test_equality_trivial_fail(self):
+        obj1 = ParamSpec(name="test")
+        obj2 = "blah"
+        assert(obj1 is not obj2)
+        assert(obj1 != obj2)
 
-    def test_consume_with_offset(self):
-        obj = ParamSpec.build({"name" : "-test"})
-        match obj.consume(["blah", "bloo", "-test", "aweg"], offset=2):
-            case {"test": True}, 1:
+
+    def test_equality_fail_on_name(self):
+        obj1 = ParamSpec(name="test")
+        obj2 = ParamSpec(name="blah")
+        assert(obj1 is not obj2)
+        assert(obj1 != obj2)
+
+
+    def test_equality_fail_on_prefix(self):
+        obj1 = ParamSpec(name="-test")
+        obj2 = ParamSpec(name="--test")
+        assert(obj1 is not obj2)
+        assert(obj1 != obj2)
+
+
+    def test_equaltiy_fail_on_separator(self):
+        obj1 = ParamSpec(name="--test=")
+        obj2 = ParamSpec(name="--test")
+        assert(obj1 is not obj2)
+        assert(obj1 != obj2)
+
+    def test_key_strs_prop(self):
+        obj = ParamSpec(name="-test")
+        assert(obj.key_str == "-test")
+        match obj.key_strs:
+            case list():
                 assert(True)
             case x:
-                assert(False), x
+                 assert(False), x
 
-
-    def test_consume_nothing_without_offset(self):
-        obj = ParamSpec.build({"name" : "-test", "type" : str})
-        assert(obj.type_ is str)
-        match obj.consume(["blah", "bloo", "-test", "aweg"]):
-            case None:
-                assert(True)
-            case x:
-                assert(False), x
-
-    def test_consume_short(self):
-        obj = ParamSpec.build({"name" : "--test", "default":False, "type":bool})
-        assert(obj.type_ is bool)
-        match obj.consume(["--t", "blah", "bloo"]):
-            case {"test": True}, 1:
-                assert(True)
-            case x:
-                assert(False), x
-
-    @pytest.mark.xfail
-    def test_consume_something(self):
-        obj = ParamSpec(name="test")
-        match obj.consume([]):
-            case None:
-                assert(False)
-            case _:
-                assert(True)
+    @pytest.mark.parametrize(["key", "prefix"], zip(good_names, itz.cycle(["-", "--"])))
+    def test_short_key(self, key, prefix):
+        obj = ParamSpec(name=f"{prefix}{key}")
+        assert(obj.short == key[0])
+        match prefix:
+            case "--":
+                assert(obj.short_key_str == f"{prefix}{key[0]}")
+            case "-":
+                assert(obj.short_key_str == f"{prefix}{key[0]}")
 
 class TestParamSpec_Types:
 
@@ -257,7 +227,7 @@ class TestParamSpec_Types:
         obj = ParamSpec(**{"name":"blah", "type":list[str]})
         assert(isinstance(obj.type_, types.GenericAlias))
         assert(obj.type_.__origin__ is list)
-        assert(obj.type_.__args__[0] == str)
+        assert(obj.type_.__args__[0] is str)
         assert(obj.default is list)
 
     def test_annotated(self):
@@ -287,36 +257,23 @@ class TestParamSpec_Types:
         with pytest.raises(TypeError):
             ParamSpec(**{"name":"blah", "type":ParamSpec})
 
-class TestParamSpec_Sorting:
-
-    def test_sanity(self):
-        assert(True is not False)
-
-    def test_sorting(self):
-        target_sort  = correct_sorting
-        param_dicts  = [{"name":x} for x in sorting_names]
-        params       = [ParamSpec.build(x) for x in param_dicts]
-        s_params     = sorted(params, key=ParamSpec.key_func)
-        for x,y in zip(s_params, target_sort, strict=True):
-            assert(x.key_str == y), s_params
-
 class TestParamSpec_Building:
 
     def test_sanity(self):
         assert(True is not False)
 
     def test_int(self):
-        obj = ParamSpec.build({"name":"blah", "type":int})
+        obj = ParamSpec(**{"name":"blah", "type":int})
         assert(obj.type_ is int)
         assert(obj.default == 0)
 
     def test_Any(self): # noqa: N802
-        obj = ParamSpec.build({"name":"blah", "type":Any})
+        obj = ParamSpec(**{"name":"blah", "type":Any})
         assert(obj.type_ is None)
         assert(obj.default is None)
 
     def test_typed_list(self):
-        obj = ParamSpec.build({"name":"blah", "type":list[str]})
+        obj = ParamSpec(**{"name":"blah", "type":list[str]})
         assert(isinstance(obj.type_, types.GenericAlias))
         assert(obj.type_.__origin__ is list)
         assert(obj.type_.__args__[0] is str)
@@ -328,4 +285,74 @@ class TestParamSpec_Building:
 
     def test_type_build_fail(self):
         with pytest.raises(TypeError):
-            ParamSpec.build({"name":"-blah", "type":ParamSpec})
+            ParamSpec(**{"name":"-blah", "type":ParamSpec})
+
+class TestParamSpec_Consumption:
+
+    def test_sanity(self):
+        assert(True is not False)
+
+    def test_consume_nothing(self):
+        data     = {"name" : "test"}
+        in_args  = []
+        obj      = ParamSpec(**data)
+        match obj.consume(in_args):
+            case None:
+                assert(True)
+            case _:
+                assert(False)
+
+    def test_consume_match(self):
+        data     = {"name" : "-test"}
+        in_args  = ["-test"]
+        obj      = ParamSpec(**data)
+        assert(isinstance(obj, ParamSpec))
+        match obj.consume(in_args):
+            case {"test": True}, 1:
+                assert(True)
+            case _:
+                assert(False)
+
+    def test_consume_with_remaining(self):
+        data     = {"name"  : "-test"}
+        in_args  = ["-test", "blah"]
+        obj      = ParamSpec(**data)
+        assert(isinstance(obj, ParamSpec))
+        match obj.consume(in_args):
+            case {"test": True}, 1:
+                assert(True)
+            case _:
+                assert(False)
+
+    def test_consume_with_offset(self):
+        data     = {"name" : "-test"}
+        in_args  = ["blah", "bloo", "-test", "aweg"]
+        obj      = ParamSpec(**data)
+        match obj.consume(in_args, offset=2):
+            case {"test": True}, 1:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_consume_nothing_without_offset(self):
+        data     = {"name" : "-test", "type" : str}
+        in_args  = ["blah", "bloo", "-test", "aweg"]
+        obj      = ParamSpec(**data)
+        assert(obj.type_ is str)
+        match obj.consume(in_args):
+            case None:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_consume_short(self):
+        data     = {"name" : "--test", "default":False, "type":bool}
+        in_args  = ["--t", "blah", "bloo"]
+        obj      = ParamSpec(**data)
+        assert(obj.type_ is bool)
+        match obj.consume(in_args):
+            case {"test": True}, 1:
+                assert(True)
+            case x:
+                assert(False), x
+

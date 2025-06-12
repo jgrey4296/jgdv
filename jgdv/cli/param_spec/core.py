@@ -47,8 +47,6 @@ from collections.abc import Callable
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-
-from pydantic import Field, InstanceOf
 if TYPE_CHECKING:
     from jgdv import Maybe
     from typing import Final
@@ -72,6 +70,15 @@ class ToggleParam(ParamSpec, annotation=bool, default=True):
 
     desc : str = "A Toggle"
 
+    def __init__(self, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
+        super().__init__(*args, **kwargs)
+        if self.type_ is not bool:
+            msg = "Toggle Params can only be boolean"
+            raise TypeError(msg, self.name)
+
+    def _toggle(self) -> Literal[True]:
+        return True
+
     def next_value(self, args:list) -> tuple[str, list, int]:
         head, *_ = args
         if self.inverse in head:
@@ -81,14 +88,17 @@ class ToggleParam(ParamSpec, annotation=bool, default=True):
 
         return self.name, [value], 1
 
-class KeyParam(ParamSpec):
-    """ TODO a param that is specified by a prefix key
+class KeyParam(ParamSpec[str]):
+    """ a param that is specified by a prefix key
+
     eg: -key val
     """
-    type_ : InstanceOf[type] = Field(default=str, alias="type")
     desc  : str = "A Key"
 
-    def matches_head(self, val) -> bool:
+    def _keyval(self) -> Literal[True]:
+        return True
+
+    def matches_head(self, val:str) -> bool:
         return val in self.key_strs
 
     def next_value(self, args:list) -> tuple[str, list, int]:
@@ -102,15 +112,31 @@ class KeyParam(ParamSpec):
                 raise ArgParseError(msg)
 
 class AssignParam(ParamSpec):
-    """ TODO a joined --key=val param """
+    """ a joined --key=val param """
 
     desc : str = "An Assignment Param"
 
     def __init__(self, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
-        kwargs.setdefault("prefix", "--")
-        kwargs.setdefault("separator", "=")
         kwargs.setdefault("type", str)
         super().__init__(*args, **kwargs)
+        if self.type_ is bool:
+            msg = "A boolean assignment param is pointless, use a toggle"
+            raise TypeError(msg, self.name)
+        match self.prefix:
+            case str() as x if bool(x):
+                pass
+            case x:
+                msg = "Bad prefix value for an assignment param"
+                raise ValueError(msg, x)
+        match self.separator:
+            case str() as x if bool(x):
+                pass
+            case x:
+                msg = "Bad separator value for an assignment param"
+                raise ValueError(msg, x)
+
+    def _assignment(self) -> Literal[True]:
+        return True
 
     def next_value(self, args:list) -> tuple[str, list, int]:
         """ get the value for a --key=val """
@@ -118,16 +144,29 @@ class AssignParam(ParamSpec):
         if self.separator not in args[0]:
             msg = "Assignment param has no assignment"
             raise ArgParseError(msg, self.separator, args[0])
-        key,val = self._split_assignment(args[0])
+        key,val = self._processor.split_assignment(self, args[0])
         return self.name, [val], 1
 
 class PositionalParam(ParamSpec):
     """ A param that is specified by its position in the arg list
 
-    TODO enable it to consume multiples
+    Positional Params are formatted as <int>name.
+    eg: <2>blah
+
+    The integer is the *relative* sort of the parameter.
+    As the full parameter list can be accumulated at runtime,
+    ParamSpec sorts them ready for use.
+    See ParamSpec.key_func.
+
+    Suffice to say, at specification time: <2>blah <50>aweg <-2>qqqq
+    Results in a run time positional param list of: qqqq, blah, aweg
+
     """
 
     desc : str = "A Positional Param"
+
+    def _positional(self) -> Literal[True]:
+        return True
 
     @ftz.cached_property
     def key_str(self) -> str:
@@ -141,7 +180,7 @@ class PositionalParam(ParamSpec):
             case 1:
                 return self.name, [args[0]], 1
             case -1:
-                idx     = args.index(END_SEP)
+                idx     = args.index(self._processor.end_sep)
                 claimed = args[max(idx, len(args))]
                 return self.name, claimed, len(claimed)
             case int() as x if x < len(args):

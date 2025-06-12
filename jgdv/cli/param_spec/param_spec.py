@@ -132,23 +132,27 @@ class ParamProcessor:
           ["-arg"],    (if type=bool)
           ["-no-arg"], (if type=bool)
           """
-        consumed, remaining = 0, args[offset:]
+        result  : Maybe[tuple[dict, int]]  = None
+        consumed, remaining                = 0, args[offset:]
+        ##--|
         logging.debug("Trying to consume: %s : %s", obj.name, remaining)
         try:
             match remaining:
                 case []:
-                    return None
+                    result = None
                 case [x, *xs] if not self.matches_head(obj, x):
-                    return None
+                    result = None
                 case [*xs]:
                     key, value, consumed = self.next_value(obj, xs)
-                    return self.coerce_types(obj, key, value), consumed
+                    result = self.coerce_types(obj, key, value), consumed
                 case _:
                     msg = "Tried to consume a bad type"
                     raise ArgParseError(msg, remaining)  # noqa: TRY301
         except ArgParseError as err:
             logging.debug("Parsing Failed: %s : %s (%s)", obj.name, args, err)
             return None
+        else:
+            return result
 
     def next_value(self, obj:ParamStruct_i, args:list) -> tuple[str, list, int]:
         match getattr(obj, "next_value", None):
@@ -156,9 +160,9 @@ class ParamProcessor:
                 pass
             case x:
                 assert(callable(x))
-                x.next_value(args)
+                return x(args)
 
-        if obj.positional or obj.type_ is bool:
+        if obj.type_ is bool:
             return obj.name, [args[0]], 1
         if obj.separator and obj.separator not in args[0]:
             return obj.name, [args[1]], 2
@@ -189,28 +193,28 @@ class ParamProcessor:
             case _, [x]:
                 result[key] = x
             case _, val:
-                result[key] = val
+                 result[key] = val
 
         return result
 
-    def matches_head(self, obj:ParamStruct_i, val:str) -> bool:
+    def matches_head(self, obj:ParamStruct_i, val:str, *, silent:bool=True) -> bool:
         """ test to see if a cli argument matches this param
 
-        Will match anything if self.positional
         Matchs {self.prefix}{self.name} if not an assignment
         Matches {self.prefix}{self.name}{separator} if an assignment
         """
+        result : bool = False
         match getattr(obj, "matches_head", None):
             case None:
-                pass
+                key, *_ = self.split_assignment(obj, val)
+                assert(isinstance(obj.key_strs, list))
+                result = key in obj.key_strs and key.startswith(str(obj.prefix))
             case x:
                 assert(callable(x))
-                return x(val)
+                result = x(val)
 
-        key, *_ = self.split_assignment(obj, val)
-        assert(isinstance(obj.key_strs, list))
-        result = key in obj.key_strs and key.startswith(str(obj.prefix))
-        logging.debug("Matches Head: %s : %s = %s", obj.name, val, result)
+        if result and not silent:
+            logging.debug("Head Matches : %s : %s", obj.name, val)
         return result
 
     def match_on_end(self, val:str) -> bool:
@@ -226,7 +230,7 @@ class ParamProcessor:
 class _ParamClassMethods:
 
     @staticmethod
-    def build_defaults( params:list[ParamStruct_i]) -> dict:
+    def build_defaults( params:Iterable[ParamStruct_i]) -> dict:
         """ Given a list of params, create a mapping of {name} -> {default value} """
         result : dict = {}
         for p in params:
@@ -239,7 +243,7 @@ class _ParamClassMethods:
         return result
 
     @staticmethod
-    def check_insists(params:list[ParamStruct_i], data:dict) -> None:
+    def check_insists(params:Iterable[ParamStruct_i], data:dict) -> None:
         missing = []
         for p in params:
             if p.insist and p.name not in data:
@@ -248,6 +252,7 @@ class _ParamClassMethods:
             if bool(missing):
                 msg = "Missing Required Params"
                 raise ArgParseError(msg, missing)
+
     @classmethod
     def key_func(cls, x:ParamStruct_i) -> tuple:
         """ Sort Parameters
@@ -267,19 +272,6 @@ class _ParamClassMethods:
             case int() as p:
                 return (_SortGroups_e.by_pos, p, x.prefix or 99, x.name)
 
-    @classmethod
-    def build(cls:type[ParamStruct_i], data:dict) -> ParamStruct_i: # type: ignore[override]
-        """
-        Utility method for easily constructing params
-        """
-        # Parse the name
-        match cls._processor.parse_name(data.get("name")):
-            case dict() as ns:
-                data.update(ns)
-            case _:
-                pass
-
-        return cls(**data)
 
 class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registry=True):
     """ Declarative CLI Parameter Spec.
@@ -307,10 +299,19 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
 
     ##--|
 
-    ##--| construction
+    ##--| dunders
 
-    def __init__(self, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
+    def __init__(self, **kwargs:Any) -> None:  # noqa: ANN401
+        if bool({"prefix", "separator"} & kwargs.keys()):
+            msg = "Don't specify prefix or separator explicitly, format the 'name' fully"
+            raise KeyError(msg)
         super().__init__()
+        match self._processor.parse_name(cast("str", kwargs.get("name"))):
+            case dict() as ns:
+                kwargs.update(ns)
+            case _:
+                pass
+
         self.name       = kwargs.pop("name")
         self.prefix     = kwargs.pop("prefix", API.DEFAULT_PREFIX)
         self.separator  = kwargs.pop("separator", False)
@@ -327,10 +328,29 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
         self.validate_type()
         self.validate_default()
 
+
+    def __repr__(self) -> str:
+        match self.prefix:
+            case str():
+                return f"<{self.__class__.__name__}: {self.prefix}{self.name}>"
+            case int():
+                return f"<{self.__class__.__name__}: <{self.prefix}>{self.name}>"
+            case x:
+                raise TypeError(type(x))
+
+    def __eq__(self, other:object) -> bool:
+        match other:
+            case API.ParamStruct_p() if type(self) is not type(other):
+                    return False
+            case API.ParamStruct_p(name=self.name, prefix=self.prefix, type_=self.type_, separator=self.separator):
+                return True
+            case _:
+                return False
+
     ##--| validators
 
     def validate_type(self) -> None:  # noqa: PLR0912
-        remap          : Any
+        remap          : Any = None
         x              : Any
         override_type  : Maybe[type]  = getattr(self.__class__, self.__class__._annotate_to, None)
         match self.type_:
@@ -346,10 +366,14 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
                 raise TypeError(msg, x)
             case type() as x if x is not bool:
                 return
+            case str() as x:
+                remap = x
             case _:
                 pass
 
         match self.cls_annotation():
+            case _ if remap is not None:
+                pass
             case None | ():
                 remap = bool
             case [x]:
@@ -392,7 +416,6 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
                 self.default = self.default or x.__origin__
             case _:
                 self.default = None
-
 
     ##--| properties
 
@@ -448,14 +471,6 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
         return result
 
     @ftz.cached_property
-    def positional(self) -> bool:
-        match self.prefix:
-            case str() if bool(self.prefix):
-                return False
-            case _:
-                return True
-
-    @ftz.cached_property
     def default_value(self) -> Any:  # noqa: ANN401
         match self.default:
             case type() as ctor:
@@ -507,7 +522,3 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
 
         return " ".join(parts)
 
-    def __repr__(self) -> str:
-        if self.positional:
-            return f"<{self.__class__.__name__}: {self.name}>"
-        return f"<{self.__class__.__name__}: {self.prefix}{self.name}>"

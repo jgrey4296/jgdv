@@ -29,9 +29,8 @@ import faulthandler
 # ##-- end stdlib imports
 
 from .param_spec import ParamSpec
-from .param_spec.core import ToggleParam, LiteralParam, KeyParam, AssignParam
+from .param_spec.core import ToggleParam, KeyParam, AssignParam, PositionalParam
 from .param_spec.defaults import HelpParam, VerboseParam, SeparatorParam
-from .param_spec.positional import PositionalParam
 
 # ##-- types
 # isort: off
@@ -70,13 +69,13 @@ logging = logmod.getLogger(__name__)
 
 def _remap_type(data:dict) -> type:
     """
-    Get a specific type of parameter, using provided dat
+    Get a specific type of parameter, using provided data
 
     needs to handle:
-    - using separator to select between toggle, key, assign, and positional params
-    - using type to select toggle, literal
-    - using count to select repeatable
-    - using choice to select choice params
+    - using separator, prefix and type to select toggle/key/assign/positional
+    - TODO using type to select toggle, literal
+    - TODO using count to select repeatable
+    - TODO using choice to select choice params
     """
 
     match data:
@@ -107,5 +106,5 @@ class ParamSpecMaker_m:
 
         # remap to a specific paramspec type
         refined = _remap_type(data)
-        # build it
-        return refined.build(kwargs)
+        # build it, using original kwargs
+        return refined(**kwargs)

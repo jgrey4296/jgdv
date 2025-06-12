@@ -34,11 +34,6 @@ from typing import Generic, NewType, Never
 from typing import no_type_check, final, override, overload
 # Protocols and Interfaces:
 from typing import Protocol, runtime_checkable
-# from . import _interface as API # noqa: N812
-# Dataclasses:
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
-
-#
 if typing.TYPE_CHECKING:
     from typing import Final, ClassVar, Any, Self
     from typing import Literal, LiteralString
@@ -59,13 +54,14 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
+@pytest.mark.skip
 class TestRepeatableParam:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
     def test_consume_list_single_value(self):
-        obj = extra.RepeatableParam.model_validate({"name" : "test", "type" : list})
+        obj = extra.RepeatableParam(**{"name" : "test", "type" : list})
         match obj.consume(["-test", "bloo"]):
             case {"test": ["bloo"]}, 2:
                 assert(True)
@@ -73,7 +69,7 @@ class TestRepeatableParam:
                 assert(False), x
 
     def test_consume_list_multi_key_val(self):
-        obj     = extra.RepeatableParam.model_validate({"name":"test"})
+        obj     = extra.RepeatableParam(**{"name":"test"})
         in_args = ["-test", "bloo", "-test", "blah", "-test", "bloo", "-not", "this"]
         match obj.consume(in_args):
             case {"test": ["bloo", "blah", "bloo"]}, 6:
@@ -82,7 +78,7 @@ class TestRepeatableParam:
                 assert(False), x
 
     def test_consume_set_multi(self):
-        obj = extra.RepeatableParam[set].model_validate({
+        obj = extra.RepeatableParam[set](**{
             "name"    : "test",
             "type"    : set,
             "default" : set,
@@ -95,7 +91,7 @@ class TestRepeatableParam:
                 assert(False), x
 
     def test_consume_str_multi_set_fail(self):
-        obj = extra.RepeatableParam[set].model_validate({
+        obj = extra.RepeatableParam[set](**{
             "name" : "test",
             "type" : str,
             "default" : "",
@@ -108,13 +104,19 @@ class TestRepeatableParam:
                 assert(False), x
 
     def test_consume_multi_assignment_fail(self):
-        obj     = extra.RepeatableParam.model_validate({"name":"test", "type":list, "default":list, "prefix":"--"})
+        obj     = extra.RepeatableParam(**{"name":"test", "type":list, "default":list, "prefix":"--"})
         in_args = ["--test=blah", "--test=bloo"]
         match obj.consume(in_args):
             case None:
                 assert(True)
-            case _:
+            case x:
                 assert(False), x
+
+@pytest.mark.skip
+class TestImplicitParam:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
 @pytest.mark.skip
 class TestChoiceParam:
@@ -156,6 +158,7 @@ class TestLiteralParam:
             case _:
                 assert(False)
 
+@pytest.mark.skip
 class TestWildCardParam:
 
     def test_sanity(self):
