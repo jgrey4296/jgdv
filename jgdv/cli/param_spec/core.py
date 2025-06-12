@@ -187,3 +187,19 @@ class PositionalParam(ParamSpec):
                 return self.name, args[:x], x
             case _:
                 raise ArgParseError()
+
+
+class LiteralParam(ToggleParam):
+    """
+    Match on a Literal Parameter.
+    For command/subcmd names etc
+    """
+    desc   : str = "A Literal"
+
+    def matches_head(self, val) -> bool:
+        """ test to see if a cli argument matches this param """
+        match val:
+            case x if x == self.key_str:
+                return True
+            case _:
+                return False

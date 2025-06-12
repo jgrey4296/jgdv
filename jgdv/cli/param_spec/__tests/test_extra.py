@@ -137,28 +137,6 @@ class TestConstrainedParam:
         assert(True is not False) # noqa: PLR0133
 
 @pytest.mark.skip
-class TestLiteralParam:
-
-    def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
-
-    def test_literal(self):
-        obj = extra.LiteralParam(name="blah")
-        match obj.consume(["blah"]):
-            case {"blah":True}, 1:
-                assert(True)
-            case None:
-                assert(False)
-
-    def test_literal_fail(self):
-        obj = extra.LiteralParam(name="blah")
-        match obj.consume(["notblah"]):
-            case None:
-                assert(True)
-            case _:
-                assert(False)
-
-@pytest.mark.skip
 class TestWildCardParam:
 
     def test_sanity(self):

@@ -27,7 +27,7 @@ import faulthandler
 # ##-- end stdlib imports
 
 from .param_spec import ParamSpec
-from .core import AssignParam, ToggleParam, KeyParam
+from .core import AssignParam, ToggleParam, KeyParam, LiteralParam
 
 # ##-- types
 # isort: off
@@ -97,20 +97,6 @@ class WildcardParam(AssignParam):
             case int():
                 return key, [val], 1
 
-class LiteralParam(ToggleParam):
-    """
-    Match on a Literal Parameter.
-    For command/subcmd names etc
-    """
-    desc   : str = "A Literal"
-
-    def matches_head(self, val) -> bool:
-        """ test to see if a cli argument matches this param """
-        match val:
-            case x if x == self.key_str:
-                return True
-            case _:
-                return False
 
 class ImplicitParam(ParamSpec):
     """

@@ -192,3 +192,25 @@ class TestAssignParam:
                 assert(True)
             case x:
                 assert(False), x
+
+class TestLiteralParam:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_literal(self):
+        obj = core.LiteralParam(name="blah")
+        match obj.consume(["blah"]):
+            case {"blah":True}, 1:
+                assert(True)
+            case None:
+                assert(False)
+
+    def test_literal_fail(self):
+        obj = core.LiteralParam(name="blah")
+        match obj.consume(["notblah"]):
+            case None:
+                assert(True)
+            case _:
+                assert(False)
+
