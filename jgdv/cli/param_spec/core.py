@@ -34,6 +34,7 @@ from jgdv.structs.chainguard import ChainGuard
 
 from jgdv import Proto
 from jgdv.cli.errors import ArgParseError
+from .. import _interface as API # noqa: N812
 from .param_spec import ParamSpec
 
 # ##-- types
@@ -177,16 +178,19 @@ class PositionalParam(ParamSpec):
 
     def next_value(self, args:list) -> tuple[str, list, int]:
         match self.count:
-            case 1:
+            case API.DEFAULT_COUNT:
                 return self.name, [args[0]], 1
-            case -1:
+            case API.UNRESTRICTED_COUNT if self._processor.end_sep in args:
                 idx     = args.index(self._processor.end_sep)
                 claimed = args[max(idx, len(args))]
                 return self.name, claimed, len(claimed)
+            case API.UNRESTRICTED_COUNT:
+                return self.name, args[:], len(args)
             case int() as x if x < len(args):
                 return self.name, args[:x], x
-            case _:
-                raise ArgParseError()
+            case x:
+                msg = "Bad positional count"
+                raise ArgParseError(msg, x)
 
 
 class LiteralParam(ToggleParam):
@@ -196,7 +200,7 @@ class LiteralParam(ToggleParam):
     """
     desc   : str = "A Literal"
 
-    def matches_head(self, val) -> bool:
+    def matches_head(self, val:str) -> bool:
         """ test to see if a cli argument matches this param """
         match val:
             case x if x == self.key_str:

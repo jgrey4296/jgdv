@@ -133,7 +133,8 @@ class GuardProxy:
         if self._types != Any and not isinstance(val, self._types):
             types_str = self._types_str()
             index_str  = ".".join(self.__index + ['(' + types_str + ')'])
-            raise TypeError("TomlProxy Value doesn't match declared Type: ", index_str, val, self._types)
+            msg = "TomlProxy Value doesn't match declared Type: "
+            raise TypeError(msg, index_str, val, self._types)
 
         return val
 

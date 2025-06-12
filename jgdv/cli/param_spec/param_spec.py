@@ -176,21 +176,25 @@ class ParamProcessor:
     ##--| utils
 
     def coerce_types(self, obj:ParamStruct_i, key:str, value:list[str]) -> dict:
-        """ process the parsed values """
+        """ coerce the parsed values to the expected type """
         x       : Any
         result  : dict[str, Any]  = {}
         match obj.type_, value:
-            case _, None | []:
-                pass
-            case builtins.bool, [x]:
-                result[key] = bool(x)
-            case builtins.int, [*xs]:
+            case x, y if x == type(y):
+                result[key] = y
+            case builtins.bool, [bool() as y]:
+                result[key] = y
+            case builtins.bool, y:
+                result[key] = bool(y)
+            case builtins.int, [*xs]: # sum a list of numbers
                 result[key] = ftz.reduce(lambda x, y: x+int(y), xs, 0)
-            case builtins.list, list():
-                result[key] = value
-            case builtins.set, list():
-                result[key] = set(value)
-            case _, [x]:
+            case builtins.list, str() as x:
+                result[key] = [x]
+            case builtins.list, [*xs]:
+                result[key] = list(xs)
+            case builtins.set, [*xs]:
+                result[key] = set(xs)
+            case _, [x]: # unwrap things if they are a single value and not lists/sets
                 result[key] = x
             case _, val:
                  result[key] = val
@@ -319,7 +323,7 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
         self.insist     = kwargs.pop("insist", False)
         self.default    = kwargs.pop("default", None)
         self.desc       = kwargs.pop("desc", API.DEFAULT_DOC)
-        self.count      = kwargs.pop("count", 1)
+        self.count      = kwargs.pop("count", API.DEFAULT_COUNT)
         self.implicit   = kwargs.pop("implicit", False)
 
         self._short     =  None
@@ -342,7 +346,7 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
         match other:
             case API.ParamStruct_p() if type(self) is not type(other):
                     return False
-            case API.ParamStruct_p(name=self.name, prefix=self.prefix, type_=self.type_, separator=self.separator):
+            case API.ParamStruct_p(name=self.name, prefix=self.prefix, type_=self.type_, separator=self.separator): # type: ignore[misc]
                 return True
             case _:
                 return False

@@ -66,10 +66,13 @@ FULLNAME_RE     : Final[Rx]   = re.compile(r"(?:<(?P<pos>\d*)>|(?P<prefix>\W+))?
 DEFAULT_DOC     : Final[str]  = "A Base Parameter"
 """ The Regexp for parsing string descriptions of parameters """
 
-EMPTY_CMD         : Final[str]  = "_cmd_"
-EXTRA_KEY         : Final[str]  = "_extra_"
-NON_DEFAULT_KEY   : Final[str]  = "_non_default_"
-
+##--|
+EMPTY_CMD           : Final[str]  = "_cmd_"
+EXTRA_KEY           : Final[str]  = "_extra_"
+NON_DEFAULT_KEY     : Final[str]  = "_non_default_"
+DEFAULT_COUNT       : Final[int]  = 1
+UNRESTRICTED_COUNT  : Final[int]  = -1
+##--|
 TYPE_CONV_MAPPING: Final[dict[str|type|types.GenericAlias, type|Callable]] = {
     "int"               : int,
     "float"             : float,

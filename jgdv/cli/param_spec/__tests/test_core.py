@@ -101,6 +101,44 @@ class TestPositionalParam:
             case x:
                 assert(False), x
 
+
+    def test_consume_count_unrestricted(self):
+        data = {
+            "name"     : "test",
+            "type"     : list,
+            "default"  : [],
+            "count"    : -1,
+        }
+        in_data = ["bloo", "blah", "aweg", "aweg", "qqqq"]
+        obj = core.PositionalParam(**data)
+        match obj.consume(in_data):
+            case {"test": list() as vals}, int() as count:
+                assert(count == len(in_data))
+                for x,y in zip(vals, in_data, strict=True):
+                    assert(x == y)
+
+            case x:
+                assert(False), x
+
+
+    def test_consume_unrestricted_one_still_is_list(self):
+        data = {
+            "name"     : "test",
+            "type"     : list,
+            "default"  : [],
+            "count"    : -1,
+        }
+        in_data = ["bloo"]
+        obj = core.PositionalParam(**data)
+        match obj.consume(in_data):
+            case {"test": list() as vals}, int() as count:
+                assert(count == len(in_data))
+                for x,y in zip(vals, in_data, strict=True):
+                    assert(x == y)
+
+            case x:
+                assert(False), x
+
 class TestKeyParam:
 
     def test_sanity(self):
