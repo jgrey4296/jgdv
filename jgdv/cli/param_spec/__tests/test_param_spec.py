@@ -225,9 +225,8 @@ class TestParamSpec_Types:
 
     def test_typed_list(self):
         obj = ParamSpec(**{"name":"blah", "type":list[str]})
-        assert(isinstance(obj.type_, types.GenericAlias))
-        assert(obj.type_.__origin__ is list)
-        assert(obj.type_.__args__[0] is str)
+        assert(isinstance(obj.type_, type))
+        assert(obj.type_ is list)
         assert(obj.default is list)
 
     def test_annotated(self):
@@ -274,9 +273,8 @@ class TestParamSpec_Building:
 
     def test_typed_list(self):
         obj = ParamSpec(**{"name":"blah", "type":list[str]})
-        assert(isinstance(obj.type_, types.GenericAlias))
-        assert(obj.type_.__origin__ is list)
-        assert(obj.type_.__args__[0] is str)
+        assert(isinstance(obj.type_, type))
+        assert(obj.type_ is list)
         assert(obj.default is list)
 
     def test_type_fail(self):

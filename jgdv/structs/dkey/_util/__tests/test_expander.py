@@ -107,8 +107,8 @@ class TestSourceChain_d:
             case x:
                 assert(False), x
 
-
     def test_with_specstruct_base(self):
+
         class SimpleSpecStruct:
 
             @property
@@ -428,6 +428,16 @@ class TestExpansion:
         """ see doot test_dkey.TestDKeyExpansion.test_indirect_wrapped_expansion
         """
         assert(False)
+
+    def test_keep_original_type_on_expansion(self):
+        """ {test} -> state[test:[1,2,3]] -> [1,2,3] """
+        obj = DKey("test", implicit=True)
+        state = {"test": [1,2,3]}
+        match obj.expand(state):
+            case list():
+                assert(True)
+            case x:
+                assert(False), type(x)
 
 class TestIndirection:
 
