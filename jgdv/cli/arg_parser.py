@@ -289,7 +289,7 @@ class CLIParser:
                     sub_result  = ParseResult_d(sub_name, defaults)
                     self._parse_params_unordered(sub_result, sub_specs) # type: ignore
                     self.subcmd_results.append(sub_result)
-                case [*constraints], list() as params if active_cmd in constraints or x == EMPTY_CMD:
+                case [*constraints], list() as params if active_cmd in constraints or active_cmd == EMPTY_CMD:
                     sub_specs   = sorted(params, key=ParamSpec.key_func)
                     defaults    =  ParamSpec.build_defaults(sub_specs)
                     sub_result  = ParseResult_d(sub_name, defaults)
