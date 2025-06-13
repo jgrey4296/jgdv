@@ -135,7 +135,7 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         if not bool(text):
             inst_data['mark'] = None
             ctor = self.select_ctor(cls, mark=False, force=None, insist=False)
-            return text, inst_data, post_data, ctor
+            return str(input), inst_data, post_data, ctor
 
         ##--| Get pre-parsed keys
         match kwargs.pop(API.RAWKEY_ID, None) or self.extract_raw_keys(text, implicit=implicit):
