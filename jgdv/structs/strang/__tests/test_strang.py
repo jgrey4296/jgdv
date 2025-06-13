@@ -63,7 +63,6 @@ class TestStrang_Base:
         assert(isinstance(obj, str))
         assert(str in Strang.mro())
 
-
     def test_needs_separator(self):
         with pytest.raises(StrangError):
             Strang("head|tail")
@@ -138,6 +137,16 @@ class TestStrang_GetItem:
         assert(val['body',:] == "d.e.f")
         assert(val['head'] == "a.b.c")
         assert(val['body'] == "d.e.f")
+
+    def test_multi_slice(self):
+        """
+        a.b.c::d.e.f
+        [:,:,:-1] -> a.b.c::d.e
+        """
+        val = Strang("a.b.c::d.e.f")
+        assert(val[:,:,:-1] == "a.b.c::d.e")
+        assert(val[:,1:,:] == "b.c::d.e.f")
+        assert(val[:,2,1] == "c::e")
 
     def test_body_mark(self):
         val = Strang("group.blah.awef::a.$head$.c")
@@ -634,7 +643,6 @@ class TestStrang_Modify:
             case x:
                 assert(False), x
 
-
     def test_push_none_no_op(self):
         obj = Strang("group::body.a.b.c")
         match obj.push(None):
@@ -676,6 +684,7 @@ class TestStrang_Modify:
             assert(obj.push(num) == f"group::body.a.b.c..{num}")
 
     ##--| UUIDs
+
     def test_push_preserves_uuid(self):
         obj = Strang("group::body.a.b.c.<uuid>")
         match obj.push("blah"):
@@ -685,7 +694,6 @@ class TestStrang_Modify:
             case x:
                 assert(False), x
 
-
     def test_push_does_not_preserve_uuid_arg(self):
         obj = Strang("group::body.a.b.c[<uuid>]")
         assert(obj.uuid())
@@ -694,7 +702,6 @@ class TestStrang_Modify:
                 assert(not x.uuid())
             case x:
                 assert(False), x
-
 
     def test_push_basic_uuid_str(self):
         obj = Strang("group::body.a.b.c")
@@ -725,6 +732,7 @@ class TestStrang_Modify:
                 assert(False), x
 
     ##--| Marking
+
     def test_push_mark(self):
         obj = Strang("group::body")
         mark = obj.section(-1).marks.head
@@ -953,8 +961,8 @@ class TestStrang_Formatting:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-
     ##--| repr
+
     def test_repr_with_brace_val(self):
         obj = Strang("head::tail.{aval}.blah")
         assert(repr(obj) == "<Strang: head::tail.{aval}.blah>")
@@ -965,6 +973,7 @@ class TestStrang_Formatting:
         assert(repr(obj)  == f"<Strang: {obj[:]}>")
 
     ##--| str
+
     def test_str_is_full_expansion(self):
         raw             =  "head::tail.<uuid>.a.b.c"
         obj             = Strang(raw)
@@ -973,26 +982,25 @@ class TestStrang_Formatting:
         assert(str(obj) == full_expansion)
 
     ##--| str slice
+
     def test_basic_slice_no_expansion(self):
         raw            = "head::tail.<uuid>.a.b.c"
         obj            = Strang(raw)
         assert(obj[:]  == raw)
-
 
     def test_basic_slice_but_args_no_expansion(self):
         raw            = "head::tail.<uuid>.a.b.c[<uuid>]"
         obj            = Strang(raw)
         assert(obj[:]  == raw)
 
-
     ##--| slice+
+
     def test_advanced_slice_expands_with_no_args(self):
         raw              = "head::tail.<uuid>.a.b.c"
         obj              = Strang(raw)
         body_uuid        = f"<uuid:{obj.get(1,1)}>"
         expanded         = f"head::tail.{body_uuid}.a.b.c"
         assert(obj[:,:]  == expanded)
-
 
     def test_advanced_slice_expands_with_args(self):
         raw              = "head::tail.<uuid>.a.b.c[<uuid>]"
@@ -1014,14 +1022,15 @@ class TestStrang_Formatting:
         assert(f"{obj[1,0]}" == "body")
 
     ##--| 'u' spec
+
     def test_format_uuid(self):
         raw                =  "head::tail.a.b.c[<uuid>]"
         obj                = Strang(raw)
         obj_uuid           = f"<uuid:{obj.uuid()}>"
         assert(f"{obj:u}"  == obj_uuid)
 
-
     ##--| 'a+' spec
+
     def test_format_full_expansion(self):
         raw                 = "head::tail.<uuid>.a.b.c"
         obj                 = Strang(raw)
@@ -1041,6 +1050,7 @@ class TestStrang_Formatting:
         assert(f"{obj:a+}"  == "head::tail.a.b.c")
 
     ##--| 'a' spec
+
     def test_format_args_a_simple(self):
         raw                 =  "head::tail.a.b.c[<uuid>]"
         obj                 = Strang(raw)
@@ -1052,6 +1062,7 @@ class TestStrang_Formatting:
         assert(f"{obj:a}"  == "head::tail.a.b.c")
 
     ##--| 'a-' spec
+
     def test_format_args_a_minus(self):
         raw                 =  "head::tail.a.b.c[<uuid>]"
         obj                 = Strang(raw)
@@ -1063,6 +1074,7 @@ class TestStrang_Formatting:
         assert(f"{obj:a-}"  == "head::tail.a.b.c")
 
     ##--| 'a=' spec
+
     def test_format_args_a_equal(self):
         raw                 =  "head::tail.a.b.c[<uuid>]"
         obj                 = Strang(raw)
@@ -1073,9 +1085,8 @@ class TestStrang_Formatting:
         obj                 = Strang(raw)
         assert(f"{obj:a=}"  == "")
 
-
-
     ##--| joined
+
     def test_full_slice_includes_uuid(self):
         raw             =  "head::tail.<uuid>.a.b.c[<uuid>]"
         obj             = Strang(raw)
@@ -1094,6 +1105,7 @@ class TestStrang_Formatting:
         assert(f"{obj:a}"   == simple_args)
         assert(f"{obj:a+}"  == full_expansion)
         assert(str(obj)     == full_expansion)
+
 class TestStrang_Annotation:
     """ Test custom parameterized subclassing
 
@@ -1114,11 +1126,11 @@ class TestStrang_Annotation:
         assert(obj.__origin__ is Strang)
         assert(obj.__args__ == (int,))
 
-
     def test_subclass_annotation(self):
         Strang._clear_registry()
         assert(not bool(Strang._registry))
         assert(isinstance(Strang[int], GenericAlias))
+
         class IntStrang(Strang[int]):
             __slots__ = ()
             pass
@@ -1133,6 +1145,7 @@ class TestStrang_Annotation:
     def test_type_annotated(self):
 
         Strang._clear_registry()
+
         class IntStrang(Strang[int]):
             __slots__ = ()
             pass
@@ -1146,6 +1159,7 @@ class TestStrang_Annotation:
     def test_match_on_strang(self):
 
         Strang._clear_registry()
+
         class IntStrang(Strang[int]):
             __slots__ = ()
             pass
@@ -1159,6 +1173,7 @@ class TestStrang_Annotation:
     def test_match_on_literal(self):
 
         Strang._clear_registry()
+
         class IntStrang(Strang[int]):
             __slots__ = ()
             pass
@@ -1172,6 +1187,7 @@ class TestStrang_Annotation:
     def test_match_on_str(self):
 
         Strang._clear_registry()
+
         class IntStrang(Strang[int]):
             __slots__ = ()
             pass
@@ -1198,6 +1214,7 @@ class TestStrang_Annotation:
 
     def test_match_on_subtype_fail(self):
         Strang._clear_registry()
+
         class IntStrang(Strang[int]):
             __slots__ =()
             pass
@@ -1242,8 +1259,6 @@ class TestStrang_Subclassing:
                 ("third", ".", None, str, None, True),
             )
 
-        assert(issubclass(ThreeSections, Strang))
-        assert(isinstance(ThreeSections, API.Strang_p))
         match ThreeSections("a.b.c::d/e/f:|:g"):
             case ThreeSections() as val:
                 assert(not hasattr(val, "__dict__"))
@@ -1252,6 +1267,8 @@ class TestStrang_Subclassing:
                 assert(val.third == "g")
             case x:
                 assert(False), x
+        assert(issubclass(ThreeSections, Strang))
+        assert(isinstance(ThreeSections, API.Strang_p))
 
     def test_three_sections_errors_on_malformed(self) -> None:
 
@@ -1365,7 +1382,6 @@ class TestStrang_Subclassing:
         assert(isinstance(obj, Strang))
         assert(not isinstance(obj, StrangSub))
 
-
     def test_subclass_matches_protocol(self) -> None:
 
         class StrangSub(Strang):
@@ -1381,7 +1397,6 @@ class TestStrang_Subclassing:
                 assert(True)
             case x:
                 assert(False), x
-
 
     def test_subclass_matches_strang(self) -> None:
 
@@ -1404,7 +1419,7 @@ class TestStrang_Args:
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    def test_with_args(self):
+    def test_slice_with_args(self):
         obj = Strang("head::tail.a.b.c[blah,bloo,blee]")
         assert(isinstance(obj, Strang))
         assert(isinstance(obj, str))
@@ -1446,3 +1461,48 @@ class TestStrang_Args:
         assert(f"{obj:a}"   == simple_args)
         assert(f"{obj:a+}"  == full_expansion)
         assert(str(obj)     == full_expansion)
+
+
+    def test_args(self):
+        obj = Strang("head.a.b::tail.c.d[blah]")
+        match obj.args():
+            case ["blah"]:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_multi_args(self):
+        obj = Strang("head.a.b::tail.c.d[blah, bloo]")
+        match obj.args():
+            case ["blah", "bloo"]:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_empty_args(self):
+        obj = Strang("head.a.b::tail.c.d")
+        match obj.args():
+            case None:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_args_to_uniq(self):
+        obj = Strang("head.a.b::tail.c.d[blah]")
+        uniq = obj.to_uniq()
+        match uniq.args():
+            case ["<uuid>", "blah"]:
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_popped_uniq_retains_args(self):
+        obj = Strang("head.a.b::tail.c.d[blah]")
+        uniq = obj.to_uniq()
+        popped = uniq.pop(top=True)
+        match popped.args():
+            case ["<uuid>", "blah"]:
+                assert(True)
+            case x:
+                assert(False), x

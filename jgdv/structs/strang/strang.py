@@ -67,6 +67,114 @@ logging.disabled = False
 
 ##--|
 
+class _StrangSlicer:
+    """
+        Access sections and words of a Strang,
+        by name or index.
+
+        val = Strang('a.b.c::d.e.f')
+        val[:]          -> str(a.b.c::d.e.f)
+        val[0,:]        -> a.b.c
+        val[0]          -> a.b.c
+        val[0,0]        -> a
+        val[0,:-1]      -> a.b
+        val['head']     -> a.b.c
+        val['head', -1] -> c
+        val[:,:,:-1]    -> a.b.c::d.e
+    """
+    __slots__ = ()
+
+    def getitem(self, obj:API.Strang_p, args:API.ItemIndex) -> str: # type: ignore[override]
+        i       : int
+        x       : Any
+        words   : list[str]
+        gotten  : str
+        match self.discrim_getitem_args(obj, args):
+            case Iterator() as sec_iter: # full expansion
+                gotten = self.run_iterator(obj, sec_iter)
+            case int()|slice() as section, None:
+                bounds = obj.data.sections[section]
+                gotten = API.STRGET(obj, bounds)
+            case None, int() as flat:
+                gotten = API.STRGET(obj, obj.data.words[flat])
+            case None, slice() as flat:
+                selection = obj.data.words[flat]
+                gotten = API.STRGET(obj, slice(selection[0].start, selection[-1].stop, flat.step))
+            case int() as section, int() as word:
+                idx = obj.data.sec_words[section][word]
+                gotten = API.STRGET(obj, obj.data.words[idx])
+            case int() as section, slice() as word:
+                case   = obj.section(section).case or ""
+                words  = [API.STRGET(obj, obj.data.words[i]) for i in obj.data.sec_words[section][word]]
+                gotten = case.join(words)
+            case int()|slice() as basic:
+                gotten = API.STRGET(obj, basic)
+            case True, [*xs]:
+                gotten = self.multi_slice(obj, xs)
+            case _:
+                raise KeyError(errors.UnkownSlice, args)
+        ##--|
+        return gotten
+
+    def discrim_getitem_args(self, obj:API.Strang_p, args:API.ItemIndex) -> Iterator[API.Sec_d]|tuple[Maybe[API.ItemIndex], ...]|API.ItemIndex:
+        result : Iterator|tuple|API.ItemIndex
+        match args:
+            case int() | slice() as x: # Normal str-like
+                result = x
+            case str() as k: # whole section by name
+                result = obj.section(k).idx, None
+            case [slice(), slice()] if not bool(obj.data.words):
+                result = obj.data.sections[0]
+            case [slice() as secs, slice(start=None, stop=None, step=None)]: # type: ignore[misc]
+                sec_it = itz.islice(obj.sections(), secs.start, secs.stop, secs.step)
+                result = sec_it
+            case [int() as idx, *_] if len(obj.sections()) < idx:
+                raise KeyError(errors.MissingSectionIndex.format(cls=obj.__class__.__name__,
+                                                            idx=idx,
+                                                            sections=len(obj.sections())))
+            case [str() as key, *_] if key not in obj._sections.named:
+                raise KeyError(errors.MissingSectionName.format(cls=obj.__class__.__name__,
+                                                                key=key))
+            case [slice() as secs, *subs] if secs.start is None and secs.stop is None:
+                if len(subs) != len(obj.data.sec_words[secs]): # type: ignore[misc]
+                    raise KeyError(errors.SliceMisMatch, len(subs), len(obj.data.sec_words[secs]))
+                result = True, tuple(subs)
+            case [str()|int() as i, slice()|int() as x]: # Section-word
+                result = obj.section(i).idx, x
+            case [None, slice()|int() as x]: # Flat slice
+                result = None, x
+            case x:
+                raise TypeError(type(x), x)
+        ##--|
+        return result
+
+    def run_iterator(self, obj:API.Strang_p, sec_iter:Iterator) -> str:
+        sec : API.Sec_d
+        result = []
+        for sec in sec_iter:
+            for word in obj.words(sec.idx, case=True):
+                match word:
+                    case UUID() as x:
+                        result.append(f"<uuid:{x}>")
+                    case x:
+                        result.append(str(x))
+            else:
+                result.append(sec.end or "")
+        else:
+            return "".join(result)
+
+    def multi_slice(self, obj:API.Strang_p, slices:Iterable) -> str:
+        result = []
+        for i,x in enumerate(slices):
+            if x is None:
+                continue
+            result.append(obj[i,x])
+            if (end:=obj.section(i).end) is not None:
+                result.append(end)
+        else:
+            return "".join(result)
+##--|
+
 @Proto(API.Strang_p, mod_mro=False)
 class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
     """ A Structured String Baseclass.
@@ -92,9 +200,10 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
     __match_args__  = ("head", "body")
 
     ##--|
-    _processor  : ClassVar  = StrangBasicProcessor()
-    _formatter  : ClassVar  = StrangFormatter()
-    _sections   : ClassVar  = API.STRANG_ALT_SECS
+    _processor  : ClassVar                 = StrangBasicProcessor()
+    _formatter  : ClassVar                 = StrangFormatter()
+    _slicer     : ClassVar[_StrangSlicer]  = _StrangSlicer()
+    _sections   : ClassVar                 = API.STRANG_ALT_SECS
 
     data        : API.Strang_d
     meta        : dict
@@ -210,83 +319,22 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
         for sec in self.sections():
             yield from self.words(sec.idx)
 
-
-    def __getitem__(self, args:API.ItemIndex) -> str: # type: ignore[override]  # noqa: PLR0912, PLR0911
+    def __getitem__(self, args:API.ItemIndex) -> str: # type: ignore[override]
         """
         Access sections and words of a Strang,
         by name or index.
 
         val = Strang('a.b.c::d.e.f')
-        val[:]          -> (val2:=a.b.c::d.e.f) is not val
+        val[:]          -> str(a.b.c::d.e.f)
         val[0,:]        -> a.b.c
         val[0]          -> a.b.c
         val[0,0]        -> a
         val[0,:-1]      -> a.b
         val['head']     -> a.b.c
         val['head', -1] -> c
+        val[:,:,:-1]    -> a.b.c::d.e
         """
-        sec : API.Sec_d
-        match self._discrim_getitem_args(args):
-            case Iterator() as sec_iter: # full expansion
-                result = []
-                for sec in sec_iter:
-                    for word in self.words(sec.idx, case=True):
-                        match word:
-                            case UUID() as x:
-                                result.append(f"<uuid:{x}>")
-                            case x:
-                                result.append(str(x))
-                    else:
-                        result.append(sec.end or "")
-                else:
-                    return "".join(result)
-
-            case int()|slice() as section, None:
-                bounds = self.data.sections[section]
-                return API.STRGET(self, bounds)
-            case None, int() as flat:
-                return API.STRGET(self, self.data.words[flat])
-            case None, slice() as flat:
-                selection = self.data.words[flat]
-                return API.STRGET(self, slice(selection[0].start, selection[-1].stop, flat.step))
-            case int() as section, int() as word:
-                idx = self.data.sec_words[section][word]
-                return API.STRGET(self, self.data.words[idx])
-            case int() as section, slice() as word:
-                case   = self.section(section).case or ""
-                words  : list[str] = [API.STRGET(self, self.data.words[i]) for i in self.data.sec_words[section][word]]
-                return case.join(words)
-            case int()|slice() as basic:
-                return API.STRGET(self, basic)
-            case _:
-                raise KeyError(errors.UnkownSlice, args)
-
-    def _discrim_getitem_args(self, args:API.ItemIndex) -> Iterator[API.Sec_d]|tuple[Maybe[API.ItemIndex], ...]|API.ItemIndex:
-        match args:
-            case int() | slice() as x: # Normal str-like
-                return x
-            case str() as k: # whole section by name
-                return self.section(k).idx, None
-            case [slice(), slice()] if not bool(self.data.words):
-                return self.data.sections[0]
-            case [slice() as secs, slice(start=None, stop=None, step=None)]: # type: ignore[misc]
-                sec_it = itz.islice(self.sections(), secs.start, secs.stop, secs.step)
-                return sec_it
-            case [int() as idx, *_] if len(self.sections()) < idx:
-                raise KeyError(errors.MissingSectionIndex.format(cls=self.__class__.__name__,
-                                                            idx=idx,
-                                                            sections=len(self.sections())))
-            case [str() as key, *_] if key not in self._sections.named:
-                raise KeyError(errors.MissingSectionName.format(cls=self.__class__.__name__,
-                                                                key=key))
-            case [slice() as secs, *subs] if len(subs) != len(self.data.sec_words[secs]): # type: ignore[misc]
-                raise KeyError(errors.SliceMisMatch, len(subs), len(self.data.sec_words[secs]))
-            case [str()|int() as i, slice()|int() as x]: # Section-word
-                return self.section(i).idx, x
-            case [None, slice()|int() as x]: # Flat slice
-                return None, x
-            case x:
-                raise TypeError(type(x), x)
+        return self._slicer.getitem(cast("API.Strang_p", self), args)
 
     def __getattr__(self, val:str) -> str:
         """ Enables using match statement for entire sections
@@ -374,6 +422,7 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
         return str.rindex(self, needle, start, end)
 
     def get(self, *args:API.SectionIndex|API.WordIndex) -> Any:  # noqa: ANN401
+        """ Accessor to get internal data """
         x     : Any
         sec   : int
         word  : int
@@ -433,6 +482,8 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
             if case and y is not None:
                 yield sec_case
 
+    def args(self) -> Maybe[tuple]:
+        return self.data.args
     ##--| Modify
 
     def push(self, *args:API.PushVal) -> Self:
@@ -548,4 +599,3 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
         using the cls._formatter
         """
         return self._formatter.format(self, *args, **kwargs)
-
