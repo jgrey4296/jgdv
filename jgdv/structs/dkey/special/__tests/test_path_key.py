@@ -33,10 +33,10 @@ VALID_MULTI_KEYS                                     = PATH_KEYS + MUTI_KEYS
 class TestPathKey:
 
     def test_mark(self):
-        assert(DKey.MarkOf(PathDKey) is DKey.Marks.PATH)
+        assert(DKey.MarkOf(PathDKey) is pl.Path)
 
     def test_expansion(self):
-        key = DKey("test", mark=DKey.Marks.PATH, implicit=True)
+        key = DKey[pl.Path]("test", implicit=True)
         match key.expand({"test":"blah"}):
             case pl.Path() as x:
                 assert(x == pl.Path.cwd() / "blah")
@@ -45,8 +45,19 @@ class TestPathKey:
                  assert(False), x
 
 
+    @pytest.mark.xfail
+    def test_cwd_expansion(self):
+        cwd = pl.Path.cwd()
+        key = DKey[pl.Path](".")
+        match key.expand({"test":"blah"}):
+            case pl.Path() as x:
+                assert(x == cwd)
+            case x:
+                 assert(False), x
+
+
     def test_expansion_fail(self):
-        key = DKey("test", mark=DKey.Marks.PATH, implicit=True)
+        key = DKey[pl.Path]("test", implicit=True)
         match key.expand():
             case None:
                 assert(True)
@@ -57,7 +68,7 @@ class TestPathKey:
     def test_loc_expansion(self):
         locs = JGDVLocator(root=pl.Path.cwd())
         locs.update({"test":"blah"})
-        key = DKey("test", mark=DKey.Marks.PATH, implicit=True)
+        key = DKey[pl.Path]("test", implicit=True)
         match key.expand(locs):
             case pl.Path() as x:
                 assert(x == pl.Path.cwd() / "blah")
@@ -76,5 +87,6 @@ class TestPathKey:
                  assert(False), x
 
 
+    @pytest.mark.skip
     def test_todo(self):
         pass

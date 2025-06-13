@@ -141,7 +141,7 @@ class SourceChain_d:
     TODO replace this with collections.ChainMap ?
     """
     __slots__ = ("lifter", "sources")
-    sources  : list[Mapping]
+    sources  : list[Mapping|list]
     lifter   : type[Key_p]
 
     def __init__(self, *args:Maybe[SourceBases|SourceChain_d], lifter=type[Key_p]) -> None:
@@ -152,7 +152,7 @@ class SourceChain_d:
                     pass
                 case SourceChain_d():
                     self.sources += base.sources
-                case dict() | collections.ChainMap():
+                case dict() | collections.ChainMap() | list():
                     self.sources.append(base)
                 case Mapping():
                     self.sources.append(base)
@@ -162,8 +162,9 @@ class SourceChain_d:
                     raise TypeError(type(x))
         self.lifter   = lifter
 
-    def extend(self, *args:Mapping) -> Self:
-        self.sources += [x for x in args if x not in self.sources]
+    def extend(self, *args:SourceBases) -> Self:
+        extension = SourceChain_d(*args)
+        self.sources += extension.sources
         return self
 
     def get(self, key:str, fallback:Maybe=None) -> Maybe:
@@ -244,6 +245,7 @@ class Expander_p[T](Protocol):
     def expand(self, source:T, *sources:dict, **kwargs:Any) -> Maybe[ExpInst_d]:  ...  # noqa: ANN401
 
     def extra_sources(self, source:T) -> SourceChain_d: ...
+    def coerce_result(self, inst:ExpInst_d, opts:ExpOpts, *, source:Key_p) -> Maybe[ExpInst_d]: ...
 
 class ExpansionHooks_p(Protocol):
 

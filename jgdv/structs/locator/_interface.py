@@ -64,7 +64,6 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-CWD_MARKER : Final[Ident] = "__cwd"
 LOC_SEP    : Final[str]   = "::>"
 LOC_SUBSEP : Final[str]   = "/"
 

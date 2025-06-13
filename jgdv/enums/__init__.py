@@ -13,19 +13,17 @@ class LoopControl_e(enum.Enum):
     noBut      : not a result, try others.
     no         : not a result, don't try others, Finish.
     """
-    yesAnd  = enum.auto()
+    yesAnd  = enum.auto()  # noqa: N815
     yes     = enum.auto()
-    noBut   = enum.auto()
+    noBut   = enum.auto()  # noqa: N815
     no      = enum.auto()
 
     @classmethod
-    @property
-    def loop_yes_set(cls):
+    def loop_yes_set(cls) -> set:
         return  {cls.yesAnd, cls.yes, True}
 
     @classmethod
-    @property
-    def loop_no_set(cls):
+    def loop_no_set(cls) -> set:
         return  {cls.no, cls.noBut, False, None}
 
 class CurrentState_e(enum.Enum):

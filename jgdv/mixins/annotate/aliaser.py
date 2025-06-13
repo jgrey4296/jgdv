@@ -58,7 +58,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-type AliasAnnotation = type|str|enum.Enum|tuple[AliasAnnotation, ...]
+type AliasAnnotation = type|str|enum.Enum|Literal[False]|Literal[True]|tuple[AliasAnnotation, ...]
 
 # Body:
 
@@ -81,7 +81,6 @@ class SubAlias_m:
     after which:
     cls[val] is RealSub
 
-
     Annotation Keys are stored in cls.__annotation__,
     under the cls._annotate_to key name.
 
@@ -96,10 +95,12 @@ class SubAlias_m:
 
     def __init_subclass__(cls:type[Self], *args:Any, annotation:Maybe[AliasAnnotation]=None, fresh_registry:bool=False, **kwargs:Any) -> None:  # noqa: ANN401
         x  : Any
+        overwrite : bool
         # ensure a new annotations dict
         # (if a subclass doesn't add *new* annotations, the super's is used. so if we modify it here,
         # the subclass is effected)
         cls.__annotations__  = cls.__annotations__.copy()
+        overwrite            = kwargs.pop("overwrite", False)
         if (strict:=kwargs.pop("strict", None)):
             cls._strict = strict or cls._strict
         if (accumulate:=kwargs.pop("accumulate", None)):
@@ -109,7 +110,7 @@ class SubAlias_m:
             cls._registry    = {}
 
         if kwargs.pop("default", None) is True:
-            cls._registry[API.Default_K] = cls
+            cls._registry[cls._default_k] = cls
 
         # set the annotation target
         match kwargs.pop(API.AnnotateKWD, None):
@@ -128,11 +129,13 @@ class SubAlias_m:
             return
 
         match annotation, cls._registry.get(annotation, None):
-            case (), _:
+            case (), _: # No annotation
                 pass
-            case _, None:
+            case _, None: # No registered cls
                 cls._registry[annotation] = cls
-            case _, x if cls._strict:
+            case _, x if overwrite:
+                cls._registry[annotation] = cls
+            case _, x if cls._strict: # complain there s a cls
                 msg = "already has a registration"
                 raise TypeError(msg, x, cls, annotation, args, kwargs)
 
@@ -145,6 +148,8 @@ class SubAlias_m:
         match cls._registry.get(use_key, None):
             case type() as result:
                 return result
+            case None if use_key == () and cls._default_k in cls._registry:
+                return cls._registry[cls._default_k]
             case _:
                 return GenericAlias(cls, use_key)
 

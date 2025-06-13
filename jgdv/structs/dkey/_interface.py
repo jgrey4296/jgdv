@@ -39,6 +39,7 @@ from typing import Generic, NewType, Any
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
+from collections.abc import Mapping
 
 if TYPE_CHECKING:
     from typing import Final
@@ -46,13 +47,13 @@ if TYPE_CHECKING:
     from typing import Never, Self, Literal
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
-    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from collections.abc import Sequence, MutableMapping, Hashable
 
     from jgdv import Maybe, Rx, Ident, RxStr, Ctor, CHECKTYPE, FmtStr
     from ._util._interface import Expander_p, ExpInst_d
 
-    type KeyMark     = DKeyMarkAbstract_e|str|type|tuple[KeyMark, ...]
     type LitFalse    = Literal[False]
+    type KeyMark     = DKeyMarkAbstract_e|LitFalse|str|type|tuple[KeyMark, ...]
 ##--|
 
 # isort: on
@@ -118,29 +119,25 @@ class DKeyMark_e(DKeyMarkAbstract_e):
       Enums for how to use/build a dkey
 
     """
-    FREE     = "free"
-    PATH     = enum.auto() # -> pl.Path
-    INDIRECT = "indirect"
-    STR      = enum.auto() # -> str
-    CODE     = enum.auto() # -> coderef
-    IDENT    = enum.auto() # -> taskname
     ARGS     = enum.auto() # -> list
     KWARGS   = enum.auto() # -> dict
     POSTBOX  = enum.auto() # -> list
-    NULL     = enum.auto() # -> None
-    MULTI    = enum.auto()
 
     @classmethod
-    def default(cls) -> str:
-        return cls.FREE
+    def default(cls) -> Any:  # noqa: ANN401
+        return Any
 
     @classmethod
-    def null(cls) -> str:
-        return cls.NULL
+    def null(cls) -> Maybe:
+        return False
 
     @classmethod
-    def multi(cls) -> str:
-        return cls.MULTI
+    def indirect(cls) -> type:
+        return Mapping
+
+    @classmethod
+    def multi(cls) -> type:
+        return list
 
 ##--| Data
 

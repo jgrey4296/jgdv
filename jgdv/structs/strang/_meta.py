@@ -32,6 +32,7 @@ from . import errors
 # isort: off
 import abc
 import collections.abc
+import typing
 from typing import TYPE_CHECKING, cast, assert_type, assert_never
 from typing import Generic, NewType, Never
 # Protocols:
@@ -86,7 +87,7 @@ class StrangMeta(StrMeta):
                                                                          **kwargs,
                                                                          )
             ctor   = new_ctor or cls
-            assert(isinstance(ctor, type))
+            assert(isinstance(ctor, type|typing.GenericAlias)), ctor # type: ignore[attr-defined]
             stage  = "__new__"
             obj    = ctor.__new__(ctor, text)
             stage  = "__init__"
@@ -95,6 +96,9 @@ class StrangMeta(StrMeta):
             obj    = processor.process(obj, data=post_data) or obj
             stage  = "Post-Process"
             obj    = processor.post_process(obj, data=post_data) or obj
+        except TypeError as err:
+            raise errors.StrangError(errors.StrangCtorFailure.format(cls=cls.__name__, stage=stage),
+                                     err, text, cls, processor) from None
         except ValueError as err:
             raise errors.StrangError(errors.StrangCtorFailure.format(cls=cls.__name__, stage=stage),
                                      err, text, cls, processor) from None

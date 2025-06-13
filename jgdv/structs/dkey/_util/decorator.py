@@ -49,17 +49,19 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 from types import MethodType
+from collections.abc import Mapping
+from typing import Any
 
 if TYPE_CHECKING:
     from jgdv import Method
     import inspect
     from jgdv import Decorator, FmtStr, Func, Ident, Maybe, Rx
     from typing import Final
-    from typing import ClassVar, Any, LiteralString
+    from typing import ClassVar, LiteralString
     from typing import Never, Self, Literal
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
-    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+    from collections.abc import Sequence, MutableMapping, Hashable
 
     from jgdv.decorators._interface import Decorated, Decorable
     type Signature = inspect.Signature
@@ -209,13 +211,13 @@ class DKeyedMeta(DKeyed):
     @classmethod
     def requires(cls, *args, **kwargs) -> DKeyMetaDecorator:
         """ mark an action as requiring certain keys to in the state, but aren't expanded """
-        keys = [DKey[None](x, implicit=True, **kwargs) for x in args]
+        keys = [DKey[Any](x, implicit=True, **kwargs) for x in args]
         return DKeyMetaDecorator(keys)
 
     @classmethod
     def returns(cls, *args, **kwargs) -> DKeyMetaDecorator:
         """ mark an action as needing to return certain keys """
-        keys = [DKey[None](x, implicit=True, **kwargs) for x in args]
+        keys = [DKey[Any](x, implicit=True, **kwargs) for x in args]
         return DKeyMetaDecorator(keys)
 
 class DKeyedRetrieval(DecoratorAccessor_m, DKeyed):
@@ -246,7 +248,7 @@ class DKeyedRetrieval(DecoratorAccessor_m, DKeyed):
     @classmethod
     def types(cls, *args, **kwargs) -> Decorator:
         """ mark an action as using raw type keys """
-        keys : list = [DKey(x, implicit=True, **kwargs) for x in args]
+        keys : list = [DKey[Any](x, implicit=True, **kwargs) for x in args]
         return cls._build_decorator(keys)
 
     @classmethod
@@ -278,13 +280,13 @@ class DKeyedRetrieval(DecoratorAccessor_m, DKeyed):
     def redirects(cls, *args, **kwargs) -> Decorator:
         """ mark an action as using redirection keys """
         kwargs.setdefault("max_exp", 1)
-        keys = [DKey[DKey.Marks.INDIRECT](x, implicit=True, **kwargs) for x in args] # type: ignore[name-defined]
+        keys = [DKey[Mapping](x, implicit=True, **kwargs) for x in args] # type: ignore[name-defined]
         return cls._build_decorator(keys)
 
     @classmethod
     def references(cls, *args, **kwargs) -> Decorator:
         """ mark keys to use as to_coderef imports """
-        keys = [DKey[DKey.Marks.CODE](x, implicit=True, **kwargs) for x in args] # type: ignore[name-defined]
+        keys = [DKey[CodeReference](x, implicit=True, **kwargs) for x in args] # type: ignore[name-defined]
         return cls._build_decorator(keys)
 
     @classmethod

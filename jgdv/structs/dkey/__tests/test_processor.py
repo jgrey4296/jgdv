@@ -9,11 +9,9 @@ import enum
 import logging as logmod
 import pathlib as pl
 from typing import (Any, ClassVar, Generic, TypeAlias, TypeVar, cast, TYPE_CHECKING)
+from collections.abc import Mapping
 import warnings
-
 import pytest
-
-logging = logmod.root
 
 from jgdv.structs.strang import CodeReference
 
@@ -25,9 +23,10 @@ from ..dkey import DKey
 from .. import keys
 from .. import special
 
-
 if TYPE_CHECKING:
     from collections.abc import Generator
+
+logging = logmod.root
 
 class TestDKey_Mark:
 
@@ -37,15 +36,12 @@ class TestDKey_Mark:
     def test_basic_mark(self):
         assert(isinstance(dkey.DKeyMark_e, enum.EnumMeta))
 
-    def test_other_mark(self):
-        assert("free" in dkey.DKeyMark_e)
-        assert("path" in dkey.DKeyMark_e)
-        assert("indirect" in dkey.DKeyMark_e)
-        assert("blah" not in dkey.DKeyMark_e)
-
     def test_mark_aliases(self):
-        obj = DKeyProcessor()
-        assert(obj.mark_alias(DKeyMark_e.FREE) is DKeyMark_e.FREE)
+        assert("blah" not in dkey.DKeyMark_e)
+        assert(dkey.DKeyMark_e.default() is Any)
+        assert(dkey.DKeyMark_e.null() is False)
+        assert(dkey.DKeyMark_e.multi() is list)
+        assert(dkey.DKeyMark_e.indirect() is Mapping)
 
 class TestDKey_Processor:
 
@@ -59,7 +55,7 @@ class TestDKey_Processor:
                 assert(API.RAWKEY_ID in inst_data)
                 assert(len(inst_data[API.RAWKEY_ID]) == 1)
                 assert(isinstance(ctor, API.Key_p))
-                assert(ctor.MarkOf(ctor) == "free"), ctor
+                assert(ctor.MarkOf(ctor) == Any), ctor
             case x:
                 assert(False), x
 
@@ -80,7 +76,7 @@ class TestDKey_Processor:
                 assert(API.RAWKEY_ID in inst_data)
                 assert(len(inst_data[API.RAWKEY_ID]) == 2)
                 assert(isinstance(ctor, API.Key_p))
-                assert(DKey.MarkOf(ctor) == API.DKeyMark_e.MULTI), ctor
+                assert(DKey.MarkOf(ctor) == list), ctor
             case x:
                 assert(False), x
 
@@ -104,11 +100,9 @@ class TestDKey_Processor:
                 assert(API.RAWKEY_ID in inst_data)
                 assert(len(inst_data[API.RAWKEY_ID]) == 1)
                 assert(isinstance(ctor, API.Key_p))
-                assert(DKey.MarkOf(ctor) == API.DKeyMark_e.NULL)
+                assert(DKey.MarkOf(ctor) == False)
             case x:
                 assert(False), x
-
-
 
 class TestDKey_FormatParam:
 
@@ -142,7 +136,6 @@ class TestDKey_FormatParam:
             case x:
                 assert(False), x
 
-
     def test_multikey_preprocess(self):
         obj = DKeyProcessor()
         obj.register_convert_param(keys.IndirectDKey, "I")
@@ -152,7 +145,6 @@ class TestDKey_FormatParam:
                 assert(ctor is keys.MultiDKey)
             case x:
                 assert(False), x
-
 
     def test_multikey_build(self):
         obj = dkey.DKey("{test!I} then {blah!s}")

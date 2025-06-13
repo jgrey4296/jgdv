@@ -37,10 +37,10 @@ class TestImportKey:
         assert(True is not False) # noqa: PLR0133
 
     def test_str_mark(self):
-        assert(DKey.MarkOf(ImportDKey) is DKey.Marks.CODE)
+        assert(DKey.MarkOf(ImportDKey) is CodeReference)
 
     def test_basic(self):
-        match DKey("fn", mark=DKey.Marks.CODE, implicit=True):
+        match DKey[CodeReference]("fn", implicit=True):
             case ImportDKey():
                 assert(True)
             case x:
@@ -48,7 +48,7 @@ class TestImportKey:
 
 
     def test_expand(self):
-        key = DKey("fn", mark=DKey.Marks.CODE, implicit=True)
+        key = DKey[CodeReference]("fn", implicit=True)
         match key({"fn":"jgdv:identity_fn"}):
             case CodeReference() as x:
                 iden = x()
@@ -59,7 +59,7 @@ class TestImportKey:
 
 
     def test_expand_annotated(self):
-        key = DKey("fn", mark=DKey.Marks.CODE, implicit=True)
+        key = DKey[CodeReference]("fn", implicit=True)
         match key({"fn":"fn::jgdv:identity_fn"}):
             case CodeReference() as x:
                 assert(callable(x()))
@@ -69,7 +69,7 @@ class TestImportKey:
                  assert(False), x
 
     def test_expand_redirect(self):
-        key = DKey("fn", mark=DKey.Marks.CODE, implicit=True)
+        key = DKey[CodeReference]("fn", implicit=True)
         match key({"fn_": "acceptor", "acceptor": "fn::jgdv:identity_fn"}):
             case CodeReference() as x:
                 assert(callable(x()))

@@ -83,6 +83,15 @@ class GuardBase(dict):
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}:{list(self.keys())}>"
 
+    def __eq__(self, other:object) -> bool:
+        match other:
+            case GuardBase() as base:
+                return  self._table() == base._table()
+            case dict() as adict:
+                return self._table() == adict
+            case _:
+                return False
+
     def __len__(self) -> int:
         return len(self._table())
 

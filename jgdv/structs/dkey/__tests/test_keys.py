@@ -2,7 +2,7 @@
 """
 
 """
-# ruff: noqa: ANN201, ARG001, ANN001, ARG002, ANN202, B011
+# ruff: noqa: ANN201, ARG001, ANN001, ARG002, ANN202, B011, PLR2004
 
 # Imports
 from __future__ import annotations
@@ -31,15 +31,17 @@ from typing import TYPE_CHECKING, Generic, cast, assert_type, assert_never
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
+from typing import Any
+from collections.abc import Mapping
 
 if TYPE_CHECKING:
    from jgdv import Maybe
    from typing import Final
-   from typing import ClassVar, Any, LiteralString
+   from typing import ClassVar, LiteralString
    from typing import Never, Self, Literal
    from typing import TypeGuard
    from collections.abc import Iterable, Iterator, Callable, Generator
-   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+   from collections.abc import Sequence, MutableMapping, Hashable
 
 # isort: on
 # ##-- end types
@@ -58,7 +60,7 @@ class TestSingleDKey:
         assert(True is not False) # noqa: PLR0133
 
     def test_ctor(self):
-        assert(DKey.MarkOf(SingleDKey) == DKey.Marks.FREE)
+        assert(DKey.MarkOf(SingleDKey) == Any)
 
     def test_basic(self):
         match DKey("blah", implicit=True, force=SingleDKey):
@@ -73,7 +75,7 @@ class TestSingleDKey:
 
 
     def test_basic_by_class_accesss(self):
-        match DKey[DKey.Marks.FREE]("blah", implicit=True):
+        match DKey[Any]("blah", implicit=True):
             case SingleDKey() as x:
                 assert(not hasattr(x, "__dict__"))
                 assert(isinstance(x, SingleDKey))
@@ -161,7 +163,7 @@ class TestMultiDKey:
 
 
     def test_basic_by_class_access(self):
-        match DKey[DKey.Marks.MULTI]("{blah} {bloo}"):
+        match DKey[list]("{blah} {bloo}"):
             case MultiDKey() as x:
                 assert(not hasattr(x, "__dict__"))
                 assert(isinstance(x, MultiDKey))
@@ -225,7 +227,7 @@ class TestMultiDKey:
         assert(obj.anon == "{} {} {}")
 
     def test_anon_2(self):
-        obj = DKey("{b}", mark=DKey.Marks.MULTI)
+        obj = DKey[list]("{b}")
         assert(isinstance(obj, MultiDKey))
         assert(obj.anon == "{}")
 
@@ -241,18 +243,18 @@ class TestMultiDKey:
         assert(hash(obj1) == hash(obj2))
 
     def test_str(self):
-        obj1 = DKey("{blah} {bloo}", mark=DKey.Marks.MULTI)
+        obj1 = DKey[list]("{blah} {bloo}")
         obj2 = "{blah} {bloo}"
         assert(obj1[:] == obj2)
         assert(str(obj1) == obj2)
 
     def test_getitem_succeeds(self):
-        obj1 = DKey("{blah} {bloo}", mark=DKey.Marks.MULTI)
+        obj1 = DKey[list]("{blah} {bloo}")
         assert(obj1[0,0] == "{blah}")
         assert(obj1[0,1] == "{bloo}")
 
     def test_get_succeeds(self):
-        obj1 = DKey("{blah} {bloo}", mark=DKey.Marks.MULTI)
+        obj1 = DKey[list]("{blah} {bloo}")
         assert(obj1.get(0,0) == "blah")
         assert(obj1.get(0,1) == "bloo")
 
@@ -274,7 +276,7 @@ class TestNonDKey:
 
 
     def test_basic_by_class_access(self):
-        match DKey[DKey.Marks.NULL]("blah"):
+        match DKey[False]("blah"):
             case NonDKey() as x:
                 assert(not hasattr(x, "__dict__"))
                 assert(isinstance(x, NonDKey))
@@ -282,7 +284,7 @@ class TestNonDKey:
                 assert(isinstance(x, Strang))
                 assert(isinstance(x, str))
             case x:
-                assert(False), x
+                assert(False), type(x)
 
 
     def test_basic_unannotated(self):
@@ -323,6 +325,14 @@ class TestNonDKey:
         assert(str(obj1) == f"{obj1:i}")
         assert(str(obj1) == f"{obj1:wi}")
 
+
+    def test_empty_str(self):
+        match DKey(""):
+            case NonDKey():
+                assert(True)
+            case x:
+                assert(False), x
+
 class TestIndirectDKey:
 
     def test_sanity(self):
@@ -341,7 +351,7 @@ class TestIndirectDKey:
                 assert(False), x
 
     def test_basic_by_class_access(self):
-        match DKey[DKey.Marks.INDIRECT]("{blah}"):
+        match DKey[Mapping]("{blah}"):
             case IndirectDKey():
                 assert(True)
             case x:

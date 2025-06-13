@@ -423,7 +423,7 @@ class JGDVLocator(Mapping):
         """
         return self.expand(val, strict=False)
 
-    def __contains__(self, key:str|DKey|pl.Path|Location|Self) -> bool:
+    def __contains__(self, key:object) -> bool:
         """ Test whether a key is a registered location """
         match key:
             case Location():
@@ -435,6 +435,13 @@ class JGDVLocator(Mapping):
 
     def __bool__(self) -> bool:
         return bool(self._data)
+
+    def __eq__(self, other:object) -> bool:
+        match other:
+            case JGDVLocator() as loc:
+                return id(loc) == id(self)
+            case _:
+                return False
 
     def __len__(self) -> int:
         return len(self._data)

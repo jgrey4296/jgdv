@@ -44,6 +44,7 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+from collections.abc import Mapping
 
 if TYPE_CHECKING:
    from jgdv import Maybe, Ident, Ctor
@@ -54,7 +55,7 @@ if TYPE_CHECKING:
    from typing import TypeGuard
    from collections.abc import Sized
    from collections.abc import Iterable, Iterator, Callable, Generator
-   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+   from collections.abc import Sequence, MutableMapping, Hashable
    from string import Formatter
 
    from jgdv._abstract.pre_processable import PreProcessResult
@@ -98,22 +99,27 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         mark         : API.KeyMark
         spec_mark    : API.KeyMark
         format_mark  : Maybe[API.KeyMark]
+        ##--|
         inst_data    : dict            = {}
         post_data    : dict            = {}
         force        : Maybe[Ctor[T]]  = kwargs.pop('force', None)
         implicit     : bool            = kwargs.pop("implicit", False)  # is key wrapped? ie: {key}
         insist       : bool            = kwargs.pop("insist", False)    # must produce key, not nullkey
 
+        # TODO handle generic aliases by using the arg as instance expansion type
         match force, kwargs.pop('mark', None):
             case type(), _:
                 spec_mark = cls.MarkOf(force)
             case None, None:
-                spec_mark = cls.MarkOf(cls) or API.DKeyMark_e.default()
+                spec_mark = cls.MarkOf(cls)
             case None, x:
                 spec_mark = x
             case _:
-                spec_mark = cls.MarkOf(cls) or API.DKeyMark_e.default()
+                spec_mark = cls.MarkOf(cls)
 
+        ##--|
+        if spec_mark is None:
+            spec_mark = API.DKeyMark_e.default()
         # TODO use class hook if it exists
 
         ##--| Pre-clean text
@@ -121,9 +127,15 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
             case str():
                 text = input.strip()
             case pl.Path():
-                text = str(input)
+                text = str(input).strip()
             case _:
-                text = str(input)
+                text = str(input).strip()
+
+        # Early exit if the text is empty:
+        if not bool(text):
+            inst_data['mark'] = None
+            ctor = self.select_ctor(cls, mark=False, force=None, insist=False)
+            return text, inst_data, post_data, ctor
 
         ##--| Get pre-parsed keys
         match kwargs.pop(API.RAWKEY_ID, None) or self.extract_raw_keys(text, implicit=implicit):
@@ -134,15 +146,17 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
             case []:
                 inst_data[API.RAWKEY_ID] = []
             case x:
-                raise TypeError(type(x))
+                msg = "No raw keys were able to be extracted"
+                raise TypeError(msg, type(x))
 
         ##--| discriminate on raw keys
         match self.inspect_raw(inst_data[API.RAWKEY_ID], kwargs):
             case x, y:
                 text = x or text
                 format_mark = y
-            case _:
-                raise ValueError()
+            case x:
+                msg = "Inspecting raw keys failed"
+                raise ValueError(msg, x)
         ##--|
         match spec_mark, format_mark:
             case type() as x, _:
@@ -152,6 +166,7 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
             case x, y if x == y:
                 mark = x
             case x, y if y == DKeyMark_e.null() and x != DKeyMark_e.multi():
+                assert(y is not None)
                 mark = y
             case x, y if x is DKeyMark_e.default():
                 assert(y is not None)
@@ -221,6 +236,7 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
 
         """
         # for each subkey, build it...
+        x : Any
         key_meta : list[Maybe[str|API.Key_p]] = []
         raw : list[API.RawKey_d] = []
         if isinstance(obj, API.MultiKey_p):
@@ -253,17 +269,20 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         text         : Maybe[str]          = None
         match raw_keys:
             case [x] if not bool(x.key) and bool(x.prefix): # No keys found, use NullDKey
-                format_mark  = DKeyMark_e.NULL
+                format_mark  = False
             case [x] if not bool(x.prefix):  # One key, no non-key text. trim it.
                 if x.convert and x.convert in self.convert_mapping:
                     format_mark = self.convert_mapping[x.convert]
                 if x.is_indirect():
-                    format_mark = DKeyMark_e.INDIRECT
+                    format_mark = Mapping
                 text = x.direct()
             case [_, *_]: # Multiple keys found, coerce to multi
-                format_mark = DKeyMark_e.MULTI
+                format_mark = list
+            case []: # No Keys
+                pass
             case x:
-                raise TypeError(type(x))
+                msg = "Unrecognised raw keys type"
+                raise TypeError(msg, type(x))
         ##--|
         return text, format_mark
 
@@ -283,7 +302,7 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
             match cls._retrieve_subtype(mark):
                 case types.GenericAlias() as x:
                     return x
-                case type() as ctor if insist and ctor.MarkOf(ctor) is DKeyMark_e.NULL:
+                case type() as ctor if insist and ctor.MarkOf(ctor) is cls.Marks.null():
                     raise TypeError(API.InsistentKeyFailure)
                 case type() as x:
                     return cast("type[T]", x)
@@ -300,22 +319,6 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
         if 'implicit' then will parse the entire string as {str}
         """
         return tuple(self.parser.parse(data, implicit=implicit))
-
-    def mark_alias(self, val:Any) -> Maybe[KeyMark]:  # noqa: ANN401
-        """ Translate an alias of a mark into the actual mark """
-        match val:
-            case DKeyMark_e() | str():
-                return val
-            case builtins.str:
-                return DKeyMark_e.STR
-            case builtins.list:
-                return DKeyMark_e.ARGS
-            case builtins.dict:
-                return DKeyMark_e.KWARGS
-            case None:
-                return DKeyMark_e.NULL
-            case _:
-                return None
 
     def consume_format_params(self, spec:str) -> tuple[str, bool, bool]:
         """

@@ -35,16 +35,18 @@ from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
 from typing import Never
+from typing import Any
+from collections.abc import Mapping
 
 if TYPE_CHECKING:
    import pathlib as pl
    from jgdv import Maybe
    from typing import Final
-   from typing import ClassVar, Any, LiteralString
+   from typing import ClassVar, LiteralString
    from typing import Literal
    from typing import TypeGuard
    from collections.abc import Iterable, Iterator, Callable, Generator
-   from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+   from collections.abc import Sequence, MutableMapping, Hashable
    from jgdv._abstract.protocols import SpecStruct_p
 
 # isort: on
@@ -53,7 +55,7 @@ if TYPE_CHECKING:
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
-class SingleDKey(DKey, mark=DKeyMark_e.FREE, default=True):
+class SingleDKey(DKey, mark=Any, default=True):
     """
       A Single key with no extras.
       ie: {x}. not {x}{y}, or {x}.blah.
@@ -75,7 +77,7 @@ class SingleDKey(DKey, mark=DKeyMark_e.FREE, default=True):
                 msg = "A Single Key got multiple raw key data"
                 raise ValueError(msg, xs)
 
-    def _post_process_h(self, data:Maybe[dict]=None) -> None:
+    def _post_process_h(self, data:Maybe[dict]=None) -> None:  # noqa: ARG002
         match self.data.raw[0].format:
             case None:
                 return
@@ -88,7 +90,7 @@ class SingleDKey(DKey, mark=DKeyMark_e.FREE, default=True):
             case None:
                 pass
 
-class MultiDKey(DKey, mark=DKeyMark_e.MULTI):
+class MultiDKey(DKey, mark=list):
     """ Multi keys allow 1+ explicit subkeys.
 
     They have additional fields:
@@ -123,7 +125,7 @@ class MultiDKey(DKey, mark=DKeyMark_e.MULTI):
         return True
 
     def keys(self) -> list[DKey]: # type: ignore[override]
-        return [DKey(x, force=DKey[DKey.Marks.FREE], implicit=True) for x in self.data.meta if bool(x)]
+        return [DKey(x, force=DKey[Any], implicit=True) for x in self.data.meta if bool(x)]
 
     def exp_generate_alternatives_h(self, sources:SourceChain_d, opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
         """ Lift subkeys to expansion instructions """
@@ -132,7 +134,7 @@ class MultiDKey(DKey, mark=DKeyMark_e.MULTI):
             targets.append([ExpInst_d(value=key,
                                       convert=key.data.convert,
                                       rec=key.data.max_expansions,
-                                      fallback=None)
+                                      fallback=None),
                             ])
         else:
             return targets
@@ -159,7 +161,7 @@ class MultiDKey(DKey, mark=DKeyMark_e.MULTI):
         else:
             return ExpInst_d(value=self.anon.format(*flat), literal=True)
 
-class NonDKey(DKey, mark=DKeyMark_e.NULL):
+class NonDKey(DKey, mark=False):
     """ Just a string, not a key.
 
     ::
@@ -185,6 +187,7 @@ class NonDKey(DKey, mark=DKeyMark_e.NULL):
 
     def expand(self, *args, **kwargs) -> Maybe:  # noqa: ANN002, ANN003, ARG002
         """ A Non-key just needs to be coerced into the correct str format """
+        assert(isinstance(self, API.Key_p))
         val = ExpInst_d(value=self[:])
         match self._expander.coerce_result(val, kwargs, source=self):
             case None if (fallback:=kwargs.get("fallback")) is not None:
@@ -197,7 +200,7 @@ class NonDKey(DKey, mark=DKeyMark_e.NULL):
                 msg = "Nonkey coercion didn't return an ExpInst_d"
                 raise TypeError(msg, x)
 
-class IndirectDKey(DKey, mark=DKeyMark_e.INDIRECT, convert="I"):
+class IndirectDKey(DKey, mark=Mapping, convert="I"):
     """
       A Key for getting a redirected key.
       eg: RedirectionDKey(key) -> SingleDKey(value)

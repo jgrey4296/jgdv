@@ -144,7 +144,7 @@ class DKeyExpander:
 
         ##--|
         logging.info("- Expanding: [%s]", repr(key))
-        if key.MarkOf(key) is API.DKeyMark_e.NULL:
+        if key.MarkOf(key) is False:
             return ExpInst_d(value=key, literal=True)
 
         match kwargs.get("fallback", key.data.fallback):
@@ -304,7 +304,7 @@ class DKeyExpander:
                     recurse_on = key
                 case ExpInst_d(value=API.Key_p() as key):
                     recurse_on  = key
-                case ExpInst_d(value=pl.Path()|str() as key):
+                case ExpInst_d(value=pl.Path()|str() as key) if bool:
                     recurse_on = self._ctor(key)
                 # case ExpInst_d(value=key):
                 #     recurse_on  = self._ctor(key)

@@ -66,6 +66,7 @@ logging = logmod.getLogger(__name__)
 
 # Vars:
 CLASS_GETITEM_K : Final[str] = "__class_getitem__"
+type DP_TYPE = API.DKeyMarkAbstract_e | type
 # Body:
 
 @Proto(API.Key_p, check=False, mod_mro=False)
@@ -97,16 +98,16 @@ class DKey[**K](Strang, fresh_registry=True):
 
       on class definition, can register a 'mark', 'multi', and a conversion parameter str
     """
-    __slots__                                              = ("data",)
-    __match_args                                           = ()
-    _annotate_to    : ClassVar[str]                        = "dkey_mark"
-    _processor      : ClassVar                             = DKeyProcessor()
-    _sections       : ClassVar                             = API.DKEY_SECTIONS
-    _expander       : ClassVar[Expander_p]                 = DKeyExpander()
-    _typevar        : ClassVar                             = None
-    _extra_kwargs   : ClassVar[set[str]]                   = set()
-    _extra_sources  : ClassVar[list[ExpInst.SourceBases]]  = []
-    Marks           : ClassVar[API.DKeyMarkAbstract_e]     = API.DKeyMark_e  # type: ignore[assignment]
+    __slots__                                             = ("data",)
+    __match_args                                          = ()
+    _annotate_to    : ClassVar[str]                       = "dkey_mark"
+    _processor      : ClassVar                            = DKeyProcessor()
+    _sections       : ClassVar                            = API.DKEY_SECTIONS
+    _expander       : ClassVar[Expander_p]                = cast("Expander_p", DKeyExpander())
+    _typevar        : ClassVar                            = None
+    _extra_kwargs   : ClassVar[set[str]]                  = set()
+    _extra_sources  : ClassVar[list[ExpAPI.SourceBases]]  = []
+    Marks           : ClassVar[API.DKeyMarkAbstract_e]    = API.DKeyMark_e  # type: ignore[assignment]
     data            : API.DKey_d
 
     ##--| Class Utils
@@ -215,7 +216,7 @@ class DKey[**K](Strang, fresh_registry=True):
 
 
     ##--| expansion hooks
-    def to_exp_inst(self, *, indirect:bool=False, **kwargs) -> ExpAPI.ExpInst_d:
+    def to_exp_inst(self, *, indirect:bool=False, **kwargs:Any) -> ExpAPI.ExpInst_d:  # noqa: ANN401
         """ create a basic expinst """
         val = f"{self:i}" if indirect else f"{self:d}"
         return ExpAPI.ExpInst_d(value=val,
@@ -224,8 +225,7 @@ class DKey[**K](Strang, fresh_registry=True):
                                 **kwargs,
                                 )
 
-    def exp_extra_sources_h(self, current:ExpInst.SourceChain_d) -> ExpInst.SourceChain_d:
-        new_sources : Any
+    def exp_extra_sources_h(self, current:ExpAPI.SourceChain_d) -> ExpAPI.SourceChain_d:
         match self._extra_sources:
             case [*xs]:
                 return current.extend(*xs)

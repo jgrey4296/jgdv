@@ -59,7 +59,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-class PathDKey(DKey[DKey.Marks.MULTI], mark=DKeyMark_e.PATH):
+class PathDKey(DKey[list], mark=pl.Path):
     """
     A Simple key that always expands to a path, and is then normalised
     """
