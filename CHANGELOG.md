@@ -4,6 +4,82 @@ All notable changes to this project will be documented in this file.
 
 (Generated using [git-cliff](https://git-cliff.org/)
 
+## [1.2.0] - 2025-06-15
+
+### Features
+
+- Bumpver target for docs conf.py
+- Param parse tests
+- Stdlib protocols
+- Tests for sec_d
+- Strang subclass tests
+- Strang args
+- SubAlias_m
+- Dkey expansion control
+- Sourcechain_d tests
+- Literalparam to core
+- Unwrapping of genericaliases for paramspecs
+- Param builder mixin tests
+
+### Bug Fixes
+
+- Positional param parsing
+- Strang hashing
+- Codereference.from_value
+- Type coercion in dkey
+- Dkey empty str building
+
+### Dependencies
+
+- Version 1.1.0 -> 1.2.0
+
+### Refactoring
+
+- Decorators module
+- Cli tests
+- Errors module
+- Dkey module
+- Strang module
+- Strang typing
+- Decorators typing
+- Dkey typing
+- Locator typing
+- Decorator interface
+- Chainguard typing
+- Strang creation and typing
+- Strang processing and access
+- Decorators to use __annotations__
+- Simplify initial processing
+- Annotate mixin
+- Coderef to pass tests
+- Dkey
+- Annotation subclass naming
+- Dkey
+- Decorator typing
+- Preprocessable_p to _abstract
+- Dkey
+- Dkey to be a strang
+- Obsolete dkey formatter
+- Strang_i
+- Dkey
+- Locator
+- Dkey
+- Locator
+- Decorator auto build
+- Merge branch 'refactor.strang'
+- Dkey.specialised -> dkey.special
+- Strang to use SubAlias_m
+- Mixins.annotate
+- Subalias
+- Dkey marks
+- Dkey expansion
+- Pathy
+- Logging config
+- Cli.param_spec
+- Cli param building and parsing
+- Dkey marks
+- Strang slicing to util class
+
 ## [1.1.0] - 2025-04-23
 
 ### Features
