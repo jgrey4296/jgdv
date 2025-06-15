@@ -1,5 +1,5 @@
 ## version.toml -*- mode: toml -*-
-doot-version = "1.0"
+doot-version = "1.1"
 
 [[locations]]
 changelog    = "file::>CHANGELOG.md"
@@ -17,7 +17,6 @@ depends_on = [{task="version::bump", inject={now=["raise"]}},]
 
 [[tasks.version]]
 name     = "bump"
-version  = "0.1"
 cli = [
     { name="--raise=", type="str", default="minor", desc="", constraints=["major", "minor", "patch"]},
     { name="-dry",  type="bool", default=false, desc="" },
