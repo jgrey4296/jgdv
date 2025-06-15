@@ -257,7 +257,7 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
                 val = self.data.uuid
                 result = f"<uuid:{val}>"
             case "u":
-                raise ValueError()
+                raise NotImplementedError("'u' format param")
             case _:
                 result = super().__format__(spec)
 
