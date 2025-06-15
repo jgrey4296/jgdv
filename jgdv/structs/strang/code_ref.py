@@ -112,6 +112,8 @@ class CodeReference(Strang, no_register=True):
                 val_iden = ":".join([".".join(split_qual[:-1]), split_qual[-1]])
                 full_str = f"{input.__module__}:{val_iden}"
                 inst_data['value'] = input
+            case x:
+                raise TypeError(type(x))
         ##--|
         return False, full_str, inst_data, post_data, None
 
