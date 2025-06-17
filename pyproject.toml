@@ -26,16 +26,6 @@ dependencies   = [
     "packaging>=24.2",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "myst-parser>=4.0.1",
-    "pytest>=8.3.5",
-    "pytest-cov>=6.0.0",
-    "pytest-mock>=3.14.0",
-    "sphinx>=8.2.3",
-    "sphinx-autoapi>=3.6.0",
-    "sphinx-rtd-theme>=3.0.2",
-]
 
 ##-- urls
 [project.urls]
@@ -211,3 +201,19 @@ import_footer_firstparty  = "##-- end 1st party imports"
 import_footer_localfolder = ""
 
 ##-- end isort
+
+
+##-- uv
+[dependency-groups]
+dev = [
+    "myst-parser>=4.0.1",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.0.0",
+    "pytest-mock>=3.14.0",
+    "sphinx>=8.2.3",
+    "sphinx-autoapi>=3.6.0",
+    "sphinx-rtd-theme>=3.0.2",
+]
+
+
+##-- end uv
