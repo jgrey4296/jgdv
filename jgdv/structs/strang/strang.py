@@ -285,7 +285,7 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
 
         for x,y in zip(self.words(1), other.words(1), strict=False):
             if x != y:
-                logging.debug("Faileid on: %s : %s", x, y)
+                logging.debug("Failed on: %s : %s", x, y)
                 return False
 
         return True
