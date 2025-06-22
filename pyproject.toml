@@ -26,7 +26,6 @@ dependencies   = [
     "packaging>=24.2",
 ]
 
-
 ##-- urls
 [project.urls]
 homepage      = "https://github.com/jgrey4296/jgdv"
@@ -86,14 +85,17 @@ egg_base = ".temp/egg-info"
 python_version          = "3.12"
 follow_imports          = "silent"
 cache_dir               = ".temp/mypy_cache"
-exclude                = [] 
+enable_error_code       = ["explicit-override"]
+disable_error_code      = []
+exclude                 = [] 
+
 warn_return_any         = false
 ignore_missing_imports  = true
-# warn_unused_configs     = true
-# warn_redundant_casts    = true
-# warn_unused_ignores     = true
-# warn_return_any         = true
-# warn_unreachable        = true
+# warn_unused_configs   = true
+# warn_redundant_casts  = true
+# warn_unused_ignores   = true
+# warn_return_any       = true
+# warn_unreachable      = true
 
 ##-- end mypy
 
@@ -202,7 +204,6 @@ import_footer_localfolder = ""
 
 ##-- end isort
 
-
 ##-- uv
 [dependency-groups]
 dev = [
@@ -214,6 +215,5 @@ dev = [
     "sphinx-autoapi>=3.6.0",
     "sphinx-rtd-theme>=3.0.2",
 ]
-
 
 ##-- end uv

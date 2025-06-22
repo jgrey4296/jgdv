@@ -27,7 +27,7 @@ from collections.abc import (
     ValuesView,
 )
 from re import Match, Pattern
-from typing import Annotated, Any, Never, Self, TypeGuard, final, Union, Final
+from typing import Annotated, Any, Never, Self, TypeGuard, final, Union, Final, Literal
 from uuid import UUID, uuid1
 from weakref import ref
 

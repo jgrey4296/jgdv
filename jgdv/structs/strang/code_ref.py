@@ -117,7 +117,8 @@ class CodeReference(Strang, no_register=True):
         ##--|
         return False, full_str, inst_data, post_data, None
 
-    def __class_getitem__(cls, *args:Any, **kwargs:Any) -> type:  # noqa: ANN401
+    @override
+    def __class_getitem__(cls, *args:Any, **kwargs:Any) -> type:
         match super().__class_getitem__(*args, **kwargs):
             case type() as x:
                 return x
@@ -226,6 +227,7 @@ class CodeReference(Strang, no_register=True):
 
         return base_alias
 
+    @override
     def to_uniq(self, *args:str) -> Never:
         raise NotImplementedError(errors.CodeRefUUIDFail)
 

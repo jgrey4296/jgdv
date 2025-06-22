@@ -68,25 +68,27 @@ logging = logmod.getLogger(__name__)
 class LocationProcessor[T:API.Location_p](StrangBasicProcessor):
 
     @override
-    def pre_process(self, cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult[T]: # type: ignore[override]
+    def pre_process(self, cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult[T]: # type: ignore[override]  # noqa: PLR0912, PLR0915
+        assert(cls.section(0).case is not None)
+        assert(cls.section(1).case is not None)
         x             : Any
         y             : Any
-        default_mark  : StrangAPI.StrangMarkAbstract_e
+        default_mark  : Maybe[StrangAPI.StrangMarkAbstract_e]
         head_end      : str
         text          : str
-        head_case     : str                                   = cls.section(0).case
-        body_case     : str                                   = cls.section(1).case
-        head_text     : set[str]                              = set()
-        body_text     : list[str]                             = []
-        inst_data     : InstanceData                          = {}
-        post_data     : PostInstanceData                      = {}
-        marks         : type[StrangAPI.StrangMarkAbstract_e]  = cls.Marks  # type: ignore[attr-defined]
-        ctor          : Ctor[T]                               = cls
+        head_case     : str                             = cast("str", cls.section(0).case)
+        body_case     : str                             = cast("str", cls.section(1).case)
+        head_text     : set[str]                        = set()
+        body_text     : list[str]                       = []
+        inst_data     : InstanceData                    = {}
+        post_data     : PostInstanceData                = {}
+        marks         : StrangAPI.StrangMarkAbstract_e  = cls.Marks
+        ctor          : Ctor[T]                         = cls
         match cls.section(0).end:
             case None:
                 raise ValueError()
             case str() as x:
-                head_end                                      = x
+                head_end                                = x
 
         match marks.default():
             case None:
@@ -103,7 +105,7 @@ class LocationProcessor[T:API.Location_p](StrangBasicProcessor):
                 else:
                     body_text.append(x)
             case pl.Path() as val if bool(val.suffix):
-                head_text.add(marks.file)
+                head_text.add(marks.file) # type: ignore[attr-defined]
                 body_text.append(str(val))
             case str() as val:
                 x, m, y = val.partition(head_end)
@@ -122,12 +124,14 @@ class LocationProcessor[T:API.Location_p](StrangBasicProcessor):
 
 
         body : str = body_case.join(body_text)
-        if any(x.value in body for x in cls.section(1).marks):
-            head_text.add(marks.abstract.value)
+        s1_marks = cls.section(1).marks
+        assert(s1_marks is not None)
+        if any(x.value in body for x in s1_marks):
+            head_text.add(marks.abstract.value) # type: ignore[attr-defined]
         if "." in body:
-            head_text.add(marks.file.value)
+            head_text.add(marks.file.value) # type: ignore[attr-defined]
 
-        if not bool(head_text):
+        if not bool(head_text) and default_mark is not None:
             head_text.add(default_mark)
         assert(bool(body_text))
         text = head_end.join([head_case.join(head_text), body])

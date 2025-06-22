@@ -58,7 +58,10 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 type InputData = dict[str, TomlTypes]
-
+TABLE_K    : Final[str] = "__table"
+INDEX_K    : Final[str] = "__index"
+MUTABLE_K  : Final[str] = "__mutable"
+ROOT_STR   : Final[str] = "<root>"
 ##--|
 
 class GuardBase(dict):
@@ -76,9 +79,9 @@ class GuardBase(dict):
 
     def __init__(self, data:Maybe[InputData]=None, *, index:Maybe[list[str]]=None, mutable:bool=False) -> None:
         super().__init__()
-        super_set(self, "__table", data or {})
-        super_set(self, "__index"   , (index or ["<root>"])[:])
-        super_set(self, "__mutable" , mutable)
+        super_set(self, TABLE_K, data or {})
+        super_set(self, INDEX_K, (index or [ROOT_STR])[:])
+        super_set(self, MUTABLE_K, mutable)
 
     @override
     def __repr__(self) -> str:
@@ -104,26 +107,26 @@ class GuardBase(dict):
 
     @override
     def __iter__(self) -> Iterator:
-        return iter(getattr(self, "__table").keys())
+        return iter(getattr(self, TABLE_K).keys())
 
     @override
     def __contains__(self, _key: object) -> bool:
         return _key in self.keys()
 
     def _index(self) -> list[str]:
-        return super_get(self, "__index")[:]
+        return super_get(self, INDEX_K)[:]
 
     def _table(self) -> dict[str,TomlTypes]:
-        return super_get(self, "__table")
+        return super_get(self, TABLE_K)
 
     @override
     def keys(self) -> KeysView[str]: # type: ignore[override]
-        table = super_get(self, "__table")
+        table = super_get(self, TABLE_K)
         return table.keys()
 
     @override
     def items(self) -> ItemsView[str, TomlTypes]: # type: ignore[override]
-        match super_get(self, "__table"):
+        match super_get(self, TABLE_K):
             case dict() as val:
                 return val.items()
             case list() as val:
@@ -136,7 +139,7 @@ class GuardBase(dict):
 
     @override
     def values(self) -> list|ValuesView[TomlTypes]: # type: ignore[override]
-        match super_get(self, "__table"):
+        match super_get(self, TABLE_K):
             case dict() as val:
                 return val.values()
             case list() as val:

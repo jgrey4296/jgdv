@@ -103,6 +103,7 @@ class SoftFailMultiDKey(MultiDKey, mark="soft.fail"):
 
     __slots__ = ()
 
+    @override
     def exp_generate_alternatives_h(self, sources:SourceChain_d, opts:dict) -> list:
         """ Expands subkeys, to be merged into the main key"""
         targets = []
@@ -393,6 +394,7 @@ class JGDVLocator(Mapping):
             case JGDVLocator():
                 pass
 
+    @override
     def __repr__(self) -> str:
         keys = ", ".join(iter(self))
         return f"<JGDVLocator ({_LocatorGlobal.stacklen()}) : {self.root!s} : ({keys})>"
@@ -412,6 +414,7 @@ class JGDVLocator(Mapping):
             case _:
                 raise AttributeError(key)
 
+    @override
     def __getitem__(self, val:DKey|pl.Path|Location|str) -> pl.Path:
         """
         Get the expanded path of a key or location
@@ -423,6 +426,7 @@ class JGDVLocator(Mapping):
         """
         return self.expand(val, strict=False)
 
+    @override
     def __contains__(self, key:object) -> bool:
         """ Test whether a key is a registered location """
         match key:
@@ -436,6 +440,7 @@ class JGDVLocator(Mapping):
     def __bool__(self) -> bool:
         return bool(self._data)
 
+    @override
     def __eq__(self, other:object) -> bool:
         match other:
             case JGDVLocator() as loc:
@@ -443,9 +448,11 @@ class JGDVLocator(Mapping):
             case _:
                 return False
 
+    @override
     def __len__(self) -> int:
         return len(self._data)
 
+    @override
     def __iter__(self) -> Generator[str|DKey]:
         """ Iterate over the registered location names """
         return iter(self._data.keys()) # type: ignore

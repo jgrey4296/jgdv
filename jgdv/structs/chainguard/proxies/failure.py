@@ -111,7 +111,7 @@ class GuardFailureProxy(GuardProxy):
         wrapper           = wrapper or (lambda x: x)
         fallback_wrapper  = fallback_wrapper or (lambda x: x)
         match self._data, self._fallback:
-            case None, ():
+            case None, tuple() as x if x == ():
                 msg = "No Value, and no fallback"
                 raise ValueError(msg)
             case GuardBase() as data, _:

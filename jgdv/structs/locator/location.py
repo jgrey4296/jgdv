@@ -225,7 +225,6 @@ class Location(Strang):
         x            : Any
         other_ext    : Any
         other_parts  : list[str]
-        wildcards    : set[str]
         if self.is_concrete():
             return self < other
 
@@ -234,10 +233,9 @@ class Location(Strang):
                 other_parts  = list(x.parts)
                 other_ext    = x.suffix
             case API.Location_p() as x:
-                other_parts = other.body_parent
-                other_ext = other.ext()
+                other_parts  = [str(x) for x in other.body_parent]
+                other_ext    = other.ext()
 
-        wildcards = {x.value for x in self.section(1).marks}
         # Compare path up to the file
         for x,y in zip(self.body_parent, other_parts, strict=False):
             match x, y:
