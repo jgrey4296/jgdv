@@ -23,7 +23,7 @@ from uuid import UUID, uuid1
 
 from .errors import GuardedAccessError
 from .mixins.access_m import super_get, super_set
-from . import _interface as API
+from . import _interface as API  # noqa: N812
 from jgdv import Proto
 
 # ##-- types
@@ -80,9 +80,11 @@ class GuardBase(dict):
         super_set(self, "__index"   , (index or ["<root>"])[:])
         super_set(self, "__mutable" , mutable)
 
+    @override
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}:{list(self.keys())}>"
 
+    @override
     def __eq__(self, other:object) -> bool:
         match other:
             case GuardBase() as base:
@@ -92,6 +94,7 @@ class GuardBase(dict):
             case _:
                 return False
 
+    @override
     def __len__(self) -> int:
         return len(self._table())
 
@@ -99,9 +102,11 @@ class GuardBase(dict):
         msg = "Don't call a ChainGuard, call a GuardProxy using methods like .on_fail"
         raise GuardedAccessError(msg)
 
+    @override
     def __iter__(self) -> Iterator:
         return iter(getattr(self, "__table").keys())
 
+    @override
     def __contains__(self, _key: object) -> bool:
         return _key in self.keys()
 
@@ -111,10 +116,12 @@ class GuardBase(dict):
     def _table(self) -> dict[str,TomlTypes]:
         return super_get(self, "__table")
 
+    @override
     def keys(self) -> KeysView[str]: # type: ignore[override]
         table = super_get(self, "__table")
         return table.keys()
 
+    @override
     def items(self) -> ItemsView[str, TomlTypes]: # type: ignore[override]
         match super_get(self, "__table"):
             case dict() as val:
@@ -127,6 +134,7 @@ class GuardBase(dict):
                 msg = "Unknown table type"
                 raise TypeError(msg, x)
 
+    @override
     def values(self) -> list|ValuesView[TomlTypes]: # type: ignore[override]
         match super_get(self, "__table"):
             case dict() as val:
@@ -136,7 +144,7 @@ class GuardBase(dict):
             case _:
                 raise TypeError()
 
-
+    @override
     def update(self, *args) -> Never: # type: ignore[override]  # noqa: ANN002
         msg = "ChainGuards are immutable"
         raise NotImplementedError(msg)

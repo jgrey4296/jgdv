@@ -7,7 +7,6 @@
 ##-- builtin imports
 from __future__ import annotations
 
-# ##-- stdlib imports
 import datetime
 import enum
 import functools as ftz
@@ -21,14 +20,7 @@ import weakref
 import tomllib
 from uuid import UUID, uuid1
 
-# ##-- end stdlib imports
-
 ##-- end builtin imports
-
-# ##-- 1st party imports
-from .._interface import TomlTypes
-
-# ##-- end 1st party imports
 
 # ##-- types
 # isort: off
@@ -42,6 +34,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    from .._interface import TomlTypes
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -50,7 +43,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    type T = TypeVar('T')
+    from .._interface import ChainGuard_i
+    T = TypeVar('T')
 
 # isort: on
 # ##-- end types
@@ -59,17 +53,16 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-
 class TomlLoader_m:
     """ Mixin for loading toml files """
 
     @classmethod
-    def read(cls:T, text:str) -> T:
+    def read(cls:type[ChainGuard_i], text:str) -> ChainGuard_i:
         logging.debug("Reading ChainGuard for text")
         try:
-            return cls(tomllib.loads(text))
+            return cls(tomllib.loads(text)) # type: ignore[call-arg]
         except Exception as err:
-            raise IOError("ChainGuard Failed to Load: ", text, err.args) from err
+            raise OSError("ChainGuard Failed to Load: ", text, err.args) from err
 
     @classmethod
     def from_dict(cls, data:dict[str, TomlTypes]) -> Self:
@@ -77,7 +70,7 @@ class TomlLoader_m:
         try:
             return cls(data)
         except Exception as err:
-            raise IOError("ChainGuard Failed to Load: ", data, err.args) from err
+            raise OSError("ChainGuard Failed to Load: ", data, err.args) from err
 
     @classmethod
     def load(cls, *paths:str|pl.Path) -> Self:

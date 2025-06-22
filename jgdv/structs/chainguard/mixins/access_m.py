@@ -54,7 +54,8 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from jgdv.structs.chainguard._base import TomlTypes, GuardBase
+    from .._interface import ChainGuard_i, TomlTypes
+    from .._base import GuardBase
 # isort: on
 # ##-- end types
 
@@ -64,47 +65,55 @@ logging = logmod.getLogger(__name__)
 
 super_get             = object.__getattribute__
 super_set             = object.__setattr__
+USCORE : Final[str] = "_"
+DASH   : Final[str] = "-"
+MUTABLE : Final[str] = "__mutable"
+##--|
 
 class TomlAccess_m:
     """ Mixing for dynamic attribute access """
 
-    def __setattr__(self, attr:str, value:TomlTypes) -> None:
-        if not getattr(self, "__mutable"):
+    @override
+    def __setattr__(self:ChainGuard_i, attr:str, value:TomlTypes) -> None:
+        if not getattr(self, MUTABLE):
             raise TypeError()
         super_set(self, attr, value)
 
-    def __getattr__(self, attr:str) -> GuardBase | TomlTypes | list[GuardBase]:
-        table = self._table()
+    def __getattr__(self:ChainGuard_i, attr:str) -> ChainGuard_i | TomlTypes | list[ChainGuard_i]:
+        index    : list[str]
+        index_s  : str
+        table    : dict  = self._table()  # type: ignore[operator,assignment]
 
-        if attr not in table and attr.replace("_", "-") not in table:
-            index     = self._index() + [attr]
-            index_s   = ".".join(index)
-            available = " ".join(self.keys())
-            raise GuardedAccessError(f"{index_s} not found, available: [{available}]")
+        if attr not in table and attr.replace(USCORE, DASH) not in table:
+            index      = [*self._index(), attr] # type: ignore[operator,misc]
+            index_s    = ".".join(index)
+            available  = " ".join(self.keys())
+            msg        = f"{index_s} not found, available: [{available}]"
+            raise GuardedAccessError(msg)
 
-        match table.get(attr, None) or table.get(attr.replace("_", "-"), None):
+        match table.get(attr, None) or table.get(attr.replace(USCORE, DASH), None):
             case dict() as result:
-                return self.__class__(result, index=self._index() + [attr])
+                return type(self)(result, index=[*self._index(), attr])
             case list() as result if all(isinstance(x, dict) for x in result):
                 index = self._index()
-                return [self.__class__(x, index=index[:]) for x in result if isinstance(x, dict)]
+                return [type(self)(x, index=index[:]) for x in result if isinstance(x, dict)]
             case _ as result:
                 return result
 
-    def __getitem__(self, keys:str|list[str]|tuple[str]) -> TomlTypes:
-        curr : Self = self
+    def __getitem__(self:ChainGuard_i, keys:str|list[str]|tuple[str]) -> TomlTypes|ChainGuard_i:
+        curr : ChainGuard_i|TomlTypes = self
         match keys:
             case tuple():
                 for key in keys:
-                    curr = curr.__getattr__(key)
+                    curr = getattr(curr, key)
             case str():
-                curr = self.__getattr__(keys)
+                curr = getattr(self, keys)
             case _:
                 pass
 
         return curr
 
-    def get(self, key:str, default:Maybe[TomlTypes]=None) -> Maybe[TomlTypes]:
+    def get(self:ChainGuard_i, key:str, default:Maybe[TomlTypes]=None) -> Maybe[TomlTypes|ChainGuard_i]:
         if key in self:
             return self[key]
 

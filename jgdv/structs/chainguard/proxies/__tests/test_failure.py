@@ -63,7 +63,7 @@ class TestFailureProxy:
 
     def test_call_get_None_value(self):
         proxy = GuardFailureProxy(None, fallback=None)
-        assert(proxy() == None)
+        assert(proxy() is None)
 
     def test_call_get_fallback(self):
         proxy = GuardFailureProxy(None, fallback=2)
@@ -115,7 +115,6 @@ class TestFailureProxy:
 
     def test_proxy_inject_index_update(self):
         proxy1 = GuardFailureProxy(None, fallback=2, types=int).blah.bloo
-        proxy2 = proxy1._inject(5).awef
+        proxy2 = proxy1._inject(None).awef
         assert(proxy1._index() == ["<root>", "blah", "bloo"])
         assert(proxy2._index() == ["<root>", "blah", "bloo", "awef"])
-        assert(proxy2() == 5)

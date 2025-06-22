@@ -6,7 +6,6 @@
 ##-- builtin imports
 from __future__ import annotations
 
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -21,7 +20,6 @@ from uuid import UUID, uuid1
 
 ##-- end builtin imports
 
-from ..proxies.base import GuardProxy
 from ..proxies.failure import GuardFailureProxy
 from ..errors import GuardedAccessError
 
@@ -37,6 +35,7 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, override, overload
 
 if TYPE_CHECKING:
+    from ..proxies.base import GuardProxy
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -44,6 +43,8 @@ if TYPE_CHECKING:
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    from .._interface import ChainGuard_i
 
 ##--|
 
@@ -61,7 +62,7 @@ class GuardProxyEntry_m:
     tg.on_fail(2, int).a.value() # either get a.value, or 2. whichever returns has to be an int.
     """
 
-    def on_fail(self, fallback:Any, types:Maybe[Any]=None, *, non_root=False) -> GuardFailureProxy:
+    def on_fail(self:ChainGuard_i, fallback:Any=(), types:Maybe[Any]=None, *, non_root:bool=False) -> GuardFailureProxy:  # noqa: ANN401
         """
         use a fallback value in an access chain,
         eg: doot.config.on_fail("blah").this.doesnt.exist() -> "blah"
@@ -74,7 +75,7 @@ class GuardProxyEntry_m:
 
         return GuardFailureProxy(self, types=types, fallback=fallback)
 
-    def first_of(self, fallback:Any, types:Maybe[Any]=None) -> GuardProxy:
+    def first_of(self:ChainGuard_i, fallback:Any, types:Maybe[Any]=None) -> GuardProxy:
         """
         get the first non-None value from a index path, even across arrays of tables
         so instead of: data.a.b.c[0].d
@@ -82,14 +83,14 @@ class GuardProxyEntry_m:
         """
         raise NotImplementedError()
 
-    def all_of(self, fallback:Any, types:Maybe[Any]=None) -> GuardProxy:
+    def all_of(self:ChainGuard_i, fallback:Any, types:Maybe[Any]=None) -> GuardProxy:
         raise NotImplementedError()
 
-    def flatten_on(self, fallback:Any) -> GuardProxy:
+    def flatten_on(self:ChainGuard_i, fallback:Any) -> GuardProxy:
         """
         combine all dicts at the call site to form a single dict
         """
         raise NotImplementedError()
 
-    def match_on(self, **kwargs:tuple[str,Any]) -> GuardProxy:
+    def match_on(self:ChainGuard_i, **kwargs:tuple[str,Any]) -> GuardProxy:
         raise NotImplementedError()

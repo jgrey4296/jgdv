@@ -58,8 +58,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
-type TomlTypes = (str | int | float | bool | list['TomlTypes']
-                  | dict[str,'TomlTypes'] | datetime.datetime)
+type TomlTypes = (str | int | float | bool | list[TomlTypes] | dict[str,TomlTypes] | datetime.datetime)
 type ProxyWrapper[T] = Callable[[TomlTypes], T]
 # Body:
 
@@ -94,6 +93,7 @@ class ProxyEntry_p(Protocol):
 class ChainGuard_p(ProxyEntry_p, Mapping_p, Protocol):
     """ The interface for a base ChainGuard object """
 
+    @override
     def get(self, key:str, default:Maybe[TomlTypes]=None) -> Maybe[TomlTypes]: ...
 
     @classmethod
@@ -108,13 +108,16 @@ class ChainGuard_p(ProxyEntry_p, Mapping_p, Protocol):
     @classmethod
     def load_dir(cls, dirp:str|pl.Path) -> Self: ...
 
-
     @staticmethod
     def report_defaulted() -> list[str]: ...
+
+    def __init__(self, data:Maybe=None, *, index:Maybe[list[str]]=None, mutable:bool=False) -> None: ...
 
     def to_file(self, path:pl.Path) -> None: ...
 
     def _table(self) -> dict[str,TomlTypes]: ...
+
+    def _index(self) -> list[str]: ...
 
 class ChainGuard_i(ChainGuard_p, Protocol):
     pass

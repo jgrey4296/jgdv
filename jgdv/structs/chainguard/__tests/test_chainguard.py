@@ -2,16 +2,15 @@
 """
 
 """
-##-- imports
+# ruff: noqa: ANN201, B011, B018, PLR2004
+##-- import
 from __future__ import annotations
 
 import logging as logmod
 import warnings
 import pathlib as pl
-from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
-                    Mapping, Match, MutableMapping, Sequence, Tuple,
-                    TypeVar, cast)
-##-- end imports
+from typing import Final
+##-- end import
 
 import typing
 import pytest
@@ -19,8 +18,23 @@ from jgdv.structs.chainguard.errors import GuardedAccessError
 from jgdv.structs.chainguard import ChainGuard
 
 logging = logmod.root
+example_dict : Final[dict] = {
+    "test": {
+        "val"   : 2,
+        "blah"  : "bloo",
+    },
+}
+example_toml : Final[str] = """
+[test]
+val   = 2
+blah  = "bloo"
+"""
+##--|
 
 class TestBaseGuard:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
     def test_initial(self):
         basic = ChainGuard({"test": "blah"})
@@ -30,11 +44,9 @@ class TestBaseGuard:
         basic = ChainGuard({"test": "blah"})
         assert(isinstance(basic, typing.Mapping))
 
-
     def test_is_dict(self):
         basic = ChainGuard({"test": "blah"})
         assert(isinstance(basic, dict))
-
 
     def test_match_as_dict(self):
         match ChainGuard({"test": "blah"}):
@@ -43,6 +55,14 @@ class TestBaseGuard:
             case x:
                  assert(False), x
 
+    def test_repr(self):
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
+        assert(repr(basic) == "<ChainGuard:['test', 'bloo']>")
+
+class TestBaseGuard_Access:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
     def test_basic_access(self):
         basic = ChainGuard({"test": "blah"})
@@ -70,46 +90,14 @@ class TestBaseGuard:
         basic = ChainGuard({"test": "blah"})
         assert(basic.test == "blah")
 
-    def test_index(self):
-        basic = ChainGuard({"test": "blah"})
-        assert(basic._index() == ["<root>"])
-
-    def test_index_independence(self):
-        basic = ChainGuard({"test": "blah"})
-        assert(basic._index() == ["<root>"])
-        basic.test
-        assert(basic._index() == ["<root>"])
-
     def test_nested_access(self):
         basic = ChainGuard({"test": {"blah": 2}})
         assert(basic.test.blah == 2)
-
-    def test_repr(self):
-        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
-        assert(repr(basic) == "<ChainGuard:['test', 'bloo']>")
 
     def test_immutable(self):
         basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
         with pytest.raises(TypeError):
             basic.test = 5
-
-    def test_uncallable(self):
-        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
-        with pytest.raises(GuardedAccessError):
-            basic()
-
-    def test_iter(self):
-        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
-        vals = list(basic)
-        assert(vals == ["test", "bloo"])
-
-    def test_contains(self):
-        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
-        assert("test" in basic)
-
-    def test_contains_fail(self):
-        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
-        assert("blah" not in basic)
 
     def test_get(self):
         basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
@@ -140,8 +128,33 @@ class TestBaseGuard:
         assert(basic.test.blah == [1,2,3])
         assert(basic.bloo == ["a","b","c"])
 
+class TestBaseGuard_Info:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_index(self):
+        basic = ChainGuard({"test": "blah"})
+        assert(basic._index() == ["<root>"])
+
+    def test_index_independence(self):
+        basic = ChainGuard({"test": "blah"})
+        assert(basic._index() == ["<root>"])
+        basic.test
+        assert(basic._index() == ["<root>"])
+
+    def test_uncallable(self):
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
+        with pytest.raises(GuardedAccessError):
+            basic()
+
+    def test_iter(self):
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
+        vals = list(basic)
+        assert(vals == ["test", "bloo"])
+
     def test_contains(self):
-        basic = ChainGuard({"test": {"blah": [1,2,3]}, "bloo": ["a","b","c"]})
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
         assert("test" in basic)
 
     def test_contains_false(self):
@@ -162,12 +175,28 @@ class TestBaseGuard:
 
 class TestLoaderGuard:
 
-    @pytest.mark.skip(reason="not implemented")
-    def test_initial_load(self):
-        # TODO
-        raise
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_from_dict(self):
+        match ChainGuard.from_dict(example_dict):
+            case ChainGuard():
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_read_text(self):
+        match ChainGuard.read(example_toml):
+            case ChainGuard() as x:
+                assert("test" in x)
+                assert(x.test.val == 2)
+            case x:
+                assert(False), x
 
 class TestGuardMerge:
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
     def test_initial(self):
         simple = ChainGuard.merge({"a":2}, {"b": 5})
@@ -200,6 +229,9 @@ class TestGuardMerge:
 
 class TestFailAccess:
 
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
     def test_basic(self):
         obj = ChainGuard({})
         assert(obj is not  None)
@@ -228,7 +260,6 @@ class TestFailAccess:
         obj = ChainGuard({"nothing": {}})
         result = obj.on_fail(None).nothing.blah.bloo()
         assert(result is None)
-
 
     def test_success_return_val(self):
         obj = ChainGuard({"nothing": {"blah": {"bloo": 10}}})

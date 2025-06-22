@@ -28,7 +28,6 @@ from weakref import ref
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from .._interface import TomlTypes
 from .._base import GuardBase
 from jgdv.structs.chainguard.mixins.reporter_m import DefaultedReporter_m
 
@@ -44,18 +43,22 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 from typing import Any, Never
 
 if TYPE_CHECKING:
+    from .._interface import TomlTypes
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, LiteralString
-    from typing import Never, Self, Literal
+    from typing import Self, Literal
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    from jgdv import CHECKTYPE
+    from .._interface import ChainGuard_i
+
+    type Wrapper = Callable[[TomlTypes], Any]
 
 # isort: on
 # ##-- end types
@@ -66,20 +69,26 @@ logging = logmod.getLogger(__name__)
 
 class GuardProxy:
     """ A Base Class for Proxies """
-    __slots__ = ("_types", "_data", "__index")
+    __slots__ = ("__index", "_data", "_fallback", "_types")
+    _data      : Maybe[TomlTypes|GuardBase]
+    _types     : CHECKTYPE
+    __index    : list[str]
+    _fallback  : Maybe[TomlTypes|tuple]
 
-    def __init__(self, data:GuardBase, types:Any=None, index:Maybe[list[str]]=None, fallback:TomlTypes|Literal[Never]=Never):
-        self._types                         = types or Any
-        self._data                          = data
-        self.__index : list[str]            = index or ["<root>"]
+    def __init__(self, data:Maybe[TomlTypes|GuardBase], types:Any=None, index:Maybe[list[str]]=None, fallback:Maybe[TomlTypes|tuple]=()) -> None:  # noqa: ANN401
+        self._data      = data
+        self._types     = types
+        self._fallback  = fallback
+        self.__index    = index or ["<root>"]
 
+    @override
     def __repr__(self) -> str:
         type_str = self._types_str()
         index_str = ".".join(self._index())
         return f"<GuardProxy: {index_str}:{type_str}>"
 
     def __len__(self) -> int:
-        if hasattr(self._data, "__len__"):
+        if isinstance(self._data, collections.abc.Sized):
             return len(self._data)
 
         return 0
@@ -87,19 +96,17 @@ class GuardProxy:
     def __bool__(self) -> bool:
         return self._data is not None and self._data is not Never
 
-    def __call__(self, *, wrapper:Maybe[callable[[TomlTypes], Any]]=None, **kwargs) -> Any:
-        return None
+    def __call__(self, *, wrapper:Maybe[Wrapper]=None, **kwargs:Any) -> Any:  # noqa: ANN401
+        raise NotImplementedError()
 
-    def _inject(self, val:tuple[Any]=Never, attr:Maybe[str]=None, clear:bool=False) -> GuardProxy:
+    def _inject(self, val:Maybe=None, attr:Maybe[str]=None, *, clear:bool=False) -> GuardProxy:
         match val:
             case _ if clear:
-                val = Never
-            case x if x is Never:
-                val = self._data
+                val = None
             case _:
                 pass
 
-        return GuardProxy(val,
+        return type(self)(val,
                           types=self._types,
                           index=self._index(attr),
                           fallback=self._fallback)
@@ -109,17 +116,27 @@ class GuardProxy:
         match self._data, self._fallback, self._index():
             case GuardBase(), _, _:
                 pass
+            case None, (), _:
+                pass
             case _, _, []:
                 pass
-            case x , val, [*index] if x is Never:
-                DefaultedReporter_m.add_defaulted(".".join(index), val, types_str)
+            case None, val, [*index]:
+                DefaultedReporter_m.add_defaulted(".".join(index),
+                                                  val,
+                                                  types_str)
             case val, _, [*index]:
-                DefaultedReporter_m.add_defaulted(".".join(index), val, types_str)
+                assert(not isinstance(val, GuardBase|None))
+                DefaultedReporter_m.add_defaulted(".".join(index),
+                                                  val,
+                                                  types_str)
             case val, flbck, index,:
-                raise TypeError("Unexpected Values found: ", val, index, flbck)
+                msg = "Unexpected Values found: "
+                raise TypeError(msg, val, index, flbck)
 
     def _types_str(self) -> str:
         match self._types:
+            case None:
+                return "Any"
             case types.UnionType() as targ:
                 types_str = repr(targ)
             case type(__name__=targ):
@@ -129,16 +146,20 @@ class GuardProxy:
 
         return types_str
 
-    def _match_type(self, val:TomlTypes) -> TomlTypes:
-        if self._types != Any and not isinstance(val, self._types):
-            types_str = self._types_str()
-            index_str  = ".".join(self.__index + ['(' + types_str + ')'])
-            msg = "TomlProxy Value doesn't match declared Type: "
-            raise TypeError(msg, index_str, val, self._types)
+    def _match_type(self, val:Maybe[TomlTypes]) -> Maybe[TomlTypes]:
+        match self._types:
+            case type() if not isinstance(val, self._types):
+                types_str  = self._types_str()
+                index_str  = ".".join(*self.__index, *['(' + types_str + ')'])
+                msg        = "TomlProxy Value doesn't match declared Type: "
+                raise TypeError(msg, index_str, val, self._types)
+            case _:
+                # TODO handle unions and generics
+                pass
 
         return val
 
-    def _index(self, sub:str=None) -> list[str]:
+    def _index(self, sub:Maybe[str]=None) -> list[str]:
         if sub is None:
             return self.__index[:]
         return self.__index[:] + [sub]

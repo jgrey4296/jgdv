@@ -58,8 +58,6 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 from typing import Never
 
 if TYPE_CHECKING:
@@ -71,6 +69,10 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
+    from .._interface import ChainGuard_i
+
+    type Wrapper = Callable[[TomlTypes], Any]
+
 # isort: on
 # ##-- end types
 
@@ -78,6 +80,8 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+NO_FALLBACK : Final[tuple] = ()
+##--|
 @Proto(ChainProxy_p)
 class GuardFailureProxy(GuardProxy):
     """
@@ -88,44 +92,42 @@ class GuardFailureProxy(GuardProxy):
     It also can type check its value and the value retrieved from the toml data
     """
 
-    def __init__(self, data:GuardBase, types:Any=None, index:Maybe[list[str]]=None, fallback:TomlTypes|Never=Never):
-        super().__init__(data, types=types, index=index)
-        if fallback == (None,):
-            self._fallback = None
-        else:
-            self._fallback = fallback
+    def __init__(self, data:Maybe[TomlTypes|GuardBase], types:Maybe=None, index:Maybe[list[str]]=None, fallback:Maybe[TomlTypes|tuple]=NO_FALLBACK) -> None:
+        super().__init__(data, types=types, index=index, fallback=fallback)
+        match self._fallback:
+            case tuple():
+                pass
+            case _:
+                self._match_type(self._fallback)
 
-        if fallback:
-            self._match_type(self._fallback)
-
-    def __call__(self, wrapper:Maybe[callable[[TomlTypes], Any]]=None, fallback_wrapper:Maybe[callable[[TomlTypes], Any]]=None) -> Any:
+    @override
+    def __call__(self, wrapper:Maybe[Wrapper]=None, fallback_wrapper:Maybe[Wrapper]=None, **kwargs:Any) -> Any:
         """
         Reify a proxy into an actual value, or its fallback.
         Optionally call a wrapper function on the actual value,
         or a fallback_wrapper function on the fallback
         """
         self._notify()
-        wrapper : callable[[TomlTypes], TomlTypes] = wrapper or (lambda x: x)
-        fallback_wrapper                           = fallback_wrapper or (lambda x: x)
+        wrapper           = wrapper or (lambda x: x)
+        fallback_wrapper  = fallback_wrapper or (lambda x: x)
         match self._data, self._fallback:
-            case x, y if x is Never and y is Never:
-                raise ValueError("No Value, and no fallback")
-            case x, None if x is Never or x is None:
-                val = None
-            case x, data if x is Never or x is None:
-                val = fallback_wrapper(data)
+            case None, ():
+                msg = "No Value, and no fallback"
+                raise ValueError(msg)
             case GuardBase() as data, _:
-                val = wrapper(dict(data))
-            case _ as data, _:
                 val = wrapper(data)
+            case None, data:
+                val = fallback_wrapper(data) # type: ignore[arg-type]
+            case _ as data, _:
+                val = wrapper(data) # type: ignore[arg-type]
 
         return self._match_type(val)
 
     def __getattr__(self, attr:str) -> GuardProxy:
         try:
             match self._data:
-                case x if x is Never:
-                    raise GuardedAccessError()
+                case None:
+                    raise GuardedAccessError()  # noqa: TRY301
                 case GuardBase():
                     return self._inject(self._data[attr], attr=attr)
                 case _:
@@ -134,26 +136,13 @@ class GuardFailureProxy(GuardProxy):
             return self._inject(clear=True, attr=attr)
 
     def __getitem__(self, keys:str|tuple[str]) -> GuardProxy:
-        curr = self
+        curr : GuardProxy = self
         match keys:
             case tuple():
                 for key in keys:
-                    curr = curr.__getattr__(key)
+                    curr = getattr(curr, key)
             case str():
-                curr = self.__getattr__(keys)
+                curr = getattr(self, keys)
 
         return curr
 
-    def _inject(self, val:tuple[Any]=Never, attr:Maybe[str]=None, clear:bool=False) -> GuardProxy:
-        match val:
-            case _ if clear:
-                val = Never
-            case x if x is Never:
-                val = self._data
-            case _:
-                pass
-
-        return GuardFailureProxy(val,
-                                 types=self._types,
-                                 index=self._index(attr),
-                                 fallback=self._fallback)

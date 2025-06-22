@@ -2,14 +2,13 @@
 """
 
 """
+# ruff: noqa: ERA001, ANN201
 ##-- imports
 from __future__ import annotations
 
 import logging as logmod
 import warnings
 import pathlib as pl
-from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
-                    Mapping, Match, MutableMapping, Sequence, Tuple, TypeVar, cast)
 ##-- end imports
 
 import pytest
@@ -31,7 +30,7 @@ class TestProxiedGuard:
     def test_proxy_on_existing_key(self):
         base = ChainGuard({"test": "blah"})
         proxied = base.on_fail("aweg")
-        assert("blah" == proxied.test())
+        assert(proxied.test() == "blah")
 
     def test_proxy_on_bad_key(self):
         base    = ChainGuard({"test": "blah"})
@@ -39,23 +38,24 @@ class TestProxiedGuard:
         assert("aweg" == proxied.awehjo())
 
     def test_proxy_index_independence(self):
-        base    = ChainGuard({"test": "blah"})
-        base_val = base.test
-        proxied = base.on_fail("aweg")
-        good_key = proxied.test
-        bad_key = proxied.ajojo
+        base                      = ChainGuard({"test": "blah"})
+        base_val                  = base.test
+        proxied                   = base.on_fail("aweg")
+        good_key                  = proxied.test
+        bad_key                   = proxied.ajojo
 
-        assert(base._index() == ["<root>"])
-        assert(proxied._index() == ["<root>"])
-        assert(good_key._index() == ["<root>", "test"])
-        assert(bad_key._index() == ["<root>", "ajojo"])
+        assert(base_val           == "blah")
+        assert(base._index()      == ["<root>"])
+        assert(proxied._index()   == ["<root>"])
+        assert(good_key._index()  == ["<root>", "test"])
+        assert(bad_key._index()   == ["<root>", "ajojo"])
 
     def test_proxy_multi_independence(self):
-        base     = ChainGuard({"test": "blah"})
-        proxied  = base.on_fail("aweg")
-        proxied2 = base.on_fail("jioji")
+        base           = ChainGuard({"test": "blah"})
+        proxied        = base.on_fail("aweg")
+        proxied2       = base.on_fail("jioji")
         assert(proxied is not proxied2)
-        assert("aweg" == proxied.awehjo())
+        assert("aweg"  == proxied.awehjo())
         assert("jioji" == proxied2.awjioq())
 
     def test_proxy_value_retrieval(self):
@@ -71,10 +71,8 @@ class TestProxiedGuard:
         assert(proxied() == "final")
 
     def test_proxy_none_value_use_fallback(self):
-        base    = ChainGuard({"test": None})
-        assert(base.test is None)
-        proxied = base.on_fail("aweg").test
-        assert(base.test is None)
+        base     = ChainGuard({"test": None})
+        proxied  = base.on_fail("aweg").test
         assert(isinstance(proxied, GuardFailureProxy))
         assert(base.test is None)
         assert(proxied._fallback == "aweg")
@@ -84,7 +82,7 @@ class TestProxiedGuard:
         base     = ChainGuard({"top": {"mid": {"bot": None}}})
         proxied = base.on_fail("aweg").top.mid.bot
         assert(isinstance(proxied, GuardFailureProxy))
-        assert(proxied() is "aweg")
+        assert(proxied() == "aweg")
 
     def test_proxy_fallback(self):
         base     = ChainGuard({"test": { "blah": {"bloo": "final"}}})

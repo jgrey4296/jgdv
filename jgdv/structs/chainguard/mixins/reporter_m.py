@@ -29,7 +29,6 @@ from weakref import ref
 
 # ##-- end stdlib imports
 
-from .._interface import TomlTypes
 
 # ##-- types
 # isort: off
@@ -41,10 +40,9 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
-# from dataclasses import InitVar, dataclass, field
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
 
 if TYPE_CHECKING:
+    from .._interface import TomlTypes
     from jgdv import Maybe
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -68,14 +66,18 @@ class DefaultedReporter_m:
     _defaulted : ClassVar[set[str]] = set()
 
     @staticmethod
-    def add_defaulted(index:str|list[str], val:TomlTypes, types:str="Any") -> None:
+    def add_defaulted(index:str|list[str], val:Any, types:Maybe[str]=None) -> None:  # noqa: ANN401
+        types = types or "Any"
         match index, val:
+            case _, ():
+                return
             case list(), _:
-                raise TypeError("Tried to Register a default value with a list index, use a str")
+                msg = "Tried to Register a default value with a list index, use a str"
+                raise TypeError(msg)
             case str(), bool():
                 index_str = f"{index} = {str(val).lower()} # <{types}>"
             case str(), _:
-                index_str = f"{index} = {repr(val)} # <{types}>"
+                index_str = f"{index} = {val!r} # <{types}>"
             case [*xs], bool():
                 index_path = ".".join(xs)
                 index_str = f"{index_path} = {str(val).lower()} # <{types}>"
@@ -83,7 +85,8 @@ class DefaultedReporter_m:
                 index_path = ".".join(xs)
                 index_str = f"{index_path} = {val} # <{types}>"
             case _, _:
-                raise TypeError("Unexpected Values found: ", val, index)
+                msg = "Unexpected Values found: "
+                raise TypeError(msg, val, index)
 
         DefaultedReporter_m._defaulted.add(index_str)
 
