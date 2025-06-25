@@ -124,6 +124,8 @@ class DKeyProcessor[T:API.Key_p](PreProcessor_p):
 
         ##--| Pre-clean text
         match input:
+            case Key_p() if insist:
+                text = f"{input:w}"
             case str():
                 text = input.strip()
             case pl.Path():

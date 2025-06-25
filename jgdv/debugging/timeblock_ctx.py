@@ -23,6 +23,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 import jgdv
+from jgdv import Func, Method
 from jgdv.decorators import MetaDec
 
 ##-- types
@@ -35,12 +36,13 @@ from typing import Generic, NewType
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
 from typing import no_type_check, final, override, overload
+from typing import Never
 
 if TYPE_CHECKING:
     from jgdv import Maybe, Traceback
     from typing import Final
     from typing import ClassVar, Any, LiteralString
-    from typing import Never, Self, Literal
+    from typing import Self, Literal
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
@@ -69,7 +71,7 @@ class TimeBlock_ctx(jgdv.protos.DILogger_p):
     end_time     : Maybe[float]
     elapsed_time : Maybe[float]
 
-    def __init__(self, *, logger:Maybe[Logger|False]=None, enter:Maybe[str]=None, exit:Maybe[str]=None, level:Maybe[int|str]=None) -> None:
+    def __init__(self, *, logger:Maybe[Logger|Literal[False]]=None, enter:Maybe[str]=None, exit:Maybe[str]=None, level:Maybe[int|str]=None) -> None: # noqa: A002
         self.start_time      = None
         self.end_time        = None
         self.elapsed_time    = None
@@ -94,13 +96,17 @@ class TimeBlock_ctx(jgdv.protos.DILogger_p):
             case _:
                 self._logger = logging
 
+    @override
+    def logger(self) -> logmod.Logger:
+        return self._logger
 
     def __enter__(self) -> Self:
         self._logger.log(self._level, self._enter_msg)
         self.start_time = time.perf_counter()
         return self
 
-    def __exit__(self, exc_type:Maybe[type], exc_value:Maybe, exc_traceback:Maybe[Traceback]) -> bool:
+    def __exit__(self, exc_type:Maybe[type], exc_value:Maybe, exc_traceback:Maybe[Traceback]) -> bool: # type: ignore[exit-return]
+        assert(self.start_time)
         self.end_time = time.perf_counter()
         self.elapsed_time = self.end_time - self.start_time
         self._logger.log(self._level, "%s : %s", self._exit_msg, f"{self.elapsed_time:0.4f} Seconds")
@@ -111,23 +117,24 @@ class TimeBlock_ctx(jgdv.protos.DILogger_p):
 class TrackTime(MetaDec):
     """ Decorate a callable to track its timing """
 
-    def __init__(self, logger:Maybe[Logger]=None, level:Maybe[int|str]=None, enter:Maybe[str]=None, exit:Maybe[str]=None, **kwargs:Any) -> None:  # noqa: A002, ANN401
+    def __init__(self, logger:Maybe[Logger]=None, level:Maybe[int|str]=None, enter:Maybe[str]=None, exit:Maybe[str]=None, **kwargs:Any) -> None:  # noqa: ANN401, A002
         kwargs.setdefault("mark", "_timetrack_mark")
         kwargs.setdefault("data", "_timetrack_data")
         super().__init__([], **kwargs)
-        self._logger = logger
-        self._level  =  level
-        self._entry  = entry
-        self._exit   = exit
+        self._logger  = logger
+        self._level   = level
+        self._entry   = enter
+        self._exit    = exit
 
-    def wrap_fn[I, O](self, fn:Func[I, O]) -> Func[I, O]:
-        logger, enter, exit, level = self._logger, self._entry, self.exit, self.level  # noqa: A001
+    def wrap_fn[**I, O](self, fn:Func[I, O]) -> Func[I, O]:
+        logger, enter, exit, level = self._logger, self._entry, self._exit, self._level  # noqa: A001
 
-        def track_time_wrapper(*args:Any, **kwargs:Any) -> O:  # noqa: ANN401
+        def track_time_wrapper(*args:I.args, **kwargs:I.kwargs) -> O:
             with TimeBlock_ctx(logger=logger, enter=enter, exit=exit, level=level):
                 return fn(*args, **kwargs)
+            raise RuntimeError()
 
         return track_time_wrapper
 
-    def wrap_method[I, O](self, fn:Method[I, O]) -> Method[I, O]:
-        return self._wrap_fn(fn)
+    def wrap_method[**I, O](self, fn:Method[I, O]) -> Method[I, O]:
+        return cast("Method", self.wrap_fn(fn))

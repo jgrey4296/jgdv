@@ -119,18 +119,22 @@ class DefaultBodyMarks_e(StrangMarkAbstract_e):
     hide    = "_"
     extend  = "+"
 
+    @override
     @classmethod
     def default(cls) -> str:
         return cls.head
 
+    @override
     @classmethod
     def implicit(cls) -> set[str]:
         return {cls.hide, cls.empty}
 
+    @override
     @classmethod
     def skip(cls) -> Maybe[str]:
         return cls.empty
 
+    @override
     @classmethod
     def idempotent(cls) -> set[str]:
         return {cls.head, cls.gen}
@@ -144,10 +148,12 @@ class CodeRefHeadMarks_e(StrangMarkAbstract_e):
 
     val     = "value"
 
+    @override
     @classmethod
     def default(cls) -> str:
         return cls.fn
 
+    @override
     @classmethod
     def idempotent(cls) -> set[str]:
         return {cls.module, cls.cls, cls.value, cls.fn}
@@ -342,21 +348,27 @@ class Strang_p(StrangUUIDs_p, StrangMod_p, String_p, Protocol):
     _sections   : ClassVar[Sections_d]
     data        : Strang_d
 
+    ##--| classmethods
     @classmethod
     def sections(cls) -> Sections_d: ...
 
     @classmethod
     def section(cls, arg:int|str) -> Sec_d: ...
 
+    ##--| dunders
     @override
     def __getitem__(self, i:ItemIndex) -> str: ... # type: ignore[override]
 
+    @override
+    def __lt__(self, other:object) -> bool: ...
+    ##--| properties
     @property
     def base(self) -> Self: ...
 
     @property
     def shape(self) -> tuple[int, ...]: ...
 
+    ##--| methods
     @override
     def index(self, *sub:FindSlice, start:Maybe[int]=None, end:Maybe[int]=None) -> int: ... # type: ignore[override]
 
