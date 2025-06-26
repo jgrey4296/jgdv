@@ -863,7 +863,8 @@ class TestStrang_UUIDs:
         ing = f"group::body.a.b.c..<uuid:{uid_obj}>"
         ang1 = Strang(ing)
         ang2 = Strang(ang1)
-        assert(ang1[1,-1] == ang2[1, -1])
+        assert(ang1 == ang2)
+        assert(ang1.uuid() == ang2.uuid())
 
     def test_unique_uuid_carries_to_new_instances(self):
         uuid_obj = uuid.uuid1()
