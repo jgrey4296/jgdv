@@ -106,7 +106,8 @@ class Location(Strang):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs) # type: ignore[misc]
 
-    def __contains__(self, other:object) -> bool: # type: ignore
+    @override
+    def __contains__(self, other:object) -> bool:
         """ Whether a definite artifact is matched by self, an abstract artifact
 
        | other    ∈ self
@@ -141,7 +142,7 @@ class Location(Strang):
                 return super().__lt__(str(other)) # type: ignore[misc]
 
     @property
-    def path(self) -> pl.Path: # type: ignore
+    def path(self) -> pl.Path:
         return pl.Path(self[1,:])
 
     @property
@@ -152,7 +153,7 @@ class Location(Strang):
         return list(self.words(1))
 
     @property
-    def stem(self) -> Maybe[str|tuple[API.WildCard_e, str]]: # type: ignore
+    def stem(self) -> Maybe[str|tuple[API.WildCard_e, str]]:
         """ Return the stem, or a tuple describing how it is a wildcard """
         result : Maybe[str|tuple[API.WildCard_e, str]] = None
         if self.Marks.file not in self.data.meta:
@@ -186,11 +187,12 @@ class Location(Strang):
     def key(self) -> Maybe[str|API.Key_p]:
         raise NotImplementedError()
 
-    def ext(self, *, last:bool=False) -> Maybe[str|tuple[API.WildCard_e, str]]: # type: ignore # noqa: PLR0911
+    def ext(self, *, last:bool=False) -> Maybe[str|tuple[API.WildCard_e, str]]: # noqa: PLR0911
         """ return the ext, or a tuple of how it is a wildcard.
         returns nothing if theres no extension,
         returns all suffixes if there are multiple, or just the last if last=True
         """
+        x : Any
         if self.Marks.file not in self.data.meta:
             return None
 
@@ -205,6 +207,8 @@ class Location(Strang):
                 return None
             case int() as x:
                 pass
+            case x:
+                raise TypeError(type(x))
 
         match elem[x:]:
             case ".":

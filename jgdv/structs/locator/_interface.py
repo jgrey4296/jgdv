@@ -96,6 +96,7 @@ class LocationMeta_e(StrangAPI.StrangMarkAbstract_e):
     dir          = directory
     loc          = location
 
+    @override
     @classmethod
     def default(cls) -> Maybe:
         return cls.location
@@ -116,7 +117,8 @@ class Location_p(Strang_p, Protocol):
     Marks  : ClassVar[StrangAPI.StrangMarkAbstract_e]
     Wild   : ClassVar[StrangAPI.StrangMarkAbstract_e]
 
-    def __lt__(self, other:TimeDelta|str|pl.Path|Location_p) -> bool: ...
+    @override
+    def __lt__(self, other:TimeDelta|str|pl.Path|Location_p) -> bool: ... # type: ignore[override]
 
     @property
     def keys(self) -> set[str]: ...
@@ -163,3 +165,5 @@ class Locator_p(Protocol):
     def clear(self) -> None: ...
 
     def update(self, extra:dict|Location_p|Locator_p, *, strict:bool=True) -> Self: ...
+
+    def expand(self, key:Location_p|pl.Path|Key_p|str, *, strict:bool=True, norm:bool=True) -> Maybe[pl.Path]: ...

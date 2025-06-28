@@ -224,7 +224,8 @@ class _LocatorUtil_m:
         """ Ensure the values passed in are registered locations,
           error with DirAbsent if they aren't
         """
-        missing = {x for x in values if x not in self} # type: ignore
+        assert(hasattr(self, "__contains__"))
+        missing = {x for x in values if x not in self}
 
         if strict and bool(missing):
             msg = "Ensured Locations are missing for %s : %s"
@@ -237,15 +238,17 @@ class _LocatorUtil_m:
           Expand a path to be absolute, taking into account the set doot root.
           resolves symlinks unless symlinks=True
         """
+        assert(hasattr(self, "_normalize"))
+        assert(hasattr(self, "root"))
         match path:
-            case Location() if Location.Marks.earlycwd in path: # type: ignore
+            case Location() if Location.Marks.earlycwd in path:
                 the_path = path.path
-                return self._normalize(the_path, root=_LocatorGlobal._startup_cwd) # type: ignore
+                return self._normalize(the_path, root=_LocatorGlobal._startup_cwd)
             case Location():
                 the_path = path.path
-                return self._normalize(the_path, root=self.root) # type: ignore
+                return self._normalize(the_path, root=self.root)
             case pl.Path():
-                return self._normalize(path, root=self.root) # type: ignore
+                return self._normalize(path, root=self.root)
             case _:
                 msg = "Bad type to normalize"
                 raise TypeError(msg, path)
@@ -297,9 +300,10 @@ class _LocatorAccess_m:
         """
           Access the registered Location associated with 'key'
         """
+        assert(hasattr(self, "__contains__"))
         logging.debug("Locator Access: %s", key)
         match key:
-            case str() if key in self: # type: ignore
+            case str() if key in self:
                 return self._data[key]
             case _:
                 return None
@@ -309,16 +313,19 @@ class _LocatorAccess_m:
         Access the locations mentioned in 'key',
         join them together, and normalize it
         """
+        assert(hasattr(self, "expand"))
+        assert(hasattr(self, "normalize"))
+
         logging.debug("Locator Expand: %s", key)
         coerced : DKey = self._coerce_key(key, strict=strict)
-        match coerced.expand(self): # type: ignore
+        match coerced.expand(self):
             case None if strict:
                 msg = "Strict Expansion of Location failed"
                 raise KeyError(msg, key)
             case None:
                 return None
             case pl.Path() as x if norm:
-                return self.normalize(x) # type: ignore
+                return self.normalize(x)
             case pl.Path() as x:
                 return x
             case x:
@@ -346,7 +353,7 @@ class _LocatorAccess_m:
             case False:
                 return DKey['soft.fail'](current, ctor=pl.Path)
             case True:
-                return DKey(current, ctor=pl.Path) # type: ignore
+                return DKey(current, ctor=pl.Path)
 
 ##--|
 
@@ -453,9 +460,9 @@ class JGDVLocator(Mapping):
         return len(self._data)
 
     @override
-    def __iter__(self) -> Generator[str|DKey]:
+    def __iter__(self) -> Iterator[str]:
         """ Iterate over the registered location names """
-        return iter(self._data.keys()) # type: ignore
+        return iter(self._data.keys())
 
     def __call__(self, new_root:Maybe[pl.Path]=None) -> JGDVLocator:
         """ Create a copied locations object, with a different root """
@@ -471,7 +478,7 @@ class JGDVLocator(Mapping):
         assert(self.Current is not None)
         return self.Current
 
-    def __exit__(self, exc_type:Maybe[type[Exception]], exc_value:Maybe[Exception], exc_traceback:Maybe[Traceback]) -> bool: # type: ignore
+    def __exit__(self, exc_type:Maybe[type[Exception]], exc_value:Maybe[Exception], exc_traceback:Maybe[Traceback]) -> Literal[False]:
         """ returns the global state to its original, """
         _LocatorGlobal.pop()
         assert(self.Current is not None)
