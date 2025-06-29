@@ -119,6 +119,8 @@ class CodeReference(Strang, no_register=True):
 
     @override
     def __class_getitem__(cls, *args:Any, **kwargs:Any) -> type:
+        alias : types.GenericAlias
+        ##--|
         match super().__class_getitem__(*args, **kwargs):
             case type() as x:
                 return x

@@ -277,6 +277,23 @@ class TestStrang_Words:
             case x:
                  assert(False), x
 
+
+    def test_get_words_with_sep_marks(self):
+        skip_mark = Strang.section(1).marks.skip()
+        base = "group::a.b.c..d.e.f"
+        val     = Strang(base)
+        expect  = ["a", "b", "c", skip_mark, "d", "e", "f"]
+        expect_joined = "a.b.c..d.e.f"
+        assert(not val.uuid())
+        match list(val.words(1)), val[1,:]:
+            case [*xs], str() as extracted if extracted == expect_joined:
+                for x,y in zip(xs, expect, strict=True):
+                    assert(x == y)
+                else:
+                    assert(True)
+            case x:
+                 assert(False), x
+
     def test_get_words_with_case(self):
         val = Strang("group.blah.awef::a.b.<uuid>")
         assert(not val.uuid())

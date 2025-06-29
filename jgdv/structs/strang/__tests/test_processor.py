@@ -121,6 +121,47 @@ class TestStrang_PreProcess:
             case x:
                 assert(False), x
 
+
+    def test_compress_types_no_op(self):
+        ing =  "a.b.c::d.e.f"
+        obj = StrangBasicProcessor()
+        match obj._compress_types(Strang, ing):
+            case str() as out, {"types": vals}:
+                assert(out == ing)
+                assert(not bool(vals))
+            case x:
+                assert(False), x
+
+
+    def test_compress_types_simple(self):
+        ing     =  "a.b.c::d.e.f.<int:2>"
+        expect  = "a.b.c::d.e.f.<int>"
+        obj     = StrangBasicProcessor()
+        match obj._compress_types(Strang, ing):
+            case str() as out, {"types": vals}:
+                assert(out == expect)
+                assert(bool(vals))
+                key, typeval = vals[0]
+                assert(key == "int")
+                assert(typeval == '2')
+            case x:
+                assert(False), x
+
+
+    def test_compress_types_multi(self):
+        ing     =  "a.b.c::d.e.f.<int:2>.<str:5>.<bool:False>"
+        expect  = "a.b.c::d.e.f.<int>.<str>.<bool>"
+        obj     = StrangBasicProcessor()
+        match obj._compress_types(Strang, ing):
+            case str() as out, {"types": vals}:
+                assert(out == expect)
+                assert(bool(vals))
+                assert(len(vals) == 3)
+                keys = [x[0] for x in vals]
+                assert(keys == ["int", "str", "bool"])
+            case x:
+                assert(False), x
+
 class TestStrang_Process:
 
     def test_sanity(self):

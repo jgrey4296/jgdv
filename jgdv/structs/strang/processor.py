@@ -121,8 +121,9 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
         if not self._verify_structure(cls, text):
             raise ValueError(errors.MalformedData, text)
 
-        clean      = self._clean_separators(cls, text).strip()
-        val, extracted = self._compress_types(cls, clean)
+        clean           = self._clean_separators(cls, text).strip()
+        val, extracted  = self._compress_types(cls, clean)
+        assert(not ('types' in extracted and 'types' in post_data))
         post_data.update(extracted)
         match self._get_args(val):
             case int() as args_start:
@@ -323,7 +324,7 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
         if 'types' in data:
             data['types'].reverse()
 
-        match self.use_hook(obj, "process", data=data):
+        match self.use_hook(obj, "post_process", data=data):
             case None:
                 pass
             case True, x:
@@ -350,6 +351,7 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
         section  : API.Sec_d        = obj.section(idx)
         count    : int              = len(obj.data.sec_words[idx])
         meta     : list[MetaTypes]  = [None for x in range(count)]
+        ##--|
         for i, word_idx in enumerate(obj.data.sec_words[idx]):
             elem                    = obj[obj.data.words[word_idx]]
             assert(isinstance(elem, str))

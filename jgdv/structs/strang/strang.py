@@ -85,8 +85,6 @@ class _StrangSlicer:
     __slots__ = ()
 
     def getitem(self, obj:API.Strang_p, args:API.ItemIndex) -> str: # type: ignore[override]
-        i       : int
-        x       : Any
         words   : list[str]
         gotten  : str
         match self.discrim_getitem_args(obj, args):
@@ -223,8 +221,9 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
         self.meta  = dict(kwargs)
         self.data  = API.Strang_d()
 
-   ##--| dunders
+    ##--| dunders
 
+    @override
     def __str__(self) -> str:
         """ Provides a fully expanded string
 
@@ -232,11 +231,13 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
         """
         return format(self, "a+")
 
+    @override
     def __repr__(self) -> str:
         body = self[:]
         cls  = self.__class__.__name__
         return f"<{cls}: {body}>"
 
+    @override
     def __format__(self, spec:str) -> str:
         """ Basic formatting to get just a section """
         result : str
@@ -257,15 +258,18 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
                 val = self.data.uuid
                 result = f"<uuid:{val}>"
             case "u":
-                raise NotImplementedError("'u' format param")
+                msg = "'u' format param"
+                raise NotImplementedError(msg)
             case _:
                 result = super().__format__(spec)
 
         return result
 
+    @override
     def __hash__(self) -> int:
         return str.__hash__(str(self))
 
+    @override
     def __lt__(self:API.Strang_p, other:object) -> bool:
         match other:
             case API.Strang_p() | str() as x if not len(self) < len(x):
@@ -290,15 +294,17 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
 
         return True
 
+    @override
     def __le__(self:API.Strang_p, other:object) -> bool:
         match other:
             case API.Strang_p() as x:
-                return hash(self) == hash(other) or (self < x) # type: ignore
+                return hash(self) == hash(other) or (self < x)
             case str():
                 return hash(self) == hash(other)
             case x:
                 raise TypeError(type(x))
 
+    @override
     def __eq__(self, other:object) -> bool:
         match other:
             case Strang() as x if self.uuid() and x.uuid():
@@ -311,14 +317,17 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
             case x:
                 return hash(self) == hash(x)
 
+    @override
     def __ne__(self, other:object) -> bool:
         return not self == other
 
+    @override
     def __iter__(self) -> Iterator:
         """ iterate over words """
         for sec in self.sections():
             yield from self.words(sec.idx)
 
+    @override
     def __getitem__(self, args:API.ItemIndex) -> str: # type: ignore[override]
         """
         Access sections and words of a Strang,
@@ -348,6 +357,7 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
             case _:
                 raise AttributeError(val)
 
+    @override
     def __contains__(self:API.Strang_p, other:object) -> bool:
         """ test for conceptual containment of names
         other(a.b.c) ∈ self(a.b) ?
@@ -375,6 +385,7 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
 
     ##--| Access
 
+    @override
     def index(self, *sub:API.FindSlice, start:Maybe[int]=None, end:Maybe[int]=None) -> int: # type: ignore[override]
         """ Extended str.index, to handle marks and word slices """
         needle  : str|API.StrangMarkAbstract_e
@@ -398,6 +409,7 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
             case _:
                 return str.index(self, needle, start, end)
 
+    @override
     def rindex(self, *sub:API.FindSlice, start:Maybe[int]=None, end:Maybe[int]=None) -> int: # type: ignore[override]
         """ Extended str.rindex, to handle marks and word slices """
         needle  : str
@@ -533,7 +545,10 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
         root(test::a.b.c..<UUID>.sub..other) => test::a.b.c..<UUID>.sub
         root(test::a.b.c..<UUID>.sub..other, top=True) => test::a.b.c
         """
-        mark = (self.section(-1).marks or API.DefaultBodyMarks_e).skip()
+        next_mark  : int
+        mark       : Maybe[API.StrangMarkAbstract_e]
+        ##--|
+        mark  = (self.section(-1).marks or API.DefaultBodyMarks_e).skip()
         assert(mark is not None)
         try:
             match top:
@@ -594,7 +609,8 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
 
     ##--| Other
 
-    def format(self, *args:Any, **kwargs:Any) -> str:  # noqa: ANN401
+    @override
+    def format(self, *args:Any, **kwargs:Any) -> str:
         """ Advanced formatting for strangs,
         using the cls._formatter
         """
