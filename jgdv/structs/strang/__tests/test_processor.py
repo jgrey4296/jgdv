@@ -162,6 +162,36 @@ class TestStrang_PreProcess:
             case x:
                 assert(False), x
 
+
+    def test_provide_args(self):
+        """ intelligently add provided args to the tail of the string when pre-processing """
+        ing         =  "a.b.c::d.e.f"
+        args_str     = "[blah,bloo]"
+        expect      = f"{ing}{args_str}"
+        args_start  = expect.index("[")
+        obj         = StrangBasicProcessor()
+        match obj.pre_process(Strang, ing, args_str):
+            case str() as out, {}, {"args_start": x}, None:
+                assert(out == expect)
+                assert(x == args_start)
+            case x:
+                assert(False), x
+
+
+    def test_provided_args_are_compressed(self):
+        """ intelligently add provided args to the tail of the string when pre-processing """
+        ing         =  "a.b.c::d.e.f"
+        args_str     = "[<int:5>]"
+        expect      = f"{ing}[<int>]"
+        args_start  = expect.index("[")
+        obj         = StrangBasicProcessor()
+        match obj.pre_process(Strang, ing, args_str):
+            case str() as out, {}, {"args_start": x}, None:
+                assert(out == expect)
+                assert(x == args_start)
+            case x:
+                assert(False), x
+
 class TestStrang_Process:
 
     def test_sanity(self):

@@ -77,7 +77,9 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
     If the strang type implements _{call}_h,
     the processor uses that for a stage instead
     """
-    def use_hook(self, cls:type[T]|T, stage:str, *args:Any, **kwargs:Any) -> MaybeT[bool, tuple]:  # noqa: ANN401
+
+    def use_hook(self, cls:type[T]|T, stage:str, *args:Any, **kwargs:Any) -> MaybeT[bool, Any]:  # noqa: ANN401
+        result : MaybeT[bool, Any]
         match cls, getattr(cls, name_to_hook(stage), None):
             case _, None:
                 return None
@@ -98,41 +100,52 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
             case x:
                         raise TypeError(type(x))
 
-    def pre_process(self, cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult[T]:  # noqa: A002, ANN401
+    @override
+    def pre_process(self, cls:type[T], input:Any, *args:Any, strict:bool=False, **kwargs:Any) -> PreProcessResult[T]:
         """ run before str.__new__ is called,
         to do early modification of the string
         Filters out extraneous duplicated separators
         """
-        text       : str
-        inst_data  : InstanceData      = {}
-        post_data  : PostInstanceData  = {}
-        ctor       : Maybe[type[T]]    = None
+        base_text   : str
+        final_text  : str
+        extracted   : dict
+        inst_data   : InstanceData      = {}
+        post_data   : PostInstanceData  = {}
+        ctor        : Maybe[type[T]]    = None
+        skip_mark   : str               = cls.section(-1).case or ""
+
+        match args:
+            case []:
+                base_text = str(input)
+            case [*xs, x] if "[" in x and "]" in x:
+                base_body =  skip_mark.join(str(x) for x in [input, *xs])
+                base_text = f"{base_body}{x}"
+            case [*xs]:
+                base_text  = skip_mark.join(str(x) for x in [input, *xs])
+
         match self.use_hook(cls, "pre_process", input, *args, strict=strict, **kwargs):
             case None:
-                case = cls.section(-1).case or ""
-                text = case.join(str(x) for x in [input, *args])
+                pass
             case False, *rest:
-                text , inst_data, post_data, ctor = rest  # type: ignore[assignment]
-                return text, inst_data, post_data, ctor
+                base_text , inst_data, post_data, ctor = rest  # type: ignore[assignment]
+                return base_text, inst_data, post_data, ctor
             case True, *rest:
-                input, inst_data, post_data, ctor = rest  # type: ignore[assignment]  # noqa: A001
+                base_text, inst_data, post_data, ctor = rest  # type: ignore[assignment]  # noqa: A001
 
+        if not self._verify_structure(cls, base_text):
+            raise ValueError(errors.MalformedData, base_text)
 
-        if not self._verify_structure(cls, text):
-            raise ValueError(errors.MalformedData, text)
-
-        clean           = self._clean_separators(cls, text).strip()
-        val, extracted  = self._compress_types(cls, clean)
+        clean                  = self._clean_separators(cls, base_text).strip()
+        final_text, extracted  = self._compress_types(cls, clean)
         assert(not ('types' in extracted and 'types' in post_data))
         post_data.update(extracted)
-        match self._get_args(val):
+        match self._get_args(final_text):
             case int() as args_start:
                 post_data['args_start']  = args_start
             case _:
                 pass
 
-
-        return val, inst_data, post_data, None
+        return final_text, inst_data, post_data, None
 
     def _verify_structure(self, cls:type[T], val:str) -> bool:
         """ Verify basic strang structure.
@@ -200,6 +213,7 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
 
     ##--|
 
+    @override
     def process(self, obj:T, *, data:PostInstanceData) -> Maybe[T]:
         """ slice the sections of the strang
 
@@ -221,7 +235,7 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
             case False, None:
                 pass
             case False, x:
-                assert(isinstance(x, type(obj)|None))
+                assert(isinstance(x, type(obj)))
                 obj = x
 
         logging.debug("Processing Strang: %s", str.__str__(obj))
@@ -302,7 +316,7 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
             raise ValueError(selection)
 
         obj.data.args = tuple(selection)
-        if API.UUID_WORD in selection:
+        if API.UUID_WORD in selection and obj.data.uuid is None:
             assert('types' in data), data
             match data['types'].pop():
                 case "uuid", str() as uid_val:
@@ -314,6 +328,7 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
 
     ##--|
 
+    @override
     def post_process(self, obj:T, data:PostInstanceData) -> Maybe[T]:
         """ With the strang cleaned and slices, build meta data for words
 
@@ -333,7 +348,7 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
             case False, None:
                 pass
             case False, x:
-                assert(isinstance(x, type(obj)|None))
+                assert(isinstance(x, type(obj)))
                 obj = x
 
         logging.debug("Post-processing Strang: %s", str.__str__(obj))
@@ -370,17 +385,17 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
         else:
             return meta
 
-    def _calc_obj_meta(self, obj:T) -> None:
-        """ Set object level meta dict
-
-        ie: mark the obj as an instance
-        """
-        pass
-
     def _validate_marks(self, obj:T) -> None:
         """ Check marks make sense.
         eg: +|_ are only at obj[1:0]
 
+        """
+        pass
+
+    def _calc_obj_meta(self, obj:T) -> None:
+        """ Set object level meta dict
+
+        ie: mark the obj as an instance
         """
         pass
 
@@ -390,7 +405,9 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
         """ Handle <type> words, which may have had data extracted during pre-processing.
 
         """
-        result : Maybe    = None
+        key      : str
+        typeval  : Maybe[str]
+        result   : Maybe  = None
         if not (word:=API.TYPE_RE.match(val)):
             return None
 
@@ -456,3 +473,18 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
             return None
         return marks(val)
 
+    def prep_word(self, val:API.PushVal, *, fallback:str|API.StrangMarkAbstract_e="") -> str:
+        result : str
+        match val:
+            case API.StrangMarkAbstract_e() as x if x in type(x).idempotent():
+                result =  x.value
+            case str() as x:
+                result =  x
+            case UUID() as x:
+                result =  f"<uuid:{x}>"
+            case None:
+                result =  fallback
+            case x:
+                result =  str(x)
+
+        return result

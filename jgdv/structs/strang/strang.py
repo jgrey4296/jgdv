@@ -218,8 +218,7 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
 
     def __init__(self, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
         super().__init__()
-        self.meta  = dict(kwargs)
-        self.data  = API.Strang_d()
+        self.data  = API.Strang_d(kwargs.pop("uuid",None))
 
     ##--| dunders
 
@@ -239,12 +238,21 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
 
     @override
     def __format__(self, spec:str) -> str:
-        """ Basic formatting to get just a section """
+        """ Basic formatting to get just a section
+
+        additional format specs:
+        a   : body, args, no expansion
+        a-  : body, no args, no expansion
+        a+  : body, args, expand
+        a=  : no body, args
+        u   : uuid
+
+        """
         result : str
         match spec:
             case "a" | "a-" | "a+" if not self.data.args_start:
                 result = self[:,:]
-            case "a-": # No Args, No Expansion
+            case "a-":
                 result = self[:self.data.args_start]
             case "a+" if self.data.args_start: # Full Args
                 result = f"{self[:,:]}[<uuid:{self.uuid()}>]"
@@ -416,7 +424,7 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
         word    : int
         match sub:
             case [API.StrangMarkAbstract_e() as mark]:
-                word_idx  = max(-1, *(i for i,x in enumerate(self.data.meta) if x == mark))
+                word_idx  = max(-1, *(i for i,x in enumerate(self.data.meta) if x == mark), -1)
                 if word_idx == -1:
                     raise ValueError(mark)
                 return self.data.words[word_idx].start
@@ -498,7 +506,7 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
         return self.data.args
     ##--| Modify
 
-    def push(self, *args:API.PushVal) -> Self:
+    def push(self, *new_words:API.PushVal, new_args:Maybe[list]=None, uuid:Maybe[UUID]=None) -> Self:
         """ extend a strang with values
 
         Pushed onto the last section, with a section.marks.skip() mark first
@@ -519,24 +527,26 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
             case _:
                 raise ValueError(errors.NoSkipMark)
 
-        for word in args:
+        for word in new_words:
             match word:
                 case API.StrangMarkAbstract_e() as x if x in type(x).idempotent() and x in self:
                     pass
                 case API.StrangMarkAbstract_e() as x if x in type(x).idempotent() and x in words:
                     pass
-                case API.StrangMarkAbstract_e() as x if x in type(x).idempotent() and x in self:
-                    words.append(x.value)
-                case str() as x:
-                    words.append(x)
-                case UUID() as x:
-                    words.append(f"<uuid:{x}>")
-                case None:
-                    words.append(mark)
-                case x:
-                    words.append(str(x))
+                case _:
+                    words.append(self._processor.prep_word(word, fallback=mark))
         else:
-            return self.__class__(*words)
+            match new_args:
+                case [] | None if uuid:
+                    return self.__class__(*words, "[<uuid>]", uuid=uuid)
+                case [] | None:
+                    return self.__class__(*words)
+                case [*xs]:
+                    joined_args = ",".join(self._processor.prep_word(x) for x in xs)
+                    return self.__class__(*words, f"[{joined_args}]", uuid=uuid)
+                case y:
+                    raise TypeError(type(y))
+
 
     def pop(self, *, top:bool=True)-> Self:
         """
@@ -586,16 +596,12 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
         match args:
             case [] if self.uuid():
                 return self
-            case [] if bool(curr:=f"{self:a=}"):
-                return self.__class__(f"{self:a-}[{curr},<uuid>]")
-            case []:
-                return self.__class__(f"{self:a-}[<uuid>]")
-            case [*xs, x] if bool(curr:=f"{self:a=}"):
-                return self.__class__(f"{self:a-}", *xs, f"{x}[<uuid>]")
-            case [x]:
-                return self.__class__(f"{self:a-}", f"{x}[<uuid>]")
+            case [*xs] if bool(self.args()):
+                return self.__class__(f"{self:a-}", *xs, f"[{self:a=},<uuid>]")
+            case [*xs]:
+                return self.__class__(f"{self:a-}", *xs, "[<uuid>]")
             case x:
-                raise TypeError(type(x))
+                raise TypeError(type(x), x)
 
     def de_uniq(self) -> Self:
         """ a.b.c::d.e.f[<uuid>] -> a.b.c::d.e.f

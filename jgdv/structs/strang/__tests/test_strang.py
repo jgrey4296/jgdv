@@ -277,7 +277,6 @@ class TestStrang_Words:
             case x:
                  assert(False), x
 
-
     def test_get_words_with_sep_marks(self):
         skip_mark = Strang.section(1).marks.skip()
         base = "group::a.b.c..d.e.f"
@@ -419,6 +418,13 @@ class TestStrang_Index:
         ang = Strang(ing)
         with pytest.raises(ValueError):
             ang.rindex("g")
+
+
+    def test_rindex_no_matching_mark(self):
+        ing = "a.b.c::c.e.f"
+        ang = Strang(ing)
+        with pytest.raises(ValueError):
+            ang.rindex(API.DefaultBodyMarks_e.skip())
 
 class TestStrang_EQ:
 
@@ -700,9 +706,30 @@ class TestStrang_Modify:
             num = randint(0, 100)
             assert(obj.push(num) == f"group::body.a.b.c..{num}")
 
+    def test_push_with_new_args(self):
+        target_uuid  = uuid.uuid1()
+        base         = "group::a.b.c"
+        obj          = Strang(base)
+        obj2         = Strang(f"{base}[<uuid>]", uuid=target_uuid)
+        expect       = "group::body.a.b.c[<uuid>]"
+        result       = obj.push(new_args=[target_uuid])
+        assert(result is not obj)
+        assert(not obj.uuid())
+        assert(result.uuid() == target_uuid)
+
+    def test_push_new_args_overwrites_old(self):
+        target_uuid  = uuid.uuid1()
+        base         = "group::a.b.c[<uuid>, blah]"
+        obj          = Strang(base)
+        expect       = "group::body.a.b.c[<uuid>]"
+        result       = obj.push(new_args=[target_uuid])
+        assert(result is not obj)
+        assert(result.uuid() == target_uuid)
+        assert(result.args() != obj.args())
+
     ##--| UUIDs
 
-    def test_push_preserves_uuid(self):
+    def test_push_preserves_uuid_in_body(self):
         obj = Strang("group::body.a.b.c.<uuid>")
         match obj.push("blah"):
             case Strang() as x:
@@ -880,6 +907,7 @@ class TestStrang_UUIDs:
         ing = f"group::body.a.b.c..<uuid:{uid_obj}>"
         ang1 = Strang(ing)
         ang2 = Strang(ang1)
+        assert(ang1[:] == ang2[:])
         assert(ang1 == ang2)
         assert(ang1.uuid() == ang2.uuid())
 
@@ -889,11 +917,6 @@ class TestStrang_UUIDs:
         ang1 = Strang(ing)
         ang2 = Strang(ang1)
         assert(ang1[0,-1] == ang2[0, -1])
-
-    def test_error_on_multiple_head_uuids(self):
-        ing       = "group::a.b.c[<uuid>,<uuid>]"
-        with pytest.raises(StrangError):
-            Strang(ing)
 
     ##--| to unique
 
@@ -973,6 +996,30 @@ class TestStrang_UUIDs:
         assert(not obj.uuid())
         assert(not popped.uuid())
         assert(obj != popped)
+
+    ##--| args
+
+    def test_str_arg_uuid(self):
+        ing = "group::a.b.c[<uuid>]"
+        ang = Strang(ing)
+        assert(ang.uuid())
+
+    def test_explicit_str_arg_uuid(self):
+        uid = uuid.uuid1()
+        ing = f"group::a.b.c[<uuid:{uid}>]"
+        ang = Strang(ing)
+        assert(ang.uuid() == uid)
+
+    def test_kwarg_uuid(self):
+        uid = uuid.uuid1()
+        ing = f"group::a.b.c[<uuid>]"
+        ang = Strang(ing, uuid=uid)
+        assert(ang.uuid() == uid)
+
+    def test_error_on_multiple_head_uuids(self):
+        ing       = "group::a.b.c[<uuid>,<uuid>]"
+        with pytest.raises(StrangError):
+            Strang(ing)
 
 class TestStrang_Formatting:
 
@@ -1480,7 +1527,6 @@ class TestStrang_Args:
         assert(f"{obj:a+}"  == full_expansion)
         assert(str(obj)     == full_expansion)
 
-
     def test_args(self):
         obj = Strang("head.a.b::tail.c.d[blah]")
         match obj.args():
@@ -1513,7 +1559,6 @@ class TestStrang_Args:
                 assert(True)
             case x:
                 assert(False), x
-
 
     def test_popped_uniq_retains_args(self):
         obj = Strang("head.a.b::tail.c.d[blah]")
