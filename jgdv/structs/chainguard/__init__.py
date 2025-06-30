@@ -42,6 +42,6 @@ from .errors import GuardedAccessError
 from ._interface import TomlTypes
 from .chainguard import ChainGuard
 
-load        = ChainGuard.load     # type: ignore
-load_dir    = ChainGuard.load_dir # type: ignore
-read        = ChainGuard.read     # type: ignore
+load        = ChainGuard.load # type: ignore[attr-defined]
+load_dir    = ChainGuard.load_dir # type: ignore[attr-defined]
+read        = ChainGuard.read # type: ignore[attr-defined]
