@@ -2,13 +2,11 @@
 """
 
 """
+# ruff: noqa: ANN202, ANN001, ARG002, B011, PLR2004, F841, N802
 from __future__ import annotations
 
 import logging as logmod
 import pathlib as pl
-from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
-                    Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
-                    TypeVar, cast)
 import warnings
 
 import pytest
@@ -17,8 +15,10 @@ from jgdv.structs.locator.errors import DirAbsent, LocationExpansionError, Locat
 from jgdv.structs.locator import JGDVLocator, Location
 from jgdv.structs.locator.locator import _LocatorGlobal
 from jgdv.structs.dkey import DKey, NonDKey
+from .. import _interface as API # noqa: N812
 
 logging = logmod.root
+assert(isinstance(JGDVLocator, API.Locator_p))
 
 match JGDVLocator.Current:
     case None:
@@ -39,9 +39,13 @@ def wrap_locs():
 
 class TestLocator:
 
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
     def test_initial(self):
         simple = JGDVLocator(pl.Path.cwd())
         assert(isinstance(simple, JGDVLocator))
+        assert(isinstance(simple, API.Locator_p))
         assert(not bool(simple._data))
 
     def test_update(self, simple):
@@ -91,12 +95,12 @@ class TestLocator:
 
     def test_empty_repr(self, simple):
         repr_str = repr(simple)
-        assert(repr_str == f"<JGDVLocator (1) : {str(pl.Path.cwd())} : ()>")
+        assert(repr_str == f"<JGDVLocator (1) : {pl.Path.cwd()!s} : ()>")
 
     def test_non_empty_repr(self, simple):
         simple.update({"a": "dir::>blah", "b": "dir::>aweg", "awegewag": "dir::>jkwejgio"})
         repr_str = repr(simple)
-        assert(repr_str == f"<JGDVLocator (1) : {str(pl.Path.cwd())} : (a, b, awegewag)>")
+        assert(repr_str == f"<JGDVLocator (1) : {pl.Path.cwd()!s} : (a, b, awegewag)>")
 
     def test_clear(self, simple):
         assert(not bool(simple._data))
@@ -172,8 +176,8 @@ class TestLocatorUtils:
 
 class TestLocatorGlobal:
 
-    def test_sanity(self, simple):
-        assert(True is not False)
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
 
     def test_global_Current(self, simple):
         locs = JGDVLocator(pl.Path.cwd())

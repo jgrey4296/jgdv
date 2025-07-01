@@ -45,9 +45,9 @@ import os
 import pathlib as pl
 import re
 import typing
+from collections import defaultdict, deque
 from copy import deepcopy
 from re import Pattern
-from collections import defaultdict, deque
 from uuid import UUID, uuid1
 from weakref import ref
 
@@ -57,12 +57,14 @@ from weakref import ref
 from jgdv import Mixin, Proto
 from jgdv.mixins.path_manip import PathManip_m
 from jgdv.structs.chainguard import ChainGuard
-from jgdv.structs.dkey import DKey, MultiDKey, NonDKey, SingleDKey, ExpInst_d
+from jgdv.structs.dkey import DKey, ExpInst_d, MultiDKey, NonDKey, SingleDKey
 
-from .location import Location
-from .errors import DirAbsent, LocationError, LocationExpansionError
-from ._interface import Location_p, Locator_p, LocationMeta_e
 # ##-- end 1st party imports
+
+from . import _interface as API  # noqa: N812
+from ._interface import Location_p, LocationMeta_e, Locator_p
+from .errors import DirAbsent, LocationError, LocationExpansionError
+from .location import Location
 
 # ##-- types
 # isort: off
@@ -85,7 +87,6 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, MutableMapping, Hashable
 
-    from . import _interface as API # noqa: N812
     from jgdv.structs.dkey._util._interface import SourceChain_d
 
 # isort: on
@@ -121,7 +122,7 @@ class _LocatorGlobal:
     Provides the enter/exit store for JGDVLocator objects
     """
 
-    _global_locs : ClassVar[list[JGDVLocator]] = []
+    _global_locs : ClassVar[list[Locator_p]] = []
     _startup_cwd : ClassVar[pl.Path] = pl.Path.cwd()
 
     @staticmethod
@@ -129,7 +130,7 @@ class _LocatorGlobal:
         return len(_LocatorGlobal._global_locs)
 
     @staticmethod
-    def peek() -> Maybe[JGDVLocator]:
+    def peek() -> Maybe[Locator_p]:
         match _LocatorGlobal._global_locs:
             case []:
                 return None
@@ -139,11 +140,11 @@ class _LocatorGlobal:
                 return None
 
     @staticmethod
-    def push(locs:JGDVLocator) -> None:
+    def push(locs:Locator_p) -> None:
         _LocatorGlobal._global_locs.append(locs)
 
     @staticmethod
-    def pop() -> Maybe[JGDVLocator]:
+    def pop() -> Maybe[Locator_p]:
         match _LocatorGlobal._global_locs:
             case []:
                 return None
@@ -153,7 +154,7 @@ class _LocatorGlobal:
             case _:
                 return None
 
-    def __get__(self, obj:Any, objtype:Maybe[type]=None) -> Maybe[JGDVLocator]:  # noqa: ANN401
+    def __get__(self, obj:Any, objtype:Maybe[type]=None) -> Maybe[Locator_p]:  # noqa: ANN401
         """ use the descriptor protocol to make a pseudo static-variable
         https://docs.python.org/3/howto/descriptor.html
         """
@@ -161,14 +162,15 @@ class _LocatorGlobal:
 
 class _LocatorUtil_m:
 
-    _data    : dict[DKey|str, Location]
+    _data    : dict[str|API.Key_p, Location_p]
 
-    def update(self, extra:dict|ChainGuard|Location|JGDVLocator, *, strict:bool=True) -> Self:
+    def update(self, extra:dict|ChainGuard|Location_p|Locator_p, *, strict:bool=True) -> Self:
         """
           Update the registered locations with a dict, chainguard, or other dootlocations obj.
 
         when strict=True (default), don't allow overwriting existing locations
         """
+        raw : dict[str|API.Key_p, Location_p]
         match extra: # unwrap to just a dict
             case dict():
                 pass
@@ -192,7 +194,7 @@ class _LocatorUtil_m:
 
         for k,v in extra.items():
             try:
-                raw[k] = Location(v)
+                raw[k] = cast("API.Location_p", Location(v))
             except KeyError:
                 msg = "Couldn't build a Location"
                 raise LocationError(msg, k, v) from None
@@ -233,7 +235,7 @@ class _LocatorUtil_m:
 
         return missing
 
-    def normalize(self, path:pl.Path|Location, *, symlinks:bool=False) -> pl.Path:
+    def normalize(self, path:pl.Path|Location_p, *, symlinks:bool=False) -> pl.Path:
         """
           Expand a path to be absolute, taking into account the set doot root.
           resolves symlinks unless symlinks=True
@@ -241,10 +243,10 @@ class _LocatorUtil_m:
         assert(hasattr(self, "_normalize"))
         assert(hasattr(self, "root"))
         match path:
-            case Location() if Location.Marks.earlycwd in path:
+            case API.Location_p() as loc if Location.Marks.earlycwd in loc:
                 the_path = path.path
                 return self._normalize(the_path, root=_LocatorGlobal._startup_cwd)
-            case Location():
+            case API.Location_p():
                 the_path = path.path
                 return self._normalize(the_path, root=self.root)
             case pl.Path():
@@ -266,7 +268,7 @@ class _LocatorUtil_m:
 
 class _LocatorAccess_m:
 
-    _data    : dict[str|API.Key_p, Location]
+    _data    : dict[str|API.Key_p, Location_p]
 
     def get(self, key:str|API.Key_p, fallback:Maybe[str|pl.Path]=None) -> Maybe[pl.Path]:
         """
@@ -295,8 +297,10 @@ class _LocatorAccess_m:
                 return fallback
             case None:
                 return None
+            case y:
+                raise TypeError(type(y))
 
-    def access(self, key:str|API.Key_p) -> Maybe[Location]:
+    def access(self, key:str|API.Key_p) -> Maybe[Location_p]:
         """
           Access the registered Location associated with 'key'
         """
@@ -308,7 +312,7 @@ class _LocatorAccess_m:
             case _:
                 return None
 
-    def expand(self, key:Location|pl.Path|API.Key_p|str, *, strict:bool=True, norm:bool=True) -> Maybe[pl.Path]:
+    def expand(self, key:str|API.Key_p|Location_p|pl.Path, *, strict:bool=True, norm:bool=True) -> Maybe[pl.Path]:
         """
         Access the locations mentioned in 'key',
         join them together, and normalize it
@@ -317,7 +321,7 @@ class _LocatorAccess_m:
         assert(hasattr(self, "normalize"))
 
         logging.debug("Locator Expand: %s", key)
-        coerced : DKey = self._coerce_key(key, strict=strict)
+        coerced : API.Key_p = self._coerce_key(key, strict=strict)
         match coerced.expand(self):
             case None if strict:
                 msg = "Strict Expansion of Location failed"
@@ -332,7 +336,7 @@ class _LocatorAccess_m:
                 msg = "Unknown Response When Expanding Location"
                 raise TypeError(msg, key, x)
 
-    def _coerce_key(self, key:Location|API.Key_p|str|pl.Path, *, strict:bool=False) -> DKey:
+    def _coerce_key(self, key:str|pl.Path|API.Key_p|Location_p, *, strict:bool=False) -> API.Key_p:
         """ Coerces a key to a MultiDKey for expansion using DKey's expansion mechanism,
         using self as the source
         """
@@ -351,9 +355,9 @@ class _LocatorAccess_m:
 
         match strict:
             case False:
-                return DKey['soft.fail'](current, ctor=pl.Path)
+                return cast("API.Key_p", DKey['soft.fail'](current, ctor=pl.Path))
             case True:
-                return DKey(current, ctor=pl.Path)
+                return cast("API.Key_p", DKey(current, ctor=pl.Path))
 
 ##--|
 
@@ -384,8 +388,8 @@ class JGDVLocator(Mapping):
     Current   : ClassVar[_LocatorGlobal]  = _LocatorGlobal()
 
     _root     : pl.Path
-    _data     : dict[DKey|str, Location]
-    _loc_ctx  : Maybe[JGDVLocator]
+    _data     : dict[str|API.Key_p, Location_p]
+    _loc_ctx  : Maybe[Locator_p]
 
     access    : Callable
     expand    : Callable
@@ -397,10 +401,13 @@ class JGDVLocator(Mapping):
         self._loc_ctx = None
         match self.Current:
             case None:
-                _LocatorGlobal.push(self)
+                _LocatorGlobal.push(cast("API.Locator_p", self))
             case JGDVLocator():
                 pass
 
+    @override
+    def __hash__(self) -> int:
+        return hash(id(self))
     @override
     def __repr__(self) -> str:
         keys = ", ".join(iter(self))
@@ -422,7 +429,7 @@ class JGDVLocator(Mapping):
                 raise AttributeError(key)
 
     @override
-    def __getitem__(self, val:DKey|pl.Path|Location|str) -> pl.Path:
+    def __getitem__(self, val:str|pl.Path|API.Location_p|API.Key_p) -> pl.Path:
         """
         Get the expanded path of a key or location
 
@@ -462,18 +469,18 @@ class JGDVLocator(Mapping):
     @override
     def __iter__(self) -> Iterator[str]:
         """ Iterate over the registered location names """
-        return iter(self._data.keys())
+        return iter(self._data.keys()) # type: ignore[arg-type]
 
     def __call__(self, new_root:Maybe[pl.Path]=None) -> JGDVLocator:
         """ Create a copied locations object, with a different root """
         new_obj = JGDVLocator(new_root or self._root)
         return new_obj.update(self)
 
-    def __enter__(self) -> JGDVLocator:
+    def __enter__(self) -> API.Locator_p:
         """ replaces the global doot.locs with this locations obj,
         and changes the system root to wherever this locations obj uses as root
         """
-        _LocatorGlobal.push(self)
+        _LocatorGlobal.push(cast("API.Locator_p", self))
         os.chdir(self._root)
         assert(self.Current is not None)
         return self.Current
@@ -482,7 +489,7 @@ class JGDVLocator(Mapping):
         """ returns the global state to its original, """
         _LocatorGlobal.pop()
         assert(self.Current is not None)
-        os.chdir(self.Current._root)
+        os.chdir(cast("pl.Path", self.Current._root))
         return False
 
     def clear(self) -> None:

@@ -129,7 +129,7 @@ class Location(Strang):
                 return super().__contains__(other) # type: ignore[misc]
 
     @override
-    def __lt__(self, other:TimeDelta|str|pl.Path|Location) -> bool: # type: ignore[override]
+    def __lt__(self, other:TimeDelta|str|pl.Path|API.Location_p) -> bool: # type: ignore[override]
         """ self < path|location
             self < delta : self.modtime < (now - delta)
         """
