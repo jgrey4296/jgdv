@@ -34,7 +34,7 @@ from jgdv.cli.errors import ArgParseError
 from .param_spec import ParamSpec
 from .core import ToggleParam
 from .extra import RepeatToggleParam, RepeatToggleParam, LiteralParam
-
+from .._interface import ParamSpec_p
 # ##-- types
 # isort: off
 import abc
@@ -56,7 +56,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
 ##--|
-from .._interface import ParamStruct_p
 # isort: on
 # ##-- end types
 ##-- logging

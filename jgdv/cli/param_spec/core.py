@@ -36,6 +36,7 @@ from jgdv import Proto
 from jgdv.cli.errors import ArgParseError
 from .. import _interface as API # noqa: N812
 from .param_spec import ParamSpec
+from .._interface import ParamSpec_p
 
 # ##-- types
 # isort: off
@@ -58,7 +59,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
 ##--|
-from .._interface import ParamStruct_p
 # isort: on
 # ##-- end types
 
@@ -169,6 +169,7 @@ class PositionalParam(ParamSpec):
     def _positional(self) -> Literal[True]:
         return True
 
+    @override
     @ftz.cached_property
     def key_str(self) -> str:
         return self.name

@@ -150,7 +150,7 @@ class TestParamSpec_Basic:
     def test_initial(self):
         match ParamSpec(name="test"):
             case ParamSpec() as obj:
-                assert(isinstance(obj, API.ParamStruct_p))
+                assert(isinstance(obj, API.ParamSpec_p))
             case x:
                  assert(False), x
 
@@ -308,6 +308,19 @@ class TestParamSpec_Consumption:
         match obj.consume(in_args):
             case {"test": True}, 1:
                 assert(True)
+            case _:
+                assert(False)
+
+
+    def test_consume_doesnt_modify_input_data(self):
+        data     = {"name" : "-test"}
+        original = ("-test",)
+        in_args  = ("-test",)
+        obj      = ParamSpec(**data)
+        assert(isinstance(obj, ParamSpec))
+        match obj.consume(in_args):
+            case {"test": True}, 1:
+                assert(in_args == original)
             case _:
                 assert(False)
 

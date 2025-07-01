@@ -35,7 +35,7 @@ from jgdv.structs.chainguard import ChainGuard
 from jgdv._abstract.protocols import Buildable_p
 from jgdv.cli.errors import ArgParseError
 from .. import _interface as API # noqa: N812
-from .._interface import ParamStruct_p, ParamStruct_i
+from .._interface import ParamSpec_p, ParamSpec_i
 
 # ##-- types
 # isort: off
@@ -80,10 +80,11 @@ class ParamProcessor:
 
     eg: --blah= -> {prefix:--, name:blah, assign:None}
     """
-    __slots__                 = ()
+    __slots__                  = ()
 
-    name_re  : ClassVar[Rx]   = API.FULLNAME_RE
-    end_sep  : ClassVar[str]  = API.END_SEP
+    debug    : ClassVar[bool]  = False
+    name_re  : ClassVar[Rx]    = API.FULLNAME_RE
+    end_sep  : ClassVar[str]   = API.END_SEP
 
    ##--| parsing
 
@@ -94,35 +95,42 @@ class ParamProcessor:
         - prefix
         - separator
         """
+        matched  : re.Match
+        result   : dict
+        groups   : dict[str, Maybe[str]]
+        ##--|
+
         match self.name_re.match(name):
             case None:
                 return None
             case re.Match() as matched:
                 groups = matched.groupdict()
+            case x:
+                raise TypeError(type(x))
 
         result = {"name": matched['name'], "prefix":False}
         match groups:
             case {"pos": None|"", "prefix": None|""}:
                 result['prefix'] = 99
-            case {"pos": str() as x, "prefix":None}:
-                result['prefix'] = int(x)
-            case {"pos": None, "prefix":str() as x}:
+            case {"pos": str() as x, "prefix":None}: # type: ignore[misc]
+                result['prefix'] = int(cast("str", x))
+            case {"pos": None, "prefix":str() as x}: # type: ignore[misc]
                 result['prefix'] = x
 
         match groups['assign']:
             case None:
                 result['separator'] = False
-            case str() as x:
-                result['separator'] = x
+            case str() as x: # type: ignore[misc]
+                result['separator'] = cast("str", x)
 
         return result
 
     ##--| consuming
 
-    def consume(self, obj:ParamStruct_i, args:list[str], *, offset:int=0) -> Maybe[tuple[dict, int]]:
+    def consume(self, obj:ParamSpec_i, args:list[str], *, offset:int=0) -> Maybe[tuple[dict, int]]:
         """
           Given a list of args, possibly add a value to the data.
-          operates on both the args list
+
           return maybe(newdata, amount_consumed)
 
           handles:
@@ -154,7 +162,7 @@ class ParamProcessor:
         else:
             return result
 
-    def next_value(self, obj:ParamStruct_i, args:list) -> tuple[str, list, int]:
+    def next_value(self, obj:ParamSpec_i, args:list) -> tuple[str, list, int]:
         match getattr(obj, "next_value", None):
             case None:
                 pass
@@ -175,12 +183,12 @@ class ParamProcessor:
 
     ##--| utils
 
-    def coerce_types(self, obj:ParamStruct_i, key:str, value:list[str]) -> dict:
+    def coerce_types(self, obj:ParamSpec_i, key:str, value:list[str]) -> dict:
         """ coerce the parsed values to the expected type """
         x       : Any
         result  : dict[str, Any]  = {}
         match obj.type_, value:
-            case x, y if x == type(y):
+            case x, y if x is type(y):
                 result[key] = y
             case builtins.bool, [bool() as y]:
                 result[key] = y
@@ -201,7 +209,7 @@ class ParamProcessor:
 
         return result
 
-    def matches_head(self, obj:ParamStruct_i, val:str, *, silent:bool=True) -> bool:
+    def matches_head(self, obj:ParamSpec_i, val:str) -> bool:
         """ test to see if a cli argument matches this param
 
         Matchs {self.prefix}{self.name} if not an assignment
@@ -217,14 +225,14 @@ class ParamProcessor:
                 assert(callable(x))
                 result = x(val)
 
-        if result and not silent:
+        if result and self.debug:
             logging.debug("Head Matches : %s : %s", obj.name, val)
         return result
 
     def match_on_end(self, val:str) -> bool:
         return val == self.end_sep
 
-    def split_assignment(self, obj:ParamStruct_i, val:str) -> list[str]:
+    def split_assignment(self, obj:ParamSpec_i, val:str) -> list[str]:
         if obj.separator:
             return val.split(obj.separator)
         return [val]
@@ -234,11 +242,11 @@ class ParamProcessor:
 class _ParamClassMethods:
 
     @staticmethod
-    def build_defaults( params:Iterable[ParamStruct_i]) -> dict:
+    def build_defaults(params:Iterable[ParamSpec_i]) -> dict:
         """ Given a list of params, create a mapping of {name} -> {default value} """
         result : dict = {}
         for p in params:
-            assert(isinstance(p, ParamStruct_p)), repr(p)
+            assert(isinstance(p, ParamSpec_p)), repr(p)
             if p.name in result:
                 msg = "Duplicate default key found"
                 raise KeyError(msg, p, params)
@@ -247,7 +255,7 @@ class _ParamClassMethods:
         return result
 
     @staticmethod
-    def check_insists(params:Iterable[ParamStruct_i], data:dict) -> None:
+    def check_insists(params:Iterable[ParamSpec_i], data:dict) -> None:
         missing = []
         for p in params:
             if p.insist and p.name not in data:
@@ -258,7 +266,7 @@ class _ParamClassMethods:
                 raise ArgParseError(msg, missing)
 
     @classmethod
-    def key_func(cls, x:ParamStruct_i) -> tuple:
+    def key_func(cls, x:ParamSpec_i) -> tuple:
         """ Sort Parameters
 
         -{prefix len} < name < int positional < positional < --help
@@ -276,8 +284,7 @@ class _ParamClassMethods:
             case int() as p:
                 return (_SortGroups_e.by_pos, p, x.prefix or 99, x.name)
 
-
-class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registry=True):
+class ParamSpec[*T](_ParamClassMethods, ParamSpec_i, SubAlias_m, fresh_registry=True):
     """ Declarative CLI Parameter Spec.
 
     | Declares the param name (turns into {prefix}{name})
@@ -300,10 +307,6 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
     ##--| internal
     _short     : Maybe[str]
     _subtypes  : dict[type, type]
-
-    ##--|
-
-    ##--| dunders
 
     def __init__(self, **kwargs:Any) -> None:  # noqa: ANN401
         if bool({"prefix", "separator"} & kwargs.keys()):
@@ -332,7 +335,13 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
         self.validate_type()
         self.validate_default()
 
+    ##--| dunders
 
+    @override
+    def __hash__(self) -> int:
+        return hash(repr(self))
+
+    @override
     def __repr__(self) -> str:
         match self.prefix:
             case str():
@@ -342,11 +351,12 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
             case x:
                 raise TypeError(type(x))
 
+    @override
     def __eq__(self, other:object) -> bool:
         match other:
-            case API.ParamStruct_p() if type(self) is not type(other):
+            case API.ParamSpec_p() if type(self) is not type(other):
                     return False
-            case API.ParamStruct_p(name=self.name, prefix=self.prefix, type_=self.type_, separator=self.separator): # type: ignore[misc]
+            case API.ParamSpec_p(name=self.name, prefix=self.prefix, type_=self.type_, separator=self.separator): # type: ignore[misc]
                 return True
             case _:
                 return False
@@ -367,7 +377,7 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
             case types.GenericAlias() as alias: # unwrap aliases
                 self.type_ = alias.__origin__
                 return
-            case type() as x if isinstance(x, ParamStruct_p):
+            case type() as x if isinstance(x, ParamSpec_p):
                 msg = "Can't use a paramstruct as the type of a paramstruct"
                 raise TypeError(msg, x)
             case type() as x if x is not bool:
@@ -425,18 +435,22 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
 
     ##--| properties
 
+    @override
     @ftz.cached_property
     def short(self) -> str:
         return self._short or self.name[0]
 
+    @override
     @ftz.cached_property
     def inverse(self) -> str:
         return f"no-{self.name}"
 
+    @override
     @ftz.cached_property
     def repeatable(self) -> bool:
         return self.type_ in ParamSpec._accumulation_types
 
+    @override
     @ftz.cached_property
     def key_str(self) -> str:
         """ Get how the param needs to be written in the cli.
@@ -449,6 +463,7 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
             case _:
                 return self.name
 
+    @override
     @ftz.cached_property
     def short_key_str(self) -> Maybe[str]:
         match self.prefix:
@@ -457,6 +472,7 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
             case _:
                 return None
 
+    @override
     @ftz.cached_property
     def key_strs(self) -> list[str]:
         """ all available key-str variations """
@@ -476,8 +492,9 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
 
         return result
 
+    @override
     @ftz.cached_property
-    def default_value(self) -> Any:  # noqa: ANN401
+    def default_value(self) -> Any:
         match self.default:
             case type() as ctor:
                 return ctor()
@@ -486,16 +503,19 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
             case x:
                 return x
 
+    @override
     @ftz.cached_property
     def default_tuple(self) -> tuple[str, Any]:
         return self.name, self.default_value
 
     ##--| methods
 
+    @override
     def consume(self, args:list[str], *, offset:int=0) -> Maybe[tuple[dict, int]]:
         return self._processor.consume(self, args, offset=offset)
 
     def help_str(self, *, force:bool=False) -> str:
+        parts : list
         if self.implicit and not force:
             return ""
 
@@ -527,4 +547,3 @@ class ParamSpec[*T](_ParamClassMethods, ParamStruct_i, SubAlias_m, fresh_registr
                 parts.append(f"{pad}: Defaults to: {self.default}")
 
         return " ".join(parts)
-

@@ -21,7 +21,6 @@ import contextlib
 import hashlib
 from copy import deepcopy
 from uuid import UUID, uuid1
-from weakref import ref
 import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
@@ -84,16 +83,27 @@ TYPE_CONV_MAPPING: Final[dict[str|type|types.GenericAlias, type|Callable]] = {
 # Body:
 
 class ParseResult_d:
-    __slots__ = ("args", "name", "non_default")
-    name        : str
-    args        : dict
-    non_default : set[str]
+    """ Simple container for parsed cli information
 
-    def __init__(self, name:str, args:Maybe[dict]=None, non_default:Maybe[set]=None) -> None:
+    Name : the name of the spec that parsed this data
+    args : mapping of {arg -> data}, including default values it nothing parsing for it
+    non_default : set[arg, ...] that actually parsed
+    ref : the name of a linked parse result this object extends
+
+    """
+    __slots__ = ("args", "name", "non_default", "ref")
+    name         : str
+    args         : dict
+    non_default  : set[str]
+    ref          : Maybe[str]
+
+    def __init__(self, name:str, args:Maybe[dict]=None, ref:Maybe[str]=None) -> None:
         self.name         = name
         self.args         = args or {}
-        self.non_default  = non_default or set()
+        self.non_default  = set()
+        self.ref          = ref
 
+    @override
     def __repr__(self) -> str:
         return f"<ParseResult: {self.name}, args:{self.args}>"
 
@@ -102,7 +112,7 @@ class ParseResult_d:
 ##--| Params
 
 @runtime_checkable
-class ParamStruct_p(Protocol):
+class ParamSpec_p(Protocol):
     """ Base class for CLI param specs, for type matching
     when 'consume' is given a list of strs,
     it can match on the args,
@@ -111,7 +121,7 @@ class ParamStruct_p(Protocol):
     """
 
     @classmethod
-    def key_func(cls, x:ParamStruct_i) -> tuple: ...
+    def key_func(cls, x:ParamSpec_i) -> tuple: ...
 
     def consume(self, args:list[str], *, offset:int=0) -> Maybe[tuple[dict, int]]:
         pass
@@ -142,7 +152,7 @@ class ParamStruct_p(Protocol):
     @property
     def default_tuple(self) -> tuple[str, Any]: ...
 
-class ParamStruct_i(ParamStruct_p, Protocol):
+class ParamSpec_i(ParamSpec_p, Protocol):
     _processor : ClassVar
 
     name       : str
@@ -179,18 +189,10 @@ class ToggleParam_p(Protocol):
 ##--| Parsing
 
 @runtime_checkable
-class ArgParser_p(Protocol):
-    """
-    A Single standard process point for turning the list of passed in args,
-    into a dict, into a chainguard,
-    along the way it determines the cmds and tasks that have been chosne
-    """
+class ArgParserModel_p(Protocol):
+    """ The Model used in a jgdv.cli.arg_parser:ParseMachine to implement specific parsing logic """
 
-    def _parse_fail_cond(self) -> bool:
-        raise NotImplementedError()
-
-    def _has_no_more_args_cond(self) -> bool:
-        raise NotImplementedError()
+    def prepare_for_parse(self) -> None: ...
 
 @runtime_checkable
 class ParamSource_p(Protocol):
@@ -200,7 +202,7 @@ class ParamSource_p(Protocol):
     def name(self) -> str:
         raise NotImplementedError()
 
-    def param_specs(self) -> list[ParamStruct_i]:
+    def param_specs(self) -> list[ParamSpec_i]:
         raise NotImplementedError()
 
 @runtime_checkable
@@ -210,6 +212,6 @@ class CLIParamProvider_p(Protocol):
     """
 
     @classmethod
-    def param_specs(cls) -> list[ParamStruct_i]:
+    def param_specs(cls) -> list[ParamSpec_i]:
         """  make class parameter specs  """
         pass

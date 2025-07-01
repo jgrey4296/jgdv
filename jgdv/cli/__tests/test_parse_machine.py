@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging as logmod
 import pathlib as pl
 import warnings
+
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
@@ -16,12 +17,10 @@ import pytest
 
 # ##-- end 3rd party imports
 
-# ##-- 1st party imports
 from .. import param_spec as Specs
-from ..arg_parser import CLIParser, ParseMachine
+from ..parser_model import CLIParserModel
+from ..parse_machine import ParseMachine
 from ..param_spec import ParamSpec
-
-# ##-- end 1st party imports
 
 # ##-- types
 # isort: off
@@ -119,3 +118,29 @@ class TestMachine:
         machine.max_attempts = 1
         with pytest.raises(StopIteration):
             machine.finish()
+
+
+class TestMachine_Dot:
+    """ Write out the dot graphs of the machines """
+
+    @pytest.fixture(scope="function")
+    def fsm(self) -> StateMachine:
+        model = None
+        return ParseMachine(CLIParserModel())
+
+    @pytest.fixture(scope="function")
+    def target(self):
+        target = pl.Path(__file__).parent.parent  / "_graphs"
+        if not target.exists():
+            target.mkdir()
+        return target
+
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_parser_dot(self, fsm, target):
+        fsm_name  = type(fsm).__name__
+        text      = fsm._graph().to_string()
+        tfile     = target / f"_{fsm_name}.dot"
+        tfile.write_text(text)
+        assert(tfile.exists())
