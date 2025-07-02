@@ -159,7 +159,7 @@ class ParseMachine(StateMachine):
         self.count         = 0
         self.max_attempts  = max
 
-    def __call__(self, args:list[str], *, prog:list[API.ParamSpec_i], cmds:list[ParamSource_p], subs:list[tuple[str, ParamSource_p]], implicits:Maybe[list[str]]=None) -> Maybe[dict]:
+    def __call__(self, args:list[str], *, prog:ParamSource_p, cmds:list[ParamSource_p], subs:list[tuple[tuple[str, ...], ParamSource_p]], implicits:Maybe[dict[str,list[str]]]=None) -> Maybe[dict]:
         assert(self.current_state == self.Start) # type: ignore[has-type]
         while self.current_state != self.End:
             self.progress(prog=prog, cmds=cmds, subs=subs, raw_args=args, implicits=implicits)

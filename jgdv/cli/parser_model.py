@@ -220,30 +220,39 @@ class CLIParserModel:
 
     ##--| transition actions
     def _insert_implicit_cmd(self) -> None:
-        match [x for x in self.implicits if x in self.specs_cmds]:
-            case [x]:
+        match [(k,v) for k,v in self.implicits.items() if k in self.specs_cmds]:
+            case [(str() as x, list() as ys)]:
                 logging.debug("Inserting implicit cmd: %s", x)
-                self.args_remaining.insert(0, x)
+                self.args_remaining = [*ys, *self.args_remaining]
             case x:
                 msg = "Too Many possibly implicit commands"
                 raise ValueError(msg, x)
 
     def _insert_implicit_sub(self) -> None:
-        match [x for x in self.implicits if x in self.specs_subs]:
-            case [x]:
+        match [(k,v) for k,v in self.implicits.items() if k in self.specs_subs]:
+            case [(str() as x, list() as ys)]:
                 logging.debug("Inserting implicit sub: %s", x)
-                self.args_remaining.insert(0, x)
+                self.args_remaining = [*ys, *self.args_remaining]
             case x:
                 msg = "Too Many possibly implicit sub commands"
                 raise ValueError(msg, x)
 
     ##--| state actions
 
-    def prepare_for_parse(self, *, prog:ParamSource_p, cmds:list, subs:list, raw_args:list[str], implicits:Maybe[list[str]]=None) -> None:
+    def prepare_for_parse(self, *, prog:ParamSource_p, cmds:list, subs:list, raw_args:list[str], implicits:Maybe[dict[str, list[str]]]=None) -> None:
         logging.debug("Setting up Parsing : %s", raw_args)
         self.args_initial    = tuple(raw_args[:])
         self.args_remaining  = raw_args[:]
-        self.implicits       = implicits or []
+        match implicits:
+            case None:
+                self.implicits = {}
+            case list() as xs:
+                self.implicits = {x:[x] for x in xs}
+            case dict() as xs:
+                self.implicits = xs
+            case x:
+                raise TypeError(type(x))
+
         self._prep_prog_lookup(prog)
         self._prep_cmd_lookup(cmds)
         self._prep_sub_lookup(subs)
@@ -405,6 +414,7 @@ class CLIParserModel:
             assert(sub.ref is not None and sub.ref in result['cmds'])
             result['subs'][sub.ref].append(sub)
 
+        # TODO if there were no args, use an empty cmd similar to implicits
         self._report = result
         return result
 
