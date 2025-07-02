@@ -73,7 +73,7 @@ class TestPositionalParam:
 
     def test_protocol(self):
         assert(issubclass(core.PositionalParam, ParamSpec))
-        assert(isinstance(core.PositionalParam, API.ParamStruct_p))
+        assert(isinstance(core.PositionalParam, API.ParamSpec_p))
         assert(issubclass(core.PositionalParam, API.PositionalParam_p))
 
     def test_consume_positional(self):
