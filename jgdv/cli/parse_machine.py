@@ -124,8 +124,10 @@ class ParseMachine(StateMachine):
         # program / cmd / subs
          Head.to(Prog,   cond="_prog_at_front")
         | Head.to(Cmd,   cond="_cmd_at_front")
-        | Head.to(Sub,   cond="_no_cmd", on="_set_implicit_cmd")
+        | Head.to(Cmd,   cond="_no_cmd", on="_insert_implicit_cmd")
         | Head.to(Sub,   cond="_sub_at_front")
+        | Head.to(Sub,   cond="_no_sub", on="_insert_implicit_sub")
+        | Head.to(Report)
         | Section.from_(Prog, Cmd, Sub)
         # args
         | Kwargs.from_(Section, Kwargs, cond="_kwarg_at_front")
@@ -137,7 +139,6 @@ class ParseMachine(StateMachine):
         | Section_end.from_(Section, Kwargs, Posargs, Separator)
         | Section_end.to(Report, cond="not _has_more_args")
         | Section_end.to(Head)
-        | Head.to(Report)
     )
 
     finish  = (
@@ -166,7 +167,10 @@ class ParseMachine(StateMachine):
             return self.model._report
 
     def on_enter_state(self, source:State, event:Event, target:State) -> None:
-        logging.debug("Parse(%s): %s -> %s -> %s", getattr(self, "count", 0), source, event, target)
+        logging.debug("Parse(%s, R:%s/%s): %s -> %s -> %s",
+                      getattr(self, "count", 0),
+                      len(self.model.args_remaining), len(self.model.args_initial),
+                      source, event, target)
 
     def on_exit_state(self) -> None:
         self.count += 1

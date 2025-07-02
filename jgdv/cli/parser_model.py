@@ -145,7 +145,6 @@ class CLIParserModel:
     def _prog_at_front(self) -> bool:
         match self.args_remaining:
             case [head, *_] if head in self.specs_prog_prefix:
-                self.args_remaining.pop(0)
                 return True
             case _:
                 return False
@@ -166,6 +165,9 @@ class CLIParserModel:
                 return True
             case _:
                 return False
+
+    def _no_sub(self) -> bool:
+        return not bool(self.data_subs) and bool(self.implicits)
 
     def _kwarg_at_front(self) -> bool:
         """ See if theres a kwarg to parse """
@@ -217,17 +219,22 @@ class CLIParserModel:
                                             self.args_remaining[0])
 
     ##--| transition actions
-    def _set_implicit_cmd(self) -> None:
+    def _insert_implicit_cmd(self) -> None:
         match [x for x in self.implicits if x in self.specs_cmds]:
             case [x]:
-                self._section_type = SectionType_e.cmd
-                self._current_section = (x, sorted(self.specs_cmds[x], key=ParamSpec.key_func))
-                self.initialise_section()
-                self.clear_section()
-            case []:
-                pass
+                logging.debug("Inserting implicit cmd: %s", x)
+                self.args_remaining.insert(0, x)
             case x:
                 msg = "Too Many possibly implicit commands"
+                raise ValueError(msg, x)
+
+    def _insert_implicit_sub(self) -> None:
+        match [x for x in self.implicits if x in self.specs_subs]:
+            case [x]:
+                logging.debug("Inserting implicit sub: %s", x)
+                self.args_remaining.insert(0, x)
+            case x:
+                msg = "Too Many possibly implicit sub commands"
                 raise ValueError(msg, x)
 
     ##--| state actions
@@ -253,6 +260,7 @@ class CLIParserModel:
         logging.debug("Setting Prog Spec")
         self._current_section = ("prog", sorted(self.specs_prog, key=ParamSpec.key_func))
         self._section_type = SectionType_e.prog
+        self.args_remaining.pop(0)
 
     def select_cmd_spec(self) -> None:
         head = self.args_remaining.pop(0)
@@ -267,14 +275,15 @@ class CLIParserModel:
     def select_sub_spec(self) -> None:
         last_cmd     = self.data_cmds[-1].name
         constraints  = self._subs_constraints[last_cmd]
-        head         = self.args_remaining.pop(0)
-        logging.debug("Setting Sub Spec: %s", head)
-        if head not in constraints:
-            msg = "Sub Not Available for cmd"
-            raise ValueError(msg, last_cmd, head)
+        match self.args_remaining.pop(0):
+            case x if x in constraints:
+                logging.debug("Setting Sub Spec: %s", x)
+                self._current_section  = (x, sorted(self.specs_subs[x], key=ParamSpec.key_func))
+                self._section_type     = SectionType_e.sub
+            case x:
+                msg = "Sub Not Available for cmd"
+                raise ValueError(msg, last_cmd, x)
 
-        self._current_section = (head, sorted(self.specs_subs[head], key=ParamSpec.key_func))
-        self._section_type = SectionType_e.sub
 
     def initialise_section(self) -> None:
         name      : str

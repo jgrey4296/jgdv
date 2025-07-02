@@ -287,6 +287,32 @@ class TestMachine:
                 assert(False), x
 
 
+    def test_implicit_sub(self, parser, PSource):
+        assert(parser.current_state.id == "Start")
+        ##--|
+        prog  = PSource(name="aweg", specs=[])
+        cmd1  = PSource(name="acmd", specs=[ParamSpec[bool](name="-blah", default=False)])
+        cmd2  = PSource(name="bcmd", specs=[ParamSpec[bool](name="-aweg", default=False)])
+        sub   = PSource(name="asub", specs=[
+            ParamSpec[bool](name="-blah", default=False),
+            ParamSpec[bool](name="-bloo", default=False),
+        ])
+        match parser(["aweg", "-bloo"],
+                     prog=prog,
+                     cmds=[cmd1, cmd2],
+                     subs=[((cmd1.name,), sub)],
+                     implicits=["acmd", "asub"],
+                     ):
+            case {"remaining":rem, "cmds":{"acmd": [acmdargs]}, "subs": dict() as subs}:
+                assert(rem == [])
+                assert(acmdargs.args['blah'] is False)
+                assert("acmd" in subs)
+                assert(subs['acmd'][0].args['bloo'] is True)
+                assert(parser.current_state_value == "End")
+            case x:
+                assert(False), x
+
+
 
 class TestMachine_Dot:
     """ Write out the dot graphs of the machines """
