@@ -144,7 +144,7 @@ class CLIParserModel:
 
     def _prog_at_front(self) -> bool:
         match self.args_remaining:
-            case [head, *_] if head in self.specs_prog_prefix:
+            case [head, *_] if any(x in head for x in self.specs_prog_prefix):
                 return True
             case _:
                 return False
