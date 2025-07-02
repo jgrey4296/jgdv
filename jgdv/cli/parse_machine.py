@@ -124,6 +124,7 @@ class ParseMachine(StateMachine):
         # program / cmd / subs
          Head.to(Prog,   cond="_prog_at_front")
         | Head.to(Cmd,   cond="_cmd_at_front")
+        | Head.to(Sub,   cond="_no_cmd", on="_set_implicit_cmd")
         | Head.to(Sub,   cond="_sub_at_front")
         | Section.from_(Prog, Cmd, Sub)
         # args
@@ -157,10 +158,10 @@ class ParseMachine(StateMachine):
         self.count         = 0
         self.max_attempts  = max
 
-    def __call__(self, args:list[str], *, prog:list[API.ParamSpec_i], cmds:list[ParamSource_p], subs:list[tuple[str, ParamSource_p]]) -> Maybe[dict]:
+    def __call__(self, args:list[str], *, prog:list[API.ParamSpec_i], cmds:list[ParamSource_p], subs:list[tuple[str, ParamSource_p]], implicits:Maybe[list[str]]=None) -> Maybe[dict]:
         assert(self.current_state == self.Start) # type: ignore[has-type]
         while self.current_state != self.End:
-            self.progress(prog=prog, cmds=cmds, subs=subs, raw_args=args)
+            self.progress(prog=prog, cmds=cmds, subs=subs, raw_args=args, implicits=implicits)
         else:
             return self.model._report
 

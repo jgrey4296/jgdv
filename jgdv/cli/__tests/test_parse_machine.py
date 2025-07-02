@@ -146,7 +146,7 @@ class TestMachine:
         assert(parser.current_state.id == "Start")
         psource = PSource()
         match parser(["python", psource.name], prog=None, cmds=[psource], subs=[]):
-            case {"remaining":rem, "cmds":{"simple": ParseResult_d(name="simple")}}:
+            case {"remaining":rem, "cmds":{"simple": [ParseResult_d(name="simple")]}}:
                 assert(rem == [])
                 assert(parser.current_state_value == "End")
             case x:
@@ -161,7 +161,7 @@ class TestMachine:
                      prog=None,
                      cmds=[psource],
                      subs=[]):
-            case {"remaining":rem, "cmds":{"simple": cmdargs}}:
+            case {"remaining":rem, "cmds":{"simple": [cmdargs]}}:
                 assert(rem == [])
                 assert(cmdargs.name == "simple")
                 assert(cmdargs.args['blah'] is False)
@@ -178,7 +178,7 @@ class TestMachine:
                      prog=None,
                      cmds=[psource],
                      subs=[]):
-            case {"remaining":rem, "cmds":{"simple": cmdargs}}:
+            case {"remaining":rem, "cmds":{"simple": [cmdargs]}}:
                 assert(rem == [])
                 assert(cmdargs.name == "simple")
                 assert(cmdargs.args['blah'] is True)
@@ -197,7 +197,7 @@ class TestMachine:
                      prog=prog,
                      cmds=[cmd],
                      subs=[((cmd.name,), sub)]):
-            case {"remaining":rem, "cmds":{"acmd": cmdargs}, "subs": dict() as subs}:
+            case {"remaining":rem, "cmds":{"acmd": [cmdargs]}, "subs": dict() as subs}:
                 assert(rem == [])
                 assert(cmdargs.args['blah'] is True)
                 assert("acmd" in subs)
@@ -222,7 +222,7 @@ class TestMachine:
                      prog=prog,
                      cmds=[cmd],
                      subs=[((cmd.name,), sub)]):
-            case {"remaining":rem, "cmds":{"acmd": cmdargs}, "subs": dict() as subs}:
+            case {"remaining":rem, "cmds":{"acmd": [cmdargs]}, "subs": dict() as subs}:
                 assert(rem == [])
                 assert(cmdargs.args['blah'] is True)
                 assert("acmd" in subs)
@@ -257,6 +257,31 @@ class TestMachine:
                 assert(bcmdargs.args['aweg'] is True)
                 assert("acmd" in subs)
 
+                assert(parser.current_state_value == "End")
+            case x:
+                assert(False), x
+
+
+    def test_implicit_cmd(self, parser, PSource):
+        assert(parser.current_state.id == "Start")
+        ##--|
+        prog  = PSource(name="aweg", specs=[])
+        cmd1  = PSource(name="acmd", specs=[ParamSpec[bool](name="-blah", default=False)])
+        cmd2  = PSource(name="bcmd", specs=[ParamSpec[bool](name="-aweg", default=False)])
+        sub   = PSource(name="asub", specs=[
+            ParamSpec[bool](name="-blah", default=False),
+            ParamSpec[bool](name="-bloo", default=False),
+        ])
+        match parser(["aweg", "asub"],
+                     prog=prog,
+                     cmds=[cmd1, cmd2],
+                     subs=[((cmd1.name,), sub)],
+                     implicits=["acmd"],
+                     ):
+            case {"remaining":rem, "cmds":{"acmd": [acmdargs]}, "subs": dict() as subs}:
+                assert(rem == [])
+                assert(acmdargs.args['blah'] is False)
+                assert("acmd" in subs)
                 assert(parser.current_state_value == "End")
             case x:
                 assert(False), x

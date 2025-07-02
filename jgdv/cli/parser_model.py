@@ -82,10 +82,11 @@ class CLIParserModel:
     # {prog} {args} [{task} {tasks_args}] - implicit do cmd
 
     """
-    type CmdName        = str
-    type SubName        = str
-    type SubConstraint  = tuple[str,...]
-    type Sub_Params     = tuple[SubConstraint, list[ParamSpec_i]]
+    SectionTypes  : ClassVar[type[SectionType_e]]  = SectionType_e
+    type CmdName                                   = str
+    type SubName                                   = str
+    type SubConstraint                             = tuple[str,...]
+    type Sub_Params                                = tuple[SubConstraint, list[ParamSpec_i]]
 
     args_initial       : tuple[str, ...]
     args_remaining     : list[str]
@@ -97,6 +98,7 @@ class CLIParserModel:
     specs_prog         : list[API.ParamSpec_i]
     specs_subs         : dict[SubName, list[ParamSpec_i]]
 
+    implicits          : list[str]
     _subs_constraints  : defaultdict[CmdName, set[SubName]]
     _current_section   : Maybe[tuple[str, list[API.ParamSpec_i]]]
     _current_data      : Maybe[ParseResult_d]
@@ -149,10 +151,21 @@ class CLIParserModel:
                 return False
 
     def _cmd_at_front(self) -> bool:
-        return self.args_remaining[0] in self.specs_cmds
+        match self.args_remaining:
+            case [x, *_] if x in self.specs_cmds:
+                return True
+            case _:
+                return False
+
+    def _no_cmd(self) -> bool:
+        return not bool(self.data_cmds) and bool(self.implicits)
 
     def _sub_at_front(self) -> bool:
-        return self.args_remaining[0] in self.specs_subs
+        match self.args_remaining:
+            case [x, *_] if x in self.specs_subs:
+                return True
+            case _:
+                return False
 
     def _kwarg_at_front(self) -> bool:
         """ See if theres a kwarg to parse """
@@ -203,12 +216,27 @@ class CLIParserModel:
         return self._processor.matches_head(self._separator,
                                             self.args_remaining[0])
 
+    ##--| transition actions
+    def _set_implicit_cmd(self) -> None:
+        match [x for x in self.implicits if x in self.specs_cmds]:
+            case [x]:
+                self._section_type = SectionType_e.cmd
+                self._current_section = (x, sorted(self.specs_cmds[x], key=ParamSpec.key_func))
+                self.initialise_section()
+                self.clear_section()
+            case []:
+                pass
+            case x:
+                msg = "Too Many possibly implicit commands"
+                raise ValueError(msg, x)
+
     ##--| state actions
 
-    def prepare_for_parse(self, *, prog:ParamSource_p, cmds:list, subs:list, raw_args:list[str]) -> None:
+    def prepare_for_parse(self, *, prog:ParamSource_p, cmds:list, subs:list, raw_args:list[str], implicits:Maybe[list[str]]=None) -> None:
         logging.debug("Setting up Parsing : %s", raw_args)
         self.args_initial    = tuple(raw_args[:])
         self.args_remaining  = raw_args[:]
+        self.implicits       = implicits or []
         self._prep_prog_lookup(prog)
         self._prep_cmd_lookup(cmds)
         self._prep_sub_lookup(subs)
