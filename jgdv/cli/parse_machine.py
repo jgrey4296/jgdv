@@ -27,7 +27,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-from statemachine import State, StateMachine
+from statemachine import State, StateMachine, Event
 from statemachine.states import States
 from statemachine.exceptions import TransitionNotAllowed
 
@@ -68,6 +68,8 @@ if TYPE_CHECKING:
 # ##-- end types
 
 logging = logmod.getLogger(__name__)
+
+MAX_STAGES : Final[int] = 200
 ##--|
 class ParseMachine(StateMachine):
     """
@@ -102,16 +104,18 @@ class ParseMachine(StateMachine):
     Sub          = State(enter="select_sub_spec")
     Kwargs       = State(enter="parse_kwarg")
     Posargs      = State(enter="parse_posarg")
+    Separator    = State(enter="parse_separator")
     Section_end  = State(enter="clear_section")
     # teardown states
-    Cleanup      = State(enter="cleanup")
+    Cleanup  = State(enter="cleanup")
     Report   = State(enter="report")
     End      = State(final=True)
 
     # Event Transitions
     setup    = (
-        Start.to(End, cond="not _has_more_args")
-        | Start.to(Prepare)
+        Start.to(Prepare)
+        | Prepare.to(End,  cond="not _has_more_args")
+        | Prepare.to(End,  cond="_has_no_specs")
         | Prepare.to(Help, cond="_has_help_flag_at_tail")
         | Head.from_(Prepare, Help)
     )
@@ -125,12 +129,14 @@ class ParseMachine(StateMachine):
         # args
         | Kwargs.from_(Section, Kwargs, cond="_kwarg_at_front")
         | Posargs.from_(Section, Kwargs, Posargs, cond="_posarg_at_front")
+        | Separator.from_(Section, Kwargs, Posargs, cond="_separator_at_front")
         # separator
 
         # loop
-        | Section_end.from_(Section, Kwargs, Posargs)
+        | Section_end.from_(Section, Kwargs, Posargs, Separator)
         | Section_end.to(Report, cond="not _has_more_args")
-        | Head.from_(Section_end)
+        | Section_end.to(Head)
+        | Head.to(Report)
     )
 
     finish  = (
@@ -141,33 +147,28 @@ class ParseMachine(StateMachine):
     ##--| composite
     progress = (setup | parse | finish)
 
-    def __init__(self, parser:Maybe[ArgParserModel_p]=None) -> None:
+    def __init__(self, parser:Maybe[ArgParserModel_p]=None, max:int=MAX_STAGES) -> None:  # noqa: A002
         match parser:
             case API.ArgParserModel_p():
                 pass
             case x:
                 raise TypeError(type(x))
         super().__init__(parser)
-        self.count = 0
-        self.max_attempts = 20
+        self.count         = 0
+        self.max_attempts  = max
 
     def __call__(self, args:list[str], *, prog:list[API.ParamSpec_i], cmds:list[ParamSource_p], subs:list[tuple[str, ParamSource_p]]) -> Maybe[dict]:
         assert(self.current_state == self.Start) # type: ignore[has-type]
-        try:
-            self.setup(args, prog, cmds, subs)
-            if self.current_state not in [self.Report, self.End]: # type: ignore[has-type]
-                self.parse()
-                self.finish()
-        except TransitionNotAllowed as err:
-            msg = "Transition failure"
-            raise errors.ParseError(msg, err) from err
+        while self.current_state != self.End:
+            self.progress(prog=prog, cmds=cmds, subs=subs, raw_args=args)
         else:
-            result = self.model.report()
-            # Reset the state
-            self.current_state = self.Start
-            return result
+            return self.model._report
+
+    def on_enter_state(self, source:State, event:Event, target:State) -> None:
+        logging.debug("Parse(%s): %s -> %s -> %s", getattr(self, "count", 0), source, event, target)
 
     def on_exit_state(self) -> None:
         self.count += 1
         if self.max_attempts < self.count:
+            logging.debug("Max Parse Stages Occurred")
             raise StopIteration

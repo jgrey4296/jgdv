@@ -82,6 +82,12 @@ TYPE_CONV_MAPPING: Final[dict[str|type|types.GenericAlias, type|Callable]] = {
 
 # Body:
 
+class SectionType_e(enum.Enum):
+    """ The different types of section a parse machine can process """
+    prog = enum.auto()
+    cmd  = enum.auto()
+    sub  = enum.auto()
+
 class ParseResult_d:
     """ Simple container for parsed cli information
 
@@ -192,7 +198,7 @@ class ToggleParam_p(Protocol):
 class ArgParserModel_p(Protocol):
     """ The Model used in a jgdv.cli.arg_parser:ParseMachine to implement specific parsing logic """
 
-    def prepare_for_parse(self) -> None: ...
+    def prepare_for_parse(self, *, prog:ParamSource_p, cmds:list[ParamSource_p], subs:list[tuple[tuple[str, ...], ParamSource_p]], raw_args:list[str]) -> None: ...
 
 @runtime_checkable
 class ParamSource_p(Protocol):
