@@ -67,6 +67,8 @@ class DefaultedReporter_m:
 
     @staticmethod
     def add_defaulted(index:str|list[str], val:Any, types:Maybe[str]=None) -> None:  # noqa: ANN401
+        index_str : str
+        ##--|
         types = types or "Any"
         match index, val:
             case _, ():

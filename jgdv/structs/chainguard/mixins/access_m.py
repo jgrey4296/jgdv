@@ -74,12 +74,12 @@ class TomlAccess_m:
     """ Mixing for dynamic attribute access """
 
     @override
-    def __setattr__(self:ChainGuard_i, attr:str, value:TomlTypes) -> None:
+    def __setattr__(self:ChainGuard_i, attr:str, value:Any) -> None:
         if not getattr(self, MUTABLE):
             raise TypeError()
         super_set(self, attr, value)
 
-    def __getattr__(self:ChainGuard_i, attr:str) -> ChainGuard_i | TomlTypes | list[ChainGuard_i]:
+    def __getattr__(self:ChainGuard_i, attr:str) -> Any:  # noqa: ANN401
         index    : list[str]
         index_s  : str
         table    : dict  = self._table()  # type: ignore[operator,assignment]
@@ -100,7 +100,7 @@ class TomlAccess_m:
             case _ as result:
                 return result
 
-    def __getitem__(self:ChainGuard_i, keys:str|list[str]|tuple[str]) -> TomlTypes|ChainGuard_i:
+    def __getitem__(self:ChainGuard_i, keys:str|list[str]|tuple[str]) -> Any:  # noqa: ANN401
         curr : ChainGuard_i|TomlTypes = self
         match keys:
             case tuple():
@@ -113,7 +113,7 @@ class TomlAccess_m:
 
         return curr
 
-    def get(self:ChainGuard_i, key:str, default:Maybe[TomlTypes]=None) -> Maybe[TomlTypes|ChainGuard_i]:
+    def get(self:ChainGuard_i, key:str, default:Maybe=None) -> Maybe:
         if key in self:
             return self[key]
 

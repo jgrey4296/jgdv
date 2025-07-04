@@ -57,7 +57,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-type InputData = dict[str, TomlTypes]
+type InputData = dict
 TABLE_K    : Final[str] = "__table"
 INDEX_K    : Final[str] = "__index"
 MUTABLE_K  : Final[str] = "__mutable"
@@ -98,10 +98,14 @@ class GuardBase(dict):
                 return False
 
     @override
+    def __hash__(self) -> int: # type: ignore[override]
+        return hash(self._table())
+
+    @override
     def __len__(self) -> int:
         return len(self._table())
 
-    def __call__(self) -> TomlTypes:
+    def __call__(self) -> None:
         msg = "Don't call a ChainGuard, call a GuardProxy using methods like .on_fail"
         raise GuardedAccessError(msg)
 
@@ -116,7 +120,7 @@ class GuardBase(dict):
     def _index(self) -> list[str]:
         return super_get(self, INDEX_K)[:]
 
-    def _table(self) -> dict[str,TomlTypes]:
+    def _table(self) -> dict:
         return super_get(self, TABLE_K)
 
     @override
@@ -125,7 +129,7 @@ class GuardBase(dict):
         return table.keys()
 
     @override
-    def items(self) -> ItemsView[str, TomlTypes]: # type: ignore[override]
+    def items(self) -> ItemsView: # type: ignore[override]
         match super_get(self, TABLE_K):
             case dict() as val:
                 return val.items()
@@ -138,7 +142,7 @@ class GuardBase(dict):
                 raise TypeError(msg, x)
 
     @override
-    def values(self) -> list|ValuesView[TomlTypes]: # type: ignore[override]
+    def values(self) -> list|ValuesView: # type: ignore[override]
         match super_get(self, TABLE_K):
             case dict() as val:
                 return val.values()

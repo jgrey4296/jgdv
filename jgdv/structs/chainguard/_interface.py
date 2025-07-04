@@ -62,7 +62,7 @@ type TomlTypes = (str | int | float | bool | list[TomlTypes] | dict[str,TomlType
 type ProxyWrapper[T] = Callable[[TomlTypes], T]
 # Body:
 
-class ChainProxy_p(Protocol):
+class ChainProxy_p[T](Protocol):
     """ The proxy interface
 
     Used for special access like::
@@ -71,7 +71,7 @@ class ChainProxy_p(Protocol):
 
     """
 
-    def __call__[T](self, wrapper:Maybe[ProxyWrapper[T]]=None, fallback_wrapper:Maybe[ProxyWrapper[T]]=None) -> T: ...
+    def __call__(self, wrapper:Maybe[ProxyWrapper[T]]=None, fallback_wrapper:Maybe[ProxyWrapper[T]]=None) -> T: ...
 
     def __getattr__(self, attr:str) -> Self: ...
 
@@ -79,13 +79,13 @@ class ChainProxy_p(Protocol):
 
 class ProxyEntry_p(Protocol):
 
-    def on_fail(self, fallback:Any, types:Maybe[Any]=None, *, non_root:bool=False) -> ChainProxy_p: ...  # noqa: ANN401
+    def on_fail[T](self, fallback:Maybe[T]=None, types:Maybe[type[T]]=None, *, non_root:bool=False) -> ChainProxy_p[T]: ...
 
-    def first_of(self, fallback:Any, types:Maybe[Any]=None) -> ChainProxy_p: ...  # noqa: ANN401
+    def first_of[T](self, fallback:Maybe[T]=None, types:Maybe[type[T]]=None) -> ChainProxy_p[T]: ...
 
-    def all_of(self, fallback:Any, types:Maybe[Any]=None) -> ChainProxy_p: ...  # noqa: ANN401
+    def all_of[T](self, fallback:Maybe[T]=None, types:Maybe[type[T]]=None) -> ChainProxy_p[T]: ...
 
-    def flatten_on(self, fallback:Any) -> ChainProxy_p: ...  # noqa: ANN401
+    def flatten_on[T](self, fallback:Maybe[T]) -> ChainProxy_p[T]: ...
 
     def match_on(self, **kwargs:tuple[str,Any]) -> ChainProxy_p: ...
 
@@ -94,13 +94,13 @@ class ChainGuard_p(ProxyEntry_p, Mapping_p, Protocol):
     """ The interface for a base ChainGuard object """
 
     @override
-    def get(self, key:str, default:Maybe[TomlTypes]=None) -> Maybe[TomlTypes]: ...
+    def get(self, key:str, default:Maybe=None) -> Maybe: ...
 
     @classmethod
     def read[T:ChainGuard_p](cls:T, text:str) -> T: ...
 
     @classmethod
-    def from_dict(cls, data:dict[str, TomlTypes]) -> Self: ...
+    def from_dict(cls, data:dict) -> Self: ...
 
     @classmethod
     def load(cls, *paths:str|pl.Path) -> Self: ...
@@ -115,7 +115,7 @@ class ChainGuard_p(ProxyEntry_p, Mapping_p, Protocol):
 
     def to_file(self, path:pl.Path) -> None: ...
 
-    def _table(self) -> dict[str,TomlTypes]: ...
+    def _table(self) -> dict[str,Any]: ...
 
     def _index(self) -> list[str]: ...
 

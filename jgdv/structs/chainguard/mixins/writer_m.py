@@ -57,6 +57,7 @@ try:
     class TomlWriter_m:
         """ A mixin for adding toml-writing functionality """
 
+        @override
         def __str__(self:ChainGuard_i) -> str:
             return tomli_w.dumps(self._table())
 

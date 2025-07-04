@@ -65,7 +65,7 @@ class TomlLoader_m:
             raise OSError("ChainGuard Failed to Load: ", text, err.args) from err
 
     @classmethod
-    def from_dict(cls, data:dict[str, TomlTypes]) -> Self:
+    def from_dict(cls:type[ChainGuard_i], data:dict[str, TomlTypes]) -> ChainGuard_i:
         logging.debug("Making ChainGuard from dict")
         try:
             return cls(data)
@@ -73,7 +73,7 @@ class TomlLoader_m:
             raise OSError("ChainGuard Failed to Load: ", data, err.args) from err
 
     @classmethod
-    def load(cls, *paths:str|pl.Path) -> Self:
+    def load(cls:type[ChainGuard_i], *paths:str|pl.Path) -> ChainGuard_i:
         logging.debug("Creating ChainGuard for %s", paths)
         texts = []
         for path in paths:
@@ -85,7 +85,7 @@ class TomlLoader_m:
                 raise IOError("Failed to Load Toml", *err.args, paths) from err
 
     @classmethod
-    def load_dir(cls, dirp:str|pl.Path) -> Self:
+    def load_dir(cls:type[ChainGuard_i], dirp:str|pl.Path) -> ChainGuard_i:
         logging.debug("Creating ChainGuard for directory: %s", str(dirp))
         try:
             texts = []

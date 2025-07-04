@@ -95,7 +95,7 @@ class ChainGuard(GuardBase):
             curr_keys |= new_keys
 
         # Build a TG from a chainmap
-        return ChainGuard.from_dict(ChainMap(*(dict(x) for x in guards))) # type: ignore
+        return ChainGuard.from_dict(ChainMap(*(dict(x) for x in guards))) # type: ignore[attr-defined]
 
     def remove_prefix(self, prefix:str) -> ChainGuard:
         """ Try to remove a prefix from loaded data

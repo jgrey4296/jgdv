@@ -92,7 +92,7 @@ class GuardFailureProxy(GuardProxy):
     It also can type check its value and the value retrieved from the toml data
     """
 
-    def __init__(self, data:Maybe[TomlTypes|GuardBase], types:Maybe=None, index:Maybe[list[str]]=None, fallback:Maybe[TomlTypes|tuple]=NO_FALLBACK) -> None:
+    def __init__(self, data:Maybe, types:Maybe=None, index:Maybe[list[str]]=None, fallback:Maybe[TomlTypes|tuple]=NO_FALLBACK) -> None:
         super().__init__(data, types=types, index=index, fallback=fallback)
         match self._fallback:
             case tuple():
@@ -107,6 +107,8 @@ class GuardFailureProxy(GuardProxy):
         Optionally call a wrapper function on the actual value,
         or a fallback_wrapper function on the fallback
         """
+        val : Any
+        ##--|
         self._notify()
         wrapper           = wrapper or (lambda x: x)
         fallback_wrapper  = fallback_wrapper or (lambda x: x)

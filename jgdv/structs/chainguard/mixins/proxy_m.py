@@ -62,7 +62,7 @@ class GuardProxyEntry_m:
     tg.on_fail(2, int).a.value() # either get a.value, or 2. whichever returns has to be an int.
     """
 
-    def on_fail(self:ChainGuard_i, fallback:Any=(), types:Maybe[Any]=None, *, non_root:bool=False) -> GuardFailureProxy:  # noqa: ANN401
+    def on_fail(self:ChainGuard_i, fallback:Any=(), types:Maybe=None, *, non_root:bool=False) -> GuardFailureProxy:  # noqa: ANN401
         """
         use a fallback value in an access chain,
         eg: doot.config.on_fail("blah").this.doesnt.exist() -> "blah"
@@ -71,11 +71,12 @@ class GuardProxyEntry_m:
         """
         index = self._index()
         if index != ["<root>"] and not non_root:
-            raise GuardedAccessError("On Fail not declared at entry", index)
+            msg = "On Fail not declared at entry"
+            raise GuardedAccessError(msg, index)
 
         return GuardFailureProxy(self, types=types, fallback=fallback)
 
-    def first_of(self:ChainGuard_i, fallback:Any, types:Maybe[Any]=None) -> GuardProxy:
+    def first_of(self:ChainGuard_i, fallback:Any, types:Maybe=None) -> GuardProxy:  # noqa: ANN401
         """
         get the first non-None value from a index path, even across arrays of tables
         so instead of: data.a.b.c[0].d
@@ -83,10 +84,10 @@ class GuardProxyEntry_m:
         """
         raise NotImplementedError()
 
-    def all_of(self:ChainGuard_i, fallback:Any, types:Maybe[Any]=None) -> GuardProxy:
+    def all_of(self:ChainGuard_i, fallback:Any, types:Maybe=None) -> GuardProxy:  # noqa: ANN401
         raise NotImplementedError()
 
-    def flatten_on(self:ChainGuard_i, fallback:Any) -> GuardProxy:
+    def flatten_on(self:ChainGuard_i, fallback:Any) -> GuardProxy:  # noqa: ANN401
         """
         combine all dicts at the call site to form a single dict
         """
