@@ -115,6 +115,37 @@ class ParseResult_d:
 
     def to_dict(self) -> dict:
         return {"name":self.name, "args":self.args, NON_DEFAULT_KEY:self.non_default}
+
+class ParseReport_d:
+    """ The returned data of parsing cli args
+
+    Contains:
+    - raw : the raw args that were used. ieg: sys.argv[:]
+    - remaining : anything not parsed
+    - prog : ParseResult_d of base program arguments
+    - cmds : mapping(cmdName -> [ParseResult_d])
+    - subs : mapping(subName -> [ParseResult_d])
+    - help : bool
+
+    """
+    __slots__ = ("cmds", "help", "prog", "raw", "remaining", "subs")
+    raw        : tuple[str, ...]
+    remaining  : tuple[str, ...]
+    prog       : ParseResult_d
+    cmds       : dict[str, tuple[ParseResult_d]]
+    subs       : dict[str, tuple[ParseResult_d]]
+    help       : bool
+
+    def __init__(self, *, raw:Iterable[str], remaining:Iterable[str], prog:ParseResult_d, help:bool) -> None:
+        self.raw        = tuple(raw)
+        self.remaining  = tuple(remaining)
+        self.help       = help
+        self.prog       = prog
+        self.cmds       = {}
+        self.subs       = {}
+
+
+
 ##--| Params
 
 @runtime_checkable

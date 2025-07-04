@@ -388,31 +388,29 @@ class CLIParserModel:
         self.specs_subs      = {}
     ##--| Report Generation
 
-    def report(self) -> Maybe[dict]:
+    def report(self) -> API.ParseReport_d:
         """ Take the parsed results and return a nested dict """
-        result : dict
+        result : API.ParseReport_d
+        cmds : defaultdict[str, list]
+        subs : defaultdict[str, list]
         ##--|
-        result = {
-            "raw" : self.args_initial,
-            "remaining" : self.args_remaining,
-            "cmds" : defaultdict(list),
-            "subs" : defaultdict(list),
-            "help" : self._force_help,
-        }
-
-
-        match self.data_prog:
-            case None:
-                pass
-            case API.ParseResult_d() as pr:
-                result['prog'] = pr
+        result = API.ParseReport_d(raw=self.args_initial,
+                                   remaining=self.args_remaining,
+                                   prog=self.data_prog,
+                                   help=self._force_help)
+        cmds = defaultdict(list)
+        subs = defaultdict(list)
 
         for cmd in self.data_cmds:
-            result['cmds'][cmd.name].append(cmd)
+            cmds[cmd.name].append(cmd)
+        else:
+            result.cmds.update(cmds)
 
         for sub in self.data_subs:
-            assert(sub.ref is not None and sub.ref in result['cmds'])
-            result['subs'][sub.ref].append(sub)
+            assert(sub.ref is not None and sub.ref in result.cmds)
+            subs[sub.ref].append(sub)
+        else:
+            result.subs.update(subs)
 
         # TODO if there were no args, use an empty cmd similar to implicits
         self._report = result

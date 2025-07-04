@@ -19,7 +19,7 @@ import pytest
 
 # ##-- end 3rd party imports
 
-from .._interface import ParseResult_d
+from .._interface import ParseResult_d, ParseReport_d
 from .. import param_spec as Specs  # noqa: N812
 from ..parser_model import CLIParserModel
 from ..parse_machine import ParseMachine
@@ -122,8 +122,8 @@ class TestMachine:
         prog = PSource(name="blah",
                        specs=[ParamSpec(name="-a")])
         match parser(["blah", "-a", "b","c", "d"], prog=prog, cmds=[], subs=[]):
-            case {"remaining":rem, "prog":ParseResult_d() as progargs}:
-                assert(rem == ["b","c","d"])
+            case ParseReport_d(remaining=rem, prog=ParseResult_d() as progargs):
+                assert(rem == ("b","c","d"))
                 assert(progargs.args['a'] is True)
                 assert(parser.current_state_value == "End")
             case x:
@@ -135,8 +135,8 @@ class TestMachine:
         prog = PSource(name="bloo",
                        specs=[ParamSpec(name="-a")])
         match parser(["bloo", "--help"], prog=prog, cmds=[], subs=[]):
-            case {"remaining":rem, "help":True}:
-                assert(rem == [])
+            case ParseReport_d(remaining=rem, help=True):
+                assert(rem == ())
                 assert(parser.current_state_value == "End")
             case x:
                 assert(False), x
@@ -146,8 +146,7 @@ class TestMachine:
         assert(parser.current_state.id == "Start")
         psource = PSource()
         match parser(["python", psource.name], prog=None, cmds=[psource], subs=[]):
-            case {"remaining":rem, "cmds":{"simple": [ParseResult_d(name="simple")]}}:
-                assert(rem == [])
+            case ParseReport_d(remaining=(), cmds={"simple":[ParseResult_d(name="simple")]}):
                 assert(parser.current_state_value == "End")
             case x:
                 assert(False), x
@@ -161,8 +160,7 @@ class TestMachine:
                      prog=None,
                      cmds=[psource],
                      subs=[]):
-            case {"remaining":rem, "cmds":{"simple": [cmdargs]}}:
-                assert(rem == [])
+            case ParseReport_d(remaining=(), cmds={"simple":[cmdargs]}):
                 assert(cmdargs.name == "simple")
                 assert(cmdargs.args['blah'] is False)
                 assert(parser.current_state_value == "End")
@@ -178,8 +176,7 @@ class TestMachine:
                      prog=None,
                      cmds=[psource],
                      subs=[]):
-            case {"remaining":rem, "cmds":{"simple": [cmdargs]}}:
-                assert(rem == [])
+            case ParseReport_d(remaining=(), cmds={"simple":[cmdargs]}):
                 assert(cmdargs.name == "simple")
                 assert(cmdargs.args['blah'] is True)
                 assert(parser.current_state_value == "End")
@@ -197,8 +194,7 @@ class TestMachine:
                      prog=prog,
                      cmds=[cmd],
                      subs=[((cmd.name,), sub)]):
-            case {"remaining":rem, "cmds":{"acmd": [cmdargs]}, "subs": dict() as subs}:
-                assert(rem == [])
+            case ParseReport_d(remaining=(), cmds={"acmd":[cmdargs]}, subs=dict() as subs):
                 assert(cmdargs.args['blah'] is True)
                 assert("acmd" in subs)
                 assert(len(subs['acmd']) == 1)
@@ -222,8 +218,7 @@ class TestMachine:
                      prog=prog,
                      cmds=[cmd],
                      subs=[((cmd.name,), sub)]):
-            case {"remaining":rem, "cmds":{"acmd": [cmdargs]}, "subs": dict() as subs}:
-                assert(rem == [])
+            case ParseReport_d(remaining=(), cmds={"acmd":[cmdargs]}, subs=dict() as subs):
                 assert(cmdargs.args['blah'] is True)
                 assert("acmd" in subs)
                 assert(len(subs['acmd']) == 2)
@@ -251,8 +246,7 @@ class TestMachine:
                      prog=prog,
                      cmds=[cmd1, cmd2],
                      subs=[((cmd1.name,), sub)]):
-            case {"remaining":rem, "cmds":{"acmd": [acmdargs], "bcmd": [bcmdargs]}, "subs": dict() as subs}:
-                assert(rem == [])
+            case ParseReport_d(remaining=(), cmds={"acmd":[acmdargs], "bcmd":[bcmdargs]}, subs=dict() as subs):
                 assert(acmdargs.args['blah'] is True)
                 assert(bcmdargs.args['aweg'] is True)
                 assert("acmd" in subs)
@@ -278,8 +272,7 @@ class TestMachine:
                      subs=[((cmd1.name,), sub)],
                      implicits=["acmd"],
                      ):
-            case {"remaining":rem, "cmds":{"acmd": [acmdargs]}, "subs": dict() as subs}:
-                assert(rem == [])
+            case ParseReport_d(remaining=(), cmds={"acmd":[acmdargs]}, subs=dict() as subs):
                 assert(acmdargs.args['blah'] is False)
                 assert("acmd" in subs)
                 assert(parser.current_state_value == "End")
@@ -303,8 +296,7 @@ class TestMachine:
                      subs=[((cmd1.name,), sub)],
                      implicits=["acmd", "asub"],
                      ):
-            case {"remaining":rem, "cmds":{"acmd": [acmdargs]}, "subs": dict() as subs}:
-                assert(rem == [])
+            case ParseReport_d(remaining=(), cmds={"acmd":[acmdargs]}, subs=dict() as subs):
                 assert(acmdargs.args['blah'] is False)
                 assert("acmd" in subs)
                 assert(subs['acmd'][0].args['bloo'] is True)
