@@ -36,7 +36,7 @@ from typing import Generic, NewType
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
-from typing import no_type_check, final, override, overload
+from typing import no_type_check, final
 
 if TYPE_CHECKING:
     from jgdv import Maybe
@@ -58,9 +58,10 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Types
-type Logger    = logmod.Logger
-type Formatter = logmod.Formatter
-type Handler   = logmod.Handler
+type Logger      = logmod.Logger
+type Formatter   = logmod.Formatter
+type Handler     = logmod.Handler
+type LoggerSpec  = Any
 
 # Vars:
 LOGDEC_PRE      : Final[str]       = "__logcall__"
@@ -109,7 +110,7 @@ class LogLevel_e(enum.IntEnum):
 class LogConfig_p(Protocol):
     """ TODO """
 
-    def setup(self, config:ChainGuard) -> None: ...
+    def setup(self, config:dict|ChainGuard) -> None: ...
 
     def set_level(self, level:int|str) -> None: ...
 

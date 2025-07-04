@@ -26,7 +26,7 @@ from uuid import UUID, uuid1
 # ##-- 1st party imports
 from jgdv import Mixin, Proto
 from jgdv.structs.metalord.singleton import MLSingleton
-
+from jgdv.structs.chainguard import ChainGuard
 # ##-- end 1st party imports
 
 from . import _interface as API# noqa: N812
@@ -38,7 +38,7 @@ from .logger_spec import LoggerSpec
 # isort: off
 import abc
 import collections.abc
-from typing import TYPE_CHECKING, cast, assert_type, assert_never
+from typing import TYPE_CHECKING, cast, assert_type, assert_never, override
 from typing import Generic, NewType
 # Protocols:
 from typing import Protocol, runtime_checkable
@@ -46,7 +46,6 @@ from typing import Protocol, runtime_checkable
 from typing import no_type_check, final, overload
 
 if TYPE_CHECKING:
-    from jgdv.structs.chainguard import ChainGuard
     import pathlib as pl
     import enum
     from jgdv import Maybe
@@ -67,7 +66,6 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-ENV                  : dict              = os.environ # type: ignore
 PRINTER_INITIAL_SPEC : Final[LoggerSpec] = LoggerSpec.build(API.default_printer)
 INITIAL_SPEC         : Final[LoggerSpec] = LoggerSpec.build(API.default_stdout)
 
@@ -142,7 +140,7 @@ class JGDVLogConfig(metaclass=MLSingleton):
 
     """
     ##--| classvars
-    levels                : ClassVar[type[enum.IntEnum]] = API.LogLevel_e
+    levels                : ClassVar[type[API.LogLevel_e]] = API.LogLevel_e
     logger_cls            : ClassVar[type[Logger]] = JGDVLogger
     ##--| core vars
     root                  : Logger
@@ -166,14 +164,17 @@ class JGDVLogConfig(metaclass=MLSingleton):
         self.activate_spec(self._initial_spec)
         self.activate_spec(self._printer_initial_spec)
 
-        logging.log(self.levels.bootstrap, "Post Log Setup") # type: ignore
+        logging.log(self.levels.bootstrap, "Post Log Setup")
 
     ##--| dunders
+
+    @override
     def __repr__(self) -> str:
 
         return f"<{self.__class__.__name__}({len(self._registry)}) : >"
 
     ##--| internal
+
     def _install_logger_override(self) -> None:
         match self.logger_cls:
             case None:
@@ -187,7 +188,7 @@ class JGDVLogConfig(metaclass=MLSingleton):
                     raise TypeError(msg, self.logger_cls)
 
     def _register_new_names(self) -> None:
-        for name,lvl in self.levels.__members__.items(): # type: ignore
+        for name,lvl in self.levels.__members__.items():
             logmod.addLevelName(lvl, name)
 
     def _setup_logging_extra(self, config:ChainGuard) -> None:
@@ -203,13 +204,14 @@ class JGDVLogConfig(metaclass=MLSingleton):
                     self.activate_spec(spec)
 
     ##--| public
+
     def report(self) -> None:
         """ Utility method to inspect the state of logging. """
         printer = self.subprinter()
         for x in self._registry.values():
             printer.log(logmod.WARN, "%s : %s", x.fullname, x.level)
 
-    def activate_spec(self, spec:LoggerSpec, *, override:bool=False) -> None:
+    def activate_spec(self, spec:LoggerSpec, *, override:bool=False) -> None:  # noqa: ARG002
         """ Add a spec to the registry and activate it """
         target   = spec
         fullname = spec.fullname
@@ -217,15 +219,21 @@ class JGDVLogConfig(metaclass=MLSingleton):
         self._registry[fullname] = spec
         target.apply()
 
-    def setup(self, config:ChainGuard, *, force:bool=False) -> None:
+    def setup(self, config:dict|ChainGuard, *, force:bool=False) -> None:
         """ a setup that uses config values """
         if self.is_setup and not force:
             warnings.warn("Logging Is Already Set Up", stacklevel=2)
 
-        if config is None or not bool(config):
-            msg = "Config data has not been configured"
-            raise ValueError(msg)
+        match config:
+            case x if not bool(x):
+                msg = "Config data has not been configured"
+                raise ValueError(msg)
+            case dict():
+                config = ChainGuard(config)
+            case ChainGuard():
+                pass
 
+        assert(isinstance(config, ChainGuard))
         self._initial_spec.clear()
         self._printer_initial_spec.clear()
 
