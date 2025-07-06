@@ -198,7 +198,7 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
                     nested.append(LoggerSpec.build(x, **kwargs))
                 return LoggerSpec(nested=nested, **kwargs)
             case ChainGuard():
-                as_dict = data._table().copy()
+                as_dict = dict(data)
                 as_dict.update(kwargs)
                 return LoggerSpec.model_validate(as_dict)
             case dict():

@@ -70,7 +70,7 @@ class GuardProxyEntry_m:
         *without* throwing a GuardedAccessError
         """
         index = self._index()
-        if index != ["<root>"] and not non_root:
+        if index != ("<root>",) and not non_root:
             msg = "On Fail not declared at entry"
             raise GuardedAccessError(msg, index)
 

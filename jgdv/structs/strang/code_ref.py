@@ -155,7 +155,7 @@ class CodeReference(Strang, no_register=True):
                 raise TypeError(type(x))
 
     @overload
-    def __call__(self, *, check:Maybe[CheckType|CheckCancel]=None, raise_error:Literal[True]) -> type: ...
+    def __call__(self, *, check:Maybe[CheckType|CheckCancel]=None, raise_error:Literal[True]=True) -> type: ...
     def __call__(self, *, check:Maybe[CheckType|CheckCancel]=None, raise_error:Literal[False]=False) -> Result[type, ImportError]:
         """ Tries to import and retrieve the reference,
         and casts errors to ImportErrors

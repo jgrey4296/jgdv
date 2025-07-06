@@ -64,11 +64,6 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-super_get             = object.__getattribute__
-super_set             = object.__setattr__
-USCORE   : Final[str] = "_"
-DASH     : Final[str] = "-"
-MUTABLE  : Final[str] = "__mutable"
 ##--|
 
 @Proto(ChainGuard_p)
@@ -124,48 +119,3 @@ class ChainGuard(GuardProxyEntry_m, GuardBase):
                     return self
 
 
-    @override
-    def __setattr__(self:ChainGuard_i, attr:str, value:Any) -> None:
-        if not getattr(self, MUTABLE):
-            raise TypeError()
-        super_set(self, attr, value)
-
-    def __getattr__(self:ChainGuard_i, attr:str) -> Any:  # noqa: ANN401
-        index    : list[str]
-        index_s  : str
-        table    : dict  = self._table()  # type: ignore[operator,assignment]
-
-        if attr not in table and attr.replace(USCORE, DASH) not in table:
-            index      = [*self._index(), attr] # type: ignore[operator,misc]
-            index_s    = ".".join(index)
-            available  = " ".join(self.keys())
-            msg        = f"{index_s} not found, available: [{available}]"
-            raise GuardedAccessError(msg)
-
-        match table.get(attr, None) or table.get(attr.replace(USCORE, DASH), None):
-            case dict() as result:
-                return type(self)(result, index=[*self._index(), attr])
-            case list() as result if all(isinstance(x, dict) for x in result):
-                index = self._index()
-                return [type(self)(x, index=index[:]) for x in result if isinstance(x, dict)]
-            case _ as result:
-                return result
-
-    def __getitem__(self:ChainGuard_i, keys:int|str|list[str]|tuple[str]) -> Any:  # noqa: ANN401
-        curr : ChainGuard_i|TomlTypes = self
-        match keys:
-            case tuple():
-                for key in keys:
-                    curr = getattr(curr, key)
-            case str():
-                curr = getattr(self, keys)
-            case _:
-                pass
-
-        return curr
-
-    def get(self:ChainGuard_i, key:str, default:Maybe=None) -> Maybe:
-        if key in self:
-            return self[key]
-
-        return default

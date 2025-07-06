@@ -59,7 +59,7 @@ logging = logmod.getLogger(__name__)
 
 # Vars:
 type TomlTypes = (str | int | float | bool | list[TomlTypes] | dict[str,TomlTypes] | datetime.datetime)
-type ProxyWrapper[T] = Callable[[TomlTypes], T]
+type ProxyWrapper[T] = Callable[[*Any], T]
 # Body:
 
 class ChainProxy_p[T](Protocol):

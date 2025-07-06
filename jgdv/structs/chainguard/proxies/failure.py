@@ -128,25 +128,32 @@ class GuardFailureProxy(GuardProxy):
 
     @override
     def __getattr__(self, attr:str) -> GuardProxy:
-        try:
-            match self._data:
-                case None:
-                    raise GuardedAccessError()  # noqa: TRY301
-                case GuardBase():
-                    return self._inject(self._data[attr], attr=attr)
-                case _:
-                    return self._inject(attr=attr)
-        except GuardedAccessError:
-            return self._inject(clear=True, attr=attr)
+        return self.__getitem__(attr)
 
     @override
-    def __getitem__(self, keys:str|tuple[str]) -> GuardProxy:
+    def __getitem__(self, keys:int|str|tuple[int|str, ...]) -> GuardProxy:
         curr : GuardProxy = self
         match keys:
             case tuple():
-                for key in keys:
-                    curr = getattr(curr, key)
-            case str():
-                curr = getattr(self, keys)
+                pass
+            case str() | int():
+                keys = (keys,)
+            case x:
+                raise TypeError(type(x))
 
-        return curr
+        curr = self
+        try:
+            for x in keys:
+                match curr._data, x:
+                    case None, _:
+                        raise GuardedAccessError()  # noqa: TRY301
+                    case dict() as d, k if k in d:
+                        curr = curr._inject(d[k], attr=x)
+                    case list() as d, int() as k if k < len(d):
+                        curr = curr._inject(d[k], attr=k)
+                    case _:
+                        curr = curr._inject(attr=x)
+        except GuardedAccessError:
+            return curr._inject(clear=True, attr=keys)
+        else:
+            return curr

@@ -45,10 +45,10 @@ class TestProxiedGuard:
         bad_key                   = proxied.ajojo
 
         assert(base_val           == "blah")
-        assert(base._index()      == ["<root>"])
-        assert(proxied._index()   == ["<root>"])
-        assert(good_key._index()  == ["<root>", "test"])
-        assert(bad_key._index()   == ["<root>", "ajojo"])
+        assert(base._index()      == ("<root>",))
+        assert(proxied._index()   == ("<root>",))
+        assert(good_key._index()  == ("<root>", "test"))
+        assert(bad_key._index()   == ("<root>", "ajojo"))
 
     def test_proxy_multi_independence(self):
         base           = ChainGuard({"test": "blah"})

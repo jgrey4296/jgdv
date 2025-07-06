@@ -116,5 +116,5 @@ class TestFailureProxy:
     def test_proxy_inject_index_update(self):
         proxy1 = GuardFailureProxy(None, fallback=2, types=int).blah.bloo
         proxy2 = proxy1._inject(None).awef
-        assert(proxy1._index() == ["<root>", "blah", "bloo"])
-        assert(proxy2._index() == ["<root>", "blah", "bloo", "awef"])
+        assert(proxy1._index() == ("<root>", "blah", "bloo"))
+        assert(proxy2._index() == ("<root>", "blah", "bloo", "awef"))

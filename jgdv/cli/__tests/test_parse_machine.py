@@ -78,7 +78,6 @@ def PSource(mocker):
 
     return ASource
 
-
 ##--| body
 
 class TestMachine:
@@ -107,7 +106,6 @@ class TestMachine:
             case x:
                 assert(False), x
 
-
     def test_parse_no_specs(self, parser):
         assert(parser.current_state.id == "Start")
         match parser(["a", "b","c", "d"], prog=None, cmds=[], subs=[]):
@@ -115,7 +113,6 @@ class TestMachine:
                 assert(parser.current_state_value == "End")
             case x:
                 assert(False), x
-
 
     def test_parse_simple_spec(self, parser, PSource):
         assert(parser.current_state.id == "Start")
@@ -129,7 +126,6 @@ class TestMachine:
             case x:
                 assert(False), x
 
-
     def test_parse_help(self, parser, PSource):
         assert(parser.current_state.id == "Start")
         prog = PSource(name="bloo",
@@ -141,7 +137,6 @@ class TestMachine:
             case x:
                 assert(False), x
 
-
     def test_parse_cmd(self, parser, PSource):
         assert(parser.current_state.id == "Start")
         psource = PSource()
@@ -150,7 +145,6 @@ class TestMachine:
                 assert(parser.current_state_value == "End")
             case x:
                 assert(False), x
-
 
     def test_parse_cmd_with_arg(self, parser, PSource):
         assert(parser.current_state.id == "Start")
@@ -167,7 +161,6 @@ class TestMachine:
             case x:
                 assert(False), x
 
-
     def test_parse_cmd_with_parsed_arg(self, parser, PSource):
         assert(parser.current_state.id == "Start")
         psource = PSource(specs=[ParamSpec[bool](name="-blah", default=False)])
@@ -182,7 +175,6 @@ class TestMachine:
                 assert(parser.current_state_value == "End")
             case x:
                 assert(False), x
-
 
     def test_parse_cmd_and_sub(self, parser, PSource):
         assert(parser.current_state.id == "Start")
@@ -203,7 +195,6 @@ class TestMachine:
                 assert(parser.current_state_value == "End")
             case x:
                 assert(False), x
-
 
     def test_parse_multi_subs(self, parser, PSource):
         assert(parser.current_state.id == "Start")
@@ -233,7 +224,6 @@ class TestMachine:
             case x:
                 assert(False), x
 
-
     def test_multi_cmds(self, parser, PSource):
         assert(parser.current_state.id == "Start")
         ##--|
@@ -255,7 +245,6 @@ class TestMachine:
                 assert(parser.current_state_value == "End")
             case x:
                 assert(False), x
-
 
     def test_implicit_cmd(self, parser, PSource):
         assert(parser.current_state.id == "Start")
@@ -280,7 +269,6 @@ class TestMachine:
             case x:
                 assert(False), x
 
-
     def test_implicit_sub(self, parser, PSource):
         assert(parser.current_state.id == "Start")
         ##--|
@@ -304,8 +292,6 @@ class TestMachine:
                 assert(parser.current_state_value == "End")
             case x:
                 assert(False), x
-
-
 
 class TestMachine_Dot:
     """ Write out the dot graphs of the machines """

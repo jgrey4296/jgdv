@@ -14,8 +14,9 @@ from typing import Final
 
 import typing
 import pytest
-from jgdv.structs.chainguard.errors import GuardedAccessError
-from jgdv.structs.chainguard import ChainGuard
+from ..errors import GuardedAccessError
+from .. import ChainGuard
+from ..proxies.base import GuardProxy
 
 logging = logmod.root
 example_dict : Final[dict] = {
@@ -29,6 +30,7 @@ example_toml : Final[str] = """
 val   = 2
 blah  = "bloo"
 """
+ROOT_INDEX : Final[tuple[str, ...]] = ("<root>",)
 ##--|
 
 class TestBaseGuard:
@@ -43,6 +45,7 @@ class TestBaseGuard:
     def test_is_mapping(self):
         basic = ChainGuard({"test": "blah"})
         assert(isinstance(basic, typing.Mapping))
+        assert(isinstance(basic, dict))
 
     def test_is_dict(self):
         basic = ChainGuard({"test": "blah"})
@@ -58,6 +61,15 @@ class TestBaseGuard:
     def test_repr(self):
         basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
         assert(repr(basic) == "<ChainGuard:['test', 'bloo']>")
+
+
+    def test_basic_table(self):
+        basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
+        match basic._table():
+            case dict() as data:
+                assert(not isinstance(data, ChainGuard))
+            case x:
+                assert(False), x
 
 class TestBaseGuard_Access:
 
@@ -135,13 +147,13 @@ class TestBaseGuard_Info:
 
     def test_index(self):
         basic = ChainGuard({"test": "blah"})
-        assert(basic._index() == ["<root>"])
+        assert(basic._index() == ROOT_INDEX)
 
     def test_index_independence(self):
         basic = ChainGuard({"test": "blah"})
-        assert(basic._index() == ["<root>"])
+        assert(basic._index() == ROOT_INDEX)
         basic.test
-        assert(basic._index() == ["<root>"])
+        assert(basic._index() == ROOT_INDEX)
 
     def test_uncallable(self):
         basic = ChainGuard({"test": {"blah": 2}, "bloo": 2})
@@ -227,7 +239,7 @@ class TestGuardMerge:
         assert("a" in the_dict)
         assert(the_dict["c"]["d"] == "test")
 
-class TestFailAccess:
+class TestProxyFailAccess:
 
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
@@ -248,8 +260,17 @@ class TestFailAccess:
 
     def test_fail_access_list(self):
         obj = ChainGuard({"nothing": []})
-        result = obj.on_fail([]).nothing[1]()
-        assert(isinstance(result, list))
+        result = obj.on_fail([]).nothing[1]
+        assert(isinstance(result, GuardProxy))
+        assert(isinstance(result(), list))
+        assert(result() == [])
+
+    def test_fail_access_list_with_vals(self):
+        obj = ChainGuard({"nothing": []})
+        result = obj.on_fail([1,2,3,4]).nothing[1]
+        assert(isinstance(result, GuardProxy))
+        assert(isinstance(result(), list))
+        assert(result() == [1,2,3,4])
 
     def test_fail_access_type_mismatch(self):
         obj = ChainGuard({"nothing": {}})
@@ -265,3 +286,20 @@ class TestFailAccess:
         obj = ChainGuard({"nothing": {"blah": {"bloo": 10}}})
         result = obj.on_fail(None).nothing.blah.bloo()
         assert(result == 10)
+
+    def test_success_list_access(self):
+        obj     = ChainGuard({"nothing": {"blah": [{"bloo":20}, {"bloo": 10}]}})
+        result  = obj.on_fail(None).nothing.blah[1].bloo
+        assert(isinstance(result, GuardProxy))
+        assert(result() == 10)
+
+
+    def test_on_fail_with_list_fallback(self):
+        obj     = ChainGuard({"nothing": {"blah-aweg": [{"bloo":20}, {"bloo": 10}]}})
+        result  = obj.on_fail([]).nothing.blah_aweg
+        assert(isinstance(result, GuardProxy))
+        match result():
+            case list():
+                assert(True)
+            case x:
+                assert(False), x

@@ -62,6 +62,11 @@ TABLE_K    : Final[str] = "__table"
 INDEX_K    : Final[str] = "__index"
 MUTABLE_K  : Final[str] = "__mutable"
 ROOT_STR   : Final[str] = "<root>"
+super_get             = object.__getattribute__
+super_set             = object.__setattr__
+USCORE   : Final[str] = "_"
+DASH     : Final[str] = "-"
+MUTABLE  : Final[str] = "__mutable"
 ##--|
 
 class GuardBase(dict):
@@ -77,15 +82,19 @@ class GuardBase(dict):
     data.report_defaulted() -> ['a.path.that.may.exist.<str|int>']
     """
 
-    def __init__(self, data:Maybe[InputData]=None, *, index:Maybe[list[str]]=None, mutable:bool=False) -> None:
+    def __init__(self, data:Maybe[InputData]=None, *, index:Maybe[Iterable[int|str]]=None, mutable:bool=False) -> None:
         super().__init__()
         super_set(self, TABLE_K, data or {})
-        super_set(self, INDEX_K, (index or [ROOT_STR])[:])
+        super_set(self, INDEX_K, tuple(index or [ROOT_STR]))
         super_set(self, MUTABLE_K, mutable)
 
     @override
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__}:{list(self.keys())}>"
+        match self._table():
+            case dict() as d:
+                return f"<{self.__class__.__name__}:{list(d.keys())}>"
+            case d:
+                return f"<{self.__class__.__name__}:{d}>"
 
     @override
     def __eq__(self, other:object) -> bool:
@@ -115,10 +124,88 @@ class GuardBase(dict):
 
     @override
     def __contains__(self, _key: object) -> bool:
-        return _key in self.keys()
+        match _key:
+            case str():
+                return _key in self.keys() or _key.replace("_","-") in self.keys()
+            case x:
+                return x in self.keys()
 
-    def _index(self) -> list[str]:
-        return super_get(self, INDEX_K)[:]
+
+    @override
+    def __setattr__(self, attr:str, value:Any) -> None:
+        if not getattr(self, MUTABLE):
+            raise TypeError()
+        super_set(self, attr, value)
+
+    def __getattr__(self, attr:str) -> Any:  # noqa: ANN401
+        return self.__getitem__(attr)
+
+    @override
+    def __getitem__(self, keys:int|str|list[str]|tuple[int|str, ...]) -> Any:
+        table    : dict
+        curr     : dict
+        ##--|
+        match keys:
+            case tuple():
+                pass
+            case int()|str():
+                keys = (keys, )
+            case x:
+                raise TypeError(type(x))
+
+
+        table  = self._table()
+        curr   = table
+        for k in keys:
+            match k:
+                case str() if k in curr:
+                    pass
+                case str() if (k:=k.replace(USCORE, DASH)) in curr:
+                    pass
+                case str():
+                    index_s    = ".".join(map(str, self._index(k)))
+                    available  = " ".join(table.keys())
+                    msg        = f"{index_s} not found, available: [{available}]"
+                    raise GuardedAccessError(msg)
+                case int() if k < len(curr):
+                    pass
+                case int():
+                    raise GuardedAcccessError("tried to access a list of wrong length")
+
+            match curr.get(k, None):
+                case dict() as result:
+                    curr = result
+                case result:
+                    curr = result
+        else:
+            match curr:
+                case dict():
+                    return type(self)(curr, index=self._index(keys))
+                case [*xs] if all(isinstance(x, dict) for x in xs):
+                    index = self._index(keys)
+                    return [type(self)(x, index=index) for x in xs]
+                case [*xs]:
+                    return xs
+                case x:
+                    return x
+
+    @override
+    def get(self, key:str, default:Maybe=None) -> Maybe:
+        if key in self:
+            return self.__getitem__(key)
+
+        return default
+    ##--|
+    def _index(self, sub:Maybe[int|str|tuple[int|str, ...]]=None) -> tuple[int|str, ...]:
+        match sub:
+            case None:
+                return super_get(self, INDEX_K)[:]
+            case int()|str() as x:
+                return (*super_get(self, INDEX_K), x)
+            case [*xs]:
+                return (*super_get(self, INDEX_K), *xs)
+            case x:
+                raise TypeError(type(x))
 
     def _table(self) -> dict:
         return super_get(self, TABLE_K)

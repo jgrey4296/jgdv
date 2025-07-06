@@ -56,9 +56,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
     from jgdv import CHECKTYPE
-    from .._interface import ChainGuard_i
-
-    type Wrapper = Callable[[TomlTypes], Any]
+    from .._interface import ChainGuard_i, ProxyWrapper
 
 # isort: on
 # ##-- end types
@@ -67,24 +65,26 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+ROOT_INDEX : Final[tuple[str, ...]] = ("<root>", )
+##--|
 class GuardProxy:
     """ A Base Class for Proxies """
     __slots__ = ("__index", "_data", "_fallback", "_types")
+    __index    : tuple[str|int, ...]
     _data      : Maybe[TomlTypes|GuardBase]
     _types     : CHECKTYPE
-    __index    : list[str]
-    _fallback  : Maybe[TomlTypes|tuple]
+    _fallback  : Maybe[Any|tuple]
 
-    def __init__(self, data:Maybe[TomlTypes|GuardBase], types:Any=None, index:Maybe[list[str]]=None, fallback:Maybe[TomlTypes|tuple]=()) -> None:  # noqa: ANN401
+    def __init__(self, data:Maybe[GuardBase|Any], types:Any=None, index:Maybe[Iterable[str|int]]=None, fallback:Maybe[tuple|Any]=()) -> None:  # noqa: ANN401
         self._data      = data
         self._types     = types
         self._fallback  = fallback
-        self.__index    = index or ["<root>"]
+        self.__index    = tuple(index or ROOT_INDEX)
 
     @override
     def __repr__(self) -> str:
         type_str = self._types_str()
-        index_str = ".".join(self._index())
+        index_str = ".".join(map(str, self._index()))
         return f"<GuardProxy: {index_str}:{type_str}>"
 
     def __len__(self) -> int:
@@ -96,7 +96,7 @@ class GuardProxy:
     def __bool__(self) -> bool:
         return self._data is not None and self._data is not Never
 
-    def __call__(self, *, wrapper:Maybe[Wrapper]=None, **kwargs:Any) -> Any:  # noqa: ANN401
+    def __call__(self, *, wrapper:Maybe[ProxyWrapper]=None, **kwargs:Any) -> Any:  # noqa: ANN401
         raise NotImplementedError()
 
     def __getattr__(self, attr:str) -> GuardProxy:
@@ -105,9 +105,16 @@ class GuardProxy:
     def __getitem__(self, keys:int|str|tuple[str]) -> GuardProxy:
         raise NotImplementedError()
 
+    def __contains__(self, other):
+        match other:
+            case str():
+                return other in self._data or other.replace("_","-")
+            case x:
+                return x in self._data
     ##--|
 
-    def _inject(self, val:Maybe=None, attr:Maybe[str]=None, *, clear:bool=False) -> GuardProxy:
+    def _inject(self, val:Maybe=None, attr:Maybe[int|str|tuple[int|str, ...]]=None, *, clear:bool=False) -> GuardProxy:
+        """ create a new proxy that is further into the proxied data """
         match val:
             case _ if clear:
                 val = None
@@ -129,12 +136,12 @@ class GuardProxy:
             case _, _, []:
                 pass
             case None, val, [*index]:
-                DefaultedReporter_m.add_defaulted(".".join(index),
+                DefaultedReporter_m.add_defaulted(".".join(map(str, index)),
                                                   val,
                                                   types_str)
             case val, _, [*index]:
                 assert(not isinstance(val, GuardBase|None))
-                DefaultedReporter_m.add_defaulted(".".join(index),
+                DefaultedReporter_m.add_defaulted(".".join(map(str, index)),
                                                   val,
                                                   types_str)
             case val, flbck, index,:
@@ -155,11 +162,11 @@ class GuardProxy:
 
         return types_str
 
-    def _match_type(self, val:Maybe[TomlTypes]) -> Maybe[TomlTypes]:
+    def _match_type(self, val:Maybe) -> Maybe:
         match self._types:
             case type() if not isinstance(val, self._types):
                 types_str  = self._types_str()
-                index_str  = ".".join(*self.__index, *['(' + types_str + ')'])
+                index_str  = ".".join(*map(str, self._index(f"({types_str})")))
                 msg        = "TomlProxy Value doesn't match declared Type: "
                 raise TypeError(msg, index_str, val, self._types)
             case _:
@@ -168,7 +175,12 @@ class GuardProxy:
 
         return val
 
-    def _index(self, sub:Maybe[str]=None) -> list[str]:
-        if sub is None:
-            return self.__index[:]
-        return [*self.__index[:], sub]
+    def _index(self, sub:Maybe[int|str|tuple[int|str, ...]]=None) -> tuple[str|int, ...]:
+        """ create a new index from this proxy """
+        match sub:
+            case None:
+                return self.__index
+            case int()|str() as x:
+                return (*self.__index, x)
+            case [*xs]:
+                return (*self.__index, *xs)

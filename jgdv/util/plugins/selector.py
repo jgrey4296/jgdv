@@ -105,4 +105,4 @@ def plugin_selector(plugins:ChainGuard, *,
             return fallback
         case _:
             msg = "No Available Plugin, and no fallback constructor"
-            raise ValueError(msg)
+            raise ValueError(msg, target, fallback, plugins)
