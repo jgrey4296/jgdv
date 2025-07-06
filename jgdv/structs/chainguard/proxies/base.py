@@ -99,6 +99,14 @@ class GuardProxy:
     def __call__(self, *, wrapper:Maybe[Wrapper]=None, **kwargs:Any) -> Any:  # noqa: ANN401
         raise NotImplementedError()
 
+    def __getattr__(self, attr:str) -> GuardProxy:
+        raise NotImplementedError()
+
+    def __getitem__(self, keys:int|str|tuple[str]) -> GuardProxy:
+        raise NotImplementedError()
+
+    ##--|
+
     def _inject(self, val:Maybe=None, attr:Maybe[str]=None, *, clear:bool=False) -> GuardProxy:
         match val:
             case _ if clear:
@@ -134,6 +142,7 @@ class GuardProxy:
                 raise TypeError(msg, val, index, flbck)
 
     def _types_str(self) -> str:
+        types_str : str
         match self._types:
             case None:
                 return "Any"
@@ -162,4 +171,4 @@ class GuardProxy:
     def _index(self, sub:Maybe[str]=None) -> list[str]:
         if sub is None:
             return self.__index[:]
-        return self.__index[:] + [sub]
+        return [*self.__index[:], sub]

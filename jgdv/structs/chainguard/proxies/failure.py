@@ -82,6 +82,7 @@ logging = logmod.getLogger(__name__)
 
 NO_FALLBACK : Final[tuple] = ()
 ##--|
+
 @Proto(ChainProxy_p)
 class GuardFailureProxy(GuardProxy):
     """
@@ -125,6 +126,7 @@ class GuardFailureProxy(GuardProxy):
 
         return self._match_type(val)
 
+    @override
     def __getattr__(self, attr:str) -> GuardProxy:
         try:
             match self._data:
@@ -137,6 +139,7 @@ class GuardFailureProxy(GuardProxy):
         except GuardedAccessError:
             return self._inject(clear=True, attr=attr)
 
+    @override
     def __getitem__(self, keys:str|tuple[str]) -> GuardProxy:
         curr : GuardProxy = self
         match keys:
@@ -147,4 +150,3 @@ class GuardFailureProxy(GuardProxy):
                 curr = getattr(self, keys)
 
         return curr
-

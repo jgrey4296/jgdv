@@ -2,7 +2,7 @@
 """
 
 """
-
+# ruff: noqa: ANN401
 ##-- builtin imports
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from .._interface import ChainGuard_i
+    from .. import ChainGuard
 
 ##--|
 
@@ -62,7 +62,7 @@ class GuardProxyEntry_m:
     tg.on_fail(2, int).a.value() # either get a.value, or 2. whichever returns has to be an int.
     """
 
-    def on_fail(self:ChainGuard_i, fallback:Any=(), types:Maybe=None, *, non_root:bool=False) -> GuardFailureProxy:  # noqa: ANN401
+    def on_fail(self:ChainGuard, fallback:Any=(), types:Maybe=None, *, non_root:bool=False) -> GuardFailureProxy: # type: ignore[misc]
         """
         use a fallback value in an access chain,
         eg: doot.config.on_fail("blah").this.doesnt.exist() -> "blah"
@@ -76,7 +76,7 @@ class GuardProxyEntry_m:
 
         return GuardFailureProxy(self, types=types, fallback=fallback)
 
-    def first_of(self:ChainGuard_i, fallback:Any, types:Maybe=None) -> GuardProxy:  # noqa: ANN401
+    def first_of(self:ChainGuard, fallback:Any, types:Maybe=None) -> GuardProxy: # type: ignore[misc]
         """
         get the first non-None value from a index path, even across arrays of tables
         so instead of: data.a.b.c[0].d
@@ -84,14 +84,14 @@ class GuardProxyEntry_m:
         """
         raise NotImplementedError()
 
-    def all_of(self:ChainGuard_i, fallback:Any, types:Maybe=None) -> GuardProxy:  # noqa: ANN401
+    def all_of(self:ChainGuard, fallback:Any, types:Maybe=None) -> GuardProxy: # type: ignore[misc]
         raise NotImplementedError()
 
-    def flatten_on(self:ChainGuard_i, fallback:Any) -> GuardProxy:  # noqa: ANN401
+    def flatten_on(self:ChainGuard, fallback:Any) -> GuardProxy: # type: ignore[misc]
         """
         combine all dicts at the call site to form a single dict
         """
         raise NotImplementedError()
 
-    def match_on(self:ChainGuard_i, **kwargs:tuple[str,Any]) -> GuardProxy:
+    def match_on(self:ChainGuard, **kwargs:tuple[str,Any]) -> GuardProxy: # type: ignore[misc]
         raise NotImplementedError()

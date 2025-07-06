@@ -65,9 +65,9 @@ logging = logmod.getLogger(__name__)
 
 super_get             = object.__getattribute__
 super_set             = object.__setattr__
-USCORE : Final[str] = "_"
-DASH   : Final[str] = "-"
-MUTABLE : Final[str] = "__mutable"
+USCORE   : Final[str] = "_"
+DASH     : Final[str] = "-"
+MUTABLE  : Final[str] = "__mutable"
 ##--|
 
 class TomlAccess_m:
