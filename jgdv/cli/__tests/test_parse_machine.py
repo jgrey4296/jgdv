@@ -196,10 +196,10 @@ class TestMachine:
                      subs=[((cmd.name,), sub)]):
             case ParseReport_d(remaining=(), cmds={"acmd":[cmdargs]}, subs=dict() as subs):
                 assert(cmdargs.args['blah'] is True)
-                assert("acmd" in subs)
-                assert(len(subs['acmd']) == 1)
-                assert(subs['acmd'][0].name == "asub")
-                assert(subs['acmd'][0].args['blah'] is False)
+                assert("asub" in subs)
+                assert(len(subs['asub']) == 1)
+                assert(subs['asub'][0].name == "asub")
+                assert(subs['asub'][0].args['blah'] is False)
                 assert(parser.current_state_value == "End")
             case x:
                 assert(False), x
@@ -220,13 +220,15 @@ class TestMachine:
                      subs=[((cmd.name,), sub)]):
             case ParseReport_d(remaining=(), cmds={"acmd":[cmdargs]}, subs=dict() as subs):
                 assert(cmdargs.args['blah'] is True)
-                assert("acmd" in subs)
-                assert(len(subs['acmd']) == 2)
-                sub1, sub2 = subs['acmd']
+                assert("asub" in subs)
+                assert(len(subs['asub']) == 2)
+                sub1, sub2 = subs['asub']
                 assert(sub1.name == "asub")
                 assert(sub1.args['bloo'] is False)
+                assert(sub1.ref == "acmd")
                 assert(sub2.name == "asub")
                 assert(sub2.args['bloo'] is True)
+                assert(sub2.ref == "acmd")
                 assert(parser.current_state_value == "End")
             case x:
                 assert(False), x
@@ -249,8 +251,7 @@ class TestMachine:
             case ParseReport_d(remaining=(), cmds={"acmd":[acmdargs], "bcmd":[bcmdargs]}, subs=dict() as subs):
                 assert(acmdargs.args['blah'] is True)
                 assert(bcmdargs.args['aweg'] is True)
-                assert("acmd" in subs)
-
+                assert("asub" in subs)
                 assert(parser.current_state_value == "End")
             case x:
                 assert(False), x
@@ -274,7 +275,7 @@ class TestMachine:
                      ):
             case ParseReport_d(remaining=(), cmds={"acmd":[acmdargs]}, subs=dict() as subs):
                 assert(acmdargs.args['blah'] is False)
-                assert("acmd" in subs)
+                assert("asub" in subs)
                 assert(parser.current_state_value == "End")
             case x:
                 assert(False), x
@@ -298,8 +299,8 @@ class TestMachine:
                      ):
             case ParseReport_d(remaining=(), cmds={"acmd":[acmdargs]}, subs=dict() as subs):
                 assert(acmdargs.args['blah'] is False)
-                assert("acmd" in subs)
-                assert(subs['acmd'][0].args['bloo'] is True)
+                assert("asub" in subs)
+                assert(subs['asub'][0].args['bloo'] is True)
                 assert(parser.current_state_value == "End")
             case x:
                 assert(False), x

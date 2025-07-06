@@ -128,15 +128,17 @@ class ParseReport_d:
     - help : bool
 
     """
+    type CmdName = str
+    type SubName = str
     __slots__ = ("cmds", "help", "prog", "raw", "remaining", "subs")
     raw        : tuple[str, ...]
     remaining  : tuple[str, ...]
     prog       : ParseResult_d
-    cmds       : dict[str, tuple[ParseResult_d]]
-    subs       : dict[str, tuple[ParseResult_d]]
+    cmds       : dict[CmdName, tuple[ParseResult_d]]
+    subs       : dict[SubName, tuple[ParseResult_d]]
     help       : bool
 
-    def __init__(self, *, raw:Iterable[str], remaining:Iterable[str], prog:ParseResult_d, help:bool) -> None:
+    def __init__(self, *, raw:Iterable[str], remaining:Iterable[str], prog:ParseResult_d, help:bool) -> None:  # noqa: A002
         self.raw        = tuple(raw)
         self.remaining  = tuple(remaining)
         self.help       = help
@@ -144,7 +146,13 @@ class ParseReport_d:
         self.cmds       = {}
         self.subs       = {}
 
-
+    def to_dict(self) -> dict:
+        return {
+            "prog" : self.prog.to_dict(),
+            "cmds" : {x: [y.to_dict() for y in ys] for x,ys in self.cmds.items()},
+            "subs" : {x: [y.to_dict() for y in ys] for x,ys in self.subs.items()},
+            "help" : help,
+        }
 
 ##--| Params
 
@@ -188,6 +196,8 @@ class ParamSpec_p(Protocol):
 
     @property
     def default_tuple(self) -> tuple[str, Any]: ...
+
+    def help_str(self, *, force:bool=False) -> str: ...
 
 class ParamSpec_i(ParamSpec_p, Protocol):
     _processor : ClassVar

@@ -224,6 +224,8 @@ class CLIParserModel:
             case [(str() as x, list() as ys)]:
                 logging.debug("Inserting implicit cmd: %s", x)
                 self.args_remaining = [*ys, *self.args_remaining]
+            case []:
+                pass
             case x:
                 msg = "Too Many possibly implicit commands"
                 raise ValueError(msg, x)
@@ -276,7 +278,7 @@ class CLIParserModel:
         logging.debug("Setting Cmd Spec: %s", head)
         match self.specs_cmds.get(head, None):
             case None:
-                raise ValueError()
+                raise ValueError("No spec found", head)
             case [*params]:
                 self._current_section = (head, sorted(params, key=ParamSpec.key_func))
                 self._section_type = SectionType_e.cmd
@@ -408,7 +410,7 @@ class CLIParserModel:
 
         for sub in self.data_subs:
             assert(sub.ref is not None and sub.ref in result.cmds)
-            subs[sub.ref].append(sub)
+            subs[sub.name].append(sub)
         else:
             result.subs.update(subs)
 
