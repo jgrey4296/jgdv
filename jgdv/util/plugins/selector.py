@@ -54,7 +54,7 @@ logging = logmod.getLogger(__name__)
 
 def plugin_selector(plugins:ChainGuard, *,
                     target:str="default",
-                    fallback:Maybe[type]=None) -> Maybe[type]:
+                    fallback:Maybe[type|str|CodeReference]=None) -> Maybe[type]:
     """ Selects and loads a plugin from a chainguard,
     based on a target,
     with an available fallback constructor
@@ -67,7 +67,7 @@ def plugin_selector(plugins:ChainGuard, *,
     match target:
         case "default":
             pass
-        case x:
+        case str() as x:
             try:
                 name = CodeReference(target)
                 return name()
@@ -77,11 +77,8 @@ def plugin_selector(plugins:ChainGuard, *,
                 pass
 
     match plugins:
-        case [] if fallback is not None:
-            return fallback
         case []:
-            msg = "No Available Plugin, and no fallback constructor"
-            raise ValueError(msg)
+            pass
         case [EntryPoint() as l]: # if theres only one, use that
             return l.load()
         case [EntryPoint() as l, *_] if target == "default": # If the preference is the default, use the first
@@ -97,3 +94,15 @@ def plugin_selector(plugins:ChainGuard, *,
         case _:
             msg = "Unknown type passed to plugin selector"
             raise TypeError(msg, plugins)
+
+    match fallback:
+        case str():
+            coderef = CodeReference(fallback)
+            return coderef()
+        case CodeReference():
+            return fallback()
+        case type():
+            return fallback
+        case _:
+            msg = "No Available Plugin, and no fallback constructor"
+            raise ValueError(msg)
