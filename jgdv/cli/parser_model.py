@@ -235,6 +235,8 @@ class CLIParserModel:
             case [(str() as x, list() as ys)]:
                 logging.debug("Inserting implicit sub: %s", x)
                 self.args_remaining = [*ys, *self.args_remaining]
+            case []:
+                pass
             case x:
                 msg = "Too Many possibly implicit sub commands"
                 raise ValueError(msg, x)
