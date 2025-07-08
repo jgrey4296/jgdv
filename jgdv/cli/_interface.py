@@ -138,10 +138,10 @@ class ParseReport_d:
     subs       : dict[SubName, tuple[ParseResult_d]]
     help       : bool
 
-    def __init__(self, *, raw:Iterable[str], remaining:Iterable[str], prog:ParseResult_d, help:bool) -> None:  # noqa: A002
+    def __init__(self, *, raw:Iterable[str], remaining:Iterable[str], prog:ParseResult_d, _help:bool) -> None:  # noqa: A002
         self.raw        = tuple(raw)
         self.remaining  = tuple(remaining)
-        self.help       = help
+        self.help       = _help
         self.prog       = prog
         self.cmds       = {}
         self.subs       = {}
@@ -151,7 +151,7 @@ class ParseReport_d:
             "prog" : self.prog.to_dict(),
             "cmds" : {x: [y.to_dict() for y in ys] for x,ys in self.cmds.items()},
             "subs" : {x: [y.to_dict() for y in ys] for x,ys in self.subs.items()},
-            "help" : help,
+            "help" : self.help,
         }
 
 ##--| Params

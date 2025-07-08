@@ -401,7 +401,7 @@ class CLIParserModel:
         result = API.ParseReport_d(raw=self.args_initial,
                                    remaining=self.args_remaining,
                                    prog=self.data_prog,
-                                   help=self._force_help)
+                                   _help=self._force_help)
         cmds = defaultdict(list)
         subs = defaultdict(list)
 
