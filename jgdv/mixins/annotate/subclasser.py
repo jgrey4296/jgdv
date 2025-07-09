@@ -180,12 +180,9 @@ class Subclasser:
         """
         Dynamically creates a new class
         """
-        from types import new_class
         assert(not issubclass(cls, BaseModel)), cls
         mod_name  : str
         mcls      : type[type]  = type(cls)
-        # if name == cls.__name__:
-        #     name = f"{name}<+>"
 
         match namespace:
             case dict():
@@ -209,7 +206,6 @@ class Subclasser:
             case _:
                 raise ValueError()
 
-        # mro_dict = ChainMap(*(getattr(c, '__dict__', {}) for c in cls.mro()))
         namespace.setdefault(API.SLOTS_NAME, ())
         try:
             return mcls(name, mro, namespace)

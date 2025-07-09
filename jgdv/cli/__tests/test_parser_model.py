@@ -2,7 +2,7 @@
 """
 
 """
-# ruff: noqa: ANN201, PLR0133, B011, ANN001, ANN202
+# ruff: noqa: PLR0133, ANN001, ANN202
 # Imports:
 from __future__ import annotations
 
@@ -54,15 +54,15 @@ logging = logmod.root
 
 ##--| global vars
 @pytest.fixture(scope="function")
-def model(mocker):
+def model():
     return CLIParserModel()
 
 @pytest.fixture(scope="function")
-def PSource(mocker):
+def PSource(): # noqa: N802
 
     class ASource:
 
-        def __init__(self, *, name=None, specs=None):
+        def __init__(self, *, name=None, specs=None) -> None:
             self._name = name or "simple"
             self.specs = specs or []
 
@@ -81,7 +81,7 @@ def PSource(mocker):
 class TestMachine:
 
     def test_sanity(self):
-        assert(True is not False) # noqa: PLR0133
+        assert(True is not False)
 
     def test_creation(self, model):
         assert(model is not None)

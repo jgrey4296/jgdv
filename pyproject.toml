@@ -216,6 +216,7 @@ import_footer_localfolder = ""
 [dependency-groups]
 dev = [
     "myst-parser>=4.0.1",
+    "pydot>=4.0.1",
     "pytest>=8.3.5",
     "pytest-cov>=6.0.0",
     "pytest-mock>=3.14.0",

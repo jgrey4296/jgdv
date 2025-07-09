@@ -61,9 +61,11 @@ def parser(mocker):
     return ParseMachine(CLIParserModel())
 
 @pytest.fixture(scope="function")
-def PSource(mocker):
+def PSource(mocker) -> type:
 
     class ASource:
+        _name : str
+        specs : list
 
         def __init__(self, *, name=None, specs=None):
             self._name = name or "simple"
