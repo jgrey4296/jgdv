@@ -40,7 +40,7 @@ root_doc = "index"
 project   = 'jgdv'
 copyright = '2022, john'
 author    = 'john'
-release   = "1.2.0"
+release   = "1.2.1"
 
 # -- General configuration ---------------------------------------------------
 
