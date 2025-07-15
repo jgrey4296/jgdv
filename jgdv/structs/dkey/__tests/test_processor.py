@@ -150,7 +150,7 @@ class TestDKey_FormatParam:
         obj = dkey.DKey("{test!I} then {blah!s}")
         assert(isinstance(obj, keys.MultiDKey))
         match obj.keys():
-            case [keys.SingleDKey(), keys.SingleDKey()]:
+            case [keys.IndirectDKey(), special.StrDKey()]:
                 assert(True)
             case x:
                 assert(False), x

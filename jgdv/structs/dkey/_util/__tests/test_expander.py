@@ -2,7 +2,7 @@
 """
 
 """
-# ruff: noqa: ANN201, ARG001, ANN001, ARG002, ANN202, B011, ERA001, F841
+# ruff: noqa: ANN001, ANN202, B011, F841
 
 # Imports:
 from __future__ import annotations
@@ -201,6 +201,7 @@ class TestExpander:
         class SimpleDKey(DKey):
             __slots__ = ()
 
+            @override
             def exp_extra_sources_h(self, sources):
                 sources.extend([1,2,3,4])
                 return sources
@@ -365,6 +366,22 @@ class TestExpansion:
         state = {"test": "{blah}", "blah": "{aweg}/{bloo}", "aweg":"qqqq", "bloo":"{aweg}"}
         match obj.expand(state):
             case "qqqq/qqqq":
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_recursive_fail(self):
+        """
+        {test} -> {blah}
+        {blah} -> {aweg}/{bloo}
+        {aweg} -> None
+        {test} -> None
+        """
+        obj = DKey("test", implicit=True)
+        state = {"test": "{blah}", "blah": "{aweg}/{bloo}", "bloo":"ajqwoj"}
+        match obj.expand(state):
+            case None:
                 assert(True)
             case x:
                 assert(False), x
@@ -596,6 +613,17 @@ class TestMultiExpansion:
             case x:
                 assert(False), x
 
+
+    def test_basic_fail(self):
+        obj = DKey("{test} {aweg}")
+        assert(DKey.MarkOf(obj) is list)
+        state = {"test": "blah"}
+        match obj.expand(state):
+            case None:
+                assert(True)
+            case x:
+                assert(False), x
+
     def test_coerce_to_path(self):
         obj = DKey("{test}/{test}", ctor=pl.Path)
         assert(DKey.MarkOf(obj) is list)
@@ -619,15 +647,14 @@ class TestMultiExpansion:
                 assert(False), x
 
     def test_coerce_multi(self):
-        obj = DKey("{test!p} : {test!p}")
+        obj    = DKey("{test!p} : {test!p}")
+        target = "".join(map(str, [(pl.Path.cwd() / "blah"), " : ", (pl.Path.cwd() / "blah")]))
         assert(DKey.MarkOf(obj) is list)
         assert(obj.keys()[0].data.convert == "p")
         state = {"test": "blah"}
         match obj.expand(state):
             case str() as x:
-                assert(x == "".join([str(pl.Path.cwd() / "blah"),
-                                    " : ",
-                                    str(pl.Path.cwd() / "blah")]))
+                assert(x == target)
                 assert(True)
             case x:
                 assert(False), x
@@ -644,6 +671,7 @@ class TestMultiExpansion:
                 assert(False), x
 
     def test_soft_miss_subkey(self):
+        """ {key}/{key2} -> state[key:val, key2_:key] -> val/val """
         obj = DKey("{test}/{aweg}")
         assert(DKey.MarkOf(obj) is list)
         state = {"test": "blah", "aweg_":"test"}
@@ -654,6 +682,7 @@ class TestMultiExpansion:
                 assert(False), x
 
     def test_indirect_subkey(self):
+        """ {key}/{key2_} -> state[key:val, key2_:key] -> val/val """
         obj = DKey("{test}/{aweg_}")
         assert(DKey.MarkOf(obj) is list)
         state = {"test": "blah", "aweg_":"test"}
@@ -663,7 +692,8 @@ class TestMultiExpansion:
             case x:
                 assert(False), x
 
-    def test_indirect_key_subkey(self):
+    def test_direct_subkey_when_indirect_missing(self):
+        """ {key}/{key2_} -> state[key:val, key2:val2] -> val/val2 """
         obj = DKey("{test}/{aweg_}")
         assert(DKey.MarkOf(obj) is list)
         state = {"test": "blah", "aweg":"test"}
@@ -673,22 +703,25 @@ class TestMultiExpansion:
             case x:
                 assert(False), x
 
-    def test_indirect_miss_subkey(self):
+
+    def test_indirect_subkey_over_direct(self):
+        """ {key}/{key2_} -> state[key:val, key2:val2, key2_:key] -> val/val """
         obj = DKey("{test}/{aweg_}")
         assert(DKey.MarkOf(obj) is list)
-        state = {"test": "blah"}
+        state = {"test": "blah", "aweg":"test", "aweg_":"test"}
         match obj.expand(state):
-            case None:
+            case "blah/blah":
                 assert(True)
             case x:
                 assert(False), x
 
-    def test_multikey_of_one(self):
-        obj = DKey[list]("{test}")
+    def test_indirect_miss_subkey_remains(self):
+        """ {key}/{key2_} -> state[key:val] ->  """
+        obj = DKey("{test}/{aweg_}")
         assert(DKey.MarkOf(obj) is list)
-        state = {"test": "{blah}", "blah": "blah/{aweg_}"}
+        state = {"test": "blah"}
         match obj.expand(state):
-            case None:
+            case "blah/{aweg_}":
                 assert(True)
             case x:
                 assert(False), x
@@ -696,20 +729,31 @@ class TestMultiExpansion:
     def test_multikey_recursion(self):
         obj = DKey[list]("{test}")
         assert(DKey.MarkOf(obj) is list)
-        state = {"test": "{test}", "blah": "blah/{aweg_}"}
+        state = {"test": "{blah}", "blah": "blah/{aweg_}"}
+        match obj.expand(state):
+            case "blah/{aweg_}":
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_multikey_recursion_depth_10(self):
+        obj = DKey[list]("{test}")
+        assert(DKey.MarkOf(obj) is list)
+        state = {"test": "{test}"}
         match obj.expand(state, limit=10):
             case "{test}":
                 assert(True)
             case x:
                 assert(False), x
 
-    def test_multikey_recursion_limit(self):
+    def test_multikey_individual_subkey_recursion_limit(self):
         """
+        Setting recursion limits with :e[digit]
         {test:e2} -> state[test:{blah}, blah:{aweg}, aweg:qqqq] -> {aweg}
         """
-        obj = DKey("{test:e1} : {test:e2}")
+        obj = DKey("{test:e1} : {test:e2} : {test:e3}")
         state = {"test": "{blah}", "blah": "{aweg}", "aweg": "qqqq"}
-        assert(obj.expand(state) == "{blah} : {aweg}")
+        assert(obj.expand(state) == "{blah} : {aweg} : qqqq")
 
 class TestCoercion:
 

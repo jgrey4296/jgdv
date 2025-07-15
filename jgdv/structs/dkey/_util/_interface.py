@@ -162,6 +162,10 @@ class SourceChain_d:
                     raise TypeError(type(x))
         self.lifter   = lifter
 
+    def __repr__(self) -> str:
+        source_types = ", ".join([type(x).__name__ for x in self.sources])
+        return f"<{type(self).__name__}: {source_types}>"
+
     def extend(self, *args:SourceBases) -> Self:
         extension = SourceChain_d(*args)
         self.sources += extension.sources
@@ -194,8 +198,6 @@ class SourceChain_d:
                 return replacement
         else:
             return fallback
-
-
 
     def lookup(self, target:list[ExpInst_d]) -> Maybe[ExpInst_d]:
         """ Look up alternatives
@@ -245,6 +247,7 @@ class Expander_p[T](Protocol):
     def expand(self, source:T, *sources:dict, **kwargs:Any) -> Maybe[ExpInst_d]:  ...  # noqa: ANN401
 
     def extra_sources(self, source:T) -> SourceChain_d: ...
+
     def coerce_result(self, inst:ExpInst_d, opts:ExpOpts, *, source:Key_p) -> Maybe[ExpInst_d]: ...
 
 class ExpansionHooks_p(Protocol):

@@ -55,6 +55,7 @@ if TYPE_CHECKING:
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
+
 class SingleDKey(DKey, mark=Any, default=True):
     """
       A Single key with no extras.
@@ -78,13 +79,14 @@ class SingleDKey(DKey, mark=Any, default=True):
                 raise ValueError(msg, xs)
 
     def _post_process_h(self, data:Maybe[dict]=None) -> None:  # noqa: ARG002
+        fmt : str
         match self.data.raw[0].format:
             case None:
                 return
-            case str() as format:
+            case str() as fmt :
                 pass
 
-        match API.EXPANSION_LIMIT_PATTERN.search(format):
+        match API.EXPANSION_LIMIT_PATTERN.search(fmt):
             case re.Match() as m:
                 self.data.max_expansions = int(m[1])
             case None:
@@ -110,22 +112,25 @@ class MultiDKey(DKey, mark=list):
             case [*xs]:
                 self.anon  = "".join(x.anon() for x in xs)
 
+    @override
     def __str__(self) -> str:
         return self[:]
 
+    @override
     def __contains__(self, other:object) -> bool:
          return other in self.keys()
 
-    def __format__(self, spec:str, **kwargs:Any) -> str:  # noqa: ANN401
+    @override
+    def __format__(self, spec:str, **kwargs:Any) -> str:
         """ Just does normal str formatting """
-        rem, _, _= self._processor.consume_format_params(spec) # type: ignore
+        rem, _, _= self._processor.consume_format_params(spec)
         return super().__format__(rem, **kwargs)
 
     def _multi(self) -> Literal[True]:
         return True
 
-    def keys(self) -> list[DKey]: # type: ignore[override]
-        return [DKey(x, force=DKey[Any], implicit=True) for x in self.data.meta if bool(x)]
+    def keys(self) -> list[DKey]:
+        return [DKey(x, implicit=True) for x in self.data.meta if bool(x)]
 
     def exp_generate_alternatives_h(self, sources:SourceChain_d, opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
         """ Lift subkeys to expansion instructions """
@@ -177,15 +182,17 @@ class NonDKey(DKey, mark=False):
             msg = "NonKeys can't have a fallback, did you mean to use an explicit key?"
             raise ValueError(msg, self)
 
-    def __format__(self, spec:str, **kwargs:Any) -> str:  # noqa: ANN401
+    @override
+    def __format__(self, spec:str, **kwargs:Any) -> str:
         """ Just does normal str formatting """
-        rem, _, _= self._processor.consume_format_params(spec) # type: ignore
+        rem, _, _= self._processor.consume_format_params(spec)
         return super().__format__(rem, **kwargs)
 
     def _nonkey(self) -> Literal[True]:
         return True
 
-    def expand(self, *args, **kwargs) -> Maybe:  # noqa: ANN002, ANN003, ARG002
+    @override
+    def expand(self, *args, **kwargs) -> Maybe:  # noqa: ANN002, ANN003
         """ A Non-key just needs to be coerced into the correct str format """
         assert(isinstance(self, API.Key_p))
         val = ExpInst_d(value=self[:])
@@ -217,6 +224,7 @@ class IndirectDKey(DKey, mark=Mapping, convert="I"):
         self.multi_redir      = multi
         self.re_mark          = re_mark
 
+    @override
     def __eq__(self, other:object) -> bool:
         match other:
             case str() if other.endswith(INDIRECT_SUFFIX):

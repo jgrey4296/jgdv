@@ -2,7 +2,6 @@
 """
 
 """
-# ruff: noqa: ARG002
 
 # Imports:
 from __future__ import annotations
@@ -55,7 +54,6 @@ if typing.TYPE_CHECKING:
 
     from jgdv import Maybe, M_
     from ._util._interface import Expander_p
-
 
 # isort: on
 # ##-- end types
@@ -122,21 +120,20 @@ class DKey[**K](Strang, fresh_registry=True):
             case None:
                 return ()
             case [x]:
-                return x
+                return cast("API.KeyMark", x)
             case xs:
-                return xs
+                return cast("tuple[API.KeyMark, ...]", xs)
 
     @classmethod
     def add_sources(cls, *sources:dict) -> None:
         """ register additional sources that are always included in expansion """
         cls._extra_sources += sources
 
-
+    @override
     def __init_subclass__(cls, *args, **kwargs) -> None:  # noqa: ANN002, ANN003
         super().__init_subclass__(*args, annotation=kwargs.pop("mark", None), **kwargs)
         cls._expander.set_ctor(DKey) # type: ignore[arg-type]
         cls._processor.register_convert_param(cls, kwargs.pop("convert", None))
-
 
     ##--| Class Main
 
@@ -151,6 +148,7 @@ class DKey[**K](Strang, fresh_registry=True):
         """
         return self.expand(*args, **kwargs)
 
+    @override
     def __eq__(self, other:object) -> bool:
         match other:
             case DKey() | str():
@@ -158,10 +156,11 @@ class DKey[**K](Strang, fresh_registry=True):
             case _:
                 return NotImplemented
 
-
+    @override
     def __hash__(self) -> int:
         return hash(self[:])
 
+    @override
     def __format__(self, spec:str) -> str:
         """
           Extends standard string format spec language:
@@ -182,7 +181,7 @@ class DKey[**K](Strang, fresh_registry=True):
         if not bool(spec):
             return result
 
-        rem, wrap, direct = self._processor.consume_format_params(spec) # type: ignore
+        rem, wrap, direct = self._processor.consume_format_params(spec)
 
         # format
         if not direct:
@@ -214,8 +213,8 @@ class DKey[**K](Strang, fresh_registry=True):
         result = [DKey(x.value) for x in self._expander.redirect(self, *args, **kwargs) if x is not None]
         return result
 
-
     ##--| expansion hooks
+
     def to_exp_inst(self, *, indirect:bool=False, **kwargs:Any) -> ExpAPI.ExpInst_d:  # noqa: ANN401
         """ create a basic expinst """
         val = f"{self:i}" if indirect else f"{self:d}"
