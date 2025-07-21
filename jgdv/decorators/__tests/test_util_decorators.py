@@ -3,7 +3,7 @@
 TEST File updated
 
 """
-# ruff: noqa: ANN201, ARG001, ANN001, ARG002, ANN202, B011
+# ruff: noqa: ANN202, B011
 
 # Imports
 from __future__ import annotations
@@ -18,8 +18,8 @@ import warnings
 import pytest
 # ##-- end 3rd party imports
 
-from ..util_decorators import DoMaybe
-
+from ..util_decorators import MethodMaybe, FnMaybe
+from typing import reveal_type
 
 # ##-- types
 # isort: off
@@ -33,12 +33,6 @@ from typing import Generic, NewType, Never
 from typing import no_type_check, final, override, overload
 # Protocols and Interfaces:
 from typing import Protocol, runtime_checkable
-# from . import _interface as API # noqa: N812
-# Dataclasses:
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
-
-
-#
 if typing.TYPE_CHECKING:
     from typing import Final, ClassVar, Any, Self
     from typing import Literal, LiteralString
@@ -56,6 +50,8 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
+DoMaybe_M = MethodMaybe()
+DoMaybe_F = FnMaybe()
 
 # Body:
 class TestSuite:
@@ -65,15 +61,43 @@ class TestSuite:
         assert(True is not False) # noqa: PLR0133
 
 
-    def test_basic(self) -> None:
+    def test_basic_method(self) -> None:
 
         class Example:
 
-            @DoMaybe()
-            def bfunc(self, val:int) -> int:
+            @DoMaybe_M
+            def bfunc(self, val:int) -> Maybe[int]:
                 return val
 
-        from typing import reveal_type
         reveal_type(Example.bfunc)
+        obj = Example()
+        match obj.bfunc(2):
+            case 2:
+                assert(True)
+            case x:
+                assert(False), x
 
-        assert(True)
+        match obj.bfunc(None):
+            case None:
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_basic_fn(self) -> None:
+
+        @DoMaybe_F
+        def bfunc(val:int, val2:str) -> Maybe[int]:
+            return val
+
+        reveal_type(bfunc)
+        match bfunc(2, "blah"):
+            case 2:
+                assert(True)
+            case x:
+                assert(False), x
+
+        match bfunc(None, "blah"):
+            case None:
+                assert(True)
+            case x:
+                assert(False), x

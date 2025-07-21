@@ -112,6 +112,7 @@ class _DecAnnotate_m:
 
     def get_annotations(self:Decorator_p, target:Decorable) -> list[str]:
         """ Get the annotations of the target """
+        data : list[str]
         if not hasattr(target, API.ATTR_TARGET):
             return []
         bottom  = self._unwrap(target)
@@ -167,7 +168,7 @@ class _DecWrap_m:
             case type():
                 return target
             case x:
-                return inspect.unwrap(x)
+                return cast("Decorable", inspect.unwrap(x))
 
     def _unwrapped_depth(self:Decorator_p, target:Decorated) -> int:
         """ the code of inspect.unwrap, but used for counting the unwrap depth """
@@ -252,7 +253,7 @@ class _DecoratorHooks_m:
     """ The main hooks used to actually specify the decoration """
     _builder : ClassVar[Subclasser] = Subclasser()
 
-    def _wrap_method_h[**In, Out](self:Decorator_p, meth:Method[In,Out]) -> Decorated[In, Out]:
+    def _wrap_method_h[**In, Out](self:Decorator_p, meth:Callable[In,Out]) -> Decorated[In, Out]:
         """ Override this to add a decoration function to method """
         dec_name = self.dec_name()
 
@@ -260,7 +261,7 @@ class _DecoratorHooks_m:
             logging.debug("Calling Wrapped Method: %s of %s", meth.__qualname__, dec_name)
             return meth(*args, **kwargs)
 
-        return cast("Method", _default_method_wrapper)
+        return cast("Decorated[In, Out]", _default_method_wrapper)
 
     def _wrap_fn_h[**In, Out](self:Decorator_p, fn:Func[In, Out]) -> Decorated[In, Out]:
         """ override this to add a decorator to a function """
@@ -270,7 +271,7 @@ class _DecoratorHooks_m:
             logging.debug("Calling Wrapped Fn: %s : %s", fn.__qualname__, dec_name)
             return fn(*args, **kwargs)
 
-        return cast("Method", _default_fn_wrapper)
+        return cast("Decorated[In, Out]", _default_fn_wrapper)
 
     def _wrap_class_h[**I,O](self, cls:type[O]) -> Maybe[Decorated[I,O]]:
         """ Override this to decorate a class """
@@ -325,6 +326,7 @@ class Decorator(_DecoratorCombined_m, Decorator_p, metaclass=DecoratorMeta): # t
         self._mark_key            = None # type: ignore[assignment]
         self._data_key            = None # type: ignore[assignment]
 
+    @override
     def __call__(self, target:Decorable) -> Decorated:
         try:
             decorated = self._decoration_logic(target)
@@ -337,6 +339,7 @@ class Decorator(_DecoratorCombined_m, Decorator_p, metaclass=DecoratorMeta): # t
             assert(decorated is not None)
             return decorated
 
+    @override
     def _decoration_logic[**I, O](self, target:Decorable[I,O]) -> Decorated[I,O]:
         """
         # need to wrap with my wrapper
@@ -348,8 +351,9 @@ class Decorator(_DecoratorCombined_m, Decorator_p, metaclass=DecoratorMeta): # t
         """
         raise NotImplementedError()
 
+    @override
     def dec_name(self) -> str:
-        return self.__class__.__qualname__
+        return cast("str", self.__class__.__qualname__)
 
 ##--|
 
@@ -360,6 +364,7 @@ class MonotonicDec(Decorator):
     Monotonic's don't annotate
     """
 
+    @override
     def _decoration_logic[**I, O](self, target:Decorable[I,O]) -> Decorated[I,O]:
         top, bottom = target, self._unwrap(target)
         form, sig = self._discrim_form(bottom), self._signature(bottom)
@@ -391,7 +396,9 @@ class IdempotentDec(Decorator):
 
     """
 
+    @override
     def _decoration_logic(self, target:Decorable) -> Decorated:
+        form : DForm_e
         top, bottom = target, self._unwrap(target)
         match self.is_marked(bottom):
             case True if top is not bottom:
@@ -435,6 +442,7 @@ class MetaDec(Decorator):
             case _:
                 self._data = [value]
 
+    @override
     def _decoration_logic(self, target:Decorable) -> Decorated:
         top, bottom = target, self._unwrap(target)
         form, sig   = self._discrim_form(target), self._signature(bottom)
@@ -444,7 +452,8 @@ class MetaDec(Decorator):
         self._validate_sig_h(sig, form, annotations)
         return top
 
-    def _build_annotations_h(self, target:Decorable, current:list) -> list:  # noqa: ARG002
+    @override
+    def _build_annotations_h(self, target:Decorable, current:list) -> list:
         return [*current, *self._data]
 
 class DataDec(IdempotentDec):
@@ -464,6 +473,7 @@ class DataDec(IdempotentDec):
             case _:
                 self._data = [keys]
 
+    @override
     def _decoration_logic(self, target:Decorable) -> Decorated:
         top, bottom = target, self._unwrap(target)
         match self.annotate_decorable(bottom):
@@ -486,5 +496,6 @@ class DataDec(IdempotentDec):
             case x:
                 raise TypeError(type(x))
 
-    def _build_annotations_h(self, target:Decorable, current:list) -> list:  # noqa: ARG002
+    @override
+    def _build_annotations_h(self, target:Decorable, current:list) -> list:
         return [*self._data, *current]

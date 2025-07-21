@@ -98,22 +98,14 @@ class Breakpoint(IdempotentDec):
 
         # return self._func(self, *args, **kwargs)
 
-class DoMaybe(MonotonicDec):
+class MethodMaybe(MonotonicDec):
     """ Make a fn or method propagate None's """
     type MethMb[Obj,X,**I,O]  = Callable[Concatenate[Obj, X, I],O]
     type FuncMb[X,**I,O]      = Callable[Concatenate[X, I],O]
     # def __call__[**I, X,Obj, O](self, target:MethMb[Obj,X,I,O]|FuncMb[X,I,O], *args:Any, **kwargs:Any) -> MethMb[Obj,Maybe[X],I,O]|FuncMb[Maybe[X],I,O]: # type: ignore[override]
 
-    @overload # type: ignore[override]
-    def __call__[Obj,**I,X,O](self, target:MethMb[Obj,X,I,O], *args:Any, **kwargs:Any) -> MethMb[Obj,Maybe[X],I,O]:  # noqa: ANN401
-        pass
-
-    @overload
-    def __call__[**I,X,O](self, target:FuncMb[X,I,O], *args:Any, **kwargs:Any) -> FuncMb[Maybe[X],I,O]:  # noqa: ANN401
-        pass
-
     @override
-    def __call__(self, target, *args, **kwargs):
+    def __call__[Obj,**I,X,O](self, target:MethMb[Obj,X,I,O], *args:Any, **kwargs:Any) -> MethMb[Obj,Maybe[X],I,O]:  # type: ignore[override]
         return MonotonicDec.__call__(self, target, *args, **kwargs)
 
     @override
@@ -127,6 +119,17 @@ class DoMaybe(MonotonicDec):
                     return meth(_self, x, *args, **kwargs)
 
         return _prop_maybe
+
+
+class FnMaybe(MonotonicDec):
+    """ Make a fn or method propagate None's """
+    type MethMb[Obj,X,**I,O]  = Callable[Concatenate[Obj, X, I],O]
+    type FuncMb[X,**I,O]      = Callable[Concatenate[X, I],O]
+    # def __call__[**I, X,Obj, O](self, target:MethMb[Obj,X,I,O]|FuncMb[X,I,O], *args:Any, **kwargs:Any) -> MethMb[Obj,Maybe[X],I,O]|FuncMb[Maybe[X],I,O]: # type: ignore[override]
+
+    @override
+    def __call__[**I,X,O](self, target:FuncMb[X,I,O], *args:Any, **kwargs:Any) -> FuncMb[Maybe[X],I,O]:  # type: ignore[override]
+        return MonotonicDec.__call__(self, target, *args, **kwargs)
 
     @override
     def _wrap_fn_h[X, **I, O](self, fn:FuncMb[X, I, Maybe[O]]) -> FuncMb[Maybe[X], I, Maybe[O]]: # type: ignore[override]
@@ -144,11 +147,12 @@ class DoMaybe(MonotonicDec):
 
         return _prop_maybe
 
+
 class DoEither(MonotonicDec):
     """ Either do the fn/method, or propagate the error """
 
     @override
-    def _wrap_method_h[X,Y, **I, O, E:Exception](self, meth:Method[Concatenate[X, Y, I], Either[O,E]]) -> API.Decorated[Concatenate[X, Y|E, I], Either[O, E]]: # type: ignore[override]
+    def _wrap_method_h[X,Y, **I, O, E:Exception](self, meth:Callable[Concatenate[X, Y, I], Either[O,E]]) -> API.Decorated[Concatenate[X, Y|E, I], Either[O, E]]: # type: ignore[override]
 
         def _prop_either(_self:X, fst:Y|E, *args:I.args, **kwargs:I.kwargs) -> Either[O, E]:
             match fst:

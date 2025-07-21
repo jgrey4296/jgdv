@@ -23,7 +23,7 @@ from ._interface import Signature, Decorable, DForm_e
 from ._core import Decorator, MonotonicDec, IdempotentDec, MetaDec, DataDec
 from .mixin import Mixin
 from .proto import Proto
-from .util_decorators import DoMaybe
+from .util_decorators import MethodMaybe, FnMaybe
 
 class DecoratorAccessor_m:
     """ A mixin for building Decorator Accessors like DKeyed.

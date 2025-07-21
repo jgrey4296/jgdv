@@ -16,18 +16,11 @@ import datetime
 import pathlib as pl
 import types
 from collections import deque
-from collections.abc import (
-    Callable,
-    Generator,
-    Hashable,
-    ItemsView,
-    Iterable,
-    Iterator,
-    KeysView,
-    ValuesView,
-)
+from collections.abc import (Callable, Generator, Hashable, ItemsView,
+                             Iterable, Iterator, KeysView, ValuesView)
 from re import Match, Pattern
-from typing import Annotated, Any, Never, Self, TypeGuard, final, Union, Final, Literal
+from typing import (Annotated, Any, Final, Literal, Never, Self, TypeGuard,
+                    Union, final, Concatenate)
 from uuid import UUID, uuid1
 from weakref import ref
 
@@ -42,7 +35,7 @@ from packaging.version import Version
 # ##-- Generated Exports
 __all__ = ( # noqa: RUF022
 # -- Types
-"AbsPath", "Builder", "CHECKTYPE", "Char", "Ctor", "DateTime", "Decorator", "Depth",
+"AbsPath", "Builder", "CHECKTYPE", "Char", "CtorFn", "DateTime", "Decorator", "Depth",
 "DictItems", "DictKeys", "DictVals", "E_", "Either", "Fifo", "FmtKey", "FmtSpec", "FmtStr",
 "Frame", "Func", "Ident", "Lambda", "Lifo", "M_", "Maybe", "MaybeT", "Method", "Module", "Mut",
 "NoMut", "Queue", "R_", "RelPath", "Result", "Rx", "RxMatch", "RxStr", "Seconds", "Stack",
@@ -80,12 +73,12 @@ type RxMatch  = Match
 ##-- end regex
 
 ##-- callables
-type Ctor[T]            = type[T]
-type Builder[T]         = Callable[[*Any], T]
-type Func[**I, O]       = Callable[I, O]
-type Method[**I, O]     = types.MethodType[I, O]
-type Decorator[F:Func]  = Callable[[F], F]
-type Lambda[**I, O]     = types.LambdaType[I, O]
+type CtorFn[**I, O]          = Callable[I, O] | type[O]
+type Builder[**I, T]         = Callable[I, T]
+type Func[**I, O]            = Callable[I, O]
+type Method[X:type, **I, O]  = Callable[Concatenate[X, I], O]
+type Decorator[F:Func]       = Callable[[F], F]
+type Lambda[**I, O]          = Callable[I, O]
 
 ##-- end callables
 
