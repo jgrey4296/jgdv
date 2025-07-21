@@ -2,7 +2,7 @@
 """
 
 """
-# ruff: noqa: N801, ANN001, ANN002, ANN003
+# ruff: noqa: ANN002, ANN003
 # Imports:
 from __future__ import annotations
 
@@ -27,7 +27,7 @@ import faulthandler
 
 from jgdv._abstract.protocols import SpecStruct_p
 from jgdv.structs.strang import Strang, CodeReference
-from .._interface import Key_p, NonKey_p
+from .._interface import Key_p, NonKey_p, MultiKey_p, IndirectKey_p, LIFT_EXPANSION_PATTERN
 
 # ##-- types
 # isort: off
@@ -42,19 +42,21 @@ from typing import no_type_check, final, override, overload
 # Protocols and Interfaces:
 from typing import Protocol, runtime_checkable
 from collections.abc import Mapping
+from collections.abc import Sequence
 if typing.TYPE_CHECKING:
     from typing import Final, ClassVar, Any, Self
     from typing import Literal, LiteralString
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
-    from collections.abc import Sequence, MutableMapping, Hashable
+    from collections.abc import MutableMapping, Hashable
 
     from jgdv import Maybe, Rx, Ident, RxStr, Ctor, CHECKTYPE, FmtStr
-    type LitFalse    = Literal[False]
-    type InstructionList  = list[ExpInst_d]
-    type InstructionAlts  = list[InstructionList]
-    type ExpOpts          = dict
-    type SourceBases      = list|Mapping|SpecStruct_p
+    type LitFalse               = Literal[False]
+    type InstructionAlts        = list[ExpInst_d]
+    type InstructionList        = list[InstructionAlts]
+    type InstructionExpansions  = list[ExpInst_d]
+    type ExpOpts                = dict
+    type SourceBases            = list|Mapping|SpecStruct_p
 
 # isort: on
 # ##-- end types
@@ -71,16 +73,16 @@ NoValueFailure          : Final[str]  = "ExpInst_d's must have a val"
 UnexpectedData          : Final[str]  = "Unexpected kwargs given to ExpInst_d"
 
 ##--| Values
-UNRESTRICTED_EXPANSION     : Final[int]                 = -1
 NO_EXPANSIONS_PERMITTED    : Final[int]                 = 0
 
-EXPANSION_CONVERT_MAPPING  : Final[dict[str,Callable]]  = {
+EXPANSION_CONVERT_MAPPING  : Final[dict[str,Maybe[Callable]]]  = {
     "p"                    : lambda x: pl.Path(x).expanduser().resolve(),
     "s"                    : str,
     "S"                    : Strang,
     "c"                    : CodeReference,
     "i"                    : int,
     "f"                    : float,
+    LIFT_EXPANSION_PATTERN : None,
 }
 ##--| Data
 
@@ -91,7 +93,7 @@ class ExpInst_d:
 
     - fallback : the value to use if expansion fails
     - convert  : controls type coercion of expansion result
-    - lift     : says to lift expanded values into keys themselves
+    - lift     : says to lift expanded values into keys themselves (using !L in the key str)
     - literal  : signals the value needs no more expansion
     - rec      : the remaining recursive expansions available. -1 is unrestrained.
     - total_recs : tracks the number of expansions have occured
@@ -101,9 +103,9 @@ class ExpInst_d:
     value       : Any
     convert     : Maybe[str|bool]
     fallback    : Maybe[str]
-    lift        : bool
+    lift        : bool | tuple[bool, bool]
     literal     : bool
-    rec         : int
+    rec         : Maybe[int]
     total_recs  : int
 
     def __init__(self, **kwargs) -> None:
@@ -112,13 +114,17 @@ class ExpInst_d:
         self.fallback    = kwargs.pop("fallback", None)
         self.lift        = kwargs.pop("lift", False)
         self.literal     = kwargs.pop("literal", False)
-        self.rec         = kwargs.pop("rec", None) or UNRESTRICTED_EXPANSION
+        self.rec         = kwargs.pop("rec", None)
         self.total_recs  = kwargs.pop("total_recs", 0)
 
+        assert(self.rec is None or self.rec >= 0)
+        if self.rec == 0:
+            self.literal = True
         self.process_value()
         if bool(kwargs):
             raise ValueError(UnexpectedData, kwargs)
 
+    @override
     def __repr__(self) -> str:
         lit  = "(Lit)" if self.literal else ""
         return f"<ExpInst_d:{lit} {self.value!r} / {self.fallback!r} (R:{self.rec},L:{self.lift},C:{self.convert})>"
@@ -127,24 +133,53 @@ class ExpInst_d:
         match self.value:
             case ExpInst_d() as val:
                 raise TypeError(NestedFailure, val)
-            case None:
-                 raise ValueError(NoValueFailure)
-            case Key_p():
+            case Key_p() as k if k.data.convert is not None and LIFT_EXPANSION_PATTERN in k.data.convert:
+                self.lift = True
+            case Key_p() | None:
                 pass
+
+class ExpInstChain_d:
+    __slots__ = ("chain", "merge", "root")
+
+    root   : Key_p
+    chain  : tuple[ExpInst_d, ...]
+    merge  : Maybe[int]
+
+    def __init__(self, *chain:ExpInst_d, root:Key_p, merge:Maybe[int]=None) -> None:
+        self.root   = root
+        self.chain  = tuple(chain)
+        self.merge  = merge
+
+    def __getitem__(self, i:int) -> ExpInst_d:
+        return self.chain[i]
+
+    def __iter__(self) -> Iterator[ExpInst_d]:
+        return iter(self.chain)
+
+    def __len__(self) -> int:
+        return self.merge or len(self.chain)
+
+    @override
+    def __repr__(self) -> str:
+        if self.merge:
+            val = f"(M:{self.merge})"
+        else:
+            val = f"(C:{len(self.chain)})"
+        return f"<ExpChain{val}: {self.root}>"
 
 class SourceChain_d:
     """ The core logic to lookup a key from a sequence of sources
 
     | Doesn't perform repeated expansions.
     | Tries sources in order.
+    | A Source that is a list is copied and each retrieval pops a value off it
 
     TODO replace this with collections.ChainMap ?
     """
-    __slots__ = ("lifter", "sources")
+    __slots__ = ("sources",)
     sources  : list[Mapping|list]
-    lifter   : type[Key_p]
 
-    def __init__(self, *args:Maybe[SourceBases|SourceChain_d], lifter=type[Key_p]) -> None:
+    def __init__(self, *args:Maybe[SourceBases|SourceChain_d]) -> None:
         self.sources = []
         for base in args:
             match base:
@@ -152,7 +187,9 @@ class SourceChain_d:
                     pass
                 case SourceChain_d():
                     self.sources += base.sources
-                case dict() | collections.ChainMap() | list():
+                case list():
+                    self.sources.append(base[:])
+                case dict() | collections.ChainMap():
                     self.sources.append(base)
                 case Mapping():
                     self.sources.append(base)
@@ -160,21 +197,45 @@ class SourceChain_d:
                     self.sources.append(base.params)
                 case x:
                     raise TypeError(type(x))
-        self.lifter   = lifter
 
+    @override
     def __repr__(self) -> str:
         source_types = ", ".join([type(x).__name__ for x in self.sources])
         return f"<{type(self).__name__}: {source_types}>"
 
-    def extend(self, *args:SourceBases) -> Self:
-        extension = SourceChain_d(*args)
-        self.sources += extension.sources
-        return self
+    def extend(self, *args:SourceBases) -> SourceChain_d:
+        extension = SourceChain_d(*self.sources, *args)
+        return extension
+
+    def lookup(self, target:ExpInstChain_d) -> Maybe[ExpInst_d|tuple]:
+        """ Look up alternatives
+
+        | pass through DKeys and (DKey, ..) for recursion
+        | lift (str(), True, fallback)
+        | don't lift (str(), False, fallback)
+
+        """
+        x            : Any
+        for inst in target:
+            match inst:
+                case ExpInst_d(value=NonKey_p()) | ExpInst_d(literal=True):
+                    return inst
+                case ExpInst_d() as curr:
+                    match self.get(str(curr.value)):
+                        case None:
+                            pass
+                        case x:
+                            return x, curr
+                case x:
+                    msg = "Unrecognized lookup spec"
+                    raise TypeError(msg, x)
+            ##--|
+        else:
+            return None
 
     def get(self, key:str, fallback:Maybe=None) -> Maybe:
         """ Get a key's value from an ordered sequence of potential sources.
 
-        | Try to get {key} then {key\\_} in order of sources passed in.
         """
         replacement  : Maybe  = fallback
         for lookup in self.sources:
@@ -199,44 +260,18 @@ class SourceChain_d:
         else:
             return fallback
 
-    def lookup(self, target:list[ExpInst_d]) -> Maybe[ExpInst_d]:
-        """ Look up alternatives
-
-        | pass through DKeys and (DKey, ..) for recursion
-        | lift (str(), True, fallback)
-        | don't lift (str(), False, fallback)
-
-        """
-        x : Any
-        for spec in target:
-            match spec:
-                case ExpInst_d(value=Key_p()):
-                    return spec
-                case ExpInst_d(literal=True):
-                    return spec
-                case ExpInst_d(value=str() as key, lift=lift, fallback=fallback):
-                    pass
-                case x:
-                    msg = "Unrecognized lookup spec"
-                    raise TypeError(msg, x)
-
-            match self.get(key):
-                case None:
-                    pass
-                case x if lift:
-                    logging.debug("Lifting Result to Key: %r", x)
-                    match self.lifter(x, implicit=True, fallback=fallback): # type: ignore[call-arg]
-                        case NonKey_p() as y:
-                            return ExpInst_d(value=y, rec=0, litreal=True)
-                        case Key_p() as y:
-                            return ExpInst_d(value=y, fallback=fallback, lift=False)
-                        case x:
-                            raise TypeError(type(x))
-                case x:
-                    return ExpInst_d(value=x, fallback=fallback)
-        else:
-            return None
 ##--| Protocols
+
+@runtime_checkable
+class InstructionFactory_p(Protocol):
+
+    def build_chains(self, val:ExpInst_d, opts:ExpOpts) -> list[ExpInstChain_d|ExpInst_d]: ...
+
+    def build_inst(self, val:Maybe, root:Maybe[ExpInst_d], opts:ExpOpts, *, decrement:bool=True) -> Maybe[ExpInst_d]: ...
+
+    def null_inst(self) -> ExpInst_d: ...
+
+    def literal_inst(self, val:Any) -> ExpInst_d: ...  # noqa: ANN401
 
 class Expander_p[T](Protocol):
 
@@ -252,19 +287,19 @@ class Expander_p[T](Protocol):
 
 class ExpansionHooks_p(Protocol):
 
+    def exp_to_inst_h(self, root:ExpInst_d, factory:InstructionFactory_p,  **kwargs) -> Maybe[ExpInst_d]: ...  # noqa: ANN401
+
+    def exp_generate_chains_h(self, root:ExpInst_d, factory:InstructionFactory_p, opts:ExpOpts) -> list[ExpInstChain_d|ExpInst_d]: ...  # noqa: ANN401
+
     def exp_extra_sources_h(self, current:SourceChain_d) -> SourceChain_d: ...
 
-    def exp_generate_alternatives_h(self, sources:SourceChain_d, opts:ExpOpts) -> InstructionAlts: ...
+    def exp_flatten_h(self, values:list[Maybe[ExpInst_d]], factory:InstructionFactory_p, opts:dict) -> Maybe[ExpInst_d]: ...
 
-    def exp_configure_recursion_h(self, insts:InstructionAlts, sources:SourceChain_d, opts:ExpOpts) -> Maybe[InstructionList]: ...
+    def exp_coerce_h(self, inst:ExpInst_d, factory:InstructionFactory_p, opts:dict) -> Maybe[ExpInst_d]: ...
 
-    def exp_flatten_h(self, insts:InstructionList, opts:dict) -> Maybe[ExpInst_d]: ...
+    def exp_final_h(self, inst:ExpInst_d, root:Maybe[ExpInst_d], factory:InstructionFactory_p, opts:dict) -> Maybe[ExpInst_d]: ...
 
-    def exp_coerce_h(self, inst:ExpInst_d, opts:dict) -> Maybe[ExpInst_d]: ...
-
-    def exp_final_h(self, inst:ExpInst_d, opts:dict) -> Maybe[LitFalse|ExpInst_d]: ...
-
-    def exp_check_result_h(self, inst:ExpInst_d, opts:dict) -> None: ...
+    def exp_check_result_h(self, inst:Maybe[ExpInst_d], opts:dict) -> None: ...
 
 class Expandable_p(Protocol):
     """ An expandable, like a DKey,

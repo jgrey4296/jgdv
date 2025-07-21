@@ -28,7 +28,7 @@ from jgdv import Proto, Mixin
 from jgdv.mixins.annotate import SubAlias_m
 from jgdv.structs.strang import Strang
 from ._util import _interface as ExpAPI # noqa: N812
-from ._util.expander import DKeyExpander
+from ._util.expander_stack import DKeyExpanderStack
 from .processor import DKeyProcessor
 
 # ##-- types
@@ -101,7 +101,7 @@ class DKey[**K](Strang, fresh_registry=True):
     _annotate_to    : ClassVar[str]                       = "dkey_mark"
     _processor      : ClassVar                            = DKeyProcessor()
     _sections       : ClassVar                            = API.DKEY_SECTIONS
-    _expander       : ClassVar[Expander_p]                = cast("Expander_p", DKeyExpander())
+    _expander       : ClassVar[Expander_p]                = cast("Expander_p", DKeyExpanderStack())
     _typevar        : ClassVar                            = None
     _extra_kwargs   : ClassVar[set[str]]                  = set()
     _extra_sources  : ClassVar[list[ExpAPI.SourceBases]]  = []
@@ -214,16 +214,6 @@ class DKey[**K](Strang, fresh_registry=True):
         return result
 
     ##--| expansion hooks
-
-    def to_exp_inst(self, *, indirect:bool=False, **kwargs:Any) -> ExpAPI.ExpInst_d:  # noqa: ANN401
-        """ create a basic expinst """
-        val = f"{self:i}" if indirect else f"{self:d}"
-        return ExpAPI.ExpInst_d(value=val,
-                                convert=self.data.convert,
-                                rec=self.data.max_expansions,
-                                **kwargs,
-                                )
-
     def exp_extra_sources_h(self, current:ExpAPI.SourceChain_d) -> ExpAPI.SourceChain_d:
         match self._extra_sources:
             case [*xs]:

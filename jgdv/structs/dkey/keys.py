@@ -21,8 +21,8 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 from . import _interface as API # noqa: N812
-from ._interface import INDIRECT_SUFFIX, RAWKEY_ID, DKeyMark_e
-from ._util._interface import ExpInst_d, SourceChain_d
+from ._interface import INDIRECT_SUFFIX, RAWKEY_ID, DKeyMark_e, NonKey_p, Key_p
+from ._util._interface import ExpInst_d, SourceChain_d, ExpInstChain_d, InstructionFactory_p
 from .dkey import DKey
 
 # ##-- types
@@ -130,21 +130,26 @@ class MultiDKey(DKey, mark=list):
         return True
 
     def keys(self) -> list[DKey]:
+        # return [DKey(x, force=DKey[Any], implicit=True) for x in self.data.meta if bool(x)]
         return [DKey(x, implicit=True) for x in self.data.meta if bool(x)]
 
-    def exp_generate_alternatives_h(self, sources:SourceChain_d, opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
+    def exp_generate_chains_h(self, root:ExpInst_d, factory:InstructionFactory_p, opts:dict) -> list[ExpInstChain_d|ExpInst_d]:  # noqa: ANN401, ARG002
         """ Lift subkeys to expansion instructions """
-        targets = []
-        for key in self.keys():
-            targets.append([ExpInst_d(value=key,
-                                      convert=key.data.convert,
-                                      rec=key.data.max_expansions,
-                                      fallback=None),
-                            ])
+        x : Any
+        targets : list[ExpInstChain_d|ExpInst_d]= []
+        keys  = self.keys()
+        targets.append(ExpInstChain_d(root=self, merge=len(keys))) # type: ignore[arg-type]
+        for key in keys:
+            inst = factory.build_inst(key, root, opts, decrement=False)
+            if inst is None or inst.literal is True:
+                targets.append(inst)
+                continue
+
+            targets.append(*factory.build_chains(inst, opts))
         else:
             return targets
 
-    def exp_flatten_h(self, vals:list[ExpInst_d], opts:dict) -> Maybe[ExpInst_d]:  # noqa: ARG002
+    def exp_flatten_h(self, vals:list[ExpInst_d], factory:InstructionFactory_p, opts:dict) -> Maybe[ExpInst_d]:  # noqa: ARG002
         """ Flatten the multi-key expansion into a single string,
         by using the anon-format str
         """
@@ -196,7 +201,7 @@ class NonDKey(DKey, mark=False):
         """ A Non-key just needs to be coerced into the correct str format """
         assert(isinstance(self, API.Key_p))
         val = ExpInst_d(value=self[:])
-        match self._expander.coerce_result(val, kwargs, source=self):
+        match self._expander.coerce_result(val, self, kwargs):
             case None if (fallback:=kwargs.get("fallback")) is not None:
                 return ExpInst_d(value=fallback, literal=True)
             case None:
@@ -219,10 +224,13 @@ class IndirectDKey(DKey, mark=Mapping, convert="I"):
 
     def __init__(self, *, multi:bool=False, re_mark:Maybe[API.KeyMark]=None, **kwargs) -> None:  # noqa: ANN003
         assert(not self.endswith(INDIRECT_SUFFIX)), self[:]
-        kwargs.setdefault("fallback", Self)
         super().__init__(**kwargs)
         self.multi_redir      = multi
         self.re_mark          = re_mark
+
+    @override
+    def __str__(self) -> str:
+        return f"{self:i}"
 
     @override
     def __eq__(self, other:object) -> bool:
@@ -235,17 +243,12 @@ class IndirectDKey(DKey, mark=Mapping, convert="I"):
     def _indirect(self) -> Literal[True]:
         return True
 
-    def exp_generate_alternatives_h(self, sources:list[dict], opts:dict) -> list[list[ExpInst_d]]:  # noqa: ARG002
+    def exp_generate_chains_h(self, root:ExpInst_d, factory:InstructionFactory_p, opts:dict) -> list[ExpInstChain_d|ExpInst_d]:  # noqa: ANN401
         """ Lookup the indirect version, the direct version, then use the fallback """
-        match opts.get("fallback", self.data.fallback):
-            case x if x is Self:
-                fallback = self
-            case None:
-                fallback = self
-            case x:
-                fallback = x
-        return [[
-            ExpInst_d(value=f"{self:i}", lift=True),
-            ExpInst_d(value=f"{self:d}", convert=False),
-            ExpInst_d(value=fallback,    literal=True, convert=False),
-        ]]
+        targets : list = [
+            factory.build_inst(self, root, opts, decrement=False),
+            factory.lift_inst(f"{self:d}", root, opts, decrement=False, implicit=True),
+            factory.null_inst(),
+            ]
+
+        return [ExpInstChain_d(*targets, root=root.value)]

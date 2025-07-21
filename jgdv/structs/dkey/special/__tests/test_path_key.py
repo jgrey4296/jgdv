@@ -2,13 +2,12 @@
 """
 
 """
+# ruff: noqa: ANN202, B011
 from __future__ import annotations
 
 import logging as logmod
 import pathlib as pl
-from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
-                    Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
-                    TypeVar, cast, Self, Final)
+from typing import Final
 import warnings
 
 import pytest

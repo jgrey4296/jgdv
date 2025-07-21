@@ -65,6 +65,7 @@ logging = logmod.getLogger(__name__)
 
 # Vars:
 DEFAULT_COUNT            : Final[int]              = 0
+LIFT_EXPANSION_PATTERN   : Final[str]              = "L"
 FMT_PATTERN              : Final[Rx]               = re.compile(r"[wdi]+")
 EXPANSION_LIMIT_PATTERN  : Final[Rx]               = re.compile(r"e(\d+)")
 INDIRECT_SUFFIX          : Final[Ident]            = "_"
@@ -89,7 +90,7 @@ DEFAULT_DKEY_KWARGS      : Final[list[str]]        = [
     ]
 
 ##--| Error Messages
-UnknownDKeyCtorType     : Final[str]  = "Unknown type passed to construct dkey"
+UnknownDKeyCtorType      : Final[str]              = "Unknown type passed to construct dkey"
 InsistentKeyFailure     : Final[str]  = "An insistent key was not built"
 KeyBuildFailure         : Final[str]  = "No key was built"
 NoMark                  : Final[str]  = "Mark has to be a value"
@@ -306,8 +307,6 @@ class Key_p(StrangAPI.Strang_p, Protocol):
     def expand(self, *sources, rec=False, insist=False, chain:Maybe[list[Key_p]]=None, on_fail=Any, locs:Maybe[Mapping]=None, **kwargs) -> str: ...
 
     def var_name(self) -> str: ...
-
-    def to_exp_inst(self, *, indirect:bool=False, **kwargs:Any) -> ExpInst_d: ...  # noqa: ANN401
 
 @runtime_checkable
 class MultiKey_p(Protocol):
