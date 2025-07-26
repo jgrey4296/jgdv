@@ -46,9 +46,16 @@ See `JGDVTimer`, `TrackTime`, `TimeBlock_ctx`, and `MultiTimeBlock_ctx`.
 Traces
 ------
 
-See `TraceBuilder`, `TraceHelper`, and `FrameHelper`.
+See `TraceBuilder`, and `TraceContext`.
 `TraceBuilder` manually builds a `Traceback` stack,
 in place of the overly verbose default `Exception` tracebacks.
+Meanwhile `TraceContext` runs an execution trace.
+
+.. code:: python
+
+    tb = TraceBuilder()
+    raise Exception().with_traceback(tb[:])
+          
 
 -------
 Signals

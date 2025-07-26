@@ -8,53 +8,68 @@ from __future__ import annotations
 
 # ##-- stdlib imports
 import datetime
+from collections import defaultdict
+import linecache
 import enum
 import functools as ftz
+import math
 import itertools as itz
+import inspect
 import logging as logmod
-import pathlib as pl
+import gc
 import re
 import sys
 import time
 import weakref
+import trace
 from uuid import UUID, uuid1
+import pathlib as pl
 
 # ##-- end stdlib imports
 
 # ##-- types
 # isort: off
+# General
 import abc
 import collections.abc
-from typing import TYPE_CHECKING, cast, assert_type, assert_never
-from typing import Generic, NewType
-# Protocols:
-from typing import Protocol, runtime_checkable
-# Typing Decorators:
+import typing
+import types
+from typing import cast, assert_type, assert_never
+from typing import Generic, NewType, Never
 from typing import no_type_check, final, override, overload
-from types import TracebackType
+from typing import Concatenate as Cons
+# Protocols and Interfaces:
+from typing import Protocol, runtime_checkable
+# isort: on
+# ##-- end types
 
-if TYPE_CHECKING:
-    from jgdv import Maybe, Traceback, Frame
-    from typing import Final
-    from typing import ClassVar, Any, LiteralString
-    from typing import Never, Self, Literal
+# ##-- type checking
+# isort: off
+if typing.TYPE_CHECKING:
+    from ._interface import TraceEvent
+    from typing import Final, ClassVar, Any, Self
+    from typing import Literal, LiteralString
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-# isort: on
-# ##-- end types
+    from jgdv import Maybe, Traceback, Frame
+## isort: on
+# ##-- end type checking
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+##-- system guards
 if not hasattr(sys, "_getframe"):
         msg = "Can't use TraceBuilder on this system, there is no sys._getframe"
         raise ImportError(msg)
+##-- end system guards
 
 ##--|
-class TraceBuilder:
+
+class TracebackFactory:
     """ A Helper to simplify access to tracebacks.
     By Default, removes the frames of this tracebuilder from the trace
     ie     : TraceBuilder._get_frames() -> TraceBuilder.__init__() -> call -> call -> root
@@ -68,8 +83,7 @@ class TraceBuilder:
     raise Exception().with_traceback(tb[:])
     """
 
-
-    def __class_getitem__(cls, item:slice) -> Traceback:
+    def __class_getitem__(cls, item:slice) -> Maybe[Traceback]:
         tbb = cls()
         return tbb[item]
 
@@ -79,7 +93,7 @@ class TraceBuilder:
         if chop_self:
             self.frames = self.frames[2:]
 
-    def __getitem__(self, val:Maybe[slice]=None) -> Traceback:
+    def __getitem__(self, val:Maybe[slice]=None) -> Maybe[Traceback]:
         match val:
             case None:
                 return self.to_tb()
@@ -103,12 +117,13 @@ class TraceBuilder:
             else:
                 self.frames.append(frame)
 
-    def to_tb(self, frames:Maybe[list[Frame]]=None) -> Traceback:
+    def to_tb(self, frames:Maybe[list[Frame]]=None) -> Maybe[Traceback]:
         top    = None
         frames = frames or self.frames
         for frame in frames:
-            top = TracebackType(top, frame,
-                                frame.f_lasti,
-                                frame.f_lineno)
+            top = types.TracebackType(top, frame,
+                                      frame.f_lasti,
+                                      frame.f_lineno)
         else:
             return top
+

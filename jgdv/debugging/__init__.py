@@ -11,5 +11,6 @@ Provides:
 
 """
 from .signal_handler import SignalHandler, NullHandler
-from .trace_builder import TraceBuilder
+from .traceback_factory import TracebackFactory
+from .traceback_factory import TracebackFactory as TraceBuilder
 from .log_del import LogDel
