@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 TEST File updated
 
@@ -55,6 +54,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # Vars:
+
 class TraceExample:
 
     def start(self) -> None:  # noqa: N802
@@ -80,6 +80,7 @@ class TraceExample:
 # Body:
 
 ##--|
+
 class TestTraceContext:
 
     @pytest.fixture(scope="function")
@@ -92,7 +93,7 @@ class TestTraceContext:
         assert(True is not False) # noqa: PLR0133
 
     def test_ctor(self):
-        match TraceContext(targets=()):
+        match TraceContext(targets=(), track=()):
             case TraceContext():
                 assert(True)
             case x:
@@ -108,8 +109,7 @@ class TestTraceContext:
             "TestTraceContext.test_call_trace ----> TraceContext.__exit__",
         ]
         obj = TraceContext(targets="call",
-                           list_funcs=False,
-                           list_callers=False,
+                           track=("call","trace", "caller")
                            )
 
         example = TraceExample()
@@ -122,7 +122,6 @@ class TestTraceContext:
         for exp,ret in zip(expect, caplog.messages, strict=True):
             assert(exp in ret)
 
-
     def test_blacklist(self, caplog):
         expect = [
             "TestTraceContext.test_blacklist ----> TraceExample.start",
@@ -134,8 +133,7 @@ class TestTraceContext:
             # "TestTraceContext.test_blacklist ----> TraceContext.__exit__",
         ]
         obj = TraceContext(targets="call",
-                           list_funcs=False,
-                           list_callers=False,
+                           track=("call","trace", "caller"),
                            )
         obj.blacklist("TraceContext.__exit__")
 
@@ -149,7 +147,6 @@ class TestTraceContext:
         for exp,ret in zip(expect, caplog.messages, strict=True):
             assert(exp in ret)
 
-
     def test_return_trace(self, caplog):
         expect = [
             "TraceExample.start   <---- TraceExample._subtestfn",
@@ -159,8 +156,7 @@ class TestTraceContext:
             "TestTraceContext.test_return_trace <---- TraceExample.start",
         ]
         obj = TraceContext(targets=("return"),
-                           list_funcs=False,
-                           list_callers=False,
+                           track=("trace",),
                            )
 
         example = TraceExample()
@@ -172,31 +168,29 @@ class TestTraceContext:
         assert(len(caplog.messages) == len(expect))
         for exp,ret in zip(expect, caplog.messages, strict=True):
             assert(exp in ret)
-
 
     def test_line_trace(self, caplog):
         expect = [
-            "jgdv.debugging.__tests:61 : blah = 2 + 2",
-            "jgdv.debugging.__tests:62 : bloo = 3 + blah",
-            "jgdv.debugging.__tests:63 : self._subtestfn(True)  # noqa: FBT003",
-            "jgdv.debugging.__tests:69 : if val:",
-            "jgdv.debugging.__tests:70 : amnt = 20",
-            "jgdv.debugging.__tests:74 : return amnt",
-            "jgdv.debugging.__tests:64 : self._othertestfn(False)  # noqa: FBT003",
-            "jgdv.debugging.__tests:77 : self._subtestfn(val)",
-            "jgdv.debugging.__tests:69 : if val:",
-            "jgdv.debugging.__tests:72 : amnt = 30",
-            "jgdv.debugging.__tests:74 : return amnt",
-            "jgdv.debugging.__tests:78 : return 30",
-            "jgdv.debugging.__tests:65 : self._subtestfn(bloo > 2)  # noqa: PLR2004",
-            "jgdv.debugging.__tests:69 : if val:",
-            "jgdv.debugging.__tests:70 : amnt = 20",
-            "jgdv.debugging.__tests:74 : return amnt",
-            "jgdv.debugging:217 : sys.settrace(None)",
+            "blah = 2 + 2",
+            "bloo = 3 + blah",
+            "self._subtestfn(True)  # noqa: FBT003",
+            "if val:",
+            "amnt = 20",
+            "return amnt",
+            "self._othertestfn(False)  # noqa: FBT003",
+            "self._subtestfn(val)",
+            "if val:",
+            "amnt = 30",
+            "return amnt",
+            "return 30",
+            "self._subtestfn(bloo > 2)  # noqa: PLR2004",
+            "if val:",
+            "amnt = 20",
+            "return amnt",
+            "sys.settrace(None)",
         ]
         obj = TraceContext(targets="line",
-                           list_funcs=False,
-                           list_callers=False,
+                           track=None,
                            )
 
         example = TraceExample()
@@ -209,11 +203,9 @@ class TestTraceContext:
         for exp,ret in zip(expect, caplog.messages, strict=True):
             assert(exp in ret)
 
-
     def test_no_logging(self, caplog):
         obj = TraceContext(targets=("call",),
-                           list_funcs=True,
-                           list_callers=False,
+                           track=("trace"),
                            logger=False,
                            )
 
@@ -222,25 +214,58 @@ class TestTraceContext:
             example.start()
 
         assert(not bool(caplog.messages))
-        assert(bool(obj.called))
+        assert(bool(obj.trace))
 
+class TestTraceContext_writing:
 
-    def test_write_out(self, caplog):
+    def test_sanity(self):
+        assert(True is not False) # noqa: PLR0133
+
+    def test_write_out_file(self, caplog):
         write_target = pl.Path(__file__).with_suffix(".coverage")
         obj = TraceContext(targets=("call", "line", "return"),
-                           list_funcs=False,
-                           list_callers=False,
-                           logger=None,
+                           track=("trace",),
+                           logger=False,
                            )
 
         example = TraceExample()
         with obj:
             example.start()
 
-        # assert(not bool(caplog.messages))
-        obj.write_coverage(target=write_target)
-        assert(False)
-        
+        obj.write_coverage_file(target=write_target)
+        assert(write_target.exists())
+
+    def test_write_out_flat(self, caplog):
+        write_target = pl.Path(__file__).parent / "coverage_flat"
+        obj = TraceContext(targets=("call", "line", "return"),
+                           track=("call", "trace"),
+                           logger=False,
+                           )
+
+        example = TraceExample()
+        with obj:
+            example.start()
+
+        obj.write_coverage_dir(root=write_target)
+        assert(write_target.exists())
+        assert(len(list(write_target.iterdir())) == 2)
+
+    def test_write_out_tree(self, caplog):
+        mod_root = pl.Path(__file__).parent.parent.parent
+        write_target = pl.Path(__file__).parent / "coverage_tree"
+        write_target.mkdir(exist_ok=True)
+        obj = TraceContext(targets=("call", "line", "return"),
+                           track=("trace",),
+                           logger=False,
+                           )
+
+        example = TraceExample()
+        with obj:
+            example.start()
+
+        obj.write_coverage_tree(root=write_target, reroot=mod_root)
+        assert(write_target.exists())
+
     ##--|
 
     @pytest.mark.skip

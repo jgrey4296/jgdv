@@ -79,9 +79,9 @@ DEFAULT_MESSAGES  : Final[dict[str, str]] = {
     "line"        : "\t%s:%s : %s",
 }
 
-EXEC_LINE      : Final[str]  = r"({}) >>>> {}"
-NON_EXEC_LINE  : Final[str]  = r"({}) .... {}"
-FIRST_LINE     : Final[str]  = r"({}) .... {} (NEW FILE: {})"
+EXEC_LINE      : Final[str]  = r"{}>>>> {}"
+NON_EXEC_LINE  : Final[str]  = r"{}     {}"
+FIRST_LINE     : Final[str]  = r"{}     {} (NEW FILE: {})"
 
 def must_have_results[T:TraceContext, **I, O](fn:Callable[Cons[T, I],O]) -> Callable[Cons[T, I], O]:
     return fn
@@ -107,6 +107,7 @@ class TraceObj:
         self.func     = frame.f_code.co_qualname
         self.line_no  = frame.f_lineno
         self.count    = 0
+        assert(frame.f_globals.get("__file__", None) == frame.f_code.co_filename)
 
     @override
     def __repr__(self) -> str:
@@ -120,31 +121,46 @@ class TraceObj:
 ##--|
 
 class TraceWriter:
+    exec_line      : str
+    non_exec_line  : str
+    first_line     : str
 
     def __init__(self) -> None:
-        pass
+        self.exec_line      = EXEC_LINE
+        self.non_exec_line  = NON_EXEC_LINE
+        self.first_line     = FIRST_LINE
 
-    def format_trace(self, trace:list[TraceObj]) -> str:
+    def format_trace(self, trace:list[TraceObj]) -> str:  # noqa: F811
         result : list[str] = []
         for obj in trace:
             result.append(obj.line)
         else:
             return "\n".join(result)
 
-    def format_file_execution(self, *, file:str, trace:dict[int, TraceObj]) -> str:
+    def format_file_execution(self, *, file:str, trace:dict[int, TraceObj], line_nums:bool=False) -> str:  # noqa: F811
+        result : list[str]
+        num    : str
+        ##--|
         # TODO : use a semantic parse to diff executable from non-executable lines
-        result : list[str] = []
+        result = []
         source = linecache.getlines(str(file))
         for i,x in enumerate(source, 1):
+            trimmed = x.removesuffix("\n")
+            if line_nums:
+                num = f"({i}) "
+            else:
+                num = ""
             match i:
                 case 1:
-                    result.append(FIRST_LINE.format(i, x.removesuffix("\n"), pl.Path(file).name))
+                    result.append(self.first_line.format(num,
+                                                         trimmed,
+                                                         pl.Path(file).name))
                 case int() as potential if potential in trace:
                     # Line executed
-                    result.append(EXEC_LINE.format(i, x).removesuffix("\n"))
+                    result.append(self.exec_line.format(num, trimmed))
                 case _:
                     # No execution
-                    result.append(NON_EXEC_LINE.format(i, x).removesuffix("\n"))
+                    result.append(self.non_exec_line.format(num, trimmed))
 
         else:
             return "\n".join(result)
@@ -159,15 +175,13 @@ class TraceContext:
     ##--| internal
     _blacklist  : list[str]
     _write_to   : Maybe[pl.Path]
-    _curr_func  : TraceObj
     _logger     : Maybe[logmod.Logger]
     _formatter  : TraceWriter
     _whitelist  : list[str]
     ##--| options
-    cache       : Maybe[pl.Path]
+    cache          : Maybe[pl.Path]
     trace_targets  : tuple[TraceEvent, ...]
-    list_funcs     : bool
-    list_callers   : bool
+    track_targets  : tuple[str, ...]
     timestamp      : bool
     log_fmts       : dict[str, str]
     ##--| results
@@ -177,8 +191,9 @@ class TraceContext:
     trace    : list[TraceObj]
     lines    : list[TraceObj]
 
-    def __init__(self, *, targets:Maybe[Iterable[TraceEvent]], logger:Maybe[logmod.Logger|Literal[False]]=None, cache:Maybe[pl.Path]=None, list_funcs:bool=False, list_callers:bool=False, timestamp:bool=False, log_fmts:Maybe[dict]=None) -> None:  # noqa: PLR0913
-        x : Any
+    def __init__(self, *, targets:Maybe[TraceEvent|Iterable[TraceEvent]], track:Maybe[str|Iterable[str]], logger:Maybe[logmod.Logger|Literal[False]]=None, cache:Maybe[pl.Path]=None, timestamp:bool=False, log_fmts:Maybe[dict]=None) -> None:  # noqa: PLR0912, PLR0913
+        x   : Any
+        xs  : Iterable
         ##--|
         self._blacklist  = [sys.exec_prefix]
         self._whitelist  = []
@@ -192,11 +207,19 @@ class TraceContext:
                 self.trace_targets = ("call",)
             case x:
                 raise TypeError(type(x))
+        match track:
+            case str() as x:
+                self.track_targets = (x,)
+            case [*xs]:
+                self.track_targets = tuple(xs)
+            case None:
+                self.track_targets = ("trace",)
+            case x:
+                raise TypeError(type(x))
 
         assert(all(x in ("call", "line", "return", "exception", "opcode") for x in self.trace_targets))
         self.cache         = cache
-        self.list_funcs    = list_funcs
-        self.list_callers  = list_callers
+
         self.timestamp     = timestamp
         self.callers       = defaultdict(set)
         self.called        = set()
@@ -244,9 +267,9 @@ class TraceContext:
                 return not any(y in x for y in self._whitelist)
             case str() as x:
                 return any(y in x for y in self._blacklist)
-            case TraceObject() as obj if bool(self._whitelist):
+            case TraceObj() as obj if bool(self._whitelist):
                 return not any(x in self._whitelist for x in [obj.package, obj.file, obj.func])
-            case TraceObject() as obj:
+            case TraceObj() as obj:
                 return any(x in self._blacklist for x in [obj.package, obj.file, obj.func])
     ##--| tracer and handlers
 
@@ -271,21 +294,20 @@ class TraceContext:
         return self.sys_trace_h
 
     def _trace_call(self, frame:Frame) -> None:
+        curr : TraceObj
+        ##--|
         if "call" not in self.trace_targets:
             return
-        self._curr_func = TraceObj(frame)
-        self._add_called()
-        if frame.f_back:
-            parent = TraceObj(frame.f_back)
-            # Tracking caller -> callee
-            self._add_caller(parent)
-            self._log("caller", parent.func, self._curr_func.func, self._curr_func.line_no)
-        else:
-            self._log("call", self._curr_func)
+        curr = TraceObj(frame)
         # Tracking called functions
-        self.called.add(self._curr_func.func)
+        match self._add_called(frame, curr):
+            case None:
+                self._log("call", curr)
+            case TraceObj() as parent:
+                self._log("caller", parent.func, curr.func, curr.line_no)
+
         # Trace
-        self._add_trace(self._curr_func)
+        self._add_trace(curr)
 
     def _trace_line(self, frame:Frame) -> None:
         if "line" not in self.trace_targets:
@@ -320,10 +342,71 @@ class TraceContext:
 
     ##--| IO
 
-    def write_coverage(self, *, filter:Maybe[str]=None, in_tree:bool=False, target:pl.Path, package:Maybe[str]=None) -> dict[str,str]:
+    def write_coverage_file(self, *, filter:Maybe[str]=None, target:pl.Path) -> None:  # noqa: A002
+        """ Write the coverage trace into a single file
+        """
+        formatted  : dict[pl.Path, str]
+        ##--|
+        formatted = self._prepare_trace_for_writing(filter, line_nums=True)
+        match target:
+            case None:
+                pass
+            case pl.Path() as f:
+                # Write it to file
+                joined = "\n".join(formatted.values())
+                f.write_text(joined)
+
+    def write_coverage_dir(self, *,  filter:Maybe[str]=None, root:pl.Path) -> None:  # noqa: A002
+        """ Write the coverage trace into a flat directory of files
+        """
+        formatted  : dict[pl.Path, str]
+        ##--|
+        formatted = self._prepare_trace_for_writing(filter, line_nums=False)
+        match root:
+            case pl.Path() if not root.exists():
+                root.mkdir(parents=True)
+                pass
+            case pl.Path() if not root.is_dir():
+                msg = "Root needs to be a directory"
+                raise ValueError(msg)
+
+        for file,text in formatted.items():
+            (root / file.name).with_suffix(".coverage").write_text(text)
+            pass
+
+
+    def write_coverage_tree(self, *, filter:Maybe[str]=None, root:pl.Path, reroot:Maybe[pl.Path]=None) -> None:  # noqa: A002
+        """ write the coverage trace into a tree of files
+        """
+        formatted  : dict[pl.Path, str]
+        ##--|
+        formatted = self._prepare_trace_for_writing(filter, line_nums=False)
+        match root:
+            case pl.Path() if not root.exists():
+                msg = "Root needs to exist"
+                raise ValueError(msg)
+            case pl.Path() if not root.is_dir():
+                msg = "Root needs to be a directory"
+                raise ValueError(msg)
+            case _:
+                pass
+
+        for file,text in formatted.items():
+            try:
+                if reroot:
+                    file = root / file.relative_to(reroot)
+                    file.parent.mkdir(parents=True, exist_ok=True)
+                elif not file.is_relative_to(root):
+                    continue
+
+                file.with_suffix(".coverage").write_text(text)
+            except ValueError:
+                pass
+
+    def _prepare_trace_for_writing(self, filter:Maybe[str]=None, *, line_nums:bool=False) -> dict[pl.Path, str]:  # noqa: A002, ARG002
         trace      : list[TraceObj]
         grouped    : defaultdict[str, dict[int, TraceObj]]
-        formatted  : dict[str, str]
+        formatted  : dict[pl.Path, str]
         ##--|
         # Get the trace
         trace = self.trace
@@ -338,21 +421,9 @@ class TraceContext:
         formatted = {}
         for file, _trace in grouped.items():
             # format it
-            formatted[file] = self._formatter.format_file_execution(file=file, trace=_trace)
-
-        match target:
-            case None:
-                pass
-            case pl.Path() as f:
-                # Write it to file
-                joined = "\n".join(formatted.values())
-                f.write_text(joined)
-
-        match in_tree:
-            case False:
-                pass
-            case True:
-                pass
+            formatted[pl.Path(file)] = self._formatter.format_file_execution(file=file,
+                                                                             trace=_trace,
+                                                                             line_nums=line_nums)
 
         return formatted
 
@@ -369,19 +440,23 @@ class TraceContext:
                 self._logger.info(fmt, *args)
 
     def _add_trace(self, curr:TraceObj) -> None:
+        if "trace" not in self.track_targets:
+            return
         self.trace.append(curr)
 
-    def _add_caller(self, caller:TraceObj) -> None:
-        if not self.list_callers:
-            return
-        self.callers[caller.func].add(self._curr_func.func)
+    def _add_called(self, frame:Frame, curr:TraceObj) -> Maybe[TraceObj]:
+        if "call" in self.track_targets:
+            assert(curr.package)
+            self.called.add(curr.func)
+            self.counts[(curr.package, curr.func)] += 1
 
-    def _add_called(self) -> None:
-        if not self.list_funcs:
-            return
-        assert(self._curr_func.package)
-        self.called.add(self._curr_func.func)
-        self.counts[(self._curr_func.package, self._curr_func.func)] += 1
+        if ("caller" in self.track_targets and frame.f_back):
+            parent = TraceObj(frame.f_back)
+            self.callers[parent.func].add(curr.func)
+            return parent
+
+        return None
+
 
     def _add_timestamp(self) -> None:
         pass
