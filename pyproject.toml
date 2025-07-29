@@ -96,6 +96,7 @@ enable_error_code       = [
     "type-arg",
     ]
 disable_error_code   = []
+exclude              = ["builtins.pyi"]
 
 warn_return_any      = true
 warn_unused_configs  = true
@@ -215,6 +216,7 @@ import_footer_localfolder = ""
 ##-- uv
 [dependency-groups]
 dev = [
+    "ipython>=9.4.0",
     "myst-parser>=4.0.1",
     "pydot>=4.0.1",
     "pytest>=8.3.5",
