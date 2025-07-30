@@ -1,58 +1,53 @@
 #!/usr/bin/env python3
 """
 
+See EOF for license/metadata/notes as applicable
 """
 
-##-- builtin imports
+# Imports:
 from __future__ import annotations
 
+# ##-- stdlib imports
 import datetime
 import enum
+import fnmatch
 import functools as ftz
 import itertools as itz
+import linecache
 import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
+import tracemalloc
 import weakref
 from uuid import UUID, uuid1
-import tracemalloc
-import linecache
-import fnmatch
 
-##-- end builtin imports
+# ##-- end stdlib imports
 
-from . import _interface as API # noqa: N812
-from jgdv import Proto, Mixin
-from jgdv.mixins.human_numbers import HumanNumbers_m
+import stackprinter
+import traceback
 
 # ##-- types
 # isort: off
+# General
 import abc
 import collections.abc
-from typing import TYPE_CHECKING, cast, assert_type, assert_never
-from typing import Generic, NewType
-# Protocols:
-from typing import Protocol, runtime_checkable
-# Typing Decorators:
+import typing
+import types
+from typing import cast, assert_type, assert_never
+from typing import Generic, NewType, Never
 from typing import no_type_check, final, override, overload
-
-if TYPE_CHECKING:
-    from jgdv import Maybe, Traceback
-    from typing import Final
-    from typing import ClassVar, Any, LiteralString
-    from typing import Never, Self, Literal
+from typing import Concatenate as Cons
+# Protocols and Interfaces:
+from typing import Protocol, runtime_checkable
+if typing.TYPE_CHECKING:
+    from typing import Final, ClassVar, Any, Self
+    from typing import Literal, LiteralString
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    type Snapshot   = tracemalloc.Snapshot
-    type Statistic  = tracemalloc.Statistic
-    type Difference = tracemalloc.StatisticDiff
-    type Logger     = logmod.Logger
-    type Filter     = tracemalloc.Filter
-##--|
+    from jgdv import Maybe, Traceback
 
 # isort: on
 # ##-- end types
@@ -61,91 +56,133 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-##--| Vals
-##--| Body
-@Mixin(HumanNumbers_m)
+STAT_FORMS       : Final[tuple[str, ...]] = ("traceback", "filename", "lineno")
+INIT_SNAP_NAME   : Final[str] = "_init_"
+FINAL_SNAP_NAME  : Final[str] = "_final_"
+
+def must_be_started[**I, O](fn:Callable[Cons[MallocTool, I],O]) -> Callable[Cons[MallocTool, I], O]:
+    return fn
+
+    @ftz.wraps
+    def _check(self:MallocTool, *args:I.args, **kwargs:I.kwargs) -> O:
+        assert(self.started)
+        return fn(self, *args, **kwargs)
+
+    return _check
+
+##--|
+
 class MallocTool:
     """ see https://docs.python.org/3/library/tracemalloc.html
 
-    example::
+    example:
+    with MallocTool(frame_count=2) as dm:
+        dm.whitelist(__file__)
+        dm.blacklist("*tracemalloc.py", all_frames=False)
+        val = 2
+        dm.snapshot("simple")
+        vals = [random.random() for x in range(1000)]
+        dm.current()
+        dm.snapshot("list")
+        vals = None
+        dm.current()
+        dm.snapshot("cleared")
 
-        with MallocTool(2) as dm:
-            dm.whitelist(__file__)
-            dm.blacklist("*tracemalloc.py", all_frames=False)
-            val = 2
-            dm.snapshot("simple")
-            vals = [random.random() for x in range(1000)]
-            dm.current()
-            dm.snapshot("list")
-            vals = None
-            dm.current()
-            dm.snapshot("cleared")
-
-        dm.compare("simple", "list")
-        dm.compare("list", "cleared")
-        dm.compare("list", "simple")
-        dm.inspect("list")
-
+    dm.compare("simple", "list")
+    dm.compare("list", "cleared")
+    dm.compare("list", "simple")
+    dm.inspect("list")
     """
-    num_frames      : int
-    started         : bool
-    snapshots       : list[Snapshot]
-    named_snapshots : dict[str, Snapshot]
-    filters         : list[Filter]
-    _logger         : Maybe[Logger]
-    _log_level      : int
+    frame_count          : int
+    started              : bool
+    snapshots            : list[tracemalloc.Snapshot]
+    named_snapshots      : dict[str, tracemalloc.Snapshot]
+    filters              : list[tracemalloc.Filter]
 
-    def __init__(self, *, num_frames:int=5, logger:Maybe[Logger]=None, level:int=API.DEFAULT_LOG_LEVEL) -> None:
-        self.num_frames      = num_frames
-        self.started         = False
-        self.snapshots       = []
-        self.named_snapshots = {}
-        self.filters         = []
-        self._logger         = logger
-        self._log_level      = level
+    _logger              : logmod.Logger
+    _curr_mem_msg        : str
+    _allocation_loc_msg  : str
+    _inspect_msg         : str
+    _cmp_enter_msg             : str
+    _change_msg        : str
+    _diff_msg            : str
+    _stat_line_msg       : str
+    _enter_msg           : str
+    _exit_msg            : str
+    _take_snap_msg       : str
+
+    def __init__(self, *, frame_count:int=5, logger:Maybe[logmod.Logger]=None) -> None:
+        assert(0 < frame_count)
+        self._logger              = logger or logging
+        self.frame_count          = frame_count
+        self.started              = False
+        self.snapshots            = []
+        self.named_snapshots      = {}
+        self.filters              = []
+        self.blacklist("*tracemalloc.py", all_frames=False)
+        self.blacklist(__file__)
+        ##--| Messages:
+        self._enter_msg                = "[TraceMalloc]: --> Entering, tracking %s frames"
+        self._exit_msg                 = "[TraceMalloc]: <-- Exited, with %s snapshots"
+        self._take_snap_msg            = "[TraceMalloc]: Taking Snapshot: %-15s (Current: %-10s, Peak: %s)"
+        self._curr_mem_msg             = "[TraceMalloc]: Memory: (Current: %-10s, Peak: %s)"
+        self._allocation_loc_msg       = "[TraceMalloc]: Value Allocated At: %s"
+        self._inspect_msg              = "[TraceMalloc]: ---- Inspecting: %s ----"
+        self._cmp_enter_msg            = "[TraceMalloc]: ---- Comparing (%s): %s -> %s. Objects:%s ----"
+        self._gen_exit_msg             = "[TraceMalloc]: -- %s --"
+        self._diff_msg                 = "[TraceMalloc]: -- (obj:%s) delta: %s, %s blocks --"
+        self._stat_line_msg            = "[TraceMalloc]: (obj:%s, frame:%3s) : %-50s (%s:%s)"
+        self._stat_line_no_frames_msg  = "[TraceMalloc]: (obj:%s) %-15s : %-50s (%s:%s)"
 
     def __enter__(self) -> Self:
-        tracemalloc.start(self.num_frames)
+        """ Ctx handler to start tracing object allocations """
+        self._logger.info(self._enter_msg, self.frame_count)
+        tracemalloc.start(self.frame_count)
         self.started = True
-        self.snapshot(name="init")
+        self.snapshot(INIT_SNAP_NAME)
         return self
 
-    def __exit__(self, etype:Maybe[type], err:Maybe[Exception], tb:Maybe[Traceback]) -> bool: #type:ignore[exit-return]
-        self.snapshot(name="final")
+    @must_be_started
+    def __exit__(self, etype:Maybe[type], err:Maybe[Exception], tb:Maybe[Traceback]) -> bool: # type: ignore[exit-return]
+        """ Stop tracing allocations """
+        self.snapshot(FINAL_SNAP_NAME)
+        tracemalloc.stop()
         self.started = False
-        self._log(f"Recorded {len(self.snapshots)} snapshots")
-        return False  # type: ignore[exit-return]
+        self._logger.info(self._exit_msg, len(self.snapshots))
+        return False
 
-    def whitelist(self, file_pat:str, lineno:Maybe[int]=None, *, all_frames:bool=True) -> None:
-        self.filters.append(
-            tracemalloc.Filter(inclusive=True,
-                               filename_pattern=file_pat,
-                               lineno=lineno,
-                               all_frames=all_frames),
-        )
+    ##--| Setup
 
-    def blacklist(self, file_pat:str, *, lineno:Maybe[int]=None, all_frames:bool=True) -> None:
+    def whitelist(self, file_pat:str, *, lineno:Maybe[int]=None, all_frames:bool=True) -> Self:
+        """ Add a filter to whitelist a file pattern """
         self.filters.append(
-            tracemalloc.Filter(inclusive=False,
+            tracemalloc.Filter(True,  # noqa: FBT003
                                filename_pattern=file_pat,
                                lineno=lineno,
                                all_frames=all_frames),
             )
+        return self
 
-    def file_matches(self, name:str|pl.Path, pat:str) -> bool:
-        match name:
-            case str():
-                return fnmatch.fnmatch(name, pat)
-            case pl.Path():
-                return fnmatch.fnmatch(str(name), pat)
-            case x:
-                raise TypeError(type(x))
+    def blacklist(self, file_pat:str, *, lineno:Maybe[int]=None, all_frames:bool=True) -> Self:
+        """ Blacklist a file pattern """
+        self.filters.append(
+            tracemalloc.Filter(False,  # noqa: FBT003
+                               filename_pattern=file_pat,
+                               lineno=lineno,
+                               all_frames=all_frames),
+            )
+        return self
 
-    def snapshot(self, *, name:Maybe[str]=None) -> None:
-        if not self.started:
-            msg = "DebugMalloc needs to have been entered"
-            raise RuntimeError(msg)
+    ##--| Control
 
+    @must_be_started
+    def snapshot(self, name:Maybe[str]=None) -> None:
+        """ Take a snapshot of the current memory state """
+        traced : Maybe[tuple]
+        ##--|
+        traced = tracemalloc.get_traced_memory()
+        logging.info(self._take_snap_msg, name, self._human(traced[0]), self._human(traced[1]))
+        traced = None
         snap = tracemalloc.take_snapshot()
         self.snapshots.append(snap)
         if name and name not in self.named_snapshots:
@@ -153,7 +190,106 @@ class MallocTool:
 
         tracemalloc.clear_traces()
 
-    def get_snapshot(self, val:int|str) -> Snapshot:
+    ##--| Report
+
+    @must_be_started
+    def current(self, val:Maybe[object]=None) -> None:
+        """ Print a brief report about the current memory state """
+        traced = tracemalloc.get_traced_memory()
+        self._logger.info(self._curr_mem_msg, self._human(traced[0]), self._human(traced[1]))
+        if val:
+            self._logger.info(self._allocation_loc_msg, tracemalloc.get_object_traceback(val))
+
+    def inspect(self, val:int|str, *, form:str="traceback", filter:bool=True, fullpath:bool=False) -> None:  # noqa: A002
+        """ Inspect a single snapshot of the memory state  """
+        assert(form in STAT_FORMS)
+        self._logger.info(self._inspect_msg, val)
+        snap = self._get_snapshot(val, filter=filter)
+        for stat in snap.statistics(form):
+            self._print_obj_stat_frames(stat, fullpath=fullpath)
+        else:
+            self._logger.info(self._gen_exit_msg, "inspect")
+
+    def compare(self, val1:int|str, val2:int|str, *, form:str="traceback", filter:bool=True, fullpath:bool=False, count:int=10) -> None:  # noqa: A002
+        """ Compare two snapshots,
+        with control over filtering, output formatting,
+        and the number of objects to report about
+
+        """
+        differences : list[tracemalloc.StatisticDiff]
+        assert(form in STAT_FORMS)
+        snap1 = self._get_snapshot(val1, filter=filter)
+        snap2 = self._get_snapshot(val2, filter=filter)
+
+        if 1 < self.frame_count:
+            printer = self._print_diff_frames
+        else:
+            printer = self._print_diff_noframes
+
+        differences = snap2.compare_to(snap1, form)
+        # TODO differences = self._get_top_n(differences, count=count)
+        diff_count  = len(differences)
+        self._logger.info(self._cmp_enter_msg, form, val1, val2, diff_count)
+        for i, stat in enumerate(differences):
+            printer(stat, idx=i, fullpath=fullpath)
+        else:
+            self._logger.info(self._gen_exit_msg, f"Compare ({diff_count}/{diff_count})")
+
+    ##--| utils
+
+    def _print_diff_noframes(self, stat:tracemalloc.StatisticDiff, *, idx:Maybe[int]=None, fullpath:bool=False) -> None:
+        """ Print a diff without showing the stacktrace """
+        assert(isinstance(stat, tracemalloc.StatisticDiff))
+        tb           = stat.traceback
+        frame        = tb[-1]
+        size_change  = self._human(stat.size, sign=True)
+        if fullpath:
+            path = frame.filename
+        else:
+            path = pl.Path(frame.filename).name
+        self._logger.info(self._stat_line_no_frames_msg,
+                          idx,
+                          size_change,
+                          linecache.getline(frame.filename, frame.lineno).strip(),
+                          path,
+                          frame.lineno,
+                          )
+
+
+    def _print_diff_frames(self, stat:tracemalloc.StatisticDiff, *, idx:Maybe[int]=None, fullpath:bool=False) -> None:
+        """ Print a diff, with stacktrace """
+        assert(isinstance(stat, tracemalloc.StatisticDiff))
+        self._logger.info(self._diff_msg, idx, self._human(stat.size_diff, sign=True), stat.count_diff)
+        self._print_obj_stat_frames(stat, idx=idx, fullpath=fullpath)
+
+    def _print_obj_stat_frames(self, stat:tracemalloc.Statistic|tracemalloc.StatisticDiff, *, idx:Maybe[int]=None, fullpath:bool=False) -> None:
+        """ Print a stacktrace for a a given object diff """
+        assert(isinstance(stat, tracemalloc.Statistic|tracemalloc.StatisticDiff))
+        tb     = stat.traceback
+        total  = len(tb)-1
+        for i, frame in enumerate(tb):
+            if fullpath:
+                path = frame.filename
+            else:
+                path = pl.Path(frame.filename).name
+            self._logger.info(self._stat_line_msg,
+                              idx,
+                              i-total,
+                              linecache.getline(frame.filename, frame.lineno).strip(),
+                              path,
+                              frame.lineno,
+                              )
+        else:
+            pass
+
+    def _human(self, num:int, *, sign:bool=False) -> str:
+        """ Format a sized number in a human readable way. optionally with a sign prefix """
+        return cast("str", tracemalloc._format_size(num, sign)) # type: ignore[attr-defined]
+
+    def _get_snapshot(self, val:int|str, *, filter:bool=True) -> tracemalloc.Snapshot:  # noqa: A002
+        """ Retrieve a snapshot,
+        with control of whether it is filtered or not
+        """
         match val:
             case int() if 0 <= val < len(self.snapshots):
                 snap = self.snapshots[val]
@@ -164,61 +300,14 @@ class MallocTool:
             case _:
                 raise TypeError(val)
 
-        return snap.filter_traces(self.filters)
+        if filter:
+            return snap.filter_traces(self.filters)
 
-    def current(self, val:Maybe=None) -> None:
-        traced = tracemalloc.get_traced_memory()
-        curr_mem = self.humanize(traced[0])  # type: ignore[attr-defined]
-        peak_mem = self.humanize(traced[1])  # type: ignore[attr-defined]
-        self._log("Current Memory: %s, Peak: %s", curr_mem, peak_mem)
-        if val:
-            self._log("Value allocated at: %s", tracemalloc.get_object_traceback(val))
+        return snap
 
-    def inspect(self, val:Any, *, type:str=API.DEFAULT_REPORT) -> None:  # noqa: A002, ANN401
-        self._log(f"\n-- Inspecting {val}")
-        snap = self.get_snapshot(val)
-        for stat in snap.statistics(type):
-            self._print_stat(stat)
+    def _check_file_pat(self, file_pat:str, file_name:str) -> bool:
+        return fnmatch.fnmatch(file_name, file_pat)
 
-    def compare(self, val1:int|str, val2:int|str, *, type:str=API.DEFAULT_REPORT) -> None:  # noqa: A002
-        self._log(f"\n-- Comparing {val1} to {val2}")
-        snap1 = self.get_snapshot(val1)
-        snap2 = self.get_snapshot(val2)
-
-        differences = snap2.compare_to(snap1, type)
-        diff_count  = len(differences)
-        for i, stat in enumerate(differences):
-            self._log(f"- {val1} -> {val2} diff {i}/{diff_count}:")
-            self._print_diff(stat)
-
-    def _print_diff(self, stat:Difference) -> None:
-        """ Print a Trace memory comparison """
-        assert(isinstance(stat, tracemalloc.StatisticDiff))
-        size_diff  = self.humanize(stat.size_diff, force_sign=True)  # type: ignore[attr-defined]
-        count_diff = stat.count_diff
-        self._log("%s, %s blocks", size_diff, count_diff, prefix=API.CHANGE_PREFIX)
-        self._print_stat(stat)
-
-    def _print_stat(self, stat:Statistic|Difference) -> None:
-        """ Print a Traced memory snapshot """
-        assert(isinstance(stat, tracemalloc.Statistic|tracemalloc.StatisticDiff))
-        tb = stat.traceback
-        self._log(f"Frame/Count/Size: {len(stat.traceback):}, {stat.count:}, {self.humanize(stat.size)}")  # type: ignore[attr-defined]
-        for x in range(len(tb) -1):
-            frame = tb[x]
-            path = pl.Path(frame.filename)
-            self._log(f"  {path.name:<15}", "line:", f"{frame.lineno:<7}: {linecache.getline(frame.filename, frame.lineno).strip()}")
-
-        frame = tb[-1]
-        path = pl.Path(frame.filename)
-        self._log(f"* {path.name:<15}", "line:", f"{frame.lineno:<7}: {linecache.getline(frame.filename, frame.lineno).strip()}")
-
-    def _log(self, msg:str, *args:Any, prefix:str=API.DEFAULT_PREFIX) -> None:  # noqa: ANN401
-        if self._logger is None:
-            return None
-        if not bool(msg):
-            self._logger.log(self._log_level, "")
-            return
-
-        full_fmt = f"{prefix} {msg}"
-        self._logger.log(self._log_level, full_fmt, *args)
+    def _get_top_n(self, stats:list[tracemalloc.StatisticDiff], count:int=10) -> list[tracemalloc.StatisticDiff]:
+        r""" Get the top {count} sized objects of a difference """
+        raise NotImplementedError()

@@ -1,0 +1,462 @@
+#!/usr/bin/env python3
+"""
+
+"""
+
+# Imports:
+from __future__ import annotations
+
+# ##-- stdlib imports
+import datetime
+from collections import defaultdict
+import linecache
+import enum
+import functools as ftz
+import math
+import itertools as itz
+import inspect
+import logging as logmod
+import gc
+import re
+import sys
+import time
+import weakref
+import trace
+from uuid import UUID, uuid1
+import pathlib as pl
+
+# ##-- end stdlib imports
+
+# ##-- types
+# isort: off
+# General
+import abc
+import collections.abc
+import typing
+import types
+from typing import cast, assert_type, assert_never
+from typing import Generic, NewType, Never
+from typing import no_type_check, final, override, overload
+from typing import Concatenate as Cons
+# Protocols and Interfaces:
+from typing import Protocol, runtime_checkable
+# isort: on
+# ##-- end types
+
+# ##-- type checking
+# isort: off
+if typing.TYPE_CHECKING:
+    from ._interface import TraceEvent
+    from typing import Final, ClassVar, Any, Self
+    from typing import Literal, LiteralString
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    from jgdv import Maybe, Traceback, Frame
+## isort: on
+# ##-- end type checking
+
+##-- logging
+logging = logmod.getLogger(__name__)
+##-- end logging
+
+##-- system guards
+if not hasattr(sys, "_getframe"):
+        msg = "Can't use TraceBuilder on this system, there is no sys._getframe"
+        raise ImportError(msg)
+if not hasattr(sys, "settrace"):
+    msg = "Cant use a TraceContext on this system, it has no sys.settrace"
+    raise ImportError(msg)
+
+##-- end system guards
+
+##--|
+DEFAULT_MESSAGES  : Final[dict[str, str]] = {
+    "call"        : "----> %s",
+    "caller"      : "%-20s ----> %s (l:%s)",
+    "return"      : "%-20s <---- %s",
+    "line"        : "\t%s:%s : %s",
+}
+
+EXEC_LINE      : Final[str]  = r"{}>>>> {}"
+NON_EXEC_LINE  : Final[str]  = r"{}     {}"
+FIRST_LINE     : Final[str]  = r"{}     {} (NEW FILE: {})"
+
+def must_have_results[T:TraceContext, **I, O](fn:Callable[Cons[T, I],O]) -> Callable[Cons[T, I], O]:
+    return fn
+
+    @ftz.wraps
+    def _check(self:T, *args:I.args, **kwargs:I.kwargs) -> O:
+        assert(self.results)
+        return fn(self, *args, **kwargs)
+
+    return _check
+
+class TraceObj:
+    __slots__ = ("count", "file", "func", "line_no", "package")
+    file     : Maybe[str]
+    package  : Maybe[str]
+    func     : str
+    line_no  : int
+    count    : int
+
+    def __init__(self, frame:Frame) -> None:
+        self.file     = frame.f_code.co_filename
+        self.package  = frame.f_globals.get("__package__", None)
+        self.func     = frame.f_code.co_qualname
+        self.line_no  = frame.f_lineno
+        self.count    = 0
+        assert(frame.f_globals.get("__file__", None) == frame.f_code.co_filename)
+
+    @override
+    def __repr__(self) -> str:
+        return f"<{self.package}:{self.func}:{self.line_no}>"
+
+    @property
+    def line(self) -> str:
+        assert(self.file)
+        return linecache.getline(self.file, self.line_no)
+
+##--|
+
+class TraceWriter:
+    exec_line      : str
+    non_exec_line  : str
+    first_line     : str
+
+    def __init__(self) -> None:
+        self.exec_line      = EXEC_LINE
+        self.non_exec_line  = NON_EXEC_LINE
+        self.first_line     = FIRST_LINE
+
+    def format_trace(self, trace:list[TraceObj]) -> str:  # noqa: F811
+        result : list[str] = []
+        for obj in trace:
+            result.append(obj.line)
+        else:
+            return "\n".join(result)
+
+    def format_file_execution(self, *, file:str, trace:dict[int, TraceObj], line_nums:bool=False) -> str:  # noqa: F811
+        result : list[str]
+        num    : str
+        ##--|
+        # TODO : use a semantic parse to diff executable from non-executable lines
+        result = []
+        source = linecache.getlines(str(file))
+        for i,x in enumerate(source, 1):
+            trimmed = x.removesuffix("\n")
+            if line_nums:
+                num = f"({i}) "
+            else:
+                num = ""
+            match i:
+                case 1:
+                    result.append(self.first_line.format(num,
+                                                         trimmed,
+                                                         pl.Path(file).name))
+                case int() as potential if potential in trace:
+                    # Line executed
+                    result.append(self.exec_line.format(num, trimmed))
+                case _:
+                    # No execution
+                    result.append(self.non_exec_line.format(num, trimmed))
+
+        else:
+            return "\n".join(result)
+
+##--|
+
+class TraceContext:
+    """ Utility to simplify using the trace library, as a context manager
+
+      see https://docs.python.org/3/library/trace.html
+    """
+    ##--| internal
+    _blacklist  : list[str]
+    _write_to   : Maybe[pl.Path]
+    _logger     : Maybe[logmod.Logger]
+    _formatter  : TraceWriter
+    _whitelist  : list[str]
+    ##--| options
+    cache          : Maybe[pl.Path]
+    trace_targets  : tuple[TraceEvent, ...]
+    track_targets  : tuple[str, ...]
+    timestamp      : bool
+    log_fmts       : dict[str, str]
+    ##--| results
+    called         : set[str]
+    callers  : defaultdict[str, set[str]]
+    counts   : defaultdict[tuple[str, str], int]
+    trace    : list[TraceObj]
+    lines    : list[TraceObj]
+
+    def __init__(self, *, targets:Maybe[TraceEvent|Iterable[TraceEvent]], track:Maybe[str|Iterable[str]], logger:Maybe[logmod.Logger|Literal[False]]=None, cache:Maybe[pl.Path]=None, timestamp:bool=False, log_fmts:Maybe[dict]=None) -> None:  # noqa: PLR0912, PLR0913
+        x   : Any
+        xs  : Iterable
+        ##--|
+        self._blacklist  = [sys.exec_prefix]
+        self._whitelist  = []
+        self._formatter  = TraceWriter()
+        match targets:
+            case str() as x:
+                self.trace_targets = (cast("TraceEvent", x),)
+            case [*xs]:
+                self.trace_targets = tuple(xs)
+            case None:
+                self.trace_targets = ("call",)
+            case x:
+                raise TypeError(type(x))
+        match track:
+            case str() as x:
+                self.track_targets = (x,)
+            case [*xs]:
+                self.track_targets = tuple(xs)
+            case None:
+                self.track_targets = ("trace",)
+            case x:
+                raise TypeError(type(x))
+
+        assert(all(x in ("call", "line", "return", "exception", "opcode") for x in self.trace_targets))
+        self.cache         = cache
+
+        self.timestamp     = timestamp
+        self.callers       = defaultdict(set)
+        self.called        = set()
+        self.counts        = defaultdict(lambda: 0)
+        self.trace         = []
+        self.log_fmts      = DEFAULT_MESSAGES.copy()
+        if log_fmts:
+            self.log_fmts.update(log_fmts)
+
+        match logger:
+            case False:
+                self._logger = None
+            case None:
+                self._logger = logging
+            case logmod.Logger() as log:
+                self._logger = log
+            case x:
+                raise TypeError(type(x))
+
+    def __enter__(self) -> Self:
+        sys.settrace(self.sys_trace_h) # type: ignore[arg-type]
+        return self
+
+    def __exit__(self, etype:Maybe[type], err:Maybe[Exception], tb:Maybe[Traceback]) -> bool: # type: ignore[exit-return]
+        sys.settrace(None)
+        return False
+
+    ##--| Filtering
+
+    def blacklist(self, *args:str) -> Self:
+        """ Add string's to ignore to the context """
+        self._blacklist += args
+        return self
+
+    def whitelist(self, *args:str) -> Self:
+        self._whitelist += args
+        return self
+
+    def ignores(self, curr:Maybe[str|TraceObj]) ->  bool:
+
+        match curr:
+            case None:
+                return False
+            case str() as x if bool(self._whitelist):
+                return not any(y in x for y in self._whitelist)
+            case str() as x:
+                return any(y in x for y in self._blacklist)
+            case TraceObj() as obj if bool(self._whitelist):
+                return not any(x in self._whitelist for x in [obj.package, obj.file, obj.func])
+            case TraceObj() as obj:
+                return any(x in self._blacklist for x in [obj.package, obj.file, obj.func])
+    ##--| tracer and handlers
+
+    def sys_trace_h(self, frame:Frame, event:TraceEvent, arg:Any) -> Maybe[Callable]:  # noqa: ANN401
+        """ The main handler method added to sys for tracing. """
+        if self.ignores(frame.f_code.co_qualname):
+            return None
+        match event:
+            case "call":
+                self._trace_call(frame)
+            case "line":
+                self._trace_line(frame)
+            case "return":
+                self._trace_return(frame)
+            case "exception":
+                pass
+            case "opcode":
+                pass
+            case x:
+                raise TypeError(type(x), x)
+
+        return self.sys_trace_h
+
+    def _trace_call(self, frame:Frame) -> None:
+        curr : TraceObj
+        ##--|
+        if "call" not in self.trace_targets:
+            return
+        curr = TraceObj(frame)
+        # Tracking called functions
+        match self._add_called(frame, curr):
+            case None:
+                self._log("call", curr)
+            case TraceObj() as parent:
+                self._log("caller", parent.func, curr.func, curr.line_no)
+
+        # Trace
+        self._add_trace(curr)
+
+    def _trace_line(self, frame:Frame) -> None:
+        if "line" not in self.trace_targets:
+            return
+        curr = TraceObj(frame)
+        self._log("line", curr.package, curr.line_no, curr.line.strip())
+        self._add_trace(curr)
+
+    def _trace_return(self, frame:Frame) -> None:
+        if "return" not in self.trace_targets:
+            return None
+
+        assert(frame.f_back)
+        curr    = TraceObj(frame)
+        parent  = TraceObj(frame.f_back)
+        self._log("return", parent.func, curr.func)
+        self._add_trace(curr)
+
+    ##--| assertions
+
+    def assert_called(self, name:str) -> None:
+        assert(name in self.called)
+
+    def assert_count(self, package:str, name:str, *, min:Maybe[int]=None, max:Maybe[int]=None) -> None:  # noqa: A002
+        assert((package, name) in self.counts)
+        match self.counts.get((package, name), None):
+            case None:
+                raise AssertionError()
+            case int() as x:
+                assert((min or 0) <= x)
+                assert(x < (max or math.inf))
+
+    ##--| IO
+
+    def write_coverage_file(self, *, filter:Maybe[str]=None, target:pl.Path) -> None:  # noqa: A002
+        """ Write the coverage trace into a single file
+        """
+        formatted  : dict[pl.Path, str]
+        ##--|
+        formatted = self._prepare_trace_for_writing(filter, line_nums=True)
+        match target:
+            case None:
+                pass
+            case pl.Path() as f:
+                # Write it to file
+                joined = "\n".join(formatted.values())
+                f.write_text(joined)
+
+    def write_coverage_dir(self, *,  filter:Maybe[str]=None, root:pl.Path) -> None:  # noqa: A002
+        """ Write the coverage trace into a flat directory of files
+        """
+        formatted  : dict[pl.Path, str]
+        ##--|
+        formatted = self._prepare_trace_for_writing(filter, line_nums=False)
+        match root:
+            case pl.Path() if not root.exists():
+                root.mkdir(parents=True)
+                pass
+            case pl.Path() if not root.is_dir():
+                msg = "Root needs to be a directory"
+                raise ValueError(msg)
+
+        for file,text in formatted.items():
+            (root / file.name).with_suffix(".coverage").write_text(text)
+            pass
+
+
+    def write_coverage_tree(self, *, filter:Maybe[str]=None, root:pl.Path, reroot:Maybe[pl.Path]=None) -> None:  # noqa: A002
+        """ write the coverage trace into a tree of files
+        """
+        formatted  : dict[pl.Path, str]
+        ##--|
+        formatted = self._prepare_trace_for_writing(filter, line_nums=False)
+        match root:
+            case pl.Path() if not root.exists():
+                msg = "Root needs to exist"
+                raise ValueError(msg)
+            case pl.Path() if not root.is_dir():
+                msg = "Root needs to be a directory"
+                raise ValueError(msg)
+            case _:
+                pass
+
+        for file,text in formatted.items():
+            try:
+                if reroot:
+                    file = root / file.relative_to(reroot)
+                    file.parent.mkdir(parents=True, exist_ok=True)
+                elif not file.is_relative_to(root):
+                    continue
+
+                file.with_suffix(".coverage").write_text(text)
+            except ValueError:
+                pass
+
+    def _prepare_trace_for_writing(self, filter:Maybe[str]=None, *, line_nums:bool=False) -> dict[pl.Path, str]:  # noqa: A002, ARG002
+        trace      : list[TraceObj]
+        grouped    : defaultdict[str, dict[int, TraceObj]]
+        formatted  : dict[pl.Path, str]
+        ##--|
+        # Get the trace
+        trace = self.trace
+        # filter it
+        trace = [x for x in trace if True]
+        # Group into files
+        grouped = defaultdict(dict)
+        for obj in trace:
+            assert(obj.file is not None)
+            grouped[obj.file][obj.line_no] = obj
+
+        formatted = {}
+        for file, _trace in grouped.items():
+            # format it
+            formatted[pl.Path(file)] = self._formatter.format_file_execution(file=file,
+                                                                             trace=_trace,
+                                                                             line_nums=line_nums)
+
+        return formatted
+
+    ##--| utils
+
+    def _log(self, key:str, *args) -> None:
+        if self._logger is None:
+            return
+
+        match self.log_fmts.get(key, None):
+            case None:
+                return
+            case str() as fmt:
+                self._logger.info(fmt, *args)
+
+    def _add_trace(self, curr:TraceObj) -> None:
+        if "trace" not in self.track_targets:
+            return
+        self.trace.append(curr)
+
+    def _add_called(self, frame:Frame, curr:TraceObj) -> Maybe[TraceObj]:
+        if "call" in self.track_targets:
+            assert(curr.package)
+            self.called.add(curr.func)
+            self.counts[(curr.package, curr.func)] += 1
+
+        if ("caller" in self.track_targets and frame.f_back):
+            parent = TraceObj(frame.f_back)
+            self.callers[parent.func].add(curr.func)
+            return parent
+
+        return None
+
+
+    def _add_timestamp(self) -> None:
+        pass
