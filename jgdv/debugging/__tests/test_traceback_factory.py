@@ -3,7 +3,7 @@
 TEST File updated
 
 """
-# ruff: noqa: ANN201, ARG001, ANN001, ARG002, ANN202, B011
+# ruff: noqa: ANN202, B011
 
 # Imports
 from __future__ import annotations
@@ -60,22 +60,36 @@ logging = logmod.getLogger(__name__)
 # Body:
 class TestTracebackFactory:
 
-    @pytest.fixture(scope="function")
-    def setup(self):
-        pass
-
-    ##--|
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
 
-    def test_ctory(self):
+    def test_ctor(self):
         match TracebackFactory():
             case TracebackFactory():
                 assert(True)
             case x:
                 assert(False), x
 
-    ##--|
-    @pytest.mark.skip
-    def test_todo(self):
-        pass
+    def test_basic(self):
+        obj = TracebackFactory()
+        match obj.to_tb():
+            case types.TracebackType():
+                assert(True)
+            case x:
+                assert(False), x
+
+
+    def test_getitem(self):
+        obj = TracebackFactory()
+        match obj[:1]:
+            case types.TracebackType():
+                assert(True)
+            case x:
+                assert(False), x
+
+    def test_classitem(self):
+        match TracebackFactory[:1]:
+            case types.TracebackType():
+                assert(True)
+            case x:
+                assert(False), x
