@@ -2,3 +2,4 @@ log.*
 .log
 *.auto
 dist/
+/jgdv/debugging/__tests/basic.cache

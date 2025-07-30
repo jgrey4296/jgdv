@@ -40,22 +40,43 @@ See `MallocTool`, `LogDel`, and `LogDestruction`.
 Timing
 ------
 
-See `JGDVTimer`, `TrackTime`, `TimeBlock_ctx`, and `MultiTimeBlock_ctx`.
+See `TimeCtx` and `TimeDec`. The first is a context manager timer, the second wraps it into
+a decorator.
 
+.. code:: python
+
+    with TimeCtx() as obj:
+        some_func()
+
+    logging.info("The Function took: %s seconds", obj.total_s)
+        
 ------
 Traces
 ------
 
-See `TraceBuilder`, and `TraceContext`.
-`TraceBuilder` manually builds a `Traceback` stack,
-in place of the overly verbose default `Exception` tracebacks.
-Meanwhile `TraceContext` runs an execution trace.
+See `TraceContext` and its utility classes `TraceObj` and `TraceWriter`.
+          
+.. code:: python
+          
+    obj = TraceContext(targets=("call", "line", "return"),
+                       targets=("trace","call","called"))
+    with obj:
+          other.do_something()
+
+    obj.assert_called("package.module.class.method")
+          
+
+----------
+Tracebacks
+----------
+
+See `TracebackFactory`. A Simple way of creating a traceback of frames,
+using item access to allow a slice of available frames.
 
 .. code:: python
 
     tb = TraceBuilder()
     raise Exception().with_traceback(tb[:])
-          
 
 -------
 Signals
@@ -68,7 +89,7 @@ rather than exit the program.
 Debuggers
 ---------
 
-`RunningDebugger`.
+See `RunningDebugger`.
 
 -------------
 DSL Debugging
