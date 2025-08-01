@@ -26,16 +26,16 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from jgdv import Proto
-from jgdv._abstract.pydantic_proto import ProtocolModelMeta
+from jgdv._abstract.protocols.general import Buildable_p
+from jgdv._abstract.protocols.pydantic import ProtocolModelMeta
+from jgdv.cli.errors import ArgParseError
 from jgdv.mixins.annotate import SubAlias_m
 from jgdv.structs.chainguard import ChainGuard
 
 # ##-- end 1st party imports
 
-from jgdv._abstract.protocols import Buildable_p
-from jgdv.cli.errors import ArgParseError
 from .. import _interface as API # noqa: N812
-from .._interface import ParamSpec_p, ParamSpec_i
+from .._interface import ParamSpec_i, ParamSpec_p
 
 # ##-- types
 # isort: off

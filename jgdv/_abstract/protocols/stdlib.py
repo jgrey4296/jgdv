@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-
+An Adaptation of typeshed's protocol's of the stdlib.
 """
-# ruff: noqa:
+# mypy: disable-error-code="explicit-override"
+# ruff: noqa: PLW1641, ANN401
 
 # Imports:
 from __future__ import annotations
@@ -58,7 +59,7 @@ logging = logmod.getLogger(__name__)
 
 # Vars:
 
-# Body:
+##--| General:
 
 class Hashable_p(Protocol):
 
@@ -80,11 +81,11 @@ class Reversible_p(Iterable_p, Protocol):
 
 class Generator_p(Iterator_p, Protocol):
 
-    def __next__(self) -> Any: ...  # noqa: ANN401
+    def __next__(self) -> Any: ...
 
-    def send(self, value) -> Any: ...  # noqa: ANN001, ANN401
+    def send(self, value:Any) -> Any: ...
 
-    def throw(self, typ, val=None, tb=None) -> Any: ...  # noqa: ANN001, ANN401
+    def throw(self, typ:Any, val:Maybe=None, tb:Maybe=None) -> Any: ...
 
     def close(self) -> None: ...
 
@@ -107,7 +108,7 @@ class Callable_p[*A, K, R](Protocol):
 
     def __call__(self, *args:*A, **kwds:K) -> R: ...
 
-### SETS ###
+##--| Sets
 
 class Set_p[V](Collection_p, Protocol):
     """A set is a finite, iterable container.
@@ -128,7 +129,7 @@ class Set_p[V](Collection_p, Protocol):
 
     def __ge__(self, other:Self) -> bool: ...
 
-    def __eq__(self, other:Self) -> bool: ... # type: ignore[override]
+    def __eq__(self, other:object) -> bool: ...
 
     @classmethod
     def _from_iterable(cls:type[Set_p], it:Iterable_p[V]) -> Set_p[V]: ...
@@ -183,7 +184,7 @@ class MutableSet_p[V](Set_p[V], Protocol):
 
     def __isub__(self, it:Iterable_p) -> Self: ...
 
-### MAPPINGS ###
+##--| Mappings
 
 class Mapping_p[K,V](Collection_p, Protocol):
     """A Mapping_p is a generic container for associating key/value
@@ -192,7 +193,6 @@ class Mapping_p[K,V](Collection_p, Protocol):
     This class provides concrete generic implementations of all
     methods except for __getitem__, __iter__, and __len__.
     """
-    __hash__ = None
 
     def __getitem__(self, key:K) -> V: ...
 
@@ -259,11 +259,11 @@ class MutableMapping_p[K,V](Mapping_p[K,V], Protocol):
 
     def clear(self) -> None: ...
 
-    def update(self, other:Iterable_p=(), /, **kwds:Any) -> None: ...  # noqa: ANN401
+    def update(self, other:Iterable_p=(), /, **kwds:Any) -> None: ...
 
     def setdefault[D:V|Maybe](self, key:K, default:Maybe[D]=None) -> V|D: ...
 
-### SEQUENCES ###
+##--| Sequences
 
 class Sequence_p[V](Reversible_p, Collection_p, Protocol):
     """All the operations on a read-only sequence.

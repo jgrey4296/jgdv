@@ -10,11 +10,7 @@ Abstract APIs
 
 This module provides various abstractions for reuse, including:
 
-1. Protocols
-2. Type Aliases
-3. An import Prelude
+1. Protocols, in :ref:`jgdv._abstract.protocols`.
+2. Type Aliases, in :ref:`jgdv._abstract.types`.
+3. An import Prelude, in :ref:`jgdv._abstract.prelude`.
    
-
-See :ref:`jgdv._abstract` for the classes.
-
-    

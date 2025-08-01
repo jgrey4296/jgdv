@@ -25,7 +25,7 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
-from jgdv._abstract.protocols import SpecStruct_p
+from jgdv._abstract.protocols.general import SpecStruct_p
 from jgdv.structs.strang import Strang, CodeReference
 from .._interface import Key_p, NonKey_p, MultiKey_p, IndirectKey_p, LIFT_EXPANSION_PATTERN
 
@@ -50,7 +50,7 @@ if typing.TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import MutableMapping, Hashable
 
-    from jgdv import Maybe, Rx, Ident, RxStr, Ctor, CHECKTYPE, FmtStr
+    from jgdv import Maybe, Rx, Ident, RxStr, CtorFn, CHECKTYPE, FmtStr
     type LitFalse               = Literal[False]
     type InstructionAlts        = list[ExpInst_d]
     type InstructionList        = list[InstructionAlts]
@@ -275,7 +275,7 @@ class InstructionFactory_p(Protocol):
 
 class Expander_p[T](Protocol):
 
-    def set_ctor(self, ctor:Ctor[T]) -> None: ...
+    def set_ctor(self, ctor:CtorFn[..., T]) -> None: ...
 
     def redirect(self, source:T, *sources:dict, **kwargs:Any) -> list[Maybe[ExpInst_d]]:  ...  # noqa: ANN401
 

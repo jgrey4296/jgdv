@@ -29,7 +29,7 @@ from jgdv.structs.strang import CodeReference
 
 from .._interface import DKeyMark_e
 from .._util._interface import ExpInst_d, InstructionFactory_p
-from .. import DKey
+from ..dkey import DKey
 from ..keys import MultiDKey, NonDKey, SingleDKey
 
 # ##-- types

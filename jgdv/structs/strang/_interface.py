@@ -31,7 +31,7 @@ from uuid import UUID, uuid1
 from weakref import ref
 # ##-- end stdlib imports
 
-from jgdv._abstract.str_proto import String_p
+from jgdv._abstract.protocols.str import String_p
 
 # ##-- types
 # isort: off

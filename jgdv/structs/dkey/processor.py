@@ -22,7 +22,7 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-from jgdv._abstract.pre_processable import PreProcessor_p
+from jgdv._abstract.protocols.pre_processable import PreProcessor_p
 from jgdv.mixins.annotate import SubAlias_m
 from jgdv.structs.strang import _interface as StrangAPI  # noqa: N812
 from jgdv.structs.strang.processor import StrangBasicProcessor

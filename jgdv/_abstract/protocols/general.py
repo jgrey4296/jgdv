@@ -52,6 +52,18 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+# ##-- Generated Exports
+__all__ = ( # noqa: RUF022
+
+# -- Classes
+"ActionGrouper_p", "ArtifactStruct_p", "Buildable_p", "DILogger_p",
+"ExecutableTask", "Factory_p", "FailHandler_p", "InstantiableSpecification_p",
+"Loader_p", "Nameable_p", "Persistent_p", "SpecStruct_p", "StubStruct_p",
+"TomlStubber_p", "UpToDate_p", "Visitor_p",
+
+)
+# ##-- end Generated Exports
+
 @runtime_checkable
 class ArtifactStruct_p(Protocol):
     """ Base class for artifacts, for type matching """

@@ -29,7 +29,7 @@ import sh
 
 # ##-- 1st party imports
 from jgdv import Mixin
-from jgdv._abstract.protocols import SpecStruct_p
+from jgdv._abstract.protocols.general import SpecStruct_p
 
 # ##-- end 1st party imports
 

@@ -25,7 +25,7 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
-from jgdv._abstract.stdlib_protos import Mapping_p
+from jgdv._abstract.protocols.stdlib import Mapping_p
 
 # ##-- types
 # isort: off

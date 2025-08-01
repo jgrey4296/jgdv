@@ -19,29 +19,47 @@ import re
 import time
 import types
 import weakref
-# from copy import deepcopy
-# from dataclasses import InitVar, dataclass, field
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable, Generator)
 from uuid import UUID, uuid1
 
 ##-- end builtin imports
 
-##-- lib imports
-import more_itertools as mitz
-##-- end lib imports
+# ##-- types
+# isort: off
+# General
+import abc
+import collections.abc
+import typing
+import types
+from typing import cast, assert_type, assert_never
+from typing import Generic, NewType, Never
+from typing import no_type_check, final, override, overload
+# Protocols and Interfaces:
+from typing import Protocol, runtime_checkable
+# isort: on
+# ##-- end types
+
+# ##-- type checking
+# isort: off
+if typing.TYPE_CHECKING:
+    from typing import Final, ClassVar, Any, Self
+    from typing import Literal, LiteralString
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    from jgdv import Maybe
+## isort: on
+# ##-- end type checking
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-from jgdv._interfaces.decorator import JGDVDecorator_i
+from jgdv.decorators._interface import ClsDecorator_p
 
 DEBUG_DESTRUCT_ON = False
 
-class LogDestruction(JGDVDecorator_i):
+class LogDestruction(ClsDecorator_p):
     """
     A Decorator to log when instances of a class are deleted
     """

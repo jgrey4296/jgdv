@@ -26,7 +26,7 @@ import atexit # for @atexit.register
 import faulthandler
 # ##-- end stdlib imports
 
-from jgdv._abstract.pre_processable import PreProcessor_p
+from jgdv._abstract.protocols.pre_processable import PreProcessor_p
 from jgdv.structs.strang import _interface as StrangAPI  # noqa: N812
 from jgdv.structs.strang.processor import StrangBasicProcessor
 from . import _interface as API # noqa: N812
