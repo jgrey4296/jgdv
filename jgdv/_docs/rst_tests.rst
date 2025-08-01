@@ -42,8 +42,9 @@ Container Test
 
       print('This is inside a container blah')
 
--------------
 
+Graphviz Test
+#############
 
 .. graphviz::
 
@@ -53,3 +54,5 @@ Container Test
    "baz" -> "qqq";
    "awef" -> "qqq";
    }
+
+-------------

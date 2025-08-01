@@ -23,10 +23,27 @@ Chainguard
 
 .. code:: python
 
-   # TODO
+   data = ChainGuard.load("some.toml")
+   data['key']
+   data.key
+   data.table.sub.value
+   data.on_fail(2).table.sub.value()
 
+Strang
+======
+
+A Structured String class.
+
+.. code:: python
+
+   example : Strang = Strang("head.meta.data::tail.value")
+   example[0:] == "head.meta.data"
+   example[1:] == "tail.value"
+   
 DKey
 ====
+
+Extends :ref:`Strang` to become a key.
 
 .. code:: python
 
@@ -35,26 +52,12 @@ DKey
 Locator
 =======
 
+A :ref:`Locator` and :ref:`Location` pair, to provide a central store of paths.
+
 .. code:: python
 
    # TODO 
 
-Pathy
-=====
-
-.. code:: python
-
-   # TODO
-
-Strang
-======
-
-.. code:: python
-
-   example : Strang = Strang("head.meta.data::tail.value")
-   example[0:] == "head.meta.data"
-   example[1:] == "tail.value"
-   
    
 .. Links:
 .. _path: https://docs.python.org/3/library/pathlib.html#pathlib.PurePath

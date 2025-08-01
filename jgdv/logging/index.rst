@@ -18,8 +18,8 @@ to print error stack traces a bit nicer.
 
 
 
-New Logging Levels
-==================
+Personal Logging Levels
+=======================
 
 After reading Nicole Tietz's
 `The only two log levels you need are info and error <tieztpost_>`_,

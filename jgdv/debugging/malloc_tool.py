@@ -73,25 +73,32 @@ def must_be_started[**I, O](fn:Callable[Cons[MallocTool, I],O]) -> Callable[Cons
 ##--|
 
 class MallocTool:
-    """ see https://docs.python.org/3/library/tracemalloc.html
+    r""" see https://docs.python.org/3/library/tracemalloc.html
 
-    example:
-    with MallocTool(frame_count=2) as dm:
-        dm.whitelist(__file__)
-        dm.blacklist("*tracemalloc.py", all_frames=False)
-        val = 2
-        dm.snapshot("simple")
-        vals = [random.random() for x in range(1000)]
-        dm.current()
-        dm.snapshot("list")
-        vals = None
-        dm.current()
-        dm.snapshot("cleared")
+     eg:_
 
-    dm.compare("simple", "list")
-    dm.compare("list", "cleared")
-    dm.compare("list", "simple")
-    dm.inspect("list")
+
+    ..code: python
+
+
+        with MallocTool(frame_count=2) as dm:
+            dm.whitelist(__file__)
+            dm.blacklist("\*tracemalloc.py", all_frames=False)
+            val = 2
+            dm.snapshot("simple")
+            vals = [random.random() for x in range(1000)]
+            dm.current()
+            dm.snapshot("list")
+            vals = None
+            dm.current()
+            dm.snapshot("cleared")
+
+        dm.compare("simple", "list")
+        dm.compare("list", "cleared")
+        dm.compare("list", "simple")
+        dm.inspect("list")
+
+
     """
     frame_count          : int
     started              : bool

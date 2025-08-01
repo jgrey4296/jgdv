@@ -17,7 +17,7 @@ Mallocs
 -------
 
 Utilities for measuring memory usage.
-See `MallocTool`, `LogDel`, and `LogDestruction`.
+See :ref:`MallocTool`, :ref:`LogDel`, and :ref:`LogDestruction`.
 
 
 .. code:: python
@@ -40,7 +40,7 @@ See `MallocTool`, `LogDel`, and `LogDestruction`.
 Timing
 ------
 
-See `TimeCtx` and `TimeDec`. The first is a context manager timer, the second wraps it into
+See :ref:`TimeCtx` and :ref:`TimeDec`. The first is a context manager timer, the second wraps it into
 a decorator.
 
 .. code:: python
@@ -54,7 +54,7 @@ a decorator.
 Traces
 ------
 
-See `TraceContext` and its utility classes `TraceObj` and `TraceWriter`.
+See :ref:`TraceContext` and its utility classes :ref:`TraceObj` and :ref:`TraceWriter`.
           
 .. code:: python
           
@@ -70,7 +70,7 @@ See `TraceContext` and its utility classes `TraceObj` and `TraceWriter`.
 Tracebacks
 ----------
 
-See `TracebackFactory`. A Simple way of creating a traceback of frames,
+See :ref:`TracebackFactory`. A Simple way of creating a traceback of frames,
 using item access to allow a slice of available frames.
 
 .. code:: python
@@ -78,20 +78,25 @@ using item access to allow a slice of available frames.
     tb = TraceBuilder()
     raise Exception().with_traceback(tb[:])
 
+    
 -------
 Signals
 -------
-See `SignalHandler` and it's default `NullHandler`.
+
+See :ref:`SignalHandler` and it's default :ref:`NullHandler`.
 `SignalHandler` traps SIGINT signals and handles them,
 rather than exit the program.
+
 
 ---------
 Debuggers
 ---------
 
-See `RunningDebugger`.
+See :ref:`RunningDebugger`.
+
 
 -------------
 DSL Debugging
 -------------
-`PyParsingDebuggerControl`.
+
+:ref:`PyParsingDebuggerControl`.

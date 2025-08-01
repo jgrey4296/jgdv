@@ -3,11 +3,14 @@
 jgdv.debugging : Utilities for debugging
 
 Provides:
-- SignalHandler      : for installing handlers for interrupts
-- TimeBlock_ctx      : CtxManager for simple timing
-- MultiTimeBlock_ctx : for more complicated timing
-- TraceBuilder       : for slicing the traceback provided in exceptions
-- LogDel             : a class decorator for logging when __del__ is called
+
+#. SignalHandler     : For installing handlers for interrupts
+#. TimeCtx           : A CtxManager for simple timing
+#. TimeDec           : A Decorator to time functions
+#. TracebackFactory  : For slicing the traceback provided in exceptions
+#. TraceContext      : A CtxManager for tracing function calls.
+#. MallocTool        : For profiling memory usage.
+#. LogDel            : A class decorator for logging when __del__ is called
 
 """
 from .signal_handler import SignalHandler, NullHandler

@@ -168,7 +168,7 @@ class ParamProcessor:
                 pass
             case x:
                 assert(callable(x))
-                return x(args)
+                return x(args) # type: ignore[no-any-return]
 
         if obj.type_ is bool:
             return obj.name, [args[0]], 1
@@ -461,7 +461,7 @@ class ParamSpec[*T](_ParamClassMethods, ParamSpec_i, SubAlias_m, fresh_registry=
             case str():
                 return f"{self.prefix}{self.name}"
             case _:
-                return self.name
+                return self.name # type: ignore[no-any-return]
 
     @override
     @ftz.cached_property
@@ -514,6 +514,7 @@ class ParamSpec[*T](_ParamClassMethods, ParamSpec_i, SubAlias_m, fresh_registry=
     def consume(self, args:list[str], *, offset:int=0) -> Maybe[tuple[dict, int]]:
         return self._processor.consume(self, args, offset=offset)
 
+    @override
     def help_str(self, *, force:bool=False) -> str:
         parts : list
         if self.implicit and not force:

@@ -64,7 +64,10 @@ class JGDVLogger(LoggerClass):
 
 
     A Logger can add prefixes to a logged messages.
-    eg:
+    eg:_
+
+    ..code: python
+
         logger.set_prefixes('[Test]')
         logger.info('this is a test message')
         # Result :  '[Test] this is a test message'

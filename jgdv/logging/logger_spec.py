@@ -66,7 +66,7 @@ from jgdv import Maybe
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-env                  : dict             = os.environ # type: ignore
+env                  : dict             = cast("dict", os.environ)
 IS_PRE_COMMIT        : Final[bool]      = "PRE_COMMIT" in env
 DEFAULT_FORMAT       : Final[str] = "{levelname:<8} : {message}"
 DEFAULT_FILE_FORMAT  : Final[str] = "%Y-%m-%d::%H:%M.log"
@@ -181,7 +181,7 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
     _applied                   : bool                            = False
 
     @staticmethod
-    def build(data:bool|list|dict, **kwargs:Any) -> LoggerSpec:  # noqa: ANN401
+    def build(data:bool|list|dict, **kwargs:Any) -> LoggerSpec:  # noqa: ANN401, FBT001
         """
           Build a single spec, or multiple logger specs targeting the same logger
         """
@@ -230,7 +230,7 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
     @field_validator("target", mode="before")
     def _validate_target(cls, val:list|str|pl.Path) -> list[str|pl.Path]:  # noqa: N805
         match val:
-            case [*xs] if all(x in API.TARGETS for x in xs): # type: ignore
+            case [*xs] if all(x in API.TARGETS for x in xs):
                 return val
             case str() if val in API.TARGETS:
                 return [val]
@@ -264,7 +264,8 @@ class LoggerSpec(HandlerBuilder_m, BaseModel, metaclass=ProtocolModelMeta):
         logger : logmod.Logger
         match onto:
             case logmod.Logger() if self._applied:
-                raise ValueError("Tried to apply logger when spec already has a logger", self.fullname)
+                msg = "Tried to apply logger when spec already has a logger"
+                raise ValueError(msg, self.fullname)
             case logmod.Logger():
                 logger = onto
             case None if self._applied:

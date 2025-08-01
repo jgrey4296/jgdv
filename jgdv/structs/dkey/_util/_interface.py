@@ -287,9 +287,9 @@ class Expander_p[T](Protocol):
 
 class ExpansionHooks_p(Protocol):
 
-    def exp_to_inst_h(self, root:ExpInst_d, factory:InstructionFactory_p,  **kwargs) -> Maybe[ExpInst_d]: ...  # noqa: ANN401
+    def exp_to_inst_h(self, root:ExpInst_d, factory:InstructionFactory_p,  **kwargs:Any) -> Maybe[ExpInst_d]: ...  # noqa: ANN401
 
-    def exp_generate_chains_h(self, root:ExpInst_d, factory:InstructionFactory_p, opts:ExpOpts) -> list[ExpInstChain_d|ExpInst_d]: ...  # noqa: ANN401
+    def exp_generate_chains_h(self, root:ExpInst_d, factory:InstructionFactory_p, opts:ExpOpts) -> list[ExpInstChain_d|ExpInst_d]: ...
 
     def exp_extra_sources_h(self, current:SourceChain_d) -> SourceChain_d: ...
 

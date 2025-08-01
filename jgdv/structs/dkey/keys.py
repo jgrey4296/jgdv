@@ -21,8 +21,9 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 from . import _interface as API # noqa: N812
-from ._interface import INDIRECT_SUFFIX, RAWKEY_ID, DKeyMark_e, NonKey_p, Key_p
-from ._util._interface import ExpInst_d, SourceChain_d, ExpInstChain_d, InstructionFactory_p
+from ._interface import INDIRECT_SUFFIX, RAWKEY_ID, DKeyMark_e, Key_p, NonKey_p
+from ._util._interface import (ExpInst_d, ExpInstChain_d, InstructionFactory_p,
+                               SourceChain_d)
 from .dkey import DKey
 
 # ##-- types
@@ -130,22 +131,21 @@ class MultiDKey(DKey, mark=list):
         return True
 
     def keys(self) -> list[DKey]:
-        # return [DKey(x, force=DKey[Any], implicit=True) for x in self.data.meta if bool(x)]
         return [DKey(x, implicit=True) for x in self.data.meta if bool(x)]
 
-    def exp_generate_chains_h(self, root:ExpInst_d, factory:InstructionFactory_p, opts:dict) -> list[ExpInstChain_d|ExpInst_d]:  # noqa: ANN401, ARG002
+    def exp_generate_chains_h(self, root:ExpInst_d, factory:InstructionFactory_p, opts:dict) -> list[ExpInstChain_d|ExpInst_d]:
         """ Lift subkeys to expansion instructions """
-        x : Any
         targets : list[ExpInstChain_d|ExpInst_d]= []
         keys  = self.keys()
         targets.append(ExpInstChain_d(root=self, merge=len(keys))) # type: ignore[arg-type]
         for key in keys:
-            inst = factory.build_inst(key, root, opts, decrement=False)
-            if inst is None or inst.literal is True:
-                targets.append(inst)
-                continue
-
-            targets.append(*factory.build_chains(inst, opts))
+            match factory.build_inst(key, root, opts, decrement=False):
+                case None:
+                    targets.append(factory.null_inst())
+                case ExpInst_d() as inst if inst.literal is True:
+                    targets.append(inst)
+                case ExpInst_d() as inst:
+                    targets.append(*factory.build_chains(inst, opts))
         else:
             return targets
 

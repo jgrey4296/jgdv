@@ -69,7 +69,7 @@ class HelpParam(ToggleParam): #[bool]):
 
     desc : str = "The Default Help Param"
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs:Any) -> None:  # noqa: ANN401
         kwargs.update({"name":"--help", "default":False, "implicit":True})
         super().__init__(**kwargs)
 
@@ -78,7 +78,7 @@ class VerboseParam(RepeatToggleParam): #[int]):
 
     desc : str = "The Default Verbosity Param"
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs:Any) -> None:  # noqa: ANN401
         kwargs.update({"name":"--verbose", "default":0, "implicit":True})
         super().__init__(**kwargs)
 
@@ -87,6 +87,6 @@ class SeparatorParam(LiteralParam):
 
     desc : str = "The Default Separator Param"
 
-    def __init__(self, **kwargs):
+    def __init__(self, **kwargs:Any) -> None:  # noqa: ANN401
         kwargs.update({"name":"--", "implicit":True})
         super().__init__(**kwargs)

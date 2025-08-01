@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 
-
 See EOF for license/metadata/notes as applicable
 """
 
@@ -68,13 +67,15 @@ class LogDestruction(ClsDecorator_p):
         """ standalone del logging """
         logging.warning("Deleting: %s", self)
 
-    def _debug_del_dec(fn):
+    def _debug_del_dec(self, fn):
         """ wraps existing del method """
-        def _wrapped(*args):
-            logging.warning("Deleting: %s", self)
+
+        def _wrapped(_self, *args, **kwargs):
+            logging.warning("Deleting: %s", _self)
             fn(*args)
 
-    def __call__(self):
+    @override
+    def __call__[T](self, cls:type[T]) -> type[T]:
         """
         A Class Decorator, attaches a debugging statement to the object destructor
         """
@@ -82,7 +83,7 @@ class LogDestruction(ClsDecorator_p):
             case (False, _):
                 pass
             case (True, True):
-                setattr(cls, "__del__", self._debug_del_dec(cls.__del__))
+                setattr(cls, "__del__", self._debug_del_dec(cls.__del__)) # type: ignore[attr-defined]
             case (True, False):
-                setattr(cls, "__del__", self._debug_instance_del)
+                setattr(cls, "__del__", self._debug_del)
         return cls

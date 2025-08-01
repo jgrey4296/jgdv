@@ -52,7 +52,7 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-def plugin_selector(plugins:ChainGuard, *,
+def plugin_selector(plugins:ChainGuard, *,  # noqa: PLR0911, PLR0912
                     target:str="default",
                     fallback:Maybe[type|str|CodeReference]=None) -> Maybe[type]:
     """ Selects and loads a plugin from a chainguard,
@@ -71,9 +71,9 @@ def plugin_selector(plugins:ChainGuard, *,
             try:
                 name = CodeReference(target)
                 return name()
-            except ImportError as err:
+            except ImportError as _:
                 pass
-            except (AttributeError, KeyError) as err:
+            except (AttributeError, KeyError) as _:
                 pass
 
     match plugins:
@@ -88,8 +88,9 @@ def plugin_selector(plugins:ChainGuard, *,
             if bool(matching):
                 return matching[0].load()
             else:
-                raise ValueError("No matching plugin for target", target)
-        case type():
+                msg = "No matching plugin for target"
+                raise ValueError(msg, target)
+        case type() as x:
             return x
         case _:
             msg = "Unknown type passed to plugin selector"

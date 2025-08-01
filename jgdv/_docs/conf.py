@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 # Configuration file for the Sphinx documentation builder.
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
+# ruff: noqa: A001, ERA001
+templates_path    : list
+html_static_path  : list
+html_js_files     : list
+html_sidebars     : dict
 
-# -- Path setup --------------------------------------------------------------
+
+#  ##-- Path setup -------------------------------------------------------------
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -14,14 +20,6 @@ import pathlib as pl
 local_mod = str(pl.Path('../../').resolve())
 sys.path.insert(0, local_mod)
 
-# (Relative to this file):
-templates_path   = ['_templates']
-html_static_path = ['_static']
-
-# Relative to static dir, or fully qualified urls
-html_css_files = ["custom.css"]
-html_js_files  = []
-# html_style = "custom.css"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -30,19 +28,18 @@ exclude_patterns = [
     '**/flycheck_*.py',
     "**/__tests/*",
     "_docs/_templates/*",
-    # "_docs/*.py",
     "README.md",
 ]
 
 root_doc = "index"
-# -- Project information -----------------------------------------------------
+# ##-- Project information ----------------------------------------------------
 
 project   = 'jgdv'
-copyright = '2022, john'
+copyright = '2024, john'
 author    = 'john'
 release   = "1.2.0"
 
-# -- General configuration ---------------------------------------------------
+# ##-- General configuration --------------------------------------------------
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -64,12 +61,23 @@ extensions = [
     "sphinx.ext.viewcode",
     ]
 
-# -- Options for HTML output -------------------------------------------------
+# ##-- HTML ------------------------------------------------------------
 # https://sphinx-rtd-theme.readthedocs.io/en/stable/configuring.html
-html_theme         = "sphinx_rtd_theme"
-html_theme_options = {}
-html_sidebars      = {}
-
+html_theme                = "sphinx_rtd_theme"
+html_split_index          = False
+html_copy_source          = True
+html_show_sourcelink      = True
+html_show_search_summary  = False
+html_theme_options        = {}
+html_sidebars             = {}
+# (Relative to this file):
+templates_path    = ['_templates']
+html_static_path  = ['_static']
+# Relative to static dir, or fully qualified urls
+html_css_files          = ["custom.css"]
+html_js_files           = ["custom.js"]
+html_domain_indices     = {'py-modindex'}
+modindex_common_prefix  = ["jgdv."]
 html_theme_options.update({
     'logo_only'                   : False,
     # 'display_version'             : True,
@@ -82,11 +90,13 @@ html_theme_options.update({
     'sticky_navigation'           : True,
     'navigation_depth'            : 4,
     'includehidden'               : True,
-    'titles_only'                 : False
-
+    'titles_only'                 : False,
 })
+html_context = {
+    "collapse_index_py": True,
+}
 
-# -- Extension Options -------------------------------------------------
+# ##-- Extension Options ------------------------------------------------------
 # https://sphinx-autoapi.readthedocs.io/en/latest/reference/config.html
 autoapi_keep_files        = False
 autoapi_generate_api_docs = True
@@ -109,6 +119,9 @@ autoapi_options           = [
     'show-inheritance',
     'show-module-summary',
 ]
+
+# ##-- Jinja --------------------------------------------------
+import jinja2
 
 def filter_contains(val:list|str, *needles:str) -> bool:
     match val:

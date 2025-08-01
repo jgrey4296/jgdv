@@ -11,12 +11,18 @@ Glossary
 
 .. glossary::
 
-   doot.toml
-        The main config file.
 
-   task.toml
-        Files that provide :term:`taskspec`.
+    Interface
+        A **functional** description of something.
 
+    Hook
+        An overridable method to customize behaviour.
 
-   taskspec
-        A Toml Specification of a :term:`task`.
+    Slot
+        Lightweight data objects in python defined using ``__slots__``.
+
+    Mixin
+        A Non-standalone class that encapsulates some unit of work, for other classes to
+        inherit from.
+
+    

@@ -91,7 +91,7 @@ class DKeyExpansionDecorator(DataDec):
     def __init__(self, keys:list[DKey], ignores:Maybe[list[str]]=None, **kwargs) -> None:
         kwargs.setdefault("mark", "_dkey_marked")
         kwargs.setdefault("data", "_dkey_vals")
-        super().__init__(keys, **kwargs) # type: ignore
+        super().__init__(keys, **kwargs) # type: ignore[arg-type]
         match ignores:
             case None:
                 self._param_ignores = PARAM_IGNORES
@@ -100,7 +100,8 @@ class DKeyExpansionDecorator(DataDec):
             case x:
                 raise TypeError(type(x))
 
-    def _wrap_method_h[**In, Out](self, meth:Method[In,Out]) -> Decorated[In, Out]:
+    @override
+    def _wrap_method_h[**In, Out](self, meth:Func[In,Out]) -> Decorated[In, Out]:
         data_key = self._data_key
 
         def _method_action_expansions(*call_args:In.args, **kwargs:In.kwargs) -> Out:
@@ -114,8 +115,9 @@ class DKeyExpansionDecorator(DataDec):
                 return meth(*call_args, *expansions, **kwargs)
 
         # -
-        return cast("Method", _method_action_expansions)
+        return cast("Decorated[In, Out]", _method_action_expansions)
 
+    @override
     def _wrap_fn_h[**In, Out](self, fn:Func[In, Out]) -> Decorated[In, Out]:
         data_key = self._data_key
 
@@ -132,13 +134,19 @@ class DKeyExpansionDecorator(DataDec):
         # -
         return _fn_action_expansions
 
+    @override
     def _validate_sig_h(self, sig:Signature, form:DForm_e, args:Maybe[list[DKey]]=None) -> None:
+        x : Any
+        y : Any
+        ##--|
         # Get the head args
         match form:
             case DForm_e.FUNC:
                 head = ["spec", "state"]
             case DForm_e.METHOD:
                 head = ["self", "spec", "state"]
+            case x:
+                raise TypeError(type(x))
 
         params      = list(sig.parameters)
         tail        = args or []
@@ -188,6 +196,7 @@ class DKeyed:
     _extensions         : ClassVar[set[type]] = set()
     _decoration_builder : ClassVar[type]      = DKeyExpansionDecorator
 
+    @override
     def __init_subclass__(cls) -> None:
         """
         Subclasses of DKeyed are stored, and used to extend DKeyed
