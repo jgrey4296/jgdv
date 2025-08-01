@@ -14,11 +14,11 @@ JGDV is my kitchen sink library.
 Things I keep writing that don't warrant a separate library get shoved in here.
 Of interest:
 
-#. :ref:`LogConfig<jgdv.logging.config>`
-#. :ref:`Strang<jgdv.structs.strang>`
-#. :ref:`ChainGuard<jgdv.structs.chainguard>`
-#. :ref:`Locator<jgdv.structs.locator>`
-#. :ref:`DKey<jgdv.structs.dkey>`
+#. :py:mod:`JGDVLogConfig<jgdv.logging>`
+#. :py:mod:`ChainGuard<jgdv.structs.chainguard>`
+#. :py:mod:`Strang<jgdv.structs.strang>`
+#. :py:mod:`DKey<jgdv.structs.dkey>`
+#. :py:mod:`Locator<jgdv.structs.locator>`
 
 .. _repo:
 
@@ -38,7 +38,7 @@ If you find a bug, bug me, unsurprisingly, on the `issue tracker <https://github
    :hidden:
       
    _abstract/index
-   
+      
    [a-z]*/index
 
    _docs/*

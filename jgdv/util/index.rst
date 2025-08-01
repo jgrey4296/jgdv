@@ -9,4 +9,5 @@ Utilities
 .. contents:: Contents
 
 
-A module for miscellaneous utilities which don't fit elsewhere.
+A :ref:`module<jgdv.util>` for miscellaneous utilities which don't fit elsewhere.
+Currently :func:`plugin_selector<jgdv.util.plugins.selector.plugin_selector>`.

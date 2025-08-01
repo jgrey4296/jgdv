@@ -8,16 +8,15 @@ Debugging
 
 .. contents:: Contents
 
-The package :ref:`jgdv.debugging` provides utilities to help with debugging memory allocations,
+This :ref:`package<jgdv.debugging>` provides utilities to help with debugging memory allocations,
 function timing, stack traces, capturing signals, and pyparsing DSLs.
-
 
 -------
 Mallocs
 -------
 
 Utilities for measuring memory usage.
-See :ref:`MallocTool`, :ref:`LogDel`, and :ref:`LogDestruction`.
+See :ref:`MallocTool<jgdv.debugging.malloc_tool.MallocTool>`, :func:`LogDel<jgdv.debugging.destruction.LogDel>`, and :ref:`LogDestruction<jgdv.debugging.destruction.LogDestruction>`.
 
 
 .. code:: python
@@ -40,7 +39,7 @@ See :ref:`MallocTool`, :ref:`LogDel`, and :ref:`LogDestruction`.
 Timing
 ------
 
-See :ref:`TimeCtx` and :ref:`TimeDec`. The first is a context manager timer, the second wraps it into
+See :ref:`TimeCtx<jgdv.debugging.timing.TimeCtx>` and :ref:`TimeDec<jgdv.debugging.timing.TimeDec>`. The first is a context manager timer, the second wraps it into
 a decorator.
 
 .. code:: python
@@ -54,7 +53,7 @@ a decorator.
 Traces
 ------
 
-See :ref:`TraceContext` and its utility classes :ref:`TraceObj` and :ref:`TraceWriter`.
+See :ref:`TraceContext<jgdv.debugging.trace_context.TraceContext>` and its utility classes :ref:`TraceObj<jgdv.debugging.trace_context.TraceObj>` and :ref:`TraceWriter<jgdv.debugging.trace_context.TraceWriter>`.
           
 .. code:: python
           
@@ -70,12 +69,12 @@ See :ref:`TraceContext` and its utility classes :ref:`TraceObj` and :ref:`TraceW
 Tracebacks
 ----------
 
-See :ref:`TracebackFactory`. A Simple way of creating a traceback of frames,
+See :ref:`TracebackFactory<jgdv.debugging.traceback_factory.TracebackFactory>`. A Simple way of creating a traceback of frames,
 using item access to allow a slice of available frames.
 
 .. code:: python
 
-    tb = TraceBuilder()
+    tb = TracebackFactory()
     raise Exception().with_traceback(tb[:])
 
     
@@ -83,8 +82,8 @@ using item access to allow a slice of available frames.
 Signals
 -------
 
-See :ref:`SignalHandler` and it's default :ref:`NullHandler`.
-`SignalHandler` traps SIGINT signals and handles them,
+See :ref:`SignalHandler<jgdv.debugging.signal_handler.SignalHandler>` and it's default :ref:`NullHandler<jgdv.debugging.signal_handler.NullHandler>`.
+``SignalHandler`` traps SIGINT signals and handles them,
 rather than exit the program.
 
 
@@ -92,11 +91,11 @@ rather than exit the program.
 Debuggers
 ---------
 
-See :ref:`RunningDebugger`.
+See :ref:`RunningDebugger<jgdv.debugging.running_debugger.RunningDebugger>`.
 
 
 -------------
 DSL Debugging
 -------------
 
-:ref:`PyParsingDebuggerControl`.
+:ref:`PyParsingDebuggerControl<jgdv.debugging.dsl.PyParsingDebuggerControl>`.

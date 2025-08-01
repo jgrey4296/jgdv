@@ -9,14 +9,14 @@ Structs
 .. contents:: Contents
 
 
-:ref:`jgdv.structs` provides some of the key classes of JGDV.
+:ref:`structs<jgdv.structs>` provides some of the key classes of ``JGDV``.
 Especially:
 
-1. :ref:`jgdv.structs.chainguard`, a type guarded failable accessor to nested mappings.
-2. :ref:`jgdv.structs.dkey`, a type guarded Key for getting values from dicts.
-3. :ref:`jgdv.structs.locator`, a Location/Path central store.
-4. :ref:`jgdv.structs.pathy`, a subtype of `Path <path_>`_ for disguishing directories from files at the type level.
-5. :ref:`jgdv.structs.strang`, a Structured `str` subtype.
+1. :ref:`ChainGuard<jgdv.structs.chainguard>`, a type guarded failable accessor to nested mappings.
+2. :ref:`Strang<jgdv.structs.strang>`, a Structured ``str`` subtype.
+3. :ref:`DKey<jgdv.structs.dkey>`, extends ``Strang`` into a type guarded Key for getting values from dicts.
+4. :ref:`Locator<jgdv.structs.locator>`, extends ``DKey`` into a Location/Path central store.
+5. :ref:`rxmatcher<jgdv.structs.rxmatcher.RxMatcher>`, a utility for using the ``match`` statement with regular expressions.
    
 Chainguard
 ==========
@@ -58,6 +58,16 @@ A :ref:`Locator` and :ref:`Location` pair, to provide a central store of paths.
 
    # TODO 
 
+
+---------
+RxMatcher
+---------
+
+.. code:: python
+
+   # TODO 
+
+          
    
 .. Links:
 .. _path: https://docs.python.org/3/library/pathlib.html#pathlib.PurePath

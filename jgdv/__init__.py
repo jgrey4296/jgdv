@@ -8,9 +8,9 @@ __version__ = "1.2.0"
 
 from ._abstract import protocols as protos
 from ._abstract.types import *  # noqa: F403
+from ._abstract.error import JGDVError
 from ._abstract import prelude
 from . import errors
-from .errors import JGDVError
 from .decorators import Mixin, Proto
 
 # Subpackage Accessors

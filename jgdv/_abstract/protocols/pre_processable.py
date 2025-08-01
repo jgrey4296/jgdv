@@ -52,6 +52,16 @@ if typing.TYPE_CHECKING:
 # isort: on
 # ##-- end types
 
+# ##-- Generated Exports
+__all__ = ( # noqa: RUF022
+# -- Types
+"HookOverride", "PreProcessResult",
+# -- Classes
+"PreProcessor_p", "ProcessorHooks",
+
+)
+# ##-- end Generated Exports
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging

@@ -18,4 +18,13 @@
 
    {{ obj.docstring|indent(3) }}
    {% endif %}
+
+   {% if obj.short_name == "identity_fn" %}
+      {% for key,val in obj.obj|items %}
+         {{key}} : {{val}}
+         
+      {% endfor %}
+   {% endif %}
+
+   
 {% endif %}

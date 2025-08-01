@@ -28,10 +28,10 @@ aliases         = { tasks=[] }
 
 [logging]
 [logging.stream]
-level = "user"
-filter = []
-target = "stdout"
-format="{levelname:<8} : {message}"
+level   = "user"
+filter  = []
+target  = "stdout"
+format  = "{levelname:<8}  : {message}"
 
 [logging.file]
 level        = "trace"

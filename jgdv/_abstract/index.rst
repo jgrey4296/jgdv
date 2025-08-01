@@ -8,9 +8,31 @@ Abstract APIs
 
 .. contents:: Contents
 
-This module provides various abstractions for reuse, including:
+This module provides various abstractions for reuse, mainly:
 
-1. Protocols, in :ref:`jgdv._abstract.protocols`.
-2. Type Aliases, in :ref:`jgdv._abstract.types`.
-3. An import Prelude, in :ref:`jgdv._abstract.prelude`.
+1. :ref:`Protocols<jgdv._abstract.protocols>`.
+2. :ref:`Type Aliases<jgdv._abstract.types>`.
+3. :ref:`Type Guards<jgdv._abstract.typeguards>`.
+4. An import :ref:`Prelude<jgdv._abstract.prelude>`.
+5. A :ref:`JGDVError<jgdv._abstract.error.JGDVError>` class.
    
+---------
+Protocols
+---------
+
+Some :ref:`General<jgdv._abstract.protocols.general>` and
+:ref:`more<jgdv._abstract.protocols.pre_processable>`
+:ref:`specific<jgdv._abstract.protocols.pre_processable>` protocols.
+Also some protocol adaptions of the :ref:`stdlib<jgdv._abstract.protocols.stdlib>`.
+    
+
+------------
+Type Aliases
+------------
+
+Rather than ``str | None``, I prefer ``Maybe[str]``. Similarly ``Result[str, IndexError]`` etc.
+
+
+-------
+Prelude
+-------
