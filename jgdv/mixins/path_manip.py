@@ -24,7 +24,6 @@ from uuid import UUID, uuid1
 
 # ##-- 1st party imports
 from jgdv import Maybe
-from jgdv.enums import LoopControl_e
 from jgdv.structs.dkey import DKey
 # ##-- end 1st party imports
 
@@ -62,7 +61,14 @@ logging = logmod.getLogger(__name__)
 MARKER       : Final[str]        = ".marker"
 walk_ignores : Final[list[str]]  = ['.git', '.DS_Store', "__pycache__"] # TODO use a .ignore file
 walk_halts   : Final[list[str]]  = [".doot_ignore"]
+##--|
+class LoopControl_e(enum.Enum):
+    yes     = enum.auto()
+    no      = enum.auto()
+    yesAnd  = enum.auto()  # noqa: N815
+    noBut   = enum.auto()  # noqa: N815
 
+##--|
 class PathManip_m:
     """
       A Mixin for common path manipulations
@@ -93,11 +99,14 @@ class PathManip_m:
         """
         convert roots from keys to paths
         """
+        root_key : DKey
+        results : list[pl.Path]
+        ##--|
         roots   = roots or []
         results = []
         for root in roots:
             root_key = DKey(root, fallback=root, mark=DKey.Mark.PATH)
-            results.append(root_key.expand(*sources))
+            results.append(cast("pl.Path", root_key.expand(*sources)))
         else:
             return results
 
@@ -159,7 +168,7 @@ class Walker_m:
     """ A Mixin for walking directories,
       written for py<3.12
       """
-    control_e = LoopControl_e
+    control_e : ClassVar[type[LoopControl_e]] = LoopControl_e
 
     def walk_all(self, roots:list[pl.Path], *, exts:Maybe[list[str]]=None, rec:bool=False, fn:Maybe[Callable]=None) -> list[dict]:
         """

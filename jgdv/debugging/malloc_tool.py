@@ -73,13 +73,10 @@ def must_be_started[**I, O](fn:Callable[Cons[MallocTool, I],O]) -> Callable[Cons
 ##--|
 
 class MallocTool:
-    r""" see https://docs.python.org/3/library/tracemalloc.html
+    r""" see `tracemalloc <https://docs.python.org/3/library/tracemalloc.html>`_
+    in the stdlib. eg:
 
-     eg:_
-
-
-    ..code: python
-
+    ::
 
         with MallocTool(frame_count=2) as dm:
             dm.whitelist(__file__)
@@ -110,8 +107,8 @@ class MallocTool:
     _curr_mem_msg        : str
     _allocation_loc_msg  : str
     _inspect_msg         : str
-    _cmp_enter_msg             : str
-    _change_msg        : str
+    _cmp_enter_msg       : str
+    _change_msg          : str
     _diff_msg            : str
     _stat_line_msg       : str
     _enter_msg           : str
@@ -217,7 +214,7 @@ class MallocTool:
         else:
             self._logger.info(self._gen_exit_msg, "inspect")
 
-    def compare(self, val1:int|str, val2:int|str, *, form:str="traceback", filter:bool=True, fullpath:bool=False, count:int=10) -> None:  # noqa: A002
+    def compare(self, val1:int|str, val2:int|str, *, form:str="traceback", filter:bool=True, fullpath:bool=False, count:int=10) -> None:  # noqa: A002, ARG002, PLR0913
         """ Compare two snapshots,
         with control over filtering, output formatting,
         and the number of objects to report about

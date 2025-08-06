@@ -44,14 +44,14 @@ from typing import no_type_check, final, override, overload
 # Protocols and Interfaces:
 from typing import Protocol, runtime_checkable
 if typing.TYPE_CHECKING:
-    from jgdv._abstract.pre_processable import InstanceData, PostInstanceData
+    from jgdv._abstract.protocols.pre_processable import InstanceData, PostInstanceData
     from typing import Final, ClassVar, Any, Self
     from typing import Literal, LiteralString
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from jgdv._abstract.pre_processable import PreProcessResult
+    from jgdv._abstract.protocols.pre_processable import PreProcessResult
     from jgdv import Maybe, Ctor
 
 # isort: on

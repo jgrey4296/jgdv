@@ -58,7 +58,7 @@ if TYPE_CHECKING:
    from collections.abc import Sequence, MutableMapping, Hashable
    from string import Formatter
 
-   from jgdv._abstract.pre_processable import PreProcessResult
+   from jgdv._abstract.protocols.pre_processable import PreProcessResult
    from ._interface import KeyMark
 
 # isort: on

@@ -22,7 +22,6 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 1st party imports
-import jgdv.errors
 from jgdv.debugging import TraceBuilder
 from jgdv.mixins.annotate import Subclasser
 # ##-- end 1st party imports

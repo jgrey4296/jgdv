@@ -58,6 +58,34 @@ from jgdv.decorators._interface import ClsDecorator_p
 
 DEBUG_DESTRUCT_ON = False
 
+def _log_del(self:Any) -> None:  # noqa: ANN401
+    """ standalone del logging """
+    logging.warning("Deleting: %s", self)
+
+def _decorate_del(fn:Func[..., None]) -> Func[..., None]:
+    """ wraps existing del method """
+    @ftz.wraps(fn)
+    def _wrapped(self, *args:Any) -> None:  # noqa: ANN001, ANN401
+        logging.warning("Deleting: %s", self)
+        fn(*args)
+
+    return _wrapped
+
+def LogDel(cls:type) -> type:  # noqa: FBT001, N802
+    """
+    A Class Decorator, attaches a debugging statement to the object destructor
+    To activate, add classvar of {jgdv.debugging._interface.DEL_LOG_K} = True
+    to the class.
+    """
+    match (getattr(API.DEL_LOG_K, False), hasattr(cls, "__del__")):
+        case (False, _):
+            pass
+        case (True, True):
+            setattr(cls, "__del__", _decorate_del(cls.__del__))
+        case (True, False):
+            setattr(cls, "__del__", _log_del)
+    return cls
+##--|
 class LogDestruction(ClsDecorator_p):
     """
     A Decorator to log when instances of a class are deleted

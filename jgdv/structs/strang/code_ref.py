@@ -28,6 +28,7 @@ from pydantic import field_validator, model_validator
 # ##-- end 3rd party imports
 
 # ##-- 1st party imports
+from jgdv import Proto
 from .strang import Strang
 from . import _interface as API # noqa: N812
 from . import errors
@@ -60,7 +61,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from jgdv._abstract.pre_processable import PreProcessResult
+    from jgdv._abstract.protocols.pre_processable import PreProcessResult
 
     type CheckType    = type | types.UnionType
     type CheckCancel  = Literal[False]
@@ -79,6 +80,7 @@ TooManyTypesToCheck   : Final[str] = "Too many types to check"
 SpecialTypeCheckFail  : Final[str] = "Checking Special Types like generics is not supported yet"
 ##--|
 
+@Proto(API.Importable_p)
 class CodeReference(Strang, no_register=True):
     """ A reference to a class or function.
 
@@ -135,11 +137,11 @@ class CodeReference(Strang, no_register=True):
             case x:
                 raise TypeError(type(x))
         ##--|
+
         def force_slots(ns:dict) -> None:
             ns['__slots__'] = ()
         newtype = types.new_class(f"{cls.__name__}[{annotation}]", (alias,), exec_body=force_slots)
         return newtype
-
 
     def __init__(self, *args:Any, value:Maybe=None, check:Maybe[CheckType|CheckCancel]=None, **kwargs:Any) -> None:  # noqa: ANN401, ARG002
         super().__init__(**kwargs)
@@ -156,6 +158,7 @@ class CodeReference(Strang, no_register=True):
 
     @overload
     def __call__(self, *, check:Maybe[CheckType|CheckCancel]=None, raise_error:Literal[True]=True) -> type: ...
+
     def __call__(self, *, check:Maybe[CheckType|CheckCancel]=None, raise_error:Literal[False]=False) -> Result[type, ImportError]:
         """ Tries to import and retrieve the reference,
         and casts errors to ImportErrors
@@ -221,6 +224,9 @@ class CodeReference(Strang, no_register=True):
                 return
             case _:
                 raise ImportError(errors.CodeRefImportUnknownFail, self, check_target)
+
+    def _does_imports(self) -> Literal[True]:
+        return True
 
     def to_alias(self, group:str, plugins:dict|ChainGuard) -> str:
         """ TODO Given a nested dict-like, see if this reference can be reduced to an alias """

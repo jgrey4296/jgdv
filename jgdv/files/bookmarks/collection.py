@@ -22,7 +22,6 @@ from uuid import UUID, uuid1
 
 # ##-- end stdlib imports
 
-
 # ##-- 1st party imports
 from jgdv.files.bookmarks.bookmark import Bookmark
 

@@ -3,8 +3,8 @@
 Types that help add clarity
 
 Provides a number of type aliases and shorthands.
-Such as `Weak[T]` for a weakref, `Stack[T]`, `Queue[T]` etc for lists,
-and `Maybe[T]`, `Result[T, E]`, `Either[L, R]`.
+Such as ``Weak[T]`` for a weakref, ``Stack[T]``, ``Queue[T]`` etc for lists,
+and ``Maybe[T]``, ``Result[T, E]``, ``Either[L, R]``.
 
 """
 

@@ -71,7 +71,7 @@ class String_p(Protocol):
 
     @overload
     @staticmethod
-    def maketrans[_T](x:dict[int, _T]|dict[str, _T]|dict[str|int, _T], /) -> dict[int, _T]:...
+    def maketrans[_T](x:dict[str|int, _T], /) -> dict[int, _T]:...
 
     @overload
     @staticmethod

@@ -7,7 +7,7 @@ from __future__ import annotations
 # Import:
 from typing import Final
 from jgdv.debugging import TraceBuilder
-from jgdv.errors import JGDVError
+from jgdv._abstract.error import JGDVError
 
 ##--| Error Messages
 MissingSectionName              : Final[str]  = "{cls} has no section {key}"

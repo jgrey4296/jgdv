@@ -18,7 +18,7 @@ import pytest
 # ##-- end 3rd party imports
 
 import sys
-from .. import JGDVError
+from ..error import JGDVError
 
 # ##-- types
 # isort: off

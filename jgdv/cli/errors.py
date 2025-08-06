@@ -21,7 +21,7 @@ import weakref
 from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
-from jgdv.errors import JGDVError
+from jgdv._abstract.error import JGDVError
 
 # ##-- types
 # isort: off

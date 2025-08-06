@@ -52,11 +52,15 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-@dataclass
 class RxMatcher(str):
     """ https://martinheinz.dev/blog/78 """
-    string : str
-    match  : Maybe[re.Match] = None
+    __slots__ = ("string", "match")
+    string  : str
+    match   : Maybe[re.Match]  = None
+
+    def __init__(self, val:str, match:Maybe[re.Match]=None) -> None:
+        self.string  = val
+        self.match   = match
 
     def __eq__(self, pattern:RxStr) -> bool:
         self.match = re.search(pattern, self.string)

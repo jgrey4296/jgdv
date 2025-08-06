@@ -60,6 +60,14 @@ if TYPE_CHECKING:
 # isort: on
 # ##-- end types
 
+# ##-- Generated Exports
+__all__ = ( # noqa: RUF022
+
+# -- Classes
+"Strang",
+)
+# ##-- end Generated Exports
+
 ##-- logging
 logging = logmod.getLogger(__name__)
 logging.disabled = False
@@ -393,9 +401,20 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
 
     ##--| Access
 
+    def otherfunc(self):
+        return 2
+
     @override
     def index(self, *sub:API.FindSlice, start:Maybe[int]=None, end:Maybe[int]=None) -> int: # type: ignore[override]
-        """ Extended str.index, to handle marks and word slices """
+        """Extended str.index, to handle marks and word slices.
+
+        :param sub: (:type:`~jgdv.structs.strang._interface.FindSlice`).
+            The indices to slice.
+        :param start: (:type:`~jgdv._abstract.types.Maybe[int]`) The start of the slice to cover.
+        :param end:   (:type:`Maybe[int]`) The end of the slice to cover.
+
+        :returns: The index of the char
+        """
         needle  : str|API.StrangMarkAbstract_e
         word    : int
         match sub:
@@ -546,7 +565,6 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
                     return self.__class__(*words, f"[{joined_args}]", uuid=uuid)
                 case y:
                     raise TypeError(type(y))
-
 
     def pop(self, *, top:bool=True)-> Self:
         """

@@ -51,7 +51,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
     from ._interface import Strang_p
-    from jgdv._abstract.pre_processable import PreProcessResult, InstanceData, PostInstanceData
+    from jgdv._abstract.protocols.pre_processable import PreProcessResult, InstanceData, PostInstanceData
 ##--|
 
 # isort: on

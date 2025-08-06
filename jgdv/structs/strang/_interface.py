@@ -48,7 +48,7 @@ from collections import UserString
 from types import UnionType
 
 if TYPE_CHECKING:
-    from jgdv._abstract.pre_processable import PreProcessor_p
+    from jgdv._abstract.protocols.pre_processable import PreProcessor_p
     from jgdv import Maybe, Rx
     from typing import Final
     from typing import ClassVar, Any, LiteralString
@@ -63,6 +63,19 @@ if TYPE_CHECKING:
 
 # isort: on
 # ##-- end types
+
+# ##-- Generated Exports
+__all__ = ( # noqa: RUF022
+# -- Types
+"FindSlice", "FullSlice", "ItemIndex", "MSlice", "MarkIndex", "PushVal", "SectionIndex",
+"WordIndex",
+# -- Classes
+"CodeRefHeadMarks_e", "DefaultBodyMarks_e", "DefaultHeadMarks_e",
+"Importable_p", "Sec_d", "Sections_d", "StrangFormatter_p", "StrangMarkAbstract_e",
+"StrangMod_p", "StrangUUIDs_p", "Strang_d", "Strang_p",
+
+)
+# ##-- end Generated Exports
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -314,8 +327,10 @@ CODEREF_DEFAULT_SECS : Final[Sections_d] = Sections_d(CODEREF_HEAD_SEC, CODEREF_
 
 @runtime_checkable
 class Importable_p(Protocol):
-    """  """
-    pass
+    """ Marks a class as able to import code. Userd for CodeRef's."""
+
+    def _does_imports(self) -> Literal[True]: ...
+
 
 class StrangUUIDs_p(Protocol):
 
@@ -342,7 +357,7 @@ class StrangFormatter_p(Protocol):
 
 @runtime_checkable
 class Strang_p(StrangUUIDs_p, StrangMod_p, String_p, Protocol):
-    """  """
+    """ The Main protocol describing a Strang. """
     _processor  : ClassVar[PreProcessor_p]
     _formatter  : ClassVar[string.Formatter]
     _sections   : ClassVar[Sections_d]
@@ -372,7 +387,18 @@ class Strang_p(StrangUUIDs_p, StrangMod_p, String_p, Protocol):
 
     ##--| methods
     @override
-    def index(self, *sub:FindSlice, start:Maybe[int]=None, end:Maybe[int]=None) -> int: ... # type: ignore[override]
+    def index(self, *sub:FindSlice, start:Maybe[int]=None, end:Maybe[int]=None) -> int: # type: ignore[override]
+        """index
+
+         Extended str.index, to handle marks and word slices
+
+        :param sub:   The indices to slice
+        :param start: The start of the slice to cover.
+        :param end:   The end of the slice to cover.
+
+        :returns: The index of the char
+        """
+        pass
 
     @override
     def rindex(self, *sub:FindSlice, start:Maybe[int]=None, end:Maybe[int]=None) -> int: ... # type: ignore[override]
