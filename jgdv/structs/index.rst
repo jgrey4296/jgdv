@@ -43,7 +43,7 @@ A Structured String class.
 DKey
 ====
 
-Extends :ref:`Strang` to become a key.
+Extends ``Strang`` to become a key.
 
 .. code:: python
 
@@ -52,7 +52,7 @@ Extends :ref:`Strang` to become a key.
 Locator
 =======
 
-A :ref:`Locator` and :ref:`Location` pair, to provide a central store of paths.
+A :ref:`Locator<jgdv.structs.locator.locator.Locator>` and :ref:`Location<jgdv.structs.locator.location.Location>` pair, to provide a central store of paths.
 
 .. code:: python
 
