@@ -172,7 +172,7 @@ class PositionalParam(ParamSpec):
     @override
     @ftz.cached_property
     def key_str(self) -> str:
-        return self.name
+        return cast("str", self.name)
 
     def matches_head(self, val:str) -> bool:  # noqa: ARG002
         return True

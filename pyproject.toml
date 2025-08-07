@@ -111,10 +111,7 @@ warn_unused_configs  = true
 ##-- pytest
 # https://docs.pytest.org/en/stable/reference/reference.html#ini-options-ref
 [tool.pytest.ini_options]
-addopts          = [
-  # "--cov=",
-  # "--ignore-glob=related_/*"
-]
+addopts          = []
 cache_dir       = ".temp/pytest_cache"
 log_file        = ".temp/logs/pytest.log"
 
@@ -126,6 +123,61 @@ log_file_level  = "DEBUG"
 log_file_format = "%(asctime)s %(levelname)s %(name)s : %(message)s"
 
 ##-- end pytest
+
+##-- coverage
+# https://pytest-cov.readthedocs.io/en/latest/config.html
+# add "addopts = '--cov-report xml --cov={}' " for pytest
+[tool.coverage.run]
+branch            = true  # measure branch coverage
+cover_pylib       = false # measure stdlib
+relative_files    = false 
+data_file         = ".temp/coverage/coverage_cache" # cache
+disable_warnings  = []
+omit              = [ # files to not measure
+    "*/__tests/*",
+    "*__init__.py",
+    "*_interface.py",
+    
+] 
+
+[tool.coverage.report]
+# Regexes for lines to exclude from consideration
+exclude_also = [
+    # Don't complain about missing debug-only code:
+    "def __repr__",
+    "if self\\.debug",
+    "^import",
+    "^from",
+
+    # Don't complain if tests don't hit defensive assertion code:
+    "raise AssertionError",
+    "raise NotImplementedError",
+
+    # Don't complain if non-runnable code isn't run:
+    "if 0:",
+    "if False:",
+    "if __name__ == .__main__.:",
+
+    # Don't complain about abstract methods, they aren't run:
+    "@(abc\\.)?abstractmethod",
+    ]
+
+ignore_errors = true
+# fail_under  = 20 # coverage percentage
+format        = "text" # or "markdown", "total"
+show_missing  = true # for in the report
+skip_empty    = true # skip files like __init__.py
+
+[tool.coverage.html]
+directory = ".temp/coverage/html_report" # where to write output
+
+[tool.coverage.xml]
+output    = ".temp/coverage/coverage.xml" # where to write output
+
+[tool.coverage.json]
+output        = ".temp/coverage/coverage.json"  # where to write output
+pretty_print  = true
+##-- end coverage
 
 ##-- sphinx
 [tool.sphinx]
@@ -214,17 +266,21 @@ import_footer_localfolder = ""
 ##-- end isort
 
 ##-- uv
+[tool.uv.sources]
+sphinx-autoapi = { path = "../../__libs/python/sphinx-autoapi", editable = true }
+
 [dependency-groups]
 dev = [
     "ipython>=9.4.0",
     "myst-parser>=4.0.1",
+    "sphinx>=8.2.3",
+    "sphinx-autoapi>=3.6.0",
+    "sphinx-rtd-theme>=3.0.2",
     "pydot>=4.0.1",
     "pytest>=8.3.5",
     "pytest-cov>=6.0.0",
     "pytest-mock>=3.14.0",
-    "sphinx>=8.2.3",
-    "sphinx-autoapi>=3.6.0",
-    "sphinx-rtd-theme>=3.0.2",
+    "tox>=4.28.4",
 ]
 
 ##-- end uv
