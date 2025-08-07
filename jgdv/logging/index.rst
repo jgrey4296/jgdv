@@ -51,6 +51,30 @@ Toml Specs
 
     # TODO
 
+There are 4 key sorts of ``Toml`` specified loggers:
+1. The `stream` logger, for logging messages that escalate to output on ``stdout`` or ``stderr``.
+2. The `file` logger, for all messages, which will be written to a file.
+3. The `printer` logger, a replacement for ``print``. ie: It is what the user sees during normal operation, but in a way the logging architecture can control it rather than straight ``print``ing to ``stdout``.
+4. `extra` loggers. These are for customising the logger of any module you want. eg: ``jgdv.decorators``, or ``sphinx``, or ``networkx.digraph``.
+   
+--------------
+The Log Config
+--------------
+
+The :class:`~jgdv.logging.config.JGDVLogConfig` is for taking loaded ``TOML`` specs of loggers, and applying them.
+
+.. code:: python
+          
+   from jgdv.structs.chainguard import ChainGuard
+   from jgdv.logging import JGDVLogConfig
+
+   data    = ChainGuard.load(Path("data/specs.toml"))
+   config  = JGDVLogConfig()
+   config.setup(data)
+   config.set_level("DEBUG")
+   
+   
+    
 -----------------------
 Personal Logging Levels
 -----------------------

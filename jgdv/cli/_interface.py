@@ -91,10 +91,11 @@ class SectionType_e(enum.Enum):
 class ParseResult_d:
     """ Simple container for parsed cli information
 
-    Name : the name of the spec that parsed this data
-    args : mapping of {arg -> data}, including default values it nothing parsing for it
-    non_default : set[arg, ...] that actually parsed
-    ref : the name of a linked parse result this object extends
+    Args:
+        name : the name of the spec that parsed this data
+        args : mapping of {arg -> data}, including default values it nothing parsing for it
+        non_default : set[arg, ...] that actually parsed
+        ref : the name of a linked parse result this object extends
 
     """
     __slots__ = ("args", "name", "non_default", "ref")
@@ -119,13 +120,13 @@ class ParseResult_d:
 class ParseReport_d:
     """ The returned data of parsing cli args
 
-    Contains:
-    - raw : the raw args that were used. ieg: sys.argv[:]
-    - remaining : anything not parsed
-    - prog : ParseResult_d of base program arguments
-    - cmds : mapping(cmdName -> [ParseResult_d])
-    - subs : mapping(subName -> [ParseResult_d])
-    - help : bool
+    Args:
+        raw : the raw args that were used. ieg: sys.argv[:]
+        remaining : anything not parsed
+        prog : ParseResult_d of base program arguments
+        cmds : mapping(cmdName -> [ParseResult_d])
+        subs : mapping(subName -> [ParseResult_d])
+        help : bool
 
     """
     type CmdName = str
@@ -216,21 +217,25 @@ class ParamSpec_i(ParamSpec_p, Protocol):
 
 @runtime_checkable
 class PositionalParam_p(Protocol):
+    """ Interface to mark a parameter as positional """
 
     def _positional(self) -> Literal[True]: ...
 
 @runtime_checkable
 class AssignmentParam_p(Protocol):
+    """ Interface to mark a parameter as an assignment """
 
     def _assignment(self) -> Literal[True]: ...
 
 @runtime_checkable
 class KeyParam_p(Protocol):
+    """ Interface to mark a parameter as a key value pair """
 
     def _keyval(self) -> Literal[True]: ...
 
 @runtime_checkable
 class ToggleParam_p(Protocol):
+    """ Interface to mark a parameter as a boolean toggle """
 
     def _toggle(self) -> Literal[True]: ...
 ##--| Parsing

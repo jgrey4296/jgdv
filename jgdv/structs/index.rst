@@ -52,7 +52,7 @@ Extends ``Strang`` to become a key.
 Locator
 =======
 
-A :ref:`Locator<jgdv.structs.locator.locator.Locator>` and :ref:`Location<jgdv.structs.locator.location.Location>` pair, to provide a central store of paths.
+A :ref:`Locator<jgdv.structs.locator.locator.JGDVLocator>` and :ref:`Location<jgdv.structs.locator.location.Location>` pair, to provide a central store of paths.
 
 .. code:: python
 

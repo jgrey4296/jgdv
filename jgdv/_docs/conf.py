@@ -80,7 +80,7 @@ exclude_patterns = [
 source_suffix = {
     ".rst"  : "restructuredtext",
     ".txt"  : "restructuredtext",
-    ".md"   : "markdown",
+    # ".md"   : "markdown",
 }
 
 # ##-- b: Extensions -----------------------------
@@ -112,7 +112,7 @@ extensions      = [
 # Generate autodocs: https://www.sphinx-doc.org/en/master/usage/extensions/autosummary.html
 # "sphinx.ext.autosummary",
 # Build test coverage reports: https://www.sphinx-doc.org/en/master/usage/extensions/coverage.html
-"sphinx.ext.coverage",
+# "sphinx.ext.coverage",
 # Link descriptions to code: https://www.sphinx-doc.org/en/master/usage/extensions/viewcode.html
 "sphinx.ext.viewcode",
 
@@ -153,7 +153,7 @@ html_search_options           = {}
 # html_theme_path   = []
 html_static_path  = ["_static"]
 html_extra_path   = []  # for things like robots.txt
-html_style        = []
+# html_style        = []
 # html_logo       = ""
 # html_favicon    = ""
 # Relative to static dir, or fully qualified urls
@@ -212,7 +212,7 @@ python_maximum_signature_line_length  = None
 # autodoc-process-bases
 # autodoc-skip-member
 #--
-autodoc_typehints           = "description"
+autodoc_typehints           = "both"
 autodoc_typehints_format    = "short"
 autodoc_inherit_docstrings  = False
 

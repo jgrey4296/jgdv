@@ -1,11 +1,11 @@
 """
 jgdv.cli provides a statemachine based argument parser.
 
-ParseMachineBase defines the state flow,
-ParseMachine implements the __call__ to start the parsing, 
-CLIParserModel implements the callbacks for the different states.
+``ParseMachineBase`` defines the state flow,
+``ParseMachine`` implements ``__call__`` to start the parsing,
+``CLIParserModel`` implements the callbacks for the different states.
 
-ParamSpec's are descriptions of a single argument type, 
+``ParamSpec``'s are descriptions of a single argument type,
 combined with the parsing logic for that type.
 """
 from ._interface import ParamSpec_p, ArgParserModel_p, ParamSource_p, CLIParamProvider_p

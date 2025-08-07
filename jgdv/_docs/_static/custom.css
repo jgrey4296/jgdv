@@ -38,3 +38,21 @@ dl.py{
 dl.py.data {
     background-color: aqua;
 }
+
+dl.py.attribute {
+    background-color: #a98e24;
+    margin-bottom: 0px !important;
+    padding: 0px;
+}
+
+dl.py.property {
+    background-color: #b22e3a;
+    margin-bottom: 0px;
+    padding: 0px;
+    display: revert !important;
+}
+
+dl.py.method {
+    background-color: #aac39e;
+}
+
