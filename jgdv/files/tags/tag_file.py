@@ -71,7 +71,7 @@ class TagFile(BaseModel):
     comment      : str                   = API.COMMENT
 
     @classmethod
-    def read(cls, fpath:pl.Path, **kwargs:dict) -> TagFile:
+    def read[T:TagFile](cls:type[T], fpath:pl.Path, **kwargs:dict) -> T:
         obj = cls(**{x:y for x,y in kwargs.items() if y is not None})
         for i, line in enumerate(fpath.read_text().split("\n")):
             try:
@@ -110,9 +110,11 @@ class TagFile(BaseModel):
         self.counts.update({self.norm_tag(x):y for x,y in orig.items()})
         return self
 
-    def __iter__(self) -> Iterator:
+    @override
+    def __iter__(self) -> Iterator[str]: # type: ignore[override]
         return iter(self.counts)
 
+    @override
     def __str__(self) -> str:
         """
         Export the counts, 1 entry per line, as:
@@ -125,6 +127,7 @@ class TagFile(BaseModel):
             all_lines.append(self.sep.join([key, str(self.counts[key])]))
         return "\n".join(all_lines)
 
+    @override
     def __repr__(self) -> str:
         return f"<{self.__class__.__name__}: {len(self)}>"
 

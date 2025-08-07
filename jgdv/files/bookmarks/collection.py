@@ -7,16 +7,13 @@
 from __future__ import annotations
 
 # ##-- stdlib imports
-# import abc
 import datetime
 import enum
 import functools as ftz
 import itertools as itz
 import logging as logmod
-import pathlib as pl
 import re
 import time
-import types
 import weakref
 from uuid import UUID, uuid1
 
@@ -29,33 +26,43 @@ from jgdv.files.bookmarks.bookmark import Bookmark
 
 # ##-- types
 # isort: off
+# General
 import abc
 import collections.abc
-from typing import TYPE_CHECKING, cast, assert_type, assert_never
-from typing import Generic, NewType
-# Protocols:
-from typing import Protocol, runtime_checkable
-# Typing Decorators:
+import typing
+import types
+from typing import cast, assert_type, assert_never
+from typing import Generic, NewType, Never
 from typing import no_type_check, final, override, overload
+# Protocols and Interfaces:
+from typing import Protocol, runtime_checkable
 from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+# isort: on
+# ##-- end types
 
-if TYPE_CHECKING:
-    from jgdv import Maybe
-    from typing import Final
-    from typing import ClassVar, Any, LiteralString
-    from typing import Never, Self, Literal
+# ##-- type checking
+# isort: off
+if typing.TYPE_CHECKING:
+    import pathlib as pl
+    from typing import Final, ClassVar, Any, Self
+    from typing import Literal, LiteralString
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-# isort: on
-# ##-- end types
+    from jgdv import Maybe
+## isort: on
+# ##-- end type checking
+
 
 ##-- logging
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
 class BookmarkCollection(BaseModel):
+    """A container of bookmarks,
+    read from a file where each line is a bookmark url with tags.
+    """
 
     entries : list[Bookmark] = []
     ext     : str            = ".bookmarks"
@@ -71,28 +78,32 @@ class BookmarkCollection(BaseModel):
 
         return bookmarks
 
-    def __str__(self):
+    @override
+    def __str__(self) -> str:
         return "\n".join(map(str, sorted(self.entries)))
 
-    def __repr__(self):
+    @override
+    def __repr__(self) -> str :
         return f"<{self.__class__.__name__}: {len(self)}>"
 
-    def __iadd__(self, value):
+    def __iadd__(self, value:Bookmark) -> Self:
         return self.update(value)
 
-    def __iter__(self):
+    @override
+    def __iter__(self) -> Iterator[Bookmark]: # type: ignore[override]
         return iter(self.entries)
 
     def __contains__(self, value:Bookmark) -> bool:
         return value in self.entries
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.entries)
 
-    def __hash__(self):
+    @override
+    def __hash__(self) -> int:
         return id(self)
 
-    def update(self, *values) -> Self:
+    def update(self, *values:Bookmark|BookmarkCollection|Iterable) -> Self:
         for val in values:
             match val:
                 case Bookmark():
@@ -105,7 +116,7 @@ class BookmarkCollection(BaseModel):
                     raise TypeError(type(val))
         return self
 
-    def difference(self, other:Self) -> Self:
+    def difference(self, other:Self) -> BookmarkCollection:
         result = BookmarkCollection()
         for bkmk in other:
             if bkmk not in self:
@@ -113,7 +124,7 @@ class BookmarkCollection(BaseModel):
 
         return result
 
-    def merge_duplicates(self):
+    def merge_duplicates(self) -> None:
         deduplicated = {}
         for x in self:
             if x.url not in deduplicated:

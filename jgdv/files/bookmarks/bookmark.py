@@ -56,6 +56,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 class Bookmark(BaseModel):
+    """A Single Bookmark in a collection."""
     url              : str
     tags             : set[str]              = set()
     name             : str                   = "No Name"
@@ -63,11 +64,12 @@ class Bookmark(BaseModel):
     _tag_norm_re     : ClassVar[Rx]          = re.compile(" +")
 
     @classmethod
-    def build[T](cls:type[T], line:str, sep:Maybe[str]=None) -> T:
+    def build[T:Bookmark](cls:type[T], line:str, sep:Maybe[str]=None) -> T:
         """
         Build a bookmark from a line of a bookmark file
         """
-        tags : list
+        url   : str
+        tags  : list
         sep  = sep or Bookmark._tag_sep
         tags = []
         match [x.strip() for x in line.split(sep)]:
@@ -79,9 +81,9 @@ class Bookmark(BaseModel):
             case [url, *tags]:
                 pass
 
-        return Bookmark(url=url,
-                        tags=set(tags),
-                        sep=sep)
+        return cls(url=url,
+                   tags=set(tags))
+
 
     @field_validator("tags", mode="before")
     def _validate_tags(cls, val:list|set|str) -> set:
@@ -94,6 +96,11 @@ class Bookmark(BaseModel):
                 msg = "Unrecognized tags base"
                 raise ValueError(msg, val)
 
+    @override
+    def __hash__(self) -> int:
+        return hash(self.url)
+
+    @override
     def __eq__(self, other:object) -> bool:
         match other:
             case Bookmark() as o:
@@ -108,6 +115,7 @@ class Bookmark(BaseModel):
             case _:
                 return False
 
+    @override
     def __str__(self) -> str:
         sep = Bookmark._tag_sep
         tags = sep.join(sorted(self.tags))
@@ -117,7 +125,7 @@ class Bookmark(BaseModel):
     def url_comps(self) -> UrlParseResult:
         return urllib.parse.urlparse(self.url)
 
-    def merge(self, other:Bookmark) -> Self:
+    def merge(self, other:Bookmark) -> Bookmark:
         """ Merge two bookmarks' tags together,
         creating a new bookmark
         """

@@ -64,6 +64,7 @@ class SubstitutionFile(TagFile):
     ext           : str                  = API.SUB_EXT
     substitutions : dict[str, set[str]]  = defaultdict(set)  # noqa: RUF012
 
+    @override
     def __str__(self) -> str:
         """
         Export the substitutions, 1 entry per line, as:
@@ -116,6 +117,7 @@ class SubstitutionFile(TagFile):
             return True
         return bool(self.substitutions.get(normed, None))
 
+    @override
     def update(self, *values:str|tuple|dict|SubstitutionFile|TagFile|set) -> Self:  # noqa: PLR0912
         """
         Overrides TagFile.update to handle tuples of (tag, count, replacements*)
