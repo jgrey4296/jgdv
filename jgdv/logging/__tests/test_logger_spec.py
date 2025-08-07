@@ -2,7 +2,7 @@
 """
 
 """
-# ruff: noqa: ANN201, ARG001, ANN001, ARG002, ANN202, B011
+# ruff: noqa: ANN202, B011
 
 # Imports
 from __future__ import annotations
@@ -34,12 +34,11 @@ from typing import Generic, NewType, Never
 from typing import no_type_check, final, override, overload
 # Protocols and Interfaces:
 from typing import Protocol, runtime_checkable
-# from . import _interface as API # noqa: N812
-# Dataclasses:
-# from pydantic import BaseModel, Field, model_validator, field_validator, ValidationError
+# isort: on
+# ##-- end types
 
-
-#
+# ##-- type checking
+# isort: off
 if typing.TYPE_CHECKING:
     from typing import Final, ClassVar, Any, Self
     from typing import Literal, LiteralString
@@ -48,9 +47,9 @@ if typing.TYPE_CHECKING:
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
     from jgdv import Maybe
+## isort: on
+# ##-- end type checking
 
-# isort: on
-# ##-- end types
 
 ##-- logging
 logging = logmod.getLogger(__name__)

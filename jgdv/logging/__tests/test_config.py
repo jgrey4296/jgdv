@@ -3,7 +3,7 @@
 
 
 """
-# ruff: noqa: ANN201, ARG001, ANN001, ARG002, ANN202, B011
+# ruff: noqa: ANN202
 
 # Imports
 from __future__ import annotations

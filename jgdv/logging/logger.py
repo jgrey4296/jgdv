@@ -14,37 +14,39 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
 import weakref
 from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
+from ._interface import LogLevel_e
+
 # ##-- types
 # isort: off
+# General
 import abc
 import collections.abc
-from typing import TYPE_CHECKING, cast, assert_type, assert_never
-from typing import Generic, NewType
-# Protocols:
-from typing import Protocol, runtime_checkable
-# Typing Decorators:
+import typing
+import types
+from typing import cast, assert_type, assert_never
+from typing import Generic, NewType, Never
 from typing import no_type_check, final, override, overload
+# Protocols and Interfaces:
+from typing import Protocol, runtime_checkable
+# isort: on
+# ##-- end types
 
-if TYPE_CHECKING:
-    from jgdv import Maybe
-    from typing import Final
-    from typing import ClassVar, Any, LiteralString
-    from typing import Never, Self, Literal
+# ##-- type checking
+# isort: off
+if typing.TYPE_CHECKING:
+    from typing import Final, ClassVar, Any, Self
+    from typing import Literal, LiteralString
     from typing import TypeGuard
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    type Logger = logmod.Logger
-
-# isort: on
-# ##-- end types
-
-from ._interface import LogLevel_e
+    from jgdv import Maybe
+## isort: on
+# ##-- end type checking
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -96,7 +98,7 @@ class JGDVLogger(LoggerClass):
         return self.__getattr__(key)
 
     ##--| public methods
-    def set_colour(self, colour:str) -> None:
+    def set_colour(self, colour:Maybe[str]) -> None:
         self._colour = self._colour or colour
 
     def set_prefixes(self, *prefixes:str|Callable) -> None:
@@ -122,11 +124,11 @@ class JGDVLogger(LoggerClass):
         child.set_prefixes(*self._prefixes, prefix)
         return child
 
-    def getChild(self, name:str) -> Self:  # noqa: N802
+    def getChild(self, name:str) -> JGDVLogger:  # noqa: N802
         """
         Create a child logger, copying the colour of this logger
         """
-        child = super().getChild(name)
+        child = cast("JGDVLogger", super().getChild(name))
         child.set_colour(self._colour)
         return child
 
@@ -137,8 +139,9 @@ class JGDVLogger(LoggerClass):
         args: name, level, fn, lno, msg, args, exc_info,
         kwargs: func=None, extra=None, sinfo=None
         """
-        modified : list = list(args)
-        msg_total = []
+        rv        : logmod.LogRecord
+        modified  : list  = list(args)
+        msg_total         = []
         for pre in self._prefixes:
             match pre:
                 case None:

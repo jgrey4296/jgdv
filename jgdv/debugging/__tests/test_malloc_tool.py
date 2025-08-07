@@ -54,11 +54,11 @@ logging = logmod.getLogger(__name__)
 # Vars:
 EXPECT_NO_FRAMES : Final[str] = """
 [TraceMalloc]: --> Entering, tracking 1 frames
-[TraceMalloc]: Taking Snapshot: _init_          (Current: 0 B       , Peak: 0 B)
+[TraceMalloc]: Taking Snapshot: _init_
 [TraceMalloc]: Taking Snapshot: before
 [TraceMalloc]: Taking Snapshot: after
 [TraceMalloc]: Taking Snapshot: cleared
-[TraceMalloc]: Taking Snapshot: _final_         (Current: 0 B       , Peak: 0 B)
+[TraceMalloc]: Taking Snapshot: _final_
 [TraceMalloc]: <-- Exited, with 5 snapshots
 [TraceMalloc]: ---- Comparing (traceback): before -> after. Objects:2 ----
 [TraceMalloc]: (obj:0) +32.0 KiB       : vals = [random.random() for x in range(1000)]
@@ -68,20 +68,20 @@ EXPECT_NO_FRAMES : Final[str] = """
 
 EXPECT_MULTI_FRAMES : Final[str] = """
 [TraceMalloc]: --> Entering, tracking 3 frames
-[TraceMalloc]: Taking Snapshot: _init_          (Current: 0 B       , Peak: 0 B)
+[TraceMalloc]: Taking Snapshot: _init_
 [TraceMalloc]: Taking Snapshot: before
 [TraceMalloc]: Taking Snapshot: after
-[TraceMalloc]: Taking Snapshot: cleared         (Current: 16 B      , Peak: 16 B)
-[TraceMalloc]: Taking Snapshot: _final_         (Current: 0 B       , Peak: 0 B)
+[TraceMalloc]: Taking Snapshot: cleared
+[TraceMalloc]: Taking Snapshot: _final_
 [TraceMalloc]: <-- Exited, with 5 snapshots
 [TraceMalloc]: ---- Comparing (traceback): before -> after. Objects:2 ----
 [TraceMalloc]: -- (obj:0) delta:
-[TraceMalloc]: (obj:0, frame: -2) : res = hook_impl.function(*args)                    (_callers.py:103)
-[TraceMalloc]: (obj:0, frame: -1) : result = testfunction(**testargs)                  (python.py:159)
+[TraceMalloc]: (obj:0, frame: -2) : res = hook_impl.function(*args)                    (_callers.py:
+[TraceMalloc]: (obj:0, frame: -1) : result = testfunction(**testargs)                  (python.py:
 [TraceMalloc]: (obj:0, frame:  0) : vals = [random.random() for x in range(1000)]
 [TraceMalloc]: -- (obj:1) delta:
-[TraceMalloc]: (obj:1, frame: -2) : res = hook_impl.function(*args)                    (_callers.py:103)
-[TraceMalloc]: (obj:1, frame: -1) : result = testfunction(**testargs)                  (python.py:159)
+[TraceMalloc]: (obj:1, frame: -2) : res = hook_impl.function(*args)                    (_callers.py:
+[TraceMalloc]: (obj:1, frame: -1) : result = testfunction(**testargs)                  (python.py:
 [TraceMalloc]: (obj:1, frame:  0) : a_dict = {"blah": 23, "bloo": set([1,2,3,4])}
 [TraceMalloc]: -- Compare (2/2) --
 
@@ -89,11 +89,11 @@ EXPECT_MULTI_FRAMES : Final[str] = """
 
 EXPECT_INSPECT : Final[str] = """
 [TraceMalloc]: --> Entering, tracking 1 frames
-[TraceMalloc]: Taking Snapshot: _init_          (Current: 0 B       , Peak: 0 B)
+[TraceMalloc]: Taking Snapshot: _init_
 [TraceMalloc]: Taking Snapshot: before
 [TraceMalloc]: Taking Snapshot: after
 [TraceMalloc]: Taking Snapshot: cleared
-[TraceMalloc]: Taking Snapshot: _final_         (Current: 0 B       , Peak: 0 B)
+[TraceMalloc]: Taking Snapshot: _final_
 [TraceMalloc]: <-- Exited, with 5 snapshots
 [TraceMalloc]: ---- Inspecting: after ----
 [TraceMalloc]: (obj:None, frame:  0) : vals = [random.random() for x in range(1000)]

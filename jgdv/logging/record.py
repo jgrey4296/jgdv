@@ -54,7 +54,7 @@ logging = logmod.getLogger(__name__)
 
 # Body:
 
-class JGDVLogRecord(logmod.getLogRecordFactory()):
+class JGDVLogRecord(logmod.LogRecord):
     """ A Basic extension of the log record.
 
     needs the signature::

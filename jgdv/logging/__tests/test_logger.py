@@ -1,16 +1,17 @@
 """
 
 """
-# ruff: noqa: ANN201, ARG001, ANN001, ARG002, ANN202
+# ruff: noqa: ANN001, ARG002, ANN202
 
 # Imports
 from __future__ import annotations
 
 import logging as logmod
 import pathlib as pl
-from typing import (Any, Callable, ClassVar, Generic, Iterable, Iterator,
-                    Mapping, Match, MutableMapping, Sequence, Tuple, TypeAlias,
+from typing import (Any, ClassVar, Generic, TypeAlias,
                     TypeVar, cast)
+from re import Match
+from collections.abc import Callable, Iterable, Iterator, Mapping, MutableMapping, Sequence
 import warnings
 
 import pytest
@@ -52,10 +53,10 @@ class TestJGDVLogger:
     def test_non_default_fail(self):
         logger = JGDVLogger("basic")
         with pytest.raises(AttributeError):
-            getattr(logger, "blah")
+            getattr(logger, "blah")  # noqa: B009
 
         with pytest.raises(AttributeError):
-            logger.blah
+            logger.blah  # noqa: B018
 
     def test_non_default_success(self, install, caplog):
         with caplog.at_level(logmod.DEBUG):

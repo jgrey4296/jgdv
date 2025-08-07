@@ -23,7 +23,6 @@ from uuid import UUID, uuid1
 # ##-- end stdlib imports
 
 # ##-- 3rd party imports
-import _string
 import sty
 from sty import bg, ef, fg, rs
 
@@ -102,6 +101,7 @@ class ColourFormatter(logging.Formatter):
         self.apply_colour_mapping(API.default_colour_mapping)
         self.apply_colour_mapping(API.default_log_colours)
 
+    @override
     def format(self, record:LogRecord) -> str:
         if hasattr(record, "colour"):
             log_colour = self.colours[record.colour]
@@ -142,6 +142,7 @@ class StripColourFormatter(logging.Formatter):
                          datefmt=style or self._default_date_fmt,
                          style=self._default_style)
 
+    @override
     def format(self, record:LogRecord) -> str:
         result    = super().format(record)
         no_colour = self._colour_strip_re.sub("", result)

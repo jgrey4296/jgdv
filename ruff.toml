@@ -23,7 +23,7 @@ cache-dir      = ".temp/ruff_cache"
 select = [
        "E", "F", "W", "B", "N", "UP",
        "YTT", "ANN", "BLE", "FBT", "A",
-       "COM", "CPY", "C4", "DTZ", "EM",
+       "COM", "C4", "DTZ", "EM",
        "FA", "ISC", "ICN", "TCH", "ARG",
        "PTH", "ERA", "PL", "TRY", "FLY",
        "RUF"

@@ -71,13 +71,12 @@ INITIAL_SPEC         : Final[LoggerSpec] = LoggerSpec.build(API.default_stdout)
 
 ##--|
 
-
 class PrintCapture_m:
     """Mixin for redirecting builtins.print to a file"""
 
     original_print: Maybe[Callable]
 
-    def capture_printing_to_file(self, path: str | pl.Path = API.default_print_file, *, disable_warning: bool = False,) -> None:
+    def capture_printing_to_file(self, path: str | pl.Path = API.default_print_file, *, disable_warning: bool=False) -> None:
         """Modifies builtins.print to also print to a file
 
         Setup a file handler for a separate logger,
@@ -122,9 +121,7 @@ class PrintCapture_m:
                 builtins.print = x
                 self.original_print = None
 
-
 ##--|
-
 
 @Mixin(PrintCapture_m)
 class JGDVLogConfig(metaclass=MLSingleton):
@@ -145,9 +142,10 @@ class JGDVLogConfig(metaclass=MLSingleton):
     """
 
     ##--| classvars
-    levels                : ClassVar[type[API.LogLevel_e]] = API.LogLevel_e
-    logger_cls            : ClassVar[type[Logger]] = JGDVLogger
-    ##--| core vars
+    levels      : ClassVar[type[API.LogLevel_e]]    = API.LogLevel_e
+    logger_cls  : ClassVar[type[Logger]]            = JGDVLogger
+    record_cls  : ClassVar[type[logmod.LogRecord]]  = logmod.LogRecord
+   ##--| core vars
     root                  : Logger
     is_setup              : bool
     ##--| internal vars
@@ -190,6 +188,10 @@ class JGDVLogConfig(metaclass=MLSingleton):
                 if not issubclass(logmod.getLoggerClass(), self.logger_cls):
                     msg = "Logger Class Installation Failed"
                     raise TypeError(msg, self.logger_cls)
+
+    def _install_record_override(self) -> None:
+        """ Sets a custom LogRecord subclass as the factory """
+        logmod.setLogRecordFactory(self.record_cls)
 
     def _register_new_names(self) -> None:
         for name, lvl in self.levels.__members__.items():
