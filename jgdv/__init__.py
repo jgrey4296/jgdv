@@ -18,5 +18,9 @@ from ._abstract import types as Types # noqa: N812
 import jgdv.decorators as Decos  # noqa: N812
 
 def identity_fn[T](x:T) -> T:
-    """ Just returns what it gets """
+    """Just returns what it gets
+
+    :param x: A Value
+    :returns: The Same Value
+    """
     return x

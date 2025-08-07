@@ -108,7 +108,7 @@ class LogLevel_e(enum.IntEnum):
 ##--|
 
 class LogConfig_p(Protocol):
-    """ TODO """
+    """ The interface of how logging is configured. """
 
     def setup(self, config:dict|ChainGuard) -> None: ...
 

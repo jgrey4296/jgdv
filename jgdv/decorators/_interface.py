@@ -66,6 +66,7 @@ class DForm_e(enum.Enum):
 ##--|
 
 class DecoratorHooks_p(Protocol):
+    # TODO remove need to define an internal function
 
     def _wrap_method_h[**In, Out](self, meth:Callable[In,Out]) -> Decorated[In, Out]: ...
 

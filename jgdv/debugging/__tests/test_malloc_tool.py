@@ -102,6 +102,7 @@ EXPECT_INSPECT : Final[str] = """
 """
 
 # Body:
+
 class TestMalloc:
 
     @pytest.fixture(scope="function")
@@ -109,9 +110,9 @@ class TestMalloc:
         pass
 
     ##--|
+
     def test_sanity(self):
         assert(True is not False) # noqa: PLR0133
-
 
     def test_ctor(self):
         match MallocTool():

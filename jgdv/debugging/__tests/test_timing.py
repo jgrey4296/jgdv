@@ -2,7 +2,7 @@
 TEST File updated
 
 """
-# ruff: noqa: ANN202
+# ruff: noqa: ANN202, B011, ANN001
 
 # Imports
 from __future__ import annotations
@@ -85,6 +85,7 @@ class TestTimeDec:
 
     def test_basic(self, caplog):
         dec = TimeDec()
+
         @dec
         def basic():
             time.sleep(1)
@@ -92,10 +93,10 @@ class TestTimeDec:
         basic()
         assert("Timed: TestTimeDec.test_basic.<locals>.basic took" in caplog.messages[0])
 
-
     def test_cache(self, caplog):
         target_cache = pl.Path(__file__).parent / "basic.cache"
         dec = TimeDec(cache=target_cache)
+
         @dec
         def basic():
             time.sleep(0.2)
