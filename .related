@@ -19,3 +19,5 @@
 :api         : jgdv/_abstract
 :enums       : jgdv/enums
 :structs     : jgdv/structs
+:docs        : jgdv/_docs
+:docs-build  : .temp/docs
