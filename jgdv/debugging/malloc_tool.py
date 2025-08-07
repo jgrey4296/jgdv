@@ -95,7 +95,6 @@ class MallocTool:
         dm.compare("list", "simple")
         dm.inspect("list")
 
-
     """
     frame_count          : int
     started              : bool
@@ -258,7 +257,6 @@ class MallocTool:
                           path,
                           frame.lineno,
                           )
-
 
     def _print_diff_frames(self, stat:tracemalloc.StatisticDiff, *, idx:Maybe[int]=None, fullpath:bool=False) -> None:
         """ Print a diff, with stacktrace """

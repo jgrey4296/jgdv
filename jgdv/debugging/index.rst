@@ -16,7 +16,9 @@ Mallocs
 -------
 
 Utilities for measuring memory usage.
-See :class:`MallocTool<jgdv.debugging.malloc_tool.MallocTool>`, :func:`LogDel<jgdv.debugging.destruction.LogDel>`, and :class:`LogDestruction<jgdv.debugging.destruction.LogDestruction>`.
+See :class:`MallocTool <jgdv.debugging.malloc_tool.MallocTool>`,
+:func:`LogDel <jgdv.debugging.destruction.LogDel>`, and
+:class:`LogDestruction<jgdv.debugging.destruction.LogDestruction>`.
 
 
 .. code:: python

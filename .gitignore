@@ -3,3 +3,4 @@ log.*
 *.auto
 dist/
 /jgdv/debugging/__tests/basic.cache
+/jgdv/_docs/autoapi/

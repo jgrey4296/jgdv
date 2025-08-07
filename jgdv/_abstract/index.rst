@@ -30,7 +30,10 @@ Also some protocol adaptions of the :ref:`stdlib<jgdv._abstract.protocols.stdlib
 Type Aliases
 ------------
 
-Rather than ``str | None``, I prefer ``Maybe[str]``. Similarly ``Result[str, IndexError]`` etc.
+Rather than ``str | None``, I prefer
+:py:type:`Maybe[str] <jgdv._abstract.types.Maybe>`.
+Similarly :py:type:`Result[str, IndexError] <jgdv._abstract.types.Result>`
+etc.
 
 
 -------

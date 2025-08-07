@@ -14,7 +14,7 @@ JGDV is my kitchen sink library.
 Things I keep writing that don't warrant a separate library get shoved in here.
 Of interest:
 
-#. :py:mod:`JGDVLogConfig<jgdv.logging>`
+#. :py:mod:`JGDVLogConfig <jgdv.logging>`
 #. :py:mod:`ChainGuard<jgdv.structs.chainguard>`
 #. :py:mod:`Strang<jgdv.structs.strang>`
 #. :py:mod:`DKey<jgdv.structs.dkey>`
