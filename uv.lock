@@ -292,17 +292,20 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "ipython" },
-    { name = "myst-parser" },
     { name = "pydot" },
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "pytest-mock" },
     { name = "ruff" },
+    { name = "tox" },
+    { name = "tox-uv" },
+]
+docs = [
+    { name = "myst-parser" },
+    { name = "pydot" },
     { name = "sphinx" },
     { name = "sphinx-autoapi" },
     { name = "sphinx-rtd-theme" },
-    { name = "tox" },
-    { name = "tox-uv" },
 ]
 
 [package.metadata]
@@ -320,17 +323,20 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "ipython", specifier = ">=9.4.0" },
-    { name = "myst-parser", specifier = ">=4.0.1" },
     { name = "pydot", specifier = ">=4.0.1" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
     { name = "pytest-mock", specifier = ">=3.14.0" },
     { name = "ruff", specifier = ">=0.12.8" },
+    { name = "tox", specifier = ">=4.28.4" },
+    { name = "tox-uv", specifier = ">=1.27.0" },
+]
+docs = [
+    { name = "myst-parser", specifier = ">=4.0.1" },
+    { name = "pydot", specifier = ">=4.0.1" },
     { name = "sphinx", specifier = ">=8.2.3" },
     { name = "sphinx-autoapi", editable = "../../__libs/python/sphinx-autoapi" },
     { name = "sphinx-rtd-theme", specifier = ">=3.0.2" },
-    { name = "tox", specifier = ">=4.28.4" },
-    { name = "tox-uv", specifier = ">=1.27.0" },
 ]
 
 [[package]]
