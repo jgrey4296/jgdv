@@ -22,10 +22,10 @@ build:
       - asdf install uv 0.8.4
       - asdf global uv 0.8.4
     create_environment:
+      - uv lock --no-sources
       - uv venv "${READTHEDOCS_VIRTUALENV_PATH}"
     install:
-      - uv lock --no-sources
-      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --group docs --no-cache
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --group docs 
     build:
       html:
         - echo "Building HTML"
