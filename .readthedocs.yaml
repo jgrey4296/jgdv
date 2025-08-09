@@ -24,7 +24,7 @@ build:
     create_environment:
       - uv venv --refresh "${READTHEDOCS_VIRTUALENV_PATH}"
     install:
-      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --group docs --no-editable --verbose
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --group docs --no-editable --verbose --no-cache
     build:
       html:
         - echo "Building HTML"
