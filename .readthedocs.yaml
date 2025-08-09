@@ -16,13 +16,17 @@ build:
     python: "3.12"
   jobs:
     pre_create_environment:
+      - mkdir -p .temp/egg-info
       - asdf --version
-      - cat .tool-versions
       - asdf plugin add uv
       - asdf install uv 0.8.4
       - asdf global uv 0.8.4
-      - mkdir -p .temp/egg-info
     create_environment:
       - uv venv "${READTHEDOCS_VIRTUALENV_PATH}"
     install:
       - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --group docs
+    build:
+      html:
+        - echo "Building HTML"
+        - mkdir -p $READTHEDOCS_OUTPUT/html/
+        - uv run sphinx-build -T -b html -d _build/doctrees -D language=en ./jgdv $READTHEDOCS_OUTPUT/html
