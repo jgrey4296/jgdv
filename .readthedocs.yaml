@@ -9,17 +9,25 @@ version: 2
 sphinx:
   configuration: jgdv/_docs/conf.py
 
-# Set the version of Python and other tools you might need
 build:
   os: ubuntu-22.04
   tools:
     python: "3.12"
   jobs:
     pre_create_environment:
+      - mkdir -p .temp/egg-info
       - asdf plugin add uv
-      - asdf install uv latest
-      - asdf global uv latest
+      - asdf install uv 0.8.4
+      - asdf global uv 0.8.4
     create_environment:
-      - uv venv "${READTHEDOCS_VIRTURALENV_PATH}"
+      # Remove any editable installations:
+      - uv lock --no-sources
+      - uv venv --refresh "${READTHEDOCS_VIRTUALENV_PATH}"
     install:
-      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --group docs
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --group docs 
+    build:
+      html:
+        - echo "Building HTML"
+        - mkdir -p $READTHEDOCS_OUTPUT/html/
+        # Run sphinx in-tree:
+        - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv run --frozen sphinx-build -T -b html -c ./jgdv/_docs/ -d _build/doctrees -D language=en ./jgdv $READTHEDOCS_OUTPUT/html
