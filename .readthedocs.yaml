@@ -29,4 +29,4 @@ build:
       html:
         - echo "Building HTML"
         - mkdir -p $READTHEDOCS_OUTPUT/html/
-        - uv run sphinx-build -T -b html -d _build/doctrees -D language=en ./jgdv $READTHEDOCS_OUTPUT/html
+        - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv run sphinx-build -T -b html -d _build/doctrees -D language=en ./jgdv $READTHEDOCS_OUTPUT/html
