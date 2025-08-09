@@ -21,9 +21,7 @@ build:
       - asdf plugin add uv
       - asdf install uv 0.8.4
       - asdf global uv 0.8.4
-      - asdf reshim
     create_environment:
-      - asdf current
       - uv venv "${READTHEDOCS_VIRTUALENV_PATH}"
     install:
       - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --no-editable --group docs
