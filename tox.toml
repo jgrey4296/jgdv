@@ -1,11 +1,15 @@
 ## tox.toml -*- mode: toml-mode -*-
 # https://tox.wiki/en/4.28.4/user_guide.html
 # https://github.com/tox-dev/tox-uv
+# String substitution: "{[<table>]<key>}"
 requires                   = ["tox>=4", "tox-uv>=1"]
 env_list                   = ["docs"]
 work_dir                   = ".temp/tox/work"
 temp_dir                   = ".temp/tox/temp"
 skip_missing_interpreters  = false
+
+[vals]
+package              = "jgdv"
 
 [gh-actions]
 python                     = []
@@ -18,7 +22,6 @@ allowlist_externals  = ["echo"]
 [env.lint]
 description   = "run linters"
 skip_install  = true
-deps          = ["ruff"]
 commands      = [
     ["uv", "run", "ruff", "check",
     "--output-format", "concise",
@@ -27,33 +30,30 @@ commands      = [
 ]
 
 [env.type]
-description   = "run type checker"
+description   = "type check files"
 skip_install  = true
-deps          = ["mypy"]
 commands      = [
-    ["uv", "run", "mypy", {replace="posargs", default=[], extend=true}],
+    ["uv", "run", "mypy", {replace="posargs", default=[], extend=true}, "{[vals]package}"],
 ]
 
 [env.type-strict]
-base      = ["env.type"]
+description = "mypy, but strict"
+skip_install = true
 commands  = [
-    ["uv", "run", "mypy", "--strict", {replace="posargs", default=[], extend=true}],
+    ["uv", "run", "mypy", "--strict",
+    {replace="posargs", default=[], extend=true},
+    "{[vals]package}"],
 ]
 
 [env.test]
-desciption    = "run tests"
+description   = "run tests"
 skip_install  = false
-deps          = [
-     "pytest>=8.3.5",
-     "pytest-cov>6.0",
-     "pytest-mock>=3.14",
-     "pydot>=4.0.1" , 
-]
-commands = [
+commands      = [
     ["uv", "run", "pytest", { replace="posargs", default=["./jgdv"], extend=true }],
 ]
 
 [env.test-cov]
+description = "Generate test coverage report"
 base      = ["env.test"]
 commands  = [
     ["uv", "run", "pytest",
@@ -67,17 +67,9 @@ commands  = [
      ],
 ]
 
-
 [env.docs]
 description   = "build documentation"
 skip_install  = true
-deps          = [
-    "sphinx>=8.2.3",
-    "myst-parser>=4.0.1",
-    "sphinx-autoapi>=3.6.0",
-    "sphinx-rtd-theme>=3.0.2",
-    "pydot>=4.0.1",
-]
 commands      = [
     ["uv", "run", "sphinx-build",
     "-q",
@@ -92,5 +84,4 @@ commands      = [
 
 [env.release_notes]
 description  = "generate changelog"
-deps         = []
 commands     = []
