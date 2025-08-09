@@ -22,6 +22,7 @@ build:
       - asdf install uv 0.8.4
       - asdf global uv 0.8.4
     create_environment:
+      - uv lock --no-sources
       - uv venv --refresh "${READTHEDOCS_VIRTUALENV_PATH}"
     install:
       - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --group docs --no-editable --verbose --reinstall --dry-run
