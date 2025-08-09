@@ -25,11 +25,10 @@ build:
       - uv lock --no-sources
       - uv venv --refresh "${READTHEDOCS_VIRTUALENV_PATH}"
     install:
-      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --group docs --no-editable --verbose --reinstall --dry-run
-      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --group docs --no-editable --verbose --no-cache --reinstall
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --group docs 
     build:
       html:
         - echo "Building HTML"
         - mkdir -p $READTHEDOCS_OUTPUT/html/
         - uv pip list
-        - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv run sphinx-build -T -b html -d _build/doctrees -D language=en ./jgdv $READTHEDOCS_OUTPUT/html
+        - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv run --frozen sphinx-build -T -b html -d _build/doctrees -D language=en ./jgdv $READTHEDOCS_OUTPUT/html
