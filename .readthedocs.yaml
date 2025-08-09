@@ -24,6 +24,6 @@ build:
       - asdf reshim
     create_environment:
       - asdf current
-      - uv venv "${READTHEDOCS_VIRTURALENV_PATH}"
+      - uv venv "${READTHEDOCS_VIRTUALENV_PATH}"
     install:
       - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --group docs
