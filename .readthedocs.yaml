@@ -21,7 +21,7 @@ build:
       - asdf plugin add uv
       - asdf install uv 0.8.4
       - asdf global uv 0.8.4
-      - mkdir .temp/egg-info
+      - mkdir -p .temp/egg-info
     create_environment:
       - uv venv "${READTHEDOCS_VIRTUALENV_PATH}"
     install:
