@@ -57,16 +57,14 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-type InputData = dict
-TABLE_K    : Final[str] = "__table"
-INDEX_K    : Final[str] = "__index"
-MUTABLE_K  : Final[str] = "__mutable"
-ROOT_STR   : Final[str] = "<root>"
-super_get             = object.__getattribute__
-super_set             = object.__setattr__
-USCORE   : Final[str] = "_"
-DASH     : Final[str] = "-"
-MUTABLE  : Final[str] = "__mutable"
+type InputData           = dict
+TABLE_K    : Final[str]  = "__table"
+INDEX_K    : Final[str]  = "__index"
+MUTABLE_K  : Final[str]  = "__mutable"
+ROOT_STR   : Final[str]  = "<root>"
+USCORE     : Final[str]  = "_"
+DASH       : Final[str]  = "-"
+MUTABLE    : Final[str]  = "__mutable"
 ##--|
 
 class GuardBase(dict):

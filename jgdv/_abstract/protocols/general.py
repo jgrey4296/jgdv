@@ -2,7 +2,6 @@
 """
 
 """
-# ruff: noqa: N801
 # Imports:
 from __future__ import annotations
 
@@ -41,7 +40,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from .types import Maybe, Ctor
+    from ..types import Maybe, CtorFn
     type ChainGuard = Any
     type Logger     = logmod.Logger
 
@@ -53,7 +52,7 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 # ##-- Generated Exports
-__all__ = ( # noqa: RUF022
+__all__ = (
 
 # -- Classes
 "ActionGrouper_p", "ArtifactStruct_p", "Buildable_p", "DILogger_p",
@@ -155,14 +154,16 @@ class Factory_p[T](Protocol):
     """
 
     @classmethod
-    def build(cls:Ctor[T], *args:Any, **kwargs:Any) -> T: ...  # noqa: ANN401
+    def build(cls:type[T], *args:Any, **kwargs:Any) -> T: ...  # noqa: ANN401
 
 @runtime_checkable
 class Nameable_p(Protocol):
     """ The core protocol of something use as a name """
 
+    @override
     def __hash__(self) -> int: ...
 
+    @override
     def __eq__(self, other:object) -> bool: ...
 
     def __lt__(self, other:Nameable_p) -> bool: ...

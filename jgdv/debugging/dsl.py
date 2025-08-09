@@ -2,25 +2,51 @@
 """
 
 """
-##-- imports
+# Imports:
 from __future__ import annotations
 
-import abc
+# ##-- stdlib imports
 import logging as logmod
 from copy import deepcopy
-from dataclasses import InitVar, dataclass, field
 from re import Pattern
-from typing import (TYPE_CHECKING, Any, Callable, ClassVar, Final, Generic,
-                    Iterable, Iterator, Mapping, Match, MutableMapping,
-                    Protocol, Sequence, Tuple, TypeAlias, TypeGuard, TypeVar,
-                    cast, final, overload, runtime_checkable)
 from uuid import UUID, uuid1
 from weakref import ref
 
+# ##-- end stdlib imports
+
+# ##-- 3rd party imports
 import pyparsing as pp
 import pyparsing.core as ppc
 
-##-- end imports
+# ##-- end 3rd party imports
+
+# ##-- types
+# isort: off
+# General
+import abc
+import collections.abc
+import typing
+import types
+from typing import cast, assert_type, assert_never
+from typing import Generic, NewType, Never
+from typing import no_type_check, final, override, overload
+# Protocols and Interfaces:
+from typing import Protocol, runtime_checkable
+# isort: on
+# ##-- end types
+
+# ##-- type checking
+# isort: off
+if typing.TYPE_CHECKING:
+    from typing import Final, ClassVar, Any, Self
+    from typing import Literal, LiteralString
+    from typing import TypeGuard
+    from collections.abc import Iterable, Iterator, Callable, Generator
+    from collections.abc import Sequence, Mapping, MutableMapping, Hashable
+
+    from jgdv import Maybe
+## isort: on
+# ##-- end type checking
 
 ##-- logging
 logging = logmod.getLogger(__name__)
@@ -38,7 +64,7 @@ fail_format  : Final[str] = "{5[0]:>10}{5[1]:3}{5[2]:<10}\t\t {0} <{1}>: {2} fou
 class PyParsingDebuggerControl:
 
     @staticmethod
-    def debug_pyparsing(*flags, all_warnings=False):
+    def debug_pyparsing(*flags, all_warnings=False) -> None:
         """ Set pyparsing to debug
         Only applies for parsers created *after* this,
         so has to be set at boot time.
@@ -60,7 +86,6 @@ class PyParsingDebuggerControl:
             ppc._default_exception_debug_action               = debug_fail_action
         else:
             logging.warning("PyParsing Debug is already active")
-
 
     @staticmethod
     def dfs_activate(*parsers, remove=False):
@@ -90,7 +115,6 @@ class PyParsingDebuggerControl:
     @static
     def debug_active_p() -> bool:
         return pp.__diag__.enable_debug_on_named_expressions
-
 
 def debug_try_action(instring, loc, expr, *args):
     """
@@ -126,20 +150,13 @@ def debug_fail_action(instring, loc, expr, exc, *args):
 
     logging.error(fail_format.format(FAILED, expr.name, msg, found_str, loc, mark_str))
 
-
-
-
-
-
-
 ## util
+
 def _calc_mark_string(instring, loc, buffer=10):
     str_len  = len(instring)
     pre_str  = instring[max(0, loc-buffer):max(0, loc)]
     post_str = instring[max(0, loc):min(str_len, loc+buffer)]
     return pre_str.replace("\n", "\\n"), MARK, post_str.replace("\n", "\\n")
-
-
 
 # except pp.ParseException as err:
 #     import traceback

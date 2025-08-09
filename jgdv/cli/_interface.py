@@ -2,8 +2,6 @@
 """
 
 """
-# ruff: noqa:
-
 # Imports:
 from __future__ import annotations
 
@@ -139,7 +137,7 @@ class ParseReport_d:
     subs       : dict[SubName, tuple[ParseResult_d]]
     help       : bool
 
-    def __init__(self, *, raw:Iterable[str], remaining:Iterable[str], prog:ParseResult_d, _help:bool) -> None:  # noqa: A002
+    def __init__(self, *, raw:Iterable[str], remaining:Iterable[str], prog:ParseResult_d, _help:bool) -> None:
         self.raw        = tuple(raw)
         self.remaining  = tuple(remaining)
         self.help       = _help

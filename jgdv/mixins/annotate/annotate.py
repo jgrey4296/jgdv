@@ -2,7 +2,6 @@
 """
 
 """
-# ruff: noqa: ERA001
 # Imports:
 from __future__ import annotations
 
@@ -76,7 +75,8 @@ class SubAnnotate_m:
     __builder     : ClassVar[Subclasser]  = Subclasser()
     _annotate_to  : ClassVar[str]         = API.AnnotationTarget
 
-    def __init_subclass__(cls, *args:Any, **kwargs:Any) -> None:  # noqa: ANN401
+    @override
+    def __init_subclass__(cls, *args:Any, **kwargs:Any) -> None:
         """ On init of a subclass, ensure it's annotation target is set
 
         """

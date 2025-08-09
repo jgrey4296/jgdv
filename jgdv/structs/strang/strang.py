@@ -2,7 +2,6 @@
 """
 
 """
-# ruff: noqa: B019, PLR2004
 # Imports:
 from __future__ import annotations
 
@@ -61,7 +60,7 @@ if TYPE_CHECKING:
 # ##-- end types
 
 # ##-- Generated Exports
-__all__ = ( # noqa: RUF022
+__all__ = (
 
 # -- Classes
 "Strang",
@@ -209,7 +208,7 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
     _processor  : ClassVar                 = StrangBasicProcessor()
     _formatter  : ClassVar                 = StrangFormatter()
     _slicer     : ClassVar[_StrangSlicer]  = _StrangSlicer()
-    _sections   : ClassVar                 = API.STRANG_ALT_SECS
+    _sections   : ClassVar[API.Sections_d] = API.STRANG_ALT_SECS
 
     data        : API.Strang_d
     meta        : dict
@@ -385,7 +384,7 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
             case UUID() as x:
                 return (x == self.uuid() or x in self.data.meta)
             case str() as needle:
-                return API.STRCON(self, needle)
+                return API.STRCON(cast("str", self), needle)
             case _:
                 return False
 
@@ -400,9 +399,6 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
         return tuple(len(x) for x in self.data.sec_words)
 
     ##--| Access
-
-    def otherfunc(self):
-        return 2
 
     @override
     def index(self, *sub:API.FindSlice, start:Maybe[int]=None, end:Maybe[int]=None) -> int: # type: ignore[override]
@@ -420,7 +416,7 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
         match sub:
             case [API.StrangMarkAbstract_e() as mark]:
                 idx = self.data.meta.index(mark)
-                return self.data.words[idx].start
+                return cast("int", self.data.words[idx].start)
             case ["", *_]:
                 raise ValueError(errors.IndexOfEmptyStr, sub)
             case [str() as needle]:
@@ -446,7 +442,7 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
                 word_idx  = max(-1, *(i for i,x in enumerate(self.data.meta) if x == mark), -1)
                 if word_idx == -1:
                     raise ValueError(mark)
-                return self.data.words[word_idx].start
+                return cast("int", self.data.words[word_idx].start)
             case ["", *_]:
                 raise ValueError(errors.IndexOfEmptyStr, sub)
             case [str() as needle]:
@@ -454,7 +450,7 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
             case [int()|str() as sec, int() as word]:
                 idx = self.section(sec).idx
                 word_idx = self.data.sec_words[idx][word]
-                return self.data.words[word_idx].start
+                return cast("int", self.data.words[word_idx].start)
             case x:
                 raise ValueError(x)
 
@@ -638,4 +634,4 @@ class Strang[*K](SubAlias_m, str, metaclass=StrangMeta, fresh_registry=True):
         """ Advanced formatting for strangs,
         using the cls._formatter
         """
-        return self._formatter.format(self, *args, **kwargs)
+        return cast("str", self._formatter.format(self, *args, **kwargs))

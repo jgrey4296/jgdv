@@ -130,7 +130,7 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
                 base_text , inst_data, post_data, ctor = rest  # type: ignore[assignment]
                 return base_text, inst_data, post_data, ctor
             case True, *rest:
-                base_text, inst_data, post_data, ctor = rest  # type: ignore[assignment]  # noqa: A001
+                base_text, inst_data, post_data, ctor = rest  # type: ignore[assignment]
 
         if not self._verify_structure(cls, base_text):
             raise ValueError(errors.MalformedData, base_text)
@@ -457,6 +457,7 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
         # TODO handle combined marks like val::+_.blah
 
         """
+        x : Any
         first_or_last = index in {0, maxcount-1}
         match sec.marks:
             case None:
@@ -467,7 +468,7 @@ class StrangBasicProcessor[T:Strang_p](PreProcessor_p):
             case None:
                 pass
             case x if val == x:
-                return x
+                return cast("API.StrangMarkAbstract_e", x)
 
         if not (first_or_last and val in marks):
             return None

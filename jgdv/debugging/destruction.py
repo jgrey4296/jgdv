@@ -7,7 +7,6 @@ See EOF for license/metadata/notes as applicable
 ##-- builtin imports
 from __future__ import annotations
 
-# import abc
 import datetime
 import enum
 import functools as ftz
@@ -16,7 +15,6 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
 import weakref
 from uuid import UUID, uuid1
 
@@ -46,7 +44,7 @@ if typing.TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Callable, Generator
     from collections.abc import Sequence, Mapping, MutableMapping, Hashable
 
-    from jgdv import Maybe
+    from jgdv import Maybe, Func
 ## isort: on
 # ##-- end type checking
 
@@ -54,6 +52,7 @@ if typing.TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+from ._interface import DEL_LOG_K
 from jgdv.decorators._interface import ClsDecorator_p
 
 DEBUG_DESTRUCT_ON = False
@@ -71,19 +70,21 @@ def _decorate_del(fn:Func[..., None]) -> Func[..., None]:
 
     return _wrapped
 
-def LogDel(cls:type) -> type:  # noqa: FBT001, N802
+def LogDel(cls:type) -> type:  # noqa: N802
     """
     A Class Decorator, attaches a debugging statement to the object destructor
     To activate, add classvar of {jgdv.debugging._interface.DEL_LOG_K} = True
     to the class.
     """
-    match (getattr(API.DEL_LOG_K, False), hasattr(cls, "__del__")):
+    match (getattr(cls, DEL_LOG_K, default=False), # type: ignore[call-overload]
+           hasattr(cls, "__del__")):
         case (False, _):
             pass
         case (True, True):
-            setattr(cls, "__del__", _decorate_del(cls.__del__))
+            assert(hasattr(cls, "__del__"))
+            setattr(cls, "__del__", _decorate_del(cls.__del__))  # noqa: B010
         case (True, False):
-            setattr(cls, "__del__", _log_del)
+            setattr(cls, "__del__", _log_del)  # noqa: B010
     return cls
 ##--|
 class LogDestruction(ClsDecorator_p):
@@ -91,16 +92,18 @@ class LogDestruction(ClsDecorator_p):
     A Decorator to log when instances of a class are deleted
     """
 
-    def _debug_del(self):
+    def _debug_del(self) -> None:
         """ standalone del logging """
         logging.warning("Deleting: %s", self)
 
-    def _debug_del_dec(self, fn):
+    def _debug_del_dec(self, fn:Func) -> Callable:
         """ wraps existing del method """
 
-        def _wrapped(_self, *args, **kwargs):
+        def _wrapped(_self:object, *args, **kwargs) -> None:
             logging.warning("Deleting: %s", _self)
-            fn(*args)
+            fn(_self, *args, **kwargs)
+
+        return _wrapped
 
     @override
     def __call__[T](self, cls:type[T]) -> type[T]:
@@ -111,7 +114,7 @@ class LogDestruction(ClsDecorator_p):
             case (False, _):
                 pass
             case (True, True):
-                setattr(cls, "__del__", self._debug_del_dec(cls.__del__)) # type: ignore[attr-defined]
+                setattr(cls, "__del__", self._debug_del_dec(cls.__del__)) # type: ignore[attr-defined]  # noqa: B010
             case (True, False):
-                setattr(cls, "__del__", self._debug_del)
+                setattr(cls, "__del__", self._debug_del)  # noqa: B010
         return cls

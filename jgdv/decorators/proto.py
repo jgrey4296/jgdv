@@ -270,7 +270,6 @@ class Proto(MonotonicDec):
         return customized
 
     def _build_mro(self, cls) -> list:
-        import typing
         match cls.mro():
             case [*xs, typing.Protocol, x] if x is object:
                 base = [*xs, *self._protos, object]

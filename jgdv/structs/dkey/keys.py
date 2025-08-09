@@ -243,7 +243,7 @@ class IndirectDKey(DKey, mark=Mapping, convert="I"):
     def _indirect(self) -> Literal[True]:
         return True
 
-    def exp_generate_chains_h(self, root:ExpInst_d, factory:InstructionFactory_p, opts:dict) -> list[ExpInstChain_d|ExpInst_d]:  # noqa: ANN401
+    def exp_generate_chains_h(self, root:ExpInst_d, factory:InstructionFactory_p, opts:dict) -> list[ExpInstChain_d|ExpInst_d]:
         """ Lookup the indirect version, the direct version, then use the fallback """
         targets : list = [
             factory.build_inst(self, root, opts, decrement=False),

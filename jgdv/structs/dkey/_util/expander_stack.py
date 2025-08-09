@@ -41,7 +41,7 @@ from .. import _interface as API # noqa: N812
 from collections.abc import Mapping
 from . import _interface as ExpAPI # noqa: N812
 from ._interface import Expander_p, SourceChain_d
-from ._interface import ExpInst_d, ExpInstChain_d
+from ._interface import ExpInst_d, ExpInstChain_d, InstructionFactory_p
 from .._interface import Key_p
 
 # ##-- types
@@ -63,7 +63,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Iterator, Generator
     from collections.abc import Sequence, MutableMapping, Hashable
 
-    from jgdv import Maybe, M_, Func, RxStr, Rx, Ident, FmtStr, Ctor
+    from jgdv import Maybe, M_, Func, RxStr, Rx, Ident, FmtStr, CtorFn
     from ._interface import Expandable_p
 # isort: on
 # ##-- end types
@@ -80,6 +80,7 @@ type InstructionList        = list[InstructionAlts|ExpInst_d]
 DoMaybe                     = MethodMaybe()
 # Body:
 
+@Proto(InstructionFactory_p)
 class InstructionFactory:
     _ctor : Maybe[type[Key_p]]
 
@@ -237,12 +238,12 @@ class DKeyExpanderStack:
 
     """
     _factory : ClassVar[InstructionFactory] = InstructionFactory()
-    _ctor : Ctor[API.Key_p]
+    _ctor : type[API.Key_p]
 
-    def __init__(self, *, ctor:Maybe[Ctor[API.Key_p]]=None) -> None:
+    def __init__(self, *, ctor:Maybe[type[API.Key_p]]=None) -> None:
         self._factory.set_ctor(ctor)
 
-    def set_ctor(self, ctor:Ctor[API.Key_p]) -> None:
+    def set_ctor(self, ctor:type[API.Key_p]) -> None:
         """ Dependency injection from DKey.__init_subclass__ """
         self._factory.set_ctor(ctor)
 

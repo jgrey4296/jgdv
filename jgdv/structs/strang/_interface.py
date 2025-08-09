@@ -38,7 +38,7 @@ from jgdv._abstract.protocols.str import String_p
 import abc
 import collections.abc
 from typing import TYPE_CHECKING, cast, assert_type, assert_never
-from typing import Generic, NewType
+from typing import Generic, NewType, TypeVar
 # Protocols:
 from typing import Protocol, runtime_checkable
 # Typing Decorators:
@@ -82,22 +82,22 @@ logging = logmod.getLogger(__name__)
 ##-- end logging
 
 ##--| Vars
-FMT_PATTERN   : Final[Rx]                    = re.compile("^(h?)(t?)(p?)")
-TYPE_RE       : Final[Rx]                    = re.compile(r"<(.+?)(?::(.+?))?>") # TODO name the groups
-TYPE_ITER_RE  : Final[Rx]                    = re.compile(r"(<)(.+?)(?::(.+?))?(>)")
-MARK_RE       : Final[Rx]                    = re.compile(r"(\$.+?\$)")
-MARK_ITER_RE  : Final[Rx]                    = re.compile(r"(\$)(.+?)(\$)")
-ARGS_RE       : Final[Rx]                    = re.compile(r"\[(.+?)\]$")
-ARGS_CHARS    : Final[tuple[str, str, str]]  = "[", ",", "]"
-CASE_DEFAULT  : Final[str]                   = "."
-END_DEFAULT   : Final[str]                   = "::"
-INST_K        : Final[str]                   = "instanced"
-GEN_K         : Final[str]                   = "gen_uuid"
-STRGET        : Final[Callable]              = str.__getitem__
-STRCON        : Final[Callable]              = str.__contains__
-UUID_WORD     : Final[str]                   = "<uuid>"
+FMT_PATTERN   : Final[Rx]                         = re.compile("^(h?)(t?)(p?)")
+TYPE_RE       : Final[Rx]                         = re.compile(r"<(.+?)(?::(.+?))?>") # TODO name the groups
+TYPE_ITER_RE  : Final[Rx]                         = re.compile(r"(<)(.+?)(?::(.+?))?(>)")
+MARK_RE       : Final[Rx]                         = re.compile(r"(\$.+?\$)")
+MARK_ITER_RE  : Final[Rx]                         = re.compile(r"(\$)(.+?)(\$)")
+ARGS_RE       : Final[Rx]                         = re.compile(r"\[(.+?)\]$")
+ARGS_CHARS    : Final[tuple[str, str, str]]       = "[", ",", "]"
+CASE_DEFAULT  : Final[str]                        = "."
+END_DEFAULT   : Final[str]                        = "::"
+INST_K        : Final[str]                        = "instanced"
+GEN_K         : Final[str]                        = "gen_uuid"
+STRGET        : Final[Callable]                   = str.__getitem__
+STRCON        : Final[Callable[[str,str], bool]]  = str.__contains__
+UUID_WORD     : Final[str]                        = "<uuid>"
 
-SEC_END_MSG   : Final[str]                   = "Only the last section has no end marker"
+SEC_END_MSG   : Final[str]                        = "Only the last section has no end marker"
 
 ##--| Enums
 
@@ -112,7 +112,7 @@ class StrangMarkAbstract_e(enum.StrEnum):
         return set()
 
     @classmethod
-    def skip(cls) -> Maybe:
+    def skip[T](cls:type[T]) -> Maybe[T]:
         return None
 
     @classmethod
@@ -144,7 +144,7 @@ class DefaultBodyMarks_e(StrangMarkAbstract_e):
 
     @override
     @classmethod
-    def skip(cls) -> Maybe[str]:
+    def skip(cls) -> Maybe[DefaultBodyMarks_e]:
         return cls.empty
 
     @override

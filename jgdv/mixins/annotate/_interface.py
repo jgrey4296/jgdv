@@ -3,8 +3,6 @@
 
 
 """
-# ruff: noqa:
-
 # Imports:
 from __future__ import annotations
 
@@ -17,7 +15,6 @@ import logging as logmod
 import pathlib as pl
 import re
 import time
-import types
 import collections
 import contextlib
 import hashlib

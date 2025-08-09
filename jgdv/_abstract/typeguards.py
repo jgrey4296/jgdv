@@ -3,8 +3,6 @@
 A Module for useful typeguard functions.
 
 """
-# ruff: noqa:
-
 # Imports:
 from __future__ import annotations
 

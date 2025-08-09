@@ -53,6 +53,12 @@ if TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
+
+LoadFailMsg           : Final[str] = "ChainGuard Failed to Load: "
+TomlLoadFailMsg       : Final[str] = "Failed to Load Toml"
+DirectoryLoadFailMsg  : Final[str] = "ChainGuard Failed to load Directory: "
+
+##--|
 class TomlLoader_m:
     """ Mixin for loading toml files """
 
@@ -62,7 +68,7 @@ class TomlLoader_m:
         try:
             return cls(tomllib.loads(text)) # type: ignore[call-arg]
         except Exception as err:
-            raise OSError("ChainGuard Failed to Load: ", text, err.args) from err
+            raise OSError(LoadFailMsg, text, err.args) from err
 
     @classmethod
     def from_dict(cls:type[ChainGuard_i], data:dict[str, TomlTypes]) -> ChainGuard_i:
@@ -70,7 +76,7 @@ class TomlLoader_m:
         try:
             return cls(data)
         except Exception as err:
-            raise OSError("ChainGuard Failed to Load: ", data, err.args) from err
+            raise OSError(LoadFailMsg, data, err.args) from err
 
     @classmethod
     def load(cls:type[ChainGuard_i], *paths:str|pl.Path) -> ChainGuard_i:
@@ -82,7 +88,7 @@ class TomlLoader_m:
             try:
                 return cls(tomllib.loads("\n".join(texts)))
             except tomllib.TOMLDecodeError as err:
-                raise IOError("Failed to Load Toml", *err.args, paths) from err
+                raise OSError(TomlLoadFailMsg, *err.args, paths) from err
 
     @classmethod
     def load_dir(cls:type[ChainGuard_i], dirp:str|pl.Path) -> ChainGuard_i:
@@ -94,4 +100,4 @@ class TomlLoader_m:
 
             return cls(tomllib.loads("\n".join(texts)))
         except Exception as err:
-            raise IOError("ChainGuard Failed to load Directory: ", dirp, err.args) from err
+            raise OSError(DirectoryLoadFailMsg, dirp, err.args) from err

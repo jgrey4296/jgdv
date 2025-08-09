@@ -273,6 +273,7 @@ class InstructionFactory_p(Protocol):
 
     def literal_inst(self, val:Any) -> ExpInst_d: ...  # noqa: ANN401
 
+    def lift_inst(self, val:str, root:Maybe[ExpInst_d], opts:ExpOpts, *, decrement:bool=False, implicit:bool=False) -> ExpInst_d: ...
 class Expander_p[T](Protocol):
 
     def set_ctor(self, ctor:CtorFn[..., T]) -> None: ...
