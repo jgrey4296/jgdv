@@ -235,7 +235,7 @@ autoapi_own_page_level        = "module" # class | function | method | attribute
 # Relative to source dir:
 autoapi_template_dir          = "_docs/_templates/autoapi"
 # Directory to generate to. relative to source directory.
-autoapi_root              = "_docs/autoapi"
+autoapi_root              = "_docs/_autoapi"
 autoapi_dirs              = ["."]
 autoapi_file_patterns     = ["*.py", "*.pyi"]
 autoapi_ignore            = [*exclude_patterns, "*_docs/conf.py"]

@@ -8,23 +8,18 @@ work_dir                   = ".temp/tox/work"
 temp_dir                   = ".temp/tox/temp"
 skip_missing_interpreters  = false
 
-[vals]
-package              = "jgdv"
-
-[gh-actions]
-python                     = []
-
 [env_run_base]
 description          = "base_env"
 runner               = "uv-venv-lock-runner"
-allowlist_externals  = ["echo"]
+uv_sync_flags        = ["--no-editable", "--no-sources"]
+allowlist_externals  = ["echo", "mkdir"]
+set_env.PKGNAME      = {replace="env", name="PKGNAME", default="jgdv"}
 
 [env.lint]
 description   = "run linters"
 skip_install  = true
 commands      = [
-    ["uv", "run", "--frozen", "ruff",
-    "check",
+    ["uv", "run", "ruff", "check",
     "--output-format", "concise",
     {replace="posargs", default=[], extend=true},
     ],
@@ -34,7 +29,7 @@ commands      = [
 description   = "type check files"
 skip_install  = true
 commands      = [
-    ["uv", "run", "--frozen", "mypy",
+    ["uv", "run", "mypy",
     {replace="posargs", default=[], extend=true},
     "{[vals]package}",
     ],
@@ -44,18 +39,16 @@ commands      = [
 description = "mypy, but strict"
 skip_install = true
 commands  = [
-    ["uv", "run", "--frozen", "mypy",
-    "--strict",
+    ["uv", "run", "mypy", "--strict",
     {replace="posargs", default=[], extend=true},
-    "{[vals]package}",
-    ],
+    "{[vals]package}"],
 ]
 
 [env.test]
 description   = "run tests"
 skip_install  = false
 commands      = [
-    ["uv", "run", "--frozen", "pytest",
+    ["uv", "run", "pytest",
     { replace="posargs", default=["./jgdv"], extend=true },
     ],
 ]
@@ -64,7 +57,7 @@ commands      = [
 description = "Generate test coverage report"
 base      = ["env.test"]
 commands  = [
-    ["uv", "run", "--frozen", "pytest",
+    ["uv", "run", "pytest",
      "--cov=./jgdv",
      "--cov-report=json",
      "--cov-report=term",
@@ -78,18 +71,30 @@ commands  = [
 [env.docs]
 description   = "build documentation"
 skip_install  = true
+set_env = [
+    {replace="ref", of=["env_run_base", "set_env"]},
+    {CONFDIR  = {replace="env", name="CONFDIR",  default="./jgdv/_docs/"}},
+    {OUTDIR   = {replace="env", name="OUTDIR",   default="./.temp/docs/"}},
+    {DOCTREE  = {replace="env", name="DOCTREE",  default="./.temp/docs/.doctrees/"}},
+]
 commands      = [
+    ["echo", "Building Documentation to:", "{env:OUTDIR}"],
+    ["echo", "Doctrees to:", "{env:DOCTREE}"],
+    ["echo", "Config in:", "{env:CONFDIR}"],
     ["uv", "run", "--frozen", "sphinx-build",
-    "-q",
-    "--conf-dir", "./jgdv/_docs/",
+    # "-q",
+    # "--fresh-env",
+    "--conf-dir", "{env:CONFDIR}",
+    "--doctree-dir", "{env:DOCTREE}",
     "--warning-file", "./.temp/logs/sphinx.log",
     "--builder", "html",
-    "-D", "language=en"
-    "./jgdv",
-    {replace="posargs", default=["./.temp/docs"], extend=true}
+     "./{env:PKGNAME}",
+     "{env:OUTDIR}",
+    {replace="posargs", default=[], extend=true}
     ]
 ]
 
+
 [env.release_notes]
-description  = "generate changelog"
+description  = "TODO generate changelog"
 commands     = []

@@ -17,10 +17,9 @@ build:
     pre_create_environment:
       - mkdir -p .temp/egg-info
       - asdf plugin add uv
-      - asdf install uv 0.8.4
-      - asdf global uv 0.8.4
+      - asdf install uv latest
+      - asdf global uv latest
     create_environment:
-      # Remove any editable installations:
       - uv lock --no-sources
       - uv venv --refresh "${READTHEDOCS_VIRTUALENV_PATH}"
     install:
@@ -28,6 +27,10 @@ build:
     build:
       html:
         - echo "Building HTML"
-        - mkdir -p $READTHEDOCS_OUTPUT/html/
-        # Run sphinx in-tree:
-        - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv run --frozen sphinx-build -T -b html -c ./jgdv/_docs/ -d _build/doctrees -D language=en ./jgdv $READTHEDOCS_OUTPUT/html
+        - mkdir -p $READTHEDOCS_OUTPUT/html
+        - >
+          UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}"
+          OUTDIR="${READTHEDOCS_OUTPUT}/html/"
+          DOCTREE="_build/doctrees"
+          uv run --frozen
+          tox -e docs
