@@ -14,6 +14,8 @@ on:
   release:
     types: [published]
 
+  workflow_dispatch: # for manual triggers
+    
 permissions:
   contents: read
 
