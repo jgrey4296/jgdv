@@ -23,7 +23,8 @@ allowlist_externals  = ["echo"]
 description   = "run linters"
 skip_install  = true
 commands      = [
-    ["uv", "run", "ruff", "check",
+    ["uv", "run", "--frozen", "ruff",
+    "check",
     "--output-format", "concise",
     {replace="posargs", default=[], extend=true},
     ],
@@ -33,30 +34,37 @@ commands      = [
 description   = "type check files"
 skip_install  = true
 commands      = [
-    ["uv", "run", "mypy", {replace="posargs", default=[], extend=true}, "{[vals]package}"],
+    ["uv", "run", "--frozen", "mypy",
+    {replace="posargs", default=[], extend=true},
+    "{[vals]package}",
+    ],
 ]
 
 [env.type-strict]
 description = "mypy, but strict"
 skip_install = true
 commands  = [
-    ["uv", "run", "mypy", "--strict",
+    ["uv", "run", "--frozen", "mypy",
+    "--strict",
     {replace="posargs", default=[], extend=true},
-    "{[vals]package}"],
+    "{[vals]package}",
+    ],
 ]
 
 [env.test]
 description   = "run tests"
 skip_install  = false
 commands      = [
-    ["uv", "run", "pytest", { replace="posargs", default=["./jgdv"], extend=true }],
+    ["uv", "run", "--frozen", "pytest",
+    { replace="posargs", default=["./jgdv"], extend=true },
+    ],
 ]
 
 [env.test-cov]
 description = "Generate test coverage report"
 base      = ["env.test"]
 commands  = [
-    ["uv", "run", "pytest",
+    ["uv", "run", "--frozen", "pytest",
      "--cov=./jgdv",
      "--cov-report=json",
      "--cov-report=term",
@@ -71,14 +79,14 @@ commands  = [
 description   = "build documentation"
 skip_install  = true
 commands      = [
-    ["uv", "run", "sphinx-build",
+    ["uv", "run", "--frozen", "sphinx-build",
     "-q",
     "--conf-dir", "./jgdv/_docs/",
     "--warning-file", "./.temp/logs/sphinx.log",
     "--builder", "html",
+    "-D", "language=en"
     "./jgdv",
-    "./.temp/docs",
-    {replace="posargs", default=[], extend=true}
+    {replace="posargs", default=["./.temp/docs"], extend=true}
     ]
 ]
 
