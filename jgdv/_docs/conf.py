@@ -11,6 +11,7 @@ import os
 import sys
 import pathlib as pl
 import datetime
+import tomllib
 from collections.abc import Sequence, Callable
 from typing import Literal
 from docutils import nodes
@@ -45,7 +46,7 @@ project    = "jgdv"
 author     = "John Grey"
 copyright  = "{}, {}".format(datetime.datetime.now().strftime("%Y"), author)
 language   = "en"
-release    = "1.2.0"
+release    = tomllib.loads(pl.Path.cwd() / "../../pyproject.toml")['project']['version']
 
 """https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration"""
 root_doc                       = "index"
@@ -64,7 +65,7 @@ nitpick_ignore_regex           = set()
 highlight_options              = {}
 pygments_style                 = "sphinx"
 
-"""List of patterns, relative to source directory, that match files and
+"""List of patterns, RELATIVE TO SOURCE DIRECTORY, that match files and
 directories to incldue/ignore when looking for source files.
 These also affects html_static_path and html_extra_path.
 """

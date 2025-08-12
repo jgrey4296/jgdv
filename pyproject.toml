@@ -179,60 +179,6 @@ output        = ".temp/coverage/coverage.json"  # where to write output
 pretty_print  = true
 ##-- end coverage
 
-##-- sphinx
-[tool.sphinx]
-author     = "John Grey"
-copyright  = "2024-03-04"
-extensions = ['sphinx.ext.doctest', 'sphinx.ext.autodoc', 'sphinx.ext.autosummary', 'sphinx.ext.napoleon']
-templates  = ['_templates']
-exclude    = ['**/flycheck_*.py']
-
-[tool.sphinx.autosummary]
-generate = true
-
-[tool.sphinx.autodoc]
-add_module_names   = false
-inherit_docstrings = true
-
-[tool.sphinx.autodoc.defaults]
-members           = true
-undoc-members     = true
-private-members   = false
-special-members   = false
-inherited-members = true
-show-inheritance  = true
-
-[tool.sphinx.html]
-theme       = 'alabaster'
-static      = ['_static']
-
-[tool.sphinx.html.options]
-
-##-- end sphinx
-
-##-- bumpver
-[tool.bumpver]
-current_version    = "1.2.0"
-version_pattern    = "MAJOR.MINOR.PATCH"
-commit_message     = "[bump]: version {old_version} -> {new_version}"
-tag_message        = "{new_version}"
-tag_scope          = "default"
-commit             = true
-tag                = false
-# pre_commit_hook  = ""
-# post_commit_hook = ""
-# push             = true
-
-[tool.bumpver.file_patterns]
-"pyproject.toml"   = [
-                   '^version\s+=\s+"{version}"',
-                   '^current_version\s+=\s+"{version}"'
-]
-"jgdv/__init__.py" = ['^__version__\s+=\s+"{version}"']
-"jgdv/_docs/conf.py" = ['^release\s+=\s+"{version}"']
-
-##-- end bumpver
-
 ##-- isort
 
 ##-- isort
@@ -265,6 +211,16 @@ import_footer_localfolder = ""
 
 ##-- end isort
 
+##-- towncrier
+[tool.towncrier]
+package    = "jgdv"
+directory  = "jgdv/_docs/_news"
+filename   = "CHANGELOG.md"
+template   = "jgdv/_docs/_templates/news.md"
+create_add_extension = true
+
+##-- end towncrier
+
 ##-- uv
 [tool.uv.sources]
 sphinx-autoapi = { path = "../../__libs/python/sphinx-autoapi", editable = true }
@@ -272,6 +228,8 @@ sphinx-autoapi = { path = "../../__libs/python/sphinx-autoapi", editable = true 
 [dependency-groups]
 dev = [
     "ipython>=9.4.0",
+    "sh>=2.2.2",
+    "towncrier>=24.8.0",
     ]
 test =[
     "pydot>=4.0.1",

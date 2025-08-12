@@ -4,7 +4,8 @@ JGDV, my kitchen sink library.
 
 
 """
-__version__ = "1.2.0"
+from importlib.metadata import version
+__version__ = version("jgdv")
 
 from ._abstract import protocols as protos
 from ._abstract.types import *  # noqa: F403

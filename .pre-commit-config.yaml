@@ -1,6 +1,18 @@
 # https://pre-commit.com
 # https://pre-commit.com/hooks.html
-repos:
+
+# Hooks:
+# https://github.com/pre-commit/pre-commit-hooks
+# https://github.com/rhysd/actionlint (in go)
+# https://github.com/astral-sh/ruff-pre-commit
+# https://github.com/shellcheck-py/shellcheck-py
+# https://github.com/adrienverge/yamllint
+# https://github.com/markdownlint/markdownlint  (in ruby)
+# https://github.com/jorisroovers/gitlint
+# https://github.com/commitizen-tools/commitizen
+# https://towncrier.readthedocs.io/en/stable/pre-commit.html
+
+repos: 
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.2.0
     hooks:
@@ -17,17 +29,3 @@ repos:
     -   id: check-json
     -   id: pretty-format-json
         args: ["--autofix"]
-# - repo: local
-#   hooks:
-#     - id: pylint
-#       name: pylint
-#       entry: pylint
-#       language: system
-#       types: [python]
-#       args:
-#         [
-#           "-rn", # Only display messages
-#           # "-sn", # Don't display the score
-#           # "--rcfile=pylint.toml", # Link to your config file
-#           # "--exit-zero",
-#         ]
