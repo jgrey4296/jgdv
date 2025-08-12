@@ -46,7 +46,7 @@ project    = "jgdv"
 author     = "John Grey"
 copyright  = "{}, {}".format(datetime.datetime.now().strftime("%Y"), author)
 language   = "en"
-release    = tomllib.loads(pl.Path.cwd() / "../../pyproject.toml")['project']['version']
+release    = tomllib.loads((pl.Path.cwd() / "../../pyproject.toml").read_text())['project']['version']
 
 """https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration"""
 root_doc                       = "index"

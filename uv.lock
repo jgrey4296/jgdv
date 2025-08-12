@@ -110,6 +110,18 @@ wheels = [
 ]
 
 [[package]]
+name = "click"
+version = "8.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/60/6c/8ca2efa64cf75a977a0d7fac081354553ebe483345c734fb6b6515d96bbc/click-8.2.1.tar.gz", hash = "sha256:27c491cc05d968d271d5a1db13e3b5a184636d9d930f148c50b038f0d0646202", size = 286342, upload-time = "2025-05-20T23:19:49.832Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/85/32/10bb5764d90a8eee674e9dc6f4db6a0ab47c8c4d0d83c27f7c39ac415a4d/click-8.2.1-py3-none-any.whl", hash = "sha256:61a3265b914e850b85317d0b3109c7f8cd35a670f963866005d6ef1d5175a12b", size = 102215, upload-time = "2025-05-20T23:19:47.796Z" },
+]
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 source = { registry = "https://pypi.org/simple" }
@@ -292,13 +304,8 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "ipython" },
-    { name = "pydot" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "pytest-mock" },
-    { name = "ruff" },
-    { name = "tox" },
-    { name = "tox-uv" },
+    { name = "sh" },
+    { name = "towncrier" },
 ]
 docs = [
     { name = "myst-parser" },
@@ -306,6 +313,17 @@ docs = [
     { name = "sphinx" },
     { name = "sphinx-autoapi" },
     { name = "sphinx-rtd-theme" },
+    { name = "tox" },
+    { name = "tox-uv" },
+]
+test = [
+    { name = "pydot" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "pytest-mock" },
+    { name = "ruff" },
+    { name = "tox" },
+    { name = "tox-uv" },
 ]
 
 [package.metadata]
@@ -323,6 +341,19 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "ipython", specifier = ">=9.4.0" },
+    { name = "sh", specifier = ">=2.2.2" },
+    { name = "towncrier", specifier = ">=24.8.0" },
+]
+docs = [
+    { name = "myst-parser", specifier = ">=4.0.1" },
+    { name = "pydot", specifier = ">=4.0.1" },
+    { name = "sphinx", specifier = ">=8.2.3" },
+    { name = "sphinx-autoapi", specifier = ">=3.6.0" },
+    { name = "sphinx-rtd-theme", specifier = ">=3.0.2" },
+    { name = "tox", specifier = ">=4.28.4" },
+    { name = "tox-uv", specifier = ">=1.27.0" },
+]
+test = [
     { name = "pydot", specifier = ">=4.0.1" },
     { name = "pytest", specifier = ">=8.3.5" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
@@ -330,13 +361,6 @@ dev = [
     { name = "ruff", specifier = ">=0.12.8" },
     { name = "tox", specifier = ">=4.28.4" },
     { name = "tox-uv", specifier = ">=1.27.0" },
-]
-docs = [
-    { name = "myst-parser", specifier = ">=4.0.1" },
-    { name = "pydot", specifier = ">=4.0.1" },
-    { name = "sphinx", specifier = ">=8.2.3" },
-    { name = "sphinx-autoapi", editable = "../../__libs/python/sphinx-autoapi" },
-    { name = "sphinx-rtd-theme", specifier = ">=3.0.2" },
 ]
 
 [[package]]
@@ -805,22 +829,17 @@ wheels = [
 
 [[package]]
 name = "sphinx-autoapi"
-source = { editable = "../../__libs/python/sphinx-autoapi" }
+version = "3.6.0"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "astroid" },
     { name = "jinja2" },
     { name = "pyyaml" },
     { name = "sphinx" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "astroid", marker = "python_full_version < '3.12'", specifier = ">=2.7" },
-    { name = "astroid", marker = "python_full_version >= '3.12'", specifier = ">=3" },
-    { name = "jinja2" },
-    { name = "pyyaml" },
-    { name = "sphinx", specifier = ">=7.4.0" },
-    { name = "stdlib-list", marker = "python_full_version < '3.10'" },
+sdist = { url = "https://files.pythonhosted.org/packages/7f/a8/22b379a2a75ccb881217d3d4ae56d7d35f2d1bb4c8c0c51d0253676746a1/sphinx_autoapi-3.6.0.tar.gz", hash = "sha256:c685f274e41d0842ae7e199460c322c4bd7fec816ccc2da8d806094b4f64af06", size = 55417, upload-time = "2025-02-18T01:50:55.241Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/58/17/0eda9dc80fcaf257222b506844207e71b5d59567c41bbdcca2a72da119b9/sphinx_autoapi-3.6.0-py3-none-any.whl", hash = "sha256:f3b66714493cab140b0e896d33ce7137654a16ac1edb6563edcbd47bf975f711", size = 35281, upload-time = "2025-02-18T01:50:52.789Z" },
 ]
 
 [[package]]
@@ -933,6 +952,19 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/76/6a/aad1817e60f07e5ebc111affee15d4dff9d324981005310566c40f08786c/sty-1.0.6.tar.gz", hash = "sha256:d43ecb71b7bad0b56d622cb219d0be303c16fcb4143b84d1465ded22e29baa00", size = 12217, upload-time = "2023-11-27T13:57:12.931Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ec/89/22b3b7f25f67d04690e3b565ca89062a6e7afb1e7124342d5b5b22e8f014/sty-1.0.6-py3-none-any.whl", hash = "sha256:2b1eba187b3961644f797f97177f939c109c916d3d3a2cb6784454d1f1ce4983", size = 12553, upload-time = "2023-11-27T13:57:11.4Z" },
+]
+
+[[package]]
+name = "towncrier"
+version = "24.8.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "jinja2" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/69/d7/a5183f788cf4fabf03f7c767ae0b968249b0c737eb64b4d87a07ae01fea7/towncrier-24.8.0.tar.gz", hash = "sha256:013423ee7eed102b2f393c287d22d95f66f1a3ea10a4baa82d298001a7f18af3", size = 61635, upload-time = "2024-08-23T14:52:28.197Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/93/1b/2f7b88506e22d9798c139261af4946865c0787cfa345514ca3c70173a9cc/towncrier-24.8.0-py3-none-any.whl", hash = "sha256:9343209592b839209cdf28c339ba45792fbfe9775b5f9c177462fd693e127d8d", size = 56981, upload-time = "2024-08-23T14:52:26.659Z" },
 ]
 
 [[package]]
