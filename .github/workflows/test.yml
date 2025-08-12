@@ -8,11 +8,10 @@
 # https://github.com/actions/download-artifact
 # https://github.com/pypa/gh-action-pypi-publish
 
-name: Upload Python Package
+name: Run Tests
 
 on:
-  release:
-    types: [published]
+  push
 
   workflow_dispatch: # for manual triggers
     
