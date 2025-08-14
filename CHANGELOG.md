@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 <!-- towncrier release notes start -->
 
+# Jgdv 1.3.0 (2025-08-14)
+
+No significant changes.
+
 
 ## [1.2.0] - 2025-06-15
 (Generated using [git-cliff](https://git-cliff.org/)
