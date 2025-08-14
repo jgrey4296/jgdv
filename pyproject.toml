@@ -214,7 +214,7 @@ import_footer_localfolder = ""
 ##-- towncrier
 [tool.towncrier]
 package    = "jgdv"
-directory  = "jgdv/_docs/_news"
+directory  = "jgdv/_docs/_changes"
 filename   = "CHANGELOG.md"
 template   = "jgdv/_docs/_templates/news.md"
 create_add_extension = true
