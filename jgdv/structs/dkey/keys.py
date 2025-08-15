@@ -144,8 +144,15 @@ class MultiDKey(DKey, mark=list):
                     targets.append(factory.null_inst())
                 case ExpInst_d() as inst if inst.literal is True:
                     targets.append(inst)
+                case ExpInst_d() as inst if inst.value != self:
+                    assert(inst.value != root.value)
+                    targets += factory.build_chains(inst, opts)
                 case ExpInst_d() as inst:
-                    targets.append(*factory.build_chains(inst, opts))
+                    vals = [
+                        inst,
+                        factory.null_inst(),
+                    ]
+                    targets.append(factory.build_single_chain(vals, self))
         else:
             return targets
 
@@ -155,7 +162,7 @@ class MultiDKey(DKey, mark=list):
         """
         flat : list[str]  = []
         key_meta          = [x for x in self.data.meta if bool(x)]
-        if not bool(key_meta):
+        if bool(vals) and not bool(key_meta):
             return vals[0]
         if len(vals) != len([x for x in self.data.meta if bool(x)]):
             return None

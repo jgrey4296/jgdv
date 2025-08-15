@@ -21,3 +21,4 @@
 :structs     : jgdv/structs
 :docs        : jgdv/_docs
 :docs-build  : .temp/docs
+:changes     : jgdv/_docs/_changes

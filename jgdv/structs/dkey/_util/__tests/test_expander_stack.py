@@ -945,6 +945,10 @@ class TestCoercion:
                 assert(False), x
 
     def test_multi_coerce_subkey(self, exp):
+        """ Coerce the first key to as an absolute path,
+        then the second just as as str,
+        before merging both to just a str
+        """
         obj = DKey("{test!p}/{test}")
         assert(DKey.MarkOf(obj) is list)
         assert(obj.keys()[0].data.convert == "p")
@@ -952,11 +956,11 @@ class TestCoercion:
         match exp.expand(obj, state):
             case ExpInst_d(value=str() as x):
                 assert(x == str(pl.Path.cwd() / "blah/blah"))
-                assert(True)
             case x:
                 assert(False), x
 
     def test_multi_coerce_multi_subkey(self, exp):
+        """ Coerce both keys as paths"""
         obj    = DKey("{test!p} : {test!p}")
         target = "".join(map(str, [(pl.Path.cwd() / "blah"), " : ", (pl.Path.cwd() / "blah")]))
         assert(DKey.MarkOf(obj) is list)
@@ -965,7 +969,6 @@ class TestCoercion:
         match exp.expand(obj, state):
             case ExpInst_d(value=str() as x):
                 assert(x == target)
-                assert(True)
             case x:
                 assert(False), x
 

@@ -93,6 +93,7 @@ class InstructionFactory:
         self._ctor = ctor
 
     def build_chains(self, val:ExpInst_d, opts:ExpOpts) -> list[ExpInstChain_d|ExpInst_d]:
+        chain : list[ExpInst_d]
         match val:
             case ExpInst_d(value=key) if hasattr(key, "exp_generate_chains_h"):
                 return cast("list[ExpInstChain_d|ExpInst_d]", val.value.exp_generate_chains_h(val, self, opts))
@@ -112,7 +113,11 @@ class InstructionFactory:
 
         ##--|
 
-        return [ExpInstChain_d(*[x for x in chain if x is not None], root=val.value)]
+        return [self.build_single_chain(chain, val.value)]
+
+    def build_single_chain(self, vals:list[Maybe[ExpInst_d]], root:DKey) -> ExpInstChain_d:
+        return ExpInstChain_d(*[x for x in vals if x is not None], root=root)
+
 
     def build_inst(self, val:Maybe, root:Maybe[ExpInst_d], opts:ExpOpts, *, decrement:bool=True) -> Maybe[ExpInst_d]:  # noqa: PLR0911
         x          : Any
@@ -341,7 +346,7 @@ class DKeyExpanderStack:
         logging.debug("- Lookup: %s", target)
         sources = self.extra_sources(target, sources)
         match sources.lookup(target):
-            case None:
+            case None | ExpInst_d(value=None):
                 logging.debug("Lookup Failed for: %s", target)
                 return None
             case ExpInst_d() as val:

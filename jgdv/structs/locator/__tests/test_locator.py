@@ -136,6 +136,27 @@ class TestLocatorExpansion:
             case x:
                  assert(False), x
 
+
+    @pytest.mark.xfail
+    def test_expansion_item_relative(self, wrap_locs):
+        wrap_locs.update({"todo_bib": "file::>~/github/bibliography/in_progress/todo.bib"})
+        target = pl.Path("~/github/bibliography/in_progress/todo.bib")
+        match wrap_locs['{todo_bib!p}']:
+            case pl.Path() as x:
+                assert(x == target)
+            case x:
+                 assert(False), x
+
+
+    def test_expansion_item_absolute(self, wrap_locs):
+        wrap_locs.update({"todo_bib": "file::>~/github/bibliography/in_progress/todo.bib"})
+        target = pl.Path("~/github/bibliography/in_progress/todo.bib").expanduser().resolve()
+        match wrap_locs['{todo_bib!P}']:
+            case pl.Path() as x:
+                assert(x == target)
+            case x:
+                 assert(False), x
+
     def test_expansion_no_key(self, wrap_locs):
         wrap_locs.update({"todo_bib": "file::>~/github/bibliography/in_progress/todo.bib"})
         target = pl.Path("todo_bib").resolve()

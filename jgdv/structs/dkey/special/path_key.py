@@ -71,7 +71,11 @@ class PathDKey(DKey[list], mark=pl.Path):
         self.data.expansion_type  = pl.Path
         self.data.typecheck       = pl.Path
 
+    def exp_coerce_h(self, inst:ExpInst_d, factory:InstructionFactory_p, opts:dict) -> Maybe[ExpInst_d]:
+        val = pl.Path(inst.value)
+        if 'relative' not in opts:
+            val = val.expanduser().resolve()
+        return factory.literal_inst(val)
 
     def exp_final_h(self, inst:ExpInst_d, root:Maybe[ExpInst_d], factory:InstructionFactory_p, opts:dict) -> Maybe[ExpInst_d]:
-        value = pl.Path(inst.value).expanduser().resolve()
-        return factory.literal_inst(value)
+        return factory.literal_inst(inst.value)
