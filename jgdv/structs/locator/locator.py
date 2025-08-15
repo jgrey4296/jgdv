@@ -438,7 +438,7 @@ class JGDVLocator(Mapping):
         or  doot.locs[Location("dir::>a/{diff}/path"]
 
         """
-        return self.expand(val, strict=False)
+        return self.expand(val, strict=False, norm=True)
 
     @override
     def __contains__(self, key:object) -> bool:

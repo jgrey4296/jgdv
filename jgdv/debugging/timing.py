@@ -60,10 +60,11 @@ if typing.TYPE_CHECKING:
 logging = logmod.getLogger(__name__)
 ##-- end logging
 
-autorange_fmt : Final[str] = "%-*10s : %-*5d calls took: %-*8.2f seconds"
-result_fmt    : Final[str] = "Attempt %-*5d : %-*8.2f seconds"
-block_fmt     : Final[str] = "%-*10s : %-*8.2f seconds"
-once_fmt      : Final[str] = "%-*10s : %-*8.2f seconds"
+autorange_fmt      : Final[str] = "%-*10s : %-*5d calls took: %-*8.2f seconds"
+result_fmt         : Final[str] = "Attempt %-*5d : %-*8.2f seconds"
+block_fmt          : Final[str] = "%-*10s : %-*8.2f seconds"
+once_fmt           : Final[str] = "%-*10s : %-*8.2f seconds"
+
 ##--|
 class TimeCtx:
     """ Utility Class to time code execution. """
@@ -78,7 +79,7 @@ class TimeCtx:
 
     def __init__(self, *, logger:Maybe[Logger|Literal[False]]=None, level:int=logmod.INFO, group:Maybe[str]=None) -> None:
         self.level        = level
-        self.group : str  = f"{group}::" if group else ""
+        self.group        = f"{group}::" if group else ""
         self._start       = 0
         self._stop        = 0
         self.total        = 0
@@ -116,7 +117,6 @@ class TimeCtx:
             return
 
         self._logger.log(self.level, msg, *args)
-
 
 
 class TimeDec(MonotonicDec):
