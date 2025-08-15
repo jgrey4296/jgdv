@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 <!-- towncrier release notes start -->
 
+# Jgdv 1.3.2 (2025-08-15)
+
+### Bugfixes
+
+- [Fix]: path key expansion. (path)
+
+### Improved Documentation
+
+- [docs]: pyproject description and readme examples (pyproj)
+
+
 # Jgdv 1.3.1 (2025-08-14)
 
 ### Improved Documentation
