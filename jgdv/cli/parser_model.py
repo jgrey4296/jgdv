@@ -98,14 +98,14 @@ class CLIParserModel:
     specs_prog         : list[API.ParamSpec_i]
     specs_subs         : dict[SubName, list[ParamSpec_i]]
 
-    implicits          : list[str]
+    implicits          : dict[str, list]
     _subs_constraints  : defaultdict[CmdName, set[SubName]]
     _current_section   : Maybe[tuple[str, list[API.ParamSpec_i]]]
     _current_data      : Maybe[ParseResult_d]
     _separator         : ParamSpec_i
     _help              : ParamSpec_i
     _force_help        : bool
-    _report            : Maybe[dict]
+    _report            : Maybe[API.ParseReport_d]
     _section_type      : Maybe[SectionType_e]
     _processor         : ParamProcessor
 
@@ -280,7 +280,8 @@ class CLIParserModel:
         logging.debug("Setting Cmd Spec: %s", head)
         match self.specs_cmds.get(head, None):
             case None:
-                raise ValueError("No spec found", head)
+                msg = "No spec found"
+                raise ValueError(msg, head)
             case [*params]:
                 self._current_section = (head, sorted(params, key=ParamSpec.key_func))
                 self._section_type = SectionType_e.cmd
@@ -398,6 +399,7 @@ class CLIParserModel:
         cmds : defaultdict[str, list]
         subs : defaultdict[str, list]
         ##--|
+        assert(self.data_prog is not None)
         result = API.ParseReport_d(raw=self.args_initial,
                                    remaining=self.args_remaining,
                                    prog=self.data_prog,
@@ -408,12 +410,14 @@ class CLIParserModel:
         for cmd in self.data_cmds:
             cmds[cmd.name].append(cmd)
         else:
+            assert(isinstance(cmds, dict))
             result.cmds.update(cmds)
 
         for sub in self.data_subs:
             assert(sub.ref is not None and sub.ref in result.cmds)
             subs[sub.name].append(sub)
         else:
+            assert(isinstance(subs, dict))
             result.subs.update(subs)
 
         # TODO if there were no args, use an empty cmd similar to implicits
