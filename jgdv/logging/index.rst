@@ -21,35 +21,13 @@ Logging
 Toml Specs
 ----------
 
-.. code:: toml
-
-    [logging]
-    [logging.stream]
-    level   = "user"
-    filter  = []
-    target  = "stdout"
-    format  = "{levelname:<8}  : {message}"
-    
-    [logging.file]
-    level        = "trace"
-    filter       = []
-    target       = "rotate"
-    format       = "{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})"
-    filename_fmt = "doot.log"
-    
-    [logging.printer]
-    level        = "NOTSET"
-    colour       = true
-    target       = ["stdout", "rotate"]
-    format       = "{message}"
-    filename_fmt = "doot_printed.log"
-    
-    [logging.extra]
+.. include:: __examples/logging_ex.toml
+   :code: toml
 
 
-.. code:: python
+.. include:: __examples/logging_ex.py
+   :code: python
 
-    # TODO
 
 There are 4 key sorts of ``Toml`` specified loggers:
 1. The `stream` logger, for logging messages that escalate to output on ``stdout`` or ``stderr``.
@@ -63,16 +41,9 @@ The Log Config
 
 The :class:`~jgdv.logging.config.JGDVLogConfig` is for taking loaded ``TOML`` specs of loggers, and applying them.
 
-.. code:: python
-          
-   from jgdv.structs.chainguard import ChainGuard
-   from jgdv.logging import JGDVLogConfig
+.. include:: __examples/log_config_ex.py
+   :code: python
 
-   data    = ChainGuard.load(Path("data/specs.toml"))
-   config  = JGDVLogConfig()
-   config.setup(data)
-   config.set_level("DEBUG")
-   
    
     
 -----------------------

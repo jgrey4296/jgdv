@@ -1,0 +1,22 @@
+[logging]
+[logging.stream]
+level   = "user"
+filter  = []
+target  = "stdout"
+format  = "{levelname:<8}  : {message}"
+
+[logging.file]
+level        = "trace"
+filter       = []
+target       = "rotate"
+format       = "{levelname:<8} : {message:<20} :|: ({module}.{lineno}.{funcName})"
+filename_fmt = "doot.log"
+
+[logging.printer]
+level        = "NOTSET"
+colour       = true
+target       = ["stdout", "rotate"]
+format       = "{message}"
+filename_fmt = "doot_printed.log"
+
+[logging.extra]

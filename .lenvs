@@ -1,5 +1,5 @@
 # Librarian-envs spec file
-venv
+venv ./.temp/venv
 lsp
 py-lsp
 mypy

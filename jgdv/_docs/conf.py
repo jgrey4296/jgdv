@@ -75,6 +75,7 @@ include_patterns = [
 exclude_patterns = [
     "**/flycheck_*.py",
     "**/__tests/*",
+    "**/__examples/*",
     "_docs/_templates/*",
     "README.md",
 ]

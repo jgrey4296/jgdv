@@ -17,7 +17,6 @@ wrap_tmp
 --------
 
 
-.. code:: python
+.. include:: __examples/wrap_temp_ex.py
+   :code: python
 
-          # TODO
-          

@@ -48,34 +48,32 @@ changelog     = "https://github.com/jgrey4296/jgdv/blob/master/CHANGELOG.md"
 
 ##-- build-system
 [build-system]
-requires = [
-    "setuptools >= 63.1.0",
-    "wheel >= 0.37.1"
+requires       = ["hatchling>=1.13"]
+build-backend  = "hatchling.build"
+
+[tool.hatch.build]
+skip-excluded-dirs  = true
+# directory           = ".temp/build"  # or HATCH_BUILD_LOCATION
+
+[tool.hatch.build.targets.sdist]
+packages   = ["jgdv"]
+artifacts  = ["*.so"]
+exclude    = [
+    ".temp", "**.rst",
+    "jgdv/*/__tests", "jgdv/_docs", "jgdv/__tests",
 ]
 
-build-backend = "setuptools.build_meta"
-
-[tool.setuptools]
-include-package-data = true
-
-[tool.setuptools.packages.find]
-namespaces = true
-where      = ["."]
-include    = ["jgdv*"]
-exclude    = ["jgdv._docs*"]
-
-[tool.setuptools.package-data]
-"*" = ["*"]
-"jgdv.__data"    = ["*.so"]
-
-[tool.setuptools.exclude-package-data]
-jgdv = ["**.rst"]
-
-[tool.distutils.egg_info]
-# from https://github.com/pypa/setuptools/discussions/3348#discussioncomment-6556887
-egg_base = ".temp/egg-info"
+[tool.hatch.build.targets.wheel]
+packages   = ["jgdv"]
+artifacts  = ["*.so"]
+exclude    = [
+    ".temp", "**.rst",
+    "jgdv/*/__tests", "jgdv/__tests",
+    "jgdv/_docs",
+]
 
 ##-- end build-system
+
 
 # Tools #######################################################################
 

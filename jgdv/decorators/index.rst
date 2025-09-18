@@ -22,29 +22,10 @@ In addition, if the same decorator is applied repeatedly with different
 data, that can be detected, and only a single decoration will be applied,
 the data being added to the target's ``__dict__``.
 
-.. code:: python
+.. include:: __examples/decorator_ex.py
+   :code: python
 
-    from jgdv.decorators import Decorator
 
-    class MyDecorator(Decorator):
-
-        def _wrap_fn_h[**In](self, fn:Func[In, int]) -> Decorated[In, int|None]:
-
-            def myfunc(*vals:In.args) -> int|None:
-                if bool(vals[0]):
-                    return fn(*vals)
-                return None
-
-            return myfunc
-
-.. code:: python
-
-    @MyDecorator()
-    def a_func(val:int) -> int:
-          return 2
-
-    assert(a_func(0) is None)
-    assert(a_func(5) is 2)
     
 
 Specialised Decorators
@@ -70,20 +51,9 @@ Mixin
 :class:`@Mixin <jgdv.decorators.mixin.Mixin>` is a decorator to apply
 mixin classes into the MRO of a base class.
 
-So, instead of:
+.. include:: __examples/mixin_ex.py
+   :code: python
 
-.. code:: python
-
-   class MyClass(Mixin1, Mixin2, Mixin3, Base):
-       ...
-
-Mixins can be more clearly added thus:
-
-.. code:: python
-
-    @Mixin(Mixin1, Mixin2)
-    class MyClass(Base):
-        ...
 
 
 Proto
@@ -95,12 +65,9 @@ checking that all required methods are implemented.
 This ensures that if a protocol changes, implementing classes will
 notify when they no longer fulfill the contract:
 
-.. code:: python
 
-    @Proto(MyProto_p)
-    class Implementer:
-          ...
-
+.. include:: __examples/proto_ex.py
+   :code: python
 
 
             

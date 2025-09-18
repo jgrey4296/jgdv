@@ -1,0 +1,5 @@
+key = "value"
+
+[table]
+key = "other value"
+sub = {key="blah"}

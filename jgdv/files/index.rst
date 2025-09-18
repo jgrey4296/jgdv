@@ -44,11 +44,8 @@ That is, each line is a bookmark, followed by colon-delimited tags of that
 bookmark.
 This is then read in using ``BookmarkCollection``:
 
-.. code:: python
-
-    from jgdv.files.bookmarks import BookmarkCollection
-
-    bkmks = BookmarkCollection.read(Path("path/to/collection.bookmarks"))
+.. include:: __examples/bookmark_ex.py
+   :code: python
 
 
 ----
