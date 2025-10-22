@@ -32,8 +32,9 @@ jobs:
           asdf plugin add uv
           asdf plugin add direnv
           asdf install
-          asdf current
-          POLYGLOT_ROOT="$PWD" polyglot --version
+          direnv allow
+          polyglot
+          
       # - name: setup
       #   run: |
       #     uv venv
