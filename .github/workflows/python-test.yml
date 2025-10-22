@@ -31,6 +31,7 @@ jobs:
           asdf plugin add polyglot https://github.com/jgrey4296/asdf-polyglot-cli.git
           asdf install
           asdf current
+          POLYGLOT_ROOT="$PWD" polyglot --version
       # - name: setup
       #   run: |
       #     uv venv
