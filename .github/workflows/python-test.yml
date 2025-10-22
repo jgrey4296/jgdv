@@ -24,18 +24,18 @@ jobs:
     runs-on: ubuntu-latest
     environment: publishing
     steps:
-      - name: Set Env Var
-        run: echo "MY_ENV=\"BLAH BLAH BLAH\"" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
       - uses: asdf-vm/actions/setup@v4
       - name: add asdf plugins
         run: |
-          cat ".asdf.plugins"
-          while read -r pname url; do
-            if [[ -n "$pname" ]]; then
-              echo "Value: $pname"
-            fi
-          done < ".asdf.plugins"
+          if [[ -e ".asdf.plugins" ]]; then
+            echo "Adding ASDF Plugins"
+            while read -r pname url; do
+              if [[ -n "$pname" ]]; then
+                echo "Value: $pname"
+              fi
+            done < ".asdf.plugins"
+          fi
       - name: setup polyglot
         run: |
           asdf plugin add polyglot https://github.com/jgrey4296/asdf-polyglot-cli.git
