@@ -33,7 +33,7 @@ jobs:
           asdf plugin add direnv
           asdf install
           direnv allow
-          polyglot
+          env
           
       # - name: setup
       #   run: |
