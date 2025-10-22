@@ -24,8 +24,13 @@ jobs:
     runs-on: ubuntu-latest
     environment: publishing
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: asdf-vm/actions/install@v4
+      - name: setup polyglot
+        run: |
+          asdf plugin add polyglot git@github.com:jgrey4296/asdf-polyglot-cli.git
+          asdf install
+          polyglot
       - name: setup
         run: |
           uv venv
@@ -33,3 +38,5 @@ jobs:
       - name: test
         run: |
           uv run tox -e test
+
+          
