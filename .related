@@ -4,21 +4,22 @@
 ;; Others are :{name} : {path} pairs
 ;; paths are relative
 
-:related     : .related
-:doot        : doot.toml
-:data        : data
-:docs        : docs
 :github      : .github/workflows
-:tasks       : .tasks
+:gitlab      : .gitlab/ci
+
 :temp        : .temp
 :logs        : .temp/logs
-:templates   : templates
+:docs-build  : .temp/docs
+
+:tasks       : .tasks
+:related     : .related
+:docs        : jgdv/_docs
+:changes     : jgdv/_docs/_changes
+:templates   : jgdv/_docs/_changes/_templates
 :wiki        : wiki_
+
 :src         : jgdv
 :code        : jgdv
 :api         : jgdv/_abstract
 :enums       : jgdv/enums
 :structs     : jgdv/structs
-:docs        : jgdv/_docs
-:docs-build  : .temp/docs
-:changes     : jgdv/_docs/_changes

@@ -15,6 +15,7 @@ classifiers     = [
   "Programming Language :: Python"
 ]
 
+##-- dependencies
 dependencies   = [
     "pyparsing",
     "networkx",
@@ -25,6 +26,36 @@ dependencies   = [
     "sty >= 1.0.6",
     "packaging>=24.2",
 ]
+
+[dependency-groups]
+dev = [
+    "ipython>=9.4.0",
+    "sh>=2.2.2",
+    "towncrier>=24.8.0",
+    ]
+test =[
+    "pydot>=4.0.1",
+    "pytest>=8.3.5",
+    "pytest-cov>=6.0.0",
+    "pytest-mock>=3.14.0",
+    "tox>=4.28.4",
+    "tox-uv>=1.27.0",
+    "ruff>=0.12.8",
+]
+docs = [
+    "myst-parser>=4.0.1",
+    "sphinx>=8.2.3",
+    "sphinx-rtd-theme>=3.0.2",
+    "pydot>=4.0.1",
+    "tox>=4.28.4",
+    "tox-uv>=1.27.0",
+    "sphinx-autoapi",
+]
+
+[tool.uv.sources]
+sphinx-autoapi = { git = "https://github.com/jgrey4296/sphinx-autoapi" }
+
+##-- end dependencies
 
 ##-- urls
 [project.urls]
@@ -209,43 +240,3 @@ import_footer_localfolder = ""
 
 ##-- end isort
 
-##-- towncrier
-[tool.towncrier]
-package    = "jgdv"
-directory  = "jgdv/_docs/_changes"
-filename   = "CHANGELOG.md"
-template   = "jgdv/_docs/_templates/news.md"
-create_add_extension = true
-
-##-- end towncrier
-
-##-- uv
-[tool.uv.sources]
-sphinx-autoapi = { path = "../../__libs/python/sphinx-autoapi", editable = true }
-
-[dependency-groups]
-dev = [
-    "ipython>=9.4.0",
-    "sh>=2.2.2",
-    "towncrier>=24.8.0",
-    ]
-test =[
-    "pydot>=4.0.1",
-    "pytest>=8.3.5",
-    "pytest-cov>=6.0.0",
-    "pytest-mock>=3.14.0",
-    "tox>=4.28.4",
-    "tox-uv>=1.27.0",
-    "ruff>=0.12.8",
-]
-docs = [
-    "myst-parser>=4.0.1",
-    "sphinx>=8.2.3",
-    "sphinx-autoapi>=3.6.0",
-    "sphinx-rtd-theme>=3.0.2",
-    "pydot>=4.0.1",
-    "tox>=4.28.4",
-    "tox-uv>=1.27.0",
-]
-
-##-- end uv

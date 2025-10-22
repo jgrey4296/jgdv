@@ -1,6 +1,5 @@
 """
-
-jgdv.debugging : Utilities for debugging
+Utilities for debugging.
 
 Provides:
 
