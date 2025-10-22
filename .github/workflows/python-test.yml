@@ -25,7 +25,7 @@ jobs:
     environment: publishing
     steps:
       - uses: actions/checkout@v4
-      - uses: asdf-vm/actions/install@v4
+      - uses: asdf-vm/actions/setup@v4
       - name: setup polyglot
         run: |
           asdf plugin add polyglot https://github.com/jgrey4296/asdf-polyglot-cli.git
