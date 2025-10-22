@@ -36,6 +36,8 @@ jobs:
           asdf install
           direnv allow
           direnv export gha >> "$GITHUB_ENV"
+      - name: check env
+        run: |
           env
           
       # - name: setup
