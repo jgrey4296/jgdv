@@ -36,16 +36,15 @@ jobs:
           asdf install
           direnv allow
           direnv export gha >> "$GITHUB_ENV"
-      - name: check env
+      - name: check polyglot
+        uses: |
+          polyglot
+      - name: setup
         run: |
-          env
-          
-      # - name: setup
-      #   run: |
-      #     uv venv
-      #     uv sync --group test
-      # - name: test
-      #   run: |
-      #     uv run tox -e test
+          uv venv
+          uv sync --group test
+      - name: test
+        run: |
+          uv run tox -e test
 
           
