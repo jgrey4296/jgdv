@@ -24,6 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: publishing
     steps:
+      - name: Set Env Var
+        run: echo "MY_ENV=\"BLAH BLAH BLAH\"" >> "$GITHUB_ENV"
       - uses: actions/checkout@v4
       - uses: asdf-vm/actions/setup@v4
       - name: setup polyglot
@@ -33,7 +35,7 @@ jobs:
           asdf plugin add direnv
           asdf install
           direnv allow
-          direnv export gha > "$GITHUB_ENV"
+          direnv export gha >> "$GITHUB_ENV"
           env
           
       # - name: setup
