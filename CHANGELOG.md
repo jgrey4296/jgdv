@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 <!-- towncrier release notes start -->
 
+# jgdv 1.3.3 (2025-10-22)
+
+### Misc
+
+- [refactor]: disable error suppression of context managers
+
+
 # Jgdv 1.3.2 (2025-08-15)
 
 ### Bugfixes

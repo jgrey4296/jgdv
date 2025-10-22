@@ -2,7 +2,7 @@
 
 [project]
 name            = "jgdv"
-version = "1.3.2"
+version = "1.3.3"
 description     = "I Keep Writing These Things."
 readme          = "README.md"
 requires-python = ">=3.12"
