@@ -28,7 +28,7 @@ jobs:
       - uses: asdf-vm/actions/install@v4
       - name: setup polyglot
         run: |
-          asdf plugin add polyglot git@github.com:jgrey4296/asdf-polyglot-cli.git
+          asdf plugin add polyglot https://github.com/jgrey4296/asdf-polyglot-cli.git
           asdf install
           polyglot
       - name: setup
