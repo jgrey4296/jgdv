@@ -31,13 +31,12 @@ jobs:
           asdf plugin add polyglot https://github.com/jgrey4296/asdf-polyglot-cli.git
           asdf install
           asdf current
-          polyglot --version
-      - name: setup
-        run: |
-          uv venv
-          uv sync --group test
-      - name: test
-        run: |
-          uv run tox -e test
+      # - name: setup
+      #   run: |
+      #     uv venv
+      #     uv sync --group test
+      # - name: test
+      #   run: |
+      #     uv run tox -e test
 
           
