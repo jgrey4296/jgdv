@@ -37,7 +37,7 @@ jobs:
           direnv allow
           direnv export gha >> "$GITHUB_ENV"
       - name: check polyglot
-        uses: |
+        run: |
           polyglot
       - name: setup
         run: |
