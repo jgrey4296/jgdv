@@ -32,13 +32,12 @@ jobs:
             echo "Adding ASDF Plugins"
             while read -r pname url; do
               if [[ -n "$pname" ]]; then
-                echo "Value: $pname"
+                asdf plugin add "$pname" "${url:-}"
               fi
             done < ".asdf.plugins"
           fi
       - name: setup polyglot
         run: |
-          asdf plugin add polyglot https://github.com/jgrey4296/asdf-polyglot-cli.git
           asdf install
           direnv allow
           direnv export gha >> "$GITHUB_ENV"
