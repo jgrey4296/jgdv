@@ -94,9 +94,7 @@ class SignalHandler:
     def __exit__(self, etype:Maybe[type], err:Maybe[Exception], tb:Maybe[Traceback]) -> bool:
         if not self._disabled:
             SignalHandler.uninstall()
-        if etype is None:
-            return False
-        return True
+        return False
 
 class NullHandler:
     """ An interrupt handler that does nothing """
@@ -124,6 +122,4 @@ class NullHandler:
     def __exit__(self, etype:Maybe[type], err:Maybe[Exception], tb:Maybe[Traceback]) -> bool:
         if not self._disabled:
             NullHandler.uninstall()
-        if etype is None:
-            return False
-        return True
+        return False

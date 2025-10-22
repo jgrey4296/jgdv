@@ -100,9 +100,6 @@ class TimeCtx:
         self.total     = (self._stop - self._start)
         self.total_ms  = self.total * 0.0001
         self.total_s   = self.total / 1_000_000_000
-        if etype:
-            return True
-
         return False
 
     def _set_name(self, name:Maybe[str]) -> None:

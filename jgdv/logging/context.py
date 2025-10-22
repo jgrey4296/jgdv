@@ -87,10 +87,7 @@ class LogContext:
             self._logger.setLevel(self._level_stack.pop())
         else:
             self._logger.setLevel(self._original_level)
-        if etype is None:
-            return False
-
-        return True
+        return False
 
     def __getattr__(self, key:str) -> Logger:
         return cast("Logger", getattr(self._logger, key))
@@ -124,7 +121,5 @@ class TempLogger:
     def __exit__(self, etype:Maybe[type], err:Maybe[Exception], tb:Maybe[Traceback]) -> bool:
         if self._original is not None:
             logmod.setLoggerClass(self._original)
-        if etype is None:
-            return False
 
-        return True
+        return False
