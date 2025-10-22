@@ -13,7 +13,7 @@ name: Run Tests
 on:
   workflow_dispatch: 
   push:
-    branches: [main]
+    branches: [actiontest]
     
 permissions:
   contents: read
@@ -24,17 +24,12 @@ jobs:
     runs-on: ubuntu-latest
     environment: publishing
     steps:
-      - uses: actions/checkout@v4
-      - name: install uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          version: "latest"
+      - uses: actions/checkout@v3
+      - uses: asdf-vm/actions/install@v4
       - name: setup
         run: |
-          mkdir --parents .temp/egg-info
-          uv lock --no-sources
           uv venv
-          UV_FROZEN=1 uv sync --group test
+          uv sync --group test
       - name: test
         run: |
-          UV_NO_SYNC=1 uv run tox -e test
+          uv run tox -e test
