@@ -30,14 +30,12 @@ jobs:
       - uses: asdf-vm/actions/setup@v4
       - name: add asdf plugins
         run: |
-          if [[ -e ".asdf.plugins" ]]; then
-            echo "Initialising extra asdf plugins"
-            while read -r pname url; do
-              if [[ -n "$pname" ]]; then
-                asdf plugin add "${pname}" "${url}" 2> /dev/null
-              fi
-            done < ".asdf.plugins"
-          fi
+          cat ".asdf.plugins"
+          while read -r pname url; do
+            if [[ -n "$pname" ]]; then
+              echo "Value: $pname"
+            fi
+          done < ".asdf.plugins"
       - name: setup polyglot
         run: |
           asdf plugin add polyglot https://github.com/jgrey4296/asdf-polyglot-cli.git
