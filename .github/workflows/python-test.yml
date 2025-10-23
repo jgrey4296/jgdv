@@ -25,16 +25,27 @@ jobs:
     environment: publishing
     steps:
       - uses: actions/checkout@v4
-      - name: install uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          version: "latest"
+      - uses: asdf-vm/actions/setup@v4
+      - name: add asdf plugins
+        run: |
+          if [[ -e ".asdf.plugins" ]]; then
+            echo "Adding ASDF Plugins"
+            while read -r pname url; do
+              if [[ -n "$pname" ]]; then
+                echo "Adding: $pname : (${url:-})"
+                asdf plugin add "$pname" "${url:-}"
+              fi
+            done < ".asdf.plugins"
+          fi
+      - name: setup polyglot
+        run: |
+          asdf install
+          direnv allow
+          direnv export gha >> "$GITHUB_ENV"
       - name: setup
         run: |
-          mkdir --parents .temp/egg-info
-          uv lock --no-sources
           uv venv
-          UV_FROZEN=1 uv sync --group test
+          uv sync --group test
       - name: test
         run: |
-          UV_NO_SYNC=1 uv run tox -e test
+          uv run tox -e test
