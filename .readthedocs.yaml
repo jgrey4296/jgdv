@@ -16,22 +16,30 @@ build:
   jobs:
     pre_create_environment:
       - mkdir -p .temp/egg-info
-      - asdf plugin add uv
-      - asdf install uv 0.8.9
-      - asdf global uv 0.8.9
+      - |
+          if [[ -e ".asdf.plugins" ]]; then
+            echo "Adding ASDF Plugins"
+            while read -r pname url; do
+              if [[ -n "$pname" ]]; then
+                echo "Adding: $pname : (${url:-})"
+                asdf plugin add "$pname" "${url:-}"
+              fi
+            done < ".asdf.plugins"
+          fi
+      - asdf install
+      - direnv allow
     create_environment:
-      - uv lock --no-sources
       - uv venv "${READTHEDOCS_VIRTUALENV_PATH}"
     install:
-      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --frozen --group docs 
+      - UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}" uv sync --group docs 
     build:
       html:
+        - echo "checking environment"
+        - env
         - echo "Building HTML"
-        - mkdir -p $READTHEDOCS_OUTPUT/html
         - >
-          UV_NO_SYNC=1
           UV_PROJECT_ENVIRONMENT="${READTHEDOCS_VIRTUALENV_PATH}"
-          OUTDIR="${READTHEDOCS_OUTPUT}/html/"
-          DOCTREE="_build/doctrees"
-          uv run --frozen
-          tox -e docs
+          polyglot docs --sphinx
+        - mkdir -p "$READTHEDOCS_OUTPUT/html"
+        - mv .temp/docs/sphinx 
+        
